@@ -1,0 +1,95 @@
+body {
+  background-color: #F8FAFC;
+}
+
+.topBar {
+  background-color: #F8FAFC;
+  height: 1.5rem;
+  color: white;
+  display: flex;
+  align-items: center;
+  padding: 1.25rem;
+}
+
+.logoArea {
+  background-color: black;
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.mainLogo {
+  height: 3rem;
+  margin-left: 1rem;
+}
+
+.mainTitle {
+  color: white;
+  font-size: 1rem;
+  margin: 0 0 0 0.5rem;
+  font-family: 'Times New Roman', Times, serif;
+  text-transform: uppercase;
+  padding: 0;
+  line-height: 1;
+  font-size: 1.5rem;
+}
+
+.searchArea {
+  background-color: blue;
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.searchBar {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  border: 1px solid #000;
+  border-radius: 50px;
+  padding: 2px 15px;
+  width: 15rem;
+}
+
+.searchInput {
+  flex: 1;
+  border: none !important;
+  outline: none;
+  background: transparent;
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.searchButton {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.material-icons {
+  font-size: 1.25rem;
+  color: #555;
+}
+
+.enrollBar {
+
+}
+
+.enrollBT {
+    background-color: #EF3F3F;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 50px;
+    cursor: pointer;
+}
+
+.navBar {
+  background-color: #3D1616;
+  height: 1.5rem;
+  color: white;
+}   
