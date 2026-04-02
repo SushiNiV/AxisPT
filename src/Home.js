@@ -1,8 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Home.css';
 import cptLogo from './assets/cpt-logo.png'; 
 
 function Home() {
+  const navigate = useNavigate()
+
   return (
     <div className="home-container"> 
 
@@ -18,11 +21,11 @@ function Home() {
                         <span className="material-icons">search</span>
                     </button>
                 </div>
-                <div className='enrollBar'>
-                    <button className='enrollBT'>
-                        Enroll Now!
-                    </button>
-                </div>
+                    <div className='enrollBar'>
+                        <button className='enrollBT' onClick={() => navigate('/signup')}>
+                            Sign Up
+                        </button>
+                    </div>
             </div>
         </div>
 
