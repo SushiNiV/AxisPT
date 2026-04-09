@@ -19,10 +19,29 @@ function ASignIn() {
         }
     };
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        console.log("Attempting Login with:", formData);
-        };
+        
+        try {
+            const response = await fetch('http://localhost:5000/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert(`Welcome, ${data.user}!`);
+                navigate('/dashboard');
+            } else {
+                alert(data.message);
+            }
+        } catch (error) {
+            console.error("Error logging in:", error);
+            alert("Could not connect to the server.");
+        }
+    };
 
     return (
         <div className="asigninContainer">

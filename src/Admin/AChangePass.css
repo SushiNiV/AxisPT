@@ -1,0 +1,102 @@
+.AchangepassContainer {
+    width: 100%;
+	height: 100vh;
+    max-height: 100%;
+    background-color: #3D1616;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.AchangepassContainer .logoArea p {
+    color: white;
+}
+
+.AchangepassContainer .logoArea{
+    margin-left: 1rem;
+}
+
+.AchangepassContainer .mainLogo {
+    height: 2rem;
+    margin-left: 1rem;
+}
+
+.AchangepassContainer .returnBT {
+    margin-right: 1rem;
+}
+
+.AchangepasstopBar {
+    width: 100%;
+    max-width: 100%;
+    height: 1.5rem; 
+    display: flex;
+    align-items: center;
+    padding: 1.25rem;
+    background-color: transparent;
+    align-items: center;
+}
+
+.AchangepassCard {
+    background-color: #F8FAFC;
+    border-radius: 10px;
+    margin: auto;
+    padding: 2rem 5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.AchangepassCard label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #3d1616;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 1rem;
+}
+
+.AchangepassCard input {
+    padding: 0.8rem;
+    border: 1px solid #c2c6cb;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    width: 100%;
+}
+
+.AchangepassCard input:focus {
+    border-color: #ff5f5f;
+    box-shadow: 0 0 0 3px rgba(255, 95, 95, 0.1); 
+}
+
+.AchangepassCard input::placeholder {
+    color: #c2c6cb;
+}
+
+.AchangepassTitle {
+    font-size: 1.5rem;
+    font-weight: bold;
+	margin: 0;
+    margin-bottom: 1rem     ;
+    text-transform: uppercase;
+    color: #3D1616;
+}
+
+.AchangepassBT {
+    background-color: #EF3F3F;
+    color: white;
+    border: none;
+    margin-top: 2rem;
+    padding: 0.75rem 1rem;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    width: fit-content;
+    text-transform: uppercase;
+}

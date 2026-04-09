@@ -8,6 +8,7 @@ import Enrollment from './Main/Enrollment';
 
 import ASignIn from './Admin/ASignIn';
 import ADashboard from './Admin/ADashboard';
+import AChangePass from './Admin/AChangePass';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
 
         <Route path="/admin-signin" element={<ASignIn />} />
         <Route path="/admin-dashboard" element={<ADashboard />} />
+        <Route path="/admin-change-password" element={<AChangePass />} />
       </Routes>
     </Router>
   );

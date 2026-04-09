@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Enrollment.css';
+import cptLogo from '../assets/cpt-logo.png'; 
 
 function Enrollment() {
     const navigate = useNavigate();
@@ -106,6 +107,10 @@ function Enrollment() {
     return (
         <div className="enrollmentContainer">
             <div className="etopBar">
+                <div className='logoArea'>
+                    <img src={cptLogo} alt='CPT Logo' className='mainLogo'/>
+                    <p className='mainTitle'>Axis CPT</p>
+                </div>
                 <button className='returnBT' onClick={() => navigate('/home')}>
                     <span className="material-icons">arrow_back</span>
                 </button>
