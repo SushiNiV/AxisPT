@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 
 import Home from './Main/Home';
 
-import SignUp from './Student/SignUp';
+import SignIn from './Student/SignIn';
 import Enrollment from './Main/Enrollment';
 
 import ASignIn from './Admin/ASignIn';
@@ -17,7 +17,7 @@ function App() {
         <Route path="/" element={<Navigate to="/home" />} />
         <Route path="/home" element={<Home />} />
 
-        <Route path="/signup" element={<SignUp />} />
+        <Route path="/signin" element={<SignIn />} />
         
         <Route path="/enrollment-form" element={<Enrollment />} />
 

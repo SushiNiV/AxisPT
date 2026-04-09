@@ -1,4 +1,4 @@
-.signupContainer {
+.signinContainer {
     display: flex;
     height: 100vh;
     width: 100vw;
@@ -6,25 +6,25 @@
     overflow: hidden
 }
 
-.signup-lcontainer {
+.signin-lcontainer {
     flex: 1.5;
     display: flex;
     background-color: aqua;
     margin: 1rem 0.5rem 1rem 1rem;
 }
 
-.signup-title {
+.signin-title {
     font-size: 2.5rem;
     font-weight: bold;
     margin: 0;
 }
 
-.signup-text {
+.signin-text {
     font-size: 1rem;
     margin: 0 0 0 0.2rem;
 }
 
-.signup-form {
+.signin-form {
     flex: 1.2; 
     display: flex;
     flex-direction: column;
@@ -38,13 +38,13 @@
     overflow-y: auto;
 }
 
-.signup-rcontainer {
+.signin-rcontainer {
     flex: 1;
     display: flex;
     justify-content: flex-end;
 }
 
-.signup-rcard {
+.signin-rcard {
     flex: 1;
     background-color: #361414;
     margin: 0.5rem;

@@ -9,16 +9,21 @@ function ASignIn() {
 
     const [formData, setFormData] = useState({
         employeeID: '',
-        password: ''
+        password: '',
+        rememberMe: false
     });
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
+        const { name, value, type, checked } = e.target;
         if (name === "employeeID") {
             const onlyNums = value.replace(/\D/g, "");
             setFormData(prev => ({ ...prev, [name]: onlyNums }));
         } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
+            // Handle checkbox vs text input
+            setFormData(prev => ({ 
+                ...prev, 
+                [name]: type === 'checkbox' ? checked : value 
+            }));
         }
     };
 
@@ -100,15 +105,28 @@ function ASignIn() {
                                 </span>
                             </div>
                         </div>
-
-                        <p className="forgotPass">Forgot Password?</p>
+                        <div className="formOptions">
+                            <div className="rememberMeContainer">
+                                <input 
+                                    type="checkbox" 
+                                    name="rememberMe" 
+                                    id="rememberMe"
+                                    checked={formData.rememberMe}
+                                    onChange={handleChange}
+                                />
+                                <label htmlFor="rememberMe">Remember Me</label>
+                            </div>
+                            <div className="forgotPassContainer">
+                                <p className="forgotPass">Forgot Password?</p>
+                            </div>
+                        </div>
                         
                         <div className="asigninBTContainer">
                             <button type="submit" className="asignInBT">
                                 Sign In
                             </button>
                             <div className="privText">
-                                <p>"By logging in, you agree to handle all data in accordance with the Data Privacy Act of 2012 and OLFU Confidentiality Policies."</p>
+                                <p>"By logging in, you agree to handle all data in accordance with the Data Privacy Act of 2012 and Privacy Policies."</p>
                             </div>
                         </div>
                     </div>

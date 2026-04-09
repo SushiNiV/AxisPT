@@ -109,13 +109,6 @@
     font-size: 1.2rem;
 }
 
-.forgotPass {
-    margin: .5rem 0;
-    color: #3d1616;
-    cursor: pointer;
-    font-size: 0.75rem;
-}
-
 .asigninBTContainer {
     display: flex;
     flex-direction: column;
@@ -143,4 +136,31 @@
     text-align: center;
     margin-top: 1.5rem;
     font-style: italic;
+}
+
+.formOptions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.25rem;
+    margin-bottom: 20px;
+    width: 100%;
+    color: #3d1616;
+}
+
+.rememberMeContainer {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.rememberMeContainer label {
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.forgotPass {
+    font-size: 14px;
+    cursor: pointer;
+    margin: 0;
 }

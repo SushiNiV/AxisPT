@@ -33,7 +33,7 @@ const verifyToken = (req, res, next) => {
 };
 
 app.post('/api/login', async (req, res) => {
-    const { employeeID, password } = req.body;
+    const { employeeID, password, rememberMe } = req.body;
     try {
         const result = await pool.query('SELECT * FROM administrators WHERE employee_id = $1', [employeeID]);
         
@@ -59,6 +59,15 @@ app.post('/api/login', async (req, res) => {
                     [user.employee_id, user.role || 'Admin', 'LOGIN', user.employee_id, 'Successful login']
                 );
 
+                if (isMatch) {
+                const expiresIn = rememberMe ? '7d' : '2h';
+
+                const token = jwt.sign(
+                    { id: user.employee_id, role: user.role || 'Admin' },
+                    process.env.JWT_SECRET,
+                    { expiresIn: expiresIn }
+                );
+
                 res.json({ 
                     success: true, 
                     token, 
@@ -71,8 +80,7 @@ app.post('/api/login', async (req, res) => {
         } else {
             res.status(404).json({ success: false, message: "User not found" });
         }
-    } catch (err) {
-        console.error(err.message);
+    }} catch (err) {
         res.status(500).json({ success: false, message: "Server Error" });
     }
 });
