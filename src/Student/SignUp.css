@@ -1,4 +1,4 @@
-.signup-container {
+.signupContainer {
     display: flex;
     height: 100vh;
     width: 100vw;
@@ -11,9 +11,6 @@
     display: flex;
     background-color: aqua;
     margin: 1rem 0.5rem 1rem 1rem;
-    overflow: auto;
-    scrollbar-width: thin; /* For Firefox */
-    scrollbar-color: #333333 transparent;
 }
 
 .signup-title {

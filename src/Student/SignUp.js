@@ -3,7 +3,7 @@ import './SignUp.css';
 
 function SignUp() {
   return (
-    <div className="signup-container">
+    <div className="signupContainer">
         <div className="signup-lcontainer">
             <div className="signup-form">
                 <p className="signup-title">Get Started</p>
