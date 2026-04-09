@@ -27,10 +27,3 @@ node_modules
 build
 dist
 .DS_Store
-
-DB_USER=postgres
-DB_PASSWORD=your_password_here
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=axiscpt_db
-PORT=5000

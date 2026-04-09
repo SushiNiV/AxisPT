@@ -4,6 +4,9 @@ import './ASignIn.css';
 
 function ASignIn() {
     const navigate = useNavigate();
+    
+    const [showPassword, setShowPassword] = useState(false);
+
     const [formData, setFormData] = useState({
         employeeID: '',
         password: ''
@@ -23,7 +26,7 @@ function ASignIn() {
         e.preventDefault();
         
         try {
-            const response = await fetch('http://localhost:5000/api/login', {
+            const response = await fetch('http://127.0.0.1:5000/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
@@ -32,24 +35,28 @@ function ASignIn() {
             const data = await response.json();
 
             if (data.success) {
-                alert(`Welcome, ${data.user}!`);
-                navigate('/dashboard');
+                sessionStorage.setItem('employeeID', formData.employeeID);
+                sessionStorage.setItem('userName', data.user);
+
+                if (data.mustChangePassword) {
+                    navigate('/admin-change-password');
+                } else {
+                    navigate('/dashboard');
+                }
             } else {
                 alert(data.message);
             }
         } catch (error) {
             console.error("Error logging in:", error);
-            alert("Could not connect to the server.");
+            alert("Could not connect to the server. Make sure your Node.js backend is running on port 5000.");
         }
     };
 
     return (
         <div className="asigninContainer">
-
-                <div className="asigninLcard">
-                    <div className="brandingContent">
-                    </div>
-                </div>
+            <div className="asigninLcard">
+                <div className="brandingContent"></div>
+            </div>
 
             <div className="asigninRcontainer">
                 <div className="asignintopBar">
@@ -59,11 +66,13 @@ function ASignIn() {
                     </p>
                 </div>
 
-                    <form className="asigninForm" onSubmit={handleLogin}>
-                        <p className="asigninTitle">Administrative</p>
-                        <p className="asigninTitle">Axis Portal</p>
-                        <div className="formColumn">
-                            <div className="ascol">
+                <form className="asigninForm" onSubmit={handleLogin}>
+                    <p className="asigninTitle">Administrative</p>
+                    <p className="asigninTitle">Axis Portal</p>
+                    
+                    <div className="formColumn">
+                        {/* Employee ID Input */}
+                        <div className="ascol">
                             <label>Employee ID <span style={{color: 'red'}}>*</span></label>
                             <input 
                                 type="text" 
@@ -75,30 +84,37 @@ function ASignIn() {
                             />
                         </div>
 
+                        {/* Password Input with Eye Toggle */}
                         <div className="ascol">
                             <label>Password <span style={{color: 'red'}}>*</span></label>
-                            <input 
-                                type="password" 
-                                name="password" 
-                                placeholder="Enter password" 
-                                value={formData.password}
-                                onChange={handleChange}
-                                required
-                            />
+                            <div className="password-wrapper">
+                                <input 
+                                    type={showPassword ? "text" : "password"} 
+                                    name="password"
+                                    placeholder="Enter your password" 
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    required 
+                                />
+                                <span className="material-icons eye-icon" onClick={() => setShowPassword(!showPassword)}>
+                                    {showPassword ? 'visibility' : 'visibility_off'}
+                                </span>
+                            </div>
                         </div>
+
                         <p className="forgotPass">Forgot Password?</p>
+                        
                         <div className="asigninBTContainer">
                             <button type="submit" className="asignInBT">
                                 Sign In
                             </button>
                             <div className="privText">
-                                <p>"By logging in, you agree to handle all data in accordance with the Data Privacy Act of 2012 and OLFU Confidentiality Policies.</p>
+                                <p>"By logging in, you agree to handle all data in accordance with the Data Privacy Act of 2012 and OLFU Confidentiality Policies."</p>
                             </div>
                         </div>
                     </div>
-                        
-                    </form>
-                </div>
+                </form>
+            </div>
         </div>
     );
 }
