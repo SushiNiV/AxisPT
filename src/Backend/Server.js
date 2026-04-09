@@ -2,6 +2,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
@@ -10,7 +11,6 @@ const saltRounds = 10;
 app.use(cors());
 app.use(express.json());
 
-// Database configuration
 const pool = new Pool({
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
@@ -19,34 +19,50 @@ const pool = new Pool({
     port: process.env.DB_PORT,
 });
 
-// LOGIN ENDPOINT
-// UPDATED LOGIN ENDPOINT FOR HYBRID PASSWORDS
+const verifyToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) return res.status(403).json({ success: false, message: "No token provided" });
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) return res.status(401).json({ success: false, message: "Unauthorized access" });
+        req.user = decoded;
+        next();
+    });
+};
+
 app.post('/api/login', async (req, res) => {
     const { employeeID, password } = req.body;
-    try {   
-        const result = await pool.query(
-            'SELECT * FROM administrators WHERE employee_id = $1', 
-            [employeeID]
-        );
-
+    try {
+        const result = await pool.query('SELECT * FROM administrators WHERE employee_id = $1', [employeeID]);
+        
         if (result.rows.length > 0) {
             const user = result.rows[0];
             const storedPass = user.password_hash;
-            let isMatch = false;
-
-            // Check if the stored password looks like a bcrypt hash 
-            // (Bcrypt hashes usually start with $2b$ or $2a$)
-            if (storedPass.startsWith('$2b$') || storedPass.startsWith('$2a$')) {
-                isMatch = await bcrypt.compare(password, storedPass);
-            } else {
-                // FALLBACK: Plain text comparison for first-time users
-                isMatch = (password === storedPass);
-            }
+            
+            const isBcrypt = storedPass.startsWith('$2b$') || storedPass.startsWith('$2a$');
+            const isMatch = isBcrypt 
+                ? await bcrypt.compare(password, storedPass) 
+                : (password === storedPass);
 
             if (isMatch) {
+                const token = jwt.sign(
+                    { id: user.employee_id, role: user.role || 'Admin' },
+                    process.env.JWT_SECRET,
+                    { expiresIn: '2h' }
+                );
+
+                await pool.query(
+                    `INSERT INTO history_transactions (admin_id, admin_role, action, target_id, details) 
+                     VALUES ($1, $2, $3, $4, $5)`,
+                    [user.employee_id, user.role || 'Admin', 'LOGIN', user.employee_id, 'Successful login']
+                );
+
                 res.json({ 
                     success: true, 
-                    user: user.first_name,
+                    token, 
+                    user: user.first_name, 
                     mustChangePassword: user.must_change_password 
                 });
             } else {
@@ -56,26 +72,25 @@ app.post('/api/login', async (req, res) => {
             res.status(404).json({ success: false, message: "User not found" });
         }
     } catch (err) {
+        console.error(err.message);
         res.status(500).json({ success: false, message: "Server Error" });
     }
 });
 
-// CHANGE PASSWORD ENDPOINT
-app.post('/api/change-password', async (req, res) => {
-    const { employeeID, currentPassword, newPassword } = req.body;
+app.post('/api/change-password', verifyToken, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const employeeID = req.user.id;
+
     try {
         const userResult = await pool.query('SELECT * FROM administrators WHERE employee_id = $1', [employeeID]);
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({ success: false, message: "User not found" });
-        }
-
         const user = userResult.rows[0];
 
-        const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
-        
-        const isPlainTextMatch = (currentPassword === user.password_hash);
+        const isBcrypt = user.password_hash.startsWith('$2b$') || user.password_hash.startsWith('$2a$');
+        const isMatch = isBcrypt 
+            ? await bcrypt.compare(currentPassword, user.password_hash) 
+            : (currentPassword === user.password_hash);
 
-        if (!isMatch && !isPlainTextMatch) {
+        if (!isMatch) {
             return res.status(401).json({ success: false, message: "Current password incorrect" });
         }
 
@@ -89,17 +104,15 @@ app.post('/api/change-password', async (req, res) => {
         await pool.query(
             `INSERT INTO history_transactions (admin_id, admin_role, action, target_id, details) 
              VALUES ($1, $2, $3, $4, $5)`,
-            [user.employee_id, user.role || 'Admin', 'PASSWORD_CHANGE', user.employee_id, 'Admin updated password.']
+            [user.employee_id, user.role || 'Admin', 'PASSWORD_CHANGE', user.employee_id, 'Password updated and hashed']
         );
 
-        res.json({ success: true, message: "Password updated successfully!" });
+        res.json({ success: true, message: "Password updated successfully" });
     } catch (err) {
-        console.error("Change password error:", err.message);
+        console.error(err.message);
         res.status(500).json({ success: false, message: "Server error" });
     }
 });
 
 const PORT = 5000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

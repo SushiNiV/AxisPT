@@ -35,6 +35,7 @@ function ASignIn() {
             const data = await response.json();
 
             if (data.success) {
+                sessionStorage.setItem('token', data.token);
                 sessionStorage.setItem('employeeID', formData.employeeID);
                 sessionStorage.setItem('userName', data.user);
 
@@ -71,7 +72,6 @@ function ASignIn() {
                     <p className="asigninTitle">Axis Portal</p>
                     
                     <div className="formColumn">
-                        {/* Employee ID Input */}
                         <div className="ascol">
                             <label>Employee ID <span style={{color: 'red'}}>*</span></label>
                             <input 
@@ -84,7 +84,6 @@ function ASignIn() {
                             />
                         </div>
 
-                        {/* Password Input with Eye Toggle */}
                         <div className="ascol">
                             <label>Password <span style={{color: 'red'}}>*</span></label>
                             <div className="password-wrapper">
