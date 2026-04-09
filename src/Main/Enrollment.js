@@ -1,34 +1,47 @@
-import React, { useState } from 'react'; // Added useState import
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Enrollment.css';
 
 function Enrollment() {
     const navigate = useNavigate();
 
-    const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        middleName: '',
-        email: '',
-        phoneNumber: '09',
-        telephone: ''
+    const [formData, setFormData] = useState(() => {
+        const saved = localStorage.getItem("enrollment_data");
+        const timestamp = localStorage.getItem("enrollment_timestamp");
+        
+        if (saved && timestamp) {
+            const isExpired = Date.now() - parseInt(timestamp) > 3600000; // 1 hour
+            if (!isExpired) {
+                return JSON.parse(saved);
+            }
+        }
+
+        return {
+            firstName: '', lastName: '', middleName: '', suffix: '', 
+            sex: '', email: '', phoneNumber: '09', telephone: '',
+            birthday: '', placeOfBirth: ''
+        };
     });
 
     const [currentStep, setCurrentStep] = useState(1);
     const totalSteps = 5;
 
+    useEffect(() => {
+        localStorage.setItem("enrollment_data", JSON.stringify(formData));
+        if (!localStorage.getItem("enrollment_timestamp")) {
+            localStorage.setItem("enrollment_timestamp", Date.now().toString());
+        }
+    }, [formData]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
 
         if (name === "phoneNumber") {
-            // PREVENTION: If the user tries to delete '0' or '9', 
-            // we force the value back to '09' and stop the function.
             if (value.length < 2) {
                 setFormData(prev => ({ ...prev, [name]: "09" }));
                 return;
             }
 
-            // Standard masking logic starts here
             const digits = value.replace(/\D/g, "");
             const limited = digits.slice(0, 11);
             
@@ -40,17 +53,29 @@ function Enrollment() {
             }
             
             setFormData(prev => ({ ...prev, [name]: formatted }));
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
+        }
+        else if (name === "email") {
+        setFormData(prev => ({ ...prev, [name]: value.toLowerCase() }));
+        } 
+        else {
+            setFormData(prev => ({ ...prev, [name]: value.toUpperCase() }));
         }
     };
 
     const handleNext = () => {
         if (currentStep === 1) {
             const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            
-            if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim() || !formData.phoneNumber.trim()) {
-                alert("Please fill in all required fields.");
+            const today = new Date().toISOString().split('T')[0];
+            if (
+                !formData.firstName.trim() || 
+                !formData.lastName.trim() || 
+                !formData.sex ||
+                !formData.birthday || 
+                !formData.placeOfBirth.trim() ||
+                !formData.email.trim() || 
+                !formData.phoneNumber.trim()
+            ) {
+                alert("Please fill in all required fields marked with *.");
                 return;
             }
 
@@ -58,20 +83,30 @@ function Enrollment() {
                 alert("Please enter a valid email address.");
                 return;
             }
-            
+
             if (formData.phoneNumber.length < 13) {
-                alert("Please enter a complete phone number (0000-000-0000).");
+                alert("Please enter a complete phone number (09XX-XXX-XXXX).");
+                return;
+            }
+
+            if (formData.birthday > today) {
+                alert("Birthday cannot be a future date.");
                 return;
             }
         }
-
         setCurrentStep(Math.min(totalSteps, currentStep + 1));
+    };
+
+    const handleSubmit = () => {
+        sessionStorage.removeItem("enrollment_data");
+        sessionStorage.removeItem("enrollment_timestamp");
+        alert("Enrollment Submitted Successfully!");
     };
 
     return (
         <div className="enrollmentContainer">
-            <div className="topBar">
-                <button className='returnBT' onClick={() => navigate(-1)}>
+            <div className="etopBar">
+                <button className='returnBT' onClick={() => navigate('/home')}>
                     <span className="material-icons">arrow_back</span>
                 </button>
             </div>
@@ -130,32 +165,54 @@ function Enrollment() {
 
                         <div className="row">
                             <div className="col">
-                                <label>First Name </label>
-                                <input 
-                                    type="text" 
-                                    name="firstName"
-                                    placeholder="First Name" 
-                                    value={formData.firstName}
+                                <label>Suffix</label>
+                                <select 
+                                    name="suffix"
+                                    className="col-input"
+                                    value={formData.suffix}
                                     onChange={handleChange}
+                                >
+                                    <option value="">None</option>
+                                    <option value="Jr.">Jr.</option>
+                                    <option value="Sr.">Sr.</option>
+                                    <option value="II">II</option>
+                                    <option value="III">III</option>
+                                    <option value="IV">IV</option>
+                                </select>
+                            </div>
+                            <div className="col">
+                                <label>Sex <span style={{color: 'red'}}>*</span></label>
+                                <select 
+                                    name="sex"
+                                    className="col-input"
+                                    value={formData.sex}
+                                    onChange={handleChange}
+                                    required
+                                >
+                                    <option value="" disabled>Select Sex</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                            <div className="col">
+                                <label>Birthday <span style={{color: 'red'}}>*</span></label>
+                                <input 
+                                    type="date" 
+                                    name="birthday"
+                                    className="col-input" 
+                                    value={formData.birthday}
+                                    onChange={handleChange}
+                                    max={new Date().toISOString().split('T')[0]}
+                                    required
                                 />
                             </div>
                             <div className="col">
-                                <label>Last Name </label>
+                                <label>Place of Birth <span style={{color: 'red'}}>*</span></label>
                                 <input 
                                     type="text" 
-                                    name="lastName" 
-                                    placeholder="Last Name" 
-                                    value={formData.lastName}
-                                    onChange={handleChange}
-                                />
-                            </div>
-                            <div className="col">
-                                <label>Middle Name</label>
-                                <input 
-                                    type="text" 
-                                    name="middleName"
-                                    placeholder="Middle Name" 
-                                    value={formData.middleName}
+                                    name="placeOfBirth"
+                                    placeholder="Place of Birth" 
+                                    value={formData.placeOfBirth}
                                     onChange={handleChange}
                                 />
                             </div>
@@ -250,7 +307,7 @@ function Enrollment() {
             </div>
 
             <div className="bottomBar">
-                <p className="bottomText">© Copyright 2026. Our Lady of Fatima University - College of Physical Therapy. All Rights reserved. | Powered by CSTH BSCS 3-Y2-1</p>
+                <p className="bottomText">© Copyright 2026. Our Lady of Fatima University - College of Physical Therapy. All Rights reserved. | Powered by VGR </p>
             </div>
         </div>
     );
