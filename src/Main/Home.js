@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Home.css';
-import cptLogo from './assets/cpt-logo.png'; 
+import cptLogo from '../assets/cpt-logo.png'; 
 
 function Home() {
   const navigate = useNavigate()
@@ -17,12 +17,12 @@ function Home() {
             <div className='searchArea'>
                 <div className='searchBar'>
                     <input type='text' placeholder='Search' className='searchInput'/>
-                    <button className='searchButton'>
+                    <button className='searchBT'>
                         <span className="material-icons">search</span>
                     </button>
                 </div>
-                    <div className='enrollBar'>
-                        <button className='enrollBT' onClick={() => navigate('/signup')}>
+                    <div className='signupBar'>
+                        <button className='signupBT' onClick={() => navigate('/signup')}>
                             Sign Up
                         </button>
                     </div>
@@ -37,6 +37,17 @@ function Home() {
             <a href='#' className='navLink'>Admissions</a>
             <a href='#' className='navLink'>News</a>
             <a href='#' className='navLink'>Contact</a>
+        </div>
+
+        <div className='contentArea'>
+            <div className='welcomeSection'>
+                <p className='welcomeText'>Welcome to the College of Physical Therapy!</p>
+            </div>        
+            <div className='enrollBar'>
+                <button className='enrollBT' onClick={() => navigate('/enrollment-form')}>
+                    Enroll Now
+                </button>
+            </div>
         </div>
     </div>
   );

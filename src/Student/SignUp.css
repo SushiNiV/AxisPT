@@ -1,0 +1,59 @@
+.signup-container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    background-color: #F8FAFC;
+    overflow: hidden
+}
+
+.signup-lcontainer {
+    flex: 1.5;
+    display: flex;
+    background-color: aqua;
+    margin: 1rem 0.5rem 1rem 1rem;
+    overflow: auto;
+    scrollbar-width: thin; /* For Firefox */
+    scrollbar-color: #333333 transparent;
+}
+
+.signup-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+.signup-text {
+    font-size: 1rem;
+    margin: 0 0 0 0.2rem;
+}
+
+.signup-form {
+    flex: 1.2; 
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    justify-content: flex-start;
+    padding: 40px;
+    background-color: antiquewhite;
+    margin: 2rem;
+    height: 80%;
+    max-height: 100%;
+    overflow-y: auto;
+}
+
+.signup-rcontainer {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.signup-rcard {
+    flex: 1;
+    background-color: #361414;
+    margin: 0.5rem;
+    border-radius: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+}
