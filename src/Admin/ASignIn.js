@@ -41,8 +41,8 @@ function ASignIn() {
                 </div>
 
                     <form className="asigninForm" onSubmit={handleLogin}>
-                        <p className="asigninTitle">Administrative Axis Portal</p>
-
+                        <p className="asigninTitle">Administrative</p>
+                        <p className="asigninTitle">Axis Portal</p>
                         <div className="formColumn">
                             <div className="ascol">
                             <label>Employee ID <span style={{color: 'red'}}>*</span></label>

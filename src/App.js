@@ -7,6 +7,7 @@ import SignUp from './Student/SignUp';
 import Enrollment from './Main/Enrollment';
 
 import ASignIn from './Admin/ASignIn';
+import ADashboard from './Admin/ADashboard';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path="/enrollment-form" element={<Enrollment />} />
 
         <Route path="/admin-signin" element={<ASignIn />} />
+        <Route path="/admin-dashboard" element={<ADashboard />} />
       </Routes>
     </Router>
   );
