@@ -73,7 +73,6 @@
     letter-spacing: 0.5px;
 }
 
-/* THE FIX: Input and Wrapper Alignment */
 .password-wrapper {
     position: relative;
     width: 100%;
@@ -84,13 +83,13 @@
 .ascol input {
     width: 100%;
     padding: 0.8rem;
-    padding-right: 2.5rem; /* Room for the eye icon */
+    padding-right: 2.5rem;
     border: 1px solid #c2c6cb;
     border-radius: 6px;
     font-size: 0.875rem;
     outline: none;
     transition: all 0.3s ease;
-    box-sizing: border-box; /* Crucial for padding */
+    box-sizing: border-box;
 }
 
 .ascol input:focus {

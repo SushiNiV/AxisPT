@@ -22,7 +22,7 @@ function Home() {
                     </button>
                 </div>
                     <div className='signupBar'>
-                        <button className='signupBT' onClick={() => navigate('/signup')}>
+                        <button className='signupBT' onClick={() => navigate('/signin')}>
                             Sign Up
                         </button>
                     </div>
