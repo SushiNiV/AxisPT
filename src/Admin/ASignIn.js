@@ -19,7 +19,6 @@ function ASignIn() {
             const onlyNums = value.replace(/\D/g, "");
             setFormData(prev => ({ ...prev, [name]: onlyNums }));
         } else {
-            // Handle checkbox vs text input
             setFormData(prev => ({ 
                 ...prev, 
                 [name]: type === 'checkbox' ? checked : value 
@@ -60,8 +59,11 @@ function ASignIn() {
 
     return (
         <div className="asigninContainer">
+
             <div className="asigninLcard">
-                <div className="brandingContent"></div>
+                <div className="brandingContent">
+
+                </div>
             </div>
 
             <div className="asigninRcontainer">
@@ -76,7 +78,7 @@ function ASignIn() {
                     <p className="asigninTitle">Administrative</p>
                     <p className="asigninTitle">Axis Portal</p>
                     
-                    <div className="formColumn">
+                    <div className="aformColumn">
                         <div className="ascol">
                             <label>Employee ID <span style={{color: 'red'}}>*</span></label>
                             <input 
@@ -91,7 +93,7 @@ function ASignIn() {
 
                         <div className="ascol">
                             <label>Password <span style={{color: 'red'}}>*</span></label>
-                            <div className="password-wrapper">
+                            <div className="apasswordWrapper">
                                 <input 
                                     type={showPassword ? "text" : "password"} 
                                     name="password"
@@ -100,13 +102,13 @@ function ASignIn() {
                                     onChange={handleChange}
                                     required 
                                 />
-                                <span className="material-icons eye-icon" onClick={() => setShowPassword(!showPassword)}>
+                                <span className="material-icons aeyeIcon" onClick={() => setShowPassword(!showPassword)}>
                                     {showPassword ? 'visibility' : 'visibility_off'}
                                 </span>
                             </div>
                         </div>
-                        <div className="formOptions">
-                            <div className="rememberMeContainer">
+                        <div className="aformOptions">
+                            <div className="arememberMeContainer">
                                 <input 
                                     type="checkbox" 
                                     name="rememberMe" 
@@ -116,8 +118,8 @@ function ASignIn() {
                                 />
                                 <label htmlFor="rememberMe">Remember Me</label>
                             </div>
-                            <div className="forgotPassContainer">
-                                <p className="forgotPass">Forgot Password?</p>
+                            <div className="aforgotPassContainer">
+                                <p className="aforgotPass">Forgot Password?</p>
                             </div>
                         </div>
                         
@@ -125,7 +127,7 @@ function ASignIn() {
                             <button type="submit" className="asignInBT">
                                 Sign In
                             </button>
-                            <div className="privText">
+                            <div className="aprivText">
                                 <p>"By logging in, you agree to handle all data in accordance with the Data Privacy Act of 2012 and Privacy Policies."</p>
                             </div>
                         </div>

@@ -41,3 +41,96 @@ body {
         transform: rotate(360deg);
     }
 }
+
+.popUpOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.popUpContainer {
+    background: white;
+    padding-bottom: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    position: relative;
+}
+
+.popUpContainer .topBar {
+    height: 1.5rem; 
+    display: flex;
+    background-color: transparent;
+    max-width: 100%;
+}
+
+.popUpContainer .returnBT {
+    background: none;
+    border: none;
+    padding: 0 0.5rem;
+	margin-right: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center; 
+}
+
+.popUpContainer .returnBT .material-icons {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #3d1616;
+}
+
+.popUpCard {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;  
+    padding: 0 3rem;
+}
+
+.popUpCard label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #3d1616;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.popUpCard input {
+    padding: 0.8rem;
+    border: 1px solid #c2c6cb;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    width: 20rem;
+}
+
+.popUpCard input:focus {
+    border-color: #ff5f5f;
+    box-shadow: 0 0 0 3px rgba(255, 95, 95, 0.1); 
+}
+
+.popUpCard input::placeholder {
+    color: #c2c6cb;
+}
+
+.popUpCard .signInBT {
+    margin-top: 1.5rem;
+    background-color: #EF3F3F;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    width: 12rem;
+    text-transform: uppercase;
+}
