@@ -29,31 +29,29 @@ function ASignIn() {
     const handleLogin = async (e) => {
         e.preventDefault();
         
+        // Explicitly define the URL here to bypass .env issues for this test
+        const targetUrl = "http://localhost:5000/api/admin/login";
+        console.log("Forcing fetch to:", targetUrl);
+
         try {
-            const response = await fetch('http://127.0.0.1:5000/api/login', {
+            const response = await fetch(targetUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });
 
             const data = await response.json();
+            console.log("Server Response:", data);
 
             if (data.success) {
                 sessionStorage.setItem('token', data.token);
-                sessionStorage.setItem('employeeID', formData.employeeID);
-                sessionStorage.setItem('userName', data.user);
-
-                if (data.mustChangePassword) {
-                    navigate('/admin-change-password');
-                } else {
-                    navigate('/dashboard');
-                }
+                navigate('/dashboard');
             } else {
                 alert(data.message);
             }
         } catch (error) {
-            console.error("Error logging in:", error);
-            alert("Could not connect to the server. Make sure your Node.js backend is running on port 5000.");
+            console.error("Fetch Catch Triggered:", error);
+            alert("Catch Block Triggered: Check Console");
         }
     };
 

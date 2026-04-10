@@ -41,7 +41,7 @@ function SignIn() {
         e.preventDefault();
         
         try {
-            const response = await fetch('http://127.0.0.1:5000/api/student-login', {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/student/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
@@ -53,6 +53,7 @@ function SignIn() {
                 sessionStorage.setItem('token', data.token);
                 sessionStorage.setItem('studentID', formData.studentID);
                 sessionStorage.setItem('userName', data.user);
+                sessionStorage.setItem('role', 'student');
 
                 if (data.mustChangePassword) {
                     navigate('/student-change-password');
