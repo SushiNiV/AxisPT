@@ -28,13 +28,9 @@ function ASignIn() {
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        
-        // Explicitly define the URL here to bypass .env issues for this test
-        const targetUrl = "http://localhost:5000/api/admin/login";
-        console.log("Forcing fetch to:", targetUrl);
 
         try {
-            const response = await fetch(targetUrl, {
+            const response = await fetch((`${process.env.REACT_APP_API_URL}/admin/login`), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
@@ -45,7 +41,13 @@ function ASignIn() {
 
             if (data.success) {
                 sessionStorage.setItem('token', data.token);
-                navigate('/dashboard');
+                sessionStorage.setItem('employeeID', data.employeeID);
+                
+                if (data.mustChangePassword === true) {
+                    navigate('/admin-change-password'); 
+                } else {
+                    navigate('/admin-dashboard');
+                }
             } else {
                 alert(data.message);
             }

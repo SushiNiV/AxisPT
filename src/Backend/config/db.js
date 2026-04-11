@@ -9,3 +9,5 @@ const pool = new Pool({
     port: process.env.DB_PORT,
     // ssl: { rejectUnauthorized: false } //if ever gagamit tayo Render for hosting?
 });
+
+module.exports = pool;

@@ -20,7 +20,7 @@ function AChangePass() {
         const token = sessionStorage.getItem('token');
         if (!token) {
             alert("Session expired. Please log in.");
-            navigate('/');
+            navigate('/admin-signin');
         }
     }, [navigate]);
 
@@ -47,6 +47,7 @@ function AChangePass() {
         }
 
         const token = sessionStorage.getItem('token');
+        const employeeID = sessionStorage.getItem('employeeID'); // Make sure you save this during login!
 
         try {
             const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/change-password`, {
@@ -56,6 +57,7 @@ function AChangePass() {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
+                    employeeID: employeeID,
                     currentPassword: formData.currentPassword,
                     newPassword: formData.newPassword
                 }),
@@ -65,6 +67,7 @@ function AChangePass() {
 
             if (data.success) {
                 alert("Password changed successfully!");
+                sessionStorage.clear();
                 navigate('/admin-signin');
             } else {
                 alert(data.message || "Failed to change password.");
