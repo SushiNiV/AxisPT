@@ -11,6 +11,7 @@ import ADashboard from './Admin/ADashboard';
 import AChangePass from './Admin/AChangePass';
 
 import ProtectedRoute from './Components/ProtectedRoute';
+import Layout from './Components/Layout';
 
 function App() {
   return (
@@ -19,16 +20,26 @@ function App() {
         <Route path="/" element={<Navigate to="/home" />} />
         <Route path="/home" element={<Home />} />
 
-        <Route path="/signin" element={<SignIn />} />
-        
-        <Route path="/enrollment-form" element={<Enrollment />} />
-
+        {/* ADMIN */}
         <Route path="/admin-signin" element={<ASignIn />} />
 
         <Route element={<ProtectedRoute />}>
-          <Route path="/admin-dashboard" element={<ADashboard />} />
-          <Route path="/admin-change-password" element={<AChangePass />} />
-        </Route>      
+          <Route element={<Layout />}>
+            <Route path="/admin-dashboard" element={<ADashboard />} />
+            <Route path="/admin-change-password" element={<AChangePass />} />
+          </Route>
+        </Route>   
+
+        {/* STUDENT */}
+        <Route path="/signin" element={<SignIn />} />
+        <Route path="/enrollment-form" element={<Enrollment />} />
+
+        <Route element={<ProtectedRoute />}>
+          <Route element={<Layout />}>
+          
+          </Route>
+        </Route> 
+ 
       </Routes>
     </Router>
   );
