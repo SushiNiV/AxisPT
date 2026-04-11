@@ -1,165 +1,165 @@
 .asigninContainer {
-    display: flex;
-    height: 100vh;
-    width: 100vw;
-    background-color: #F8FAFC;
-    overflow: hidden;
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background-color: #F8FAFC;
+  overflow: hidden;
 }
 
 .asigninLcard {
-    flex: 1;
-    background-color: #361414;
-    margin: 0.5rem;
-    border-radius: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: white;
+  flex: 1;
+  background-color: #361414;
+  margin: 0.5rem;
+  border-radius: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
 }
 
 .asigninRcontainer {
-    flex: 1.5;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    margin: 1rem 0.5rem 1rem 1rem;
+  flex: 1.5;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin: 1rem 0.5rem 1rem 1rem;
 }
 
 .asignintopBar {
-    padding: 1.25rem;
-    display: flex;
-    justify-content: flex-end;
+  padding: 1.25rem;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .asigninTitle {
-    font-size: 2.5rem;
-    font-weight: bold;
-    margin: 0;
-    color: #361414;
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin: 0;
+  color: #361414;
 }
 
 .asigninText {
-    font-size: 0.75rem;
-    color: #000;
+  font-size: 0.75rem;
+  color: #000;
 }
 
 .asigninForm {
-    flex: 1.2; 
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 5rem;
-    height: 80%;
+  flex: 1.2; 
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 5rem;
+  height: 80%;
 }
 
 .aformColumn {
-    margin-top: 1rem;
-    width: 75%;
+  margin-top: 1rem;
+  width: 75%;
 }
 
 .ascol {
-    margin-top: 1rem;
-    display: flex;
-    flex-direction: column;
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .ascol label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #3d1616;
-    margin-bottom: 0.5rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #3d1616;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .apasswordWrapper {
-    position: relative;
-    width: 100%;
-    display: flex;
-    align-items: center;
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
 }
 
 .ascol input {
-    width: 100%;
-    padding: 0.8rem;
-    padding-right: 2.5rem;
-    border: 1px solid #c2c6cb;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    outline: none;
-    transition: all 0.3s ease;
-    box-sizing: border-box;
+  width: 100%;
+  padding: 0.8rem;
+  padding-right: 2.5rem;
+  border: 1px solid #c2c6cb;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  outline: none;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
 }
 
 .ascol input:focus {
-    border-color: #ff5f5f;
-    box-shadow: 0 0 0 3px rgba(255, 95, 95, 0.1); 
+  border-color: #ff5f5f;
+  box-shadow: 0 0 0 3px rgba(255, 95, 95, 0.1); 
 }
 
 .aeyeIcon {
-    position: absolute;
-    right: 0.8rem;
-    top: 50%;
-    transform: translateY(-50%);
-    cursor: pointer;
-    color: #c2c6cb;
-    user-select: none;
-    font-size: 1.2rem;
+  position: absolute;
+  right: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #c2c6cb;
+  user-select: none;
+  font-size: 1.2rem;
 }
 
 .asigninBTContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 2rem;
 }
 
 .asignInBT {
-    background-color: #EF3F3F;
-    color: white;
-    border: none;
-    padding: 0.75rem 0;
-    border-radius: 50px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: bold;
-    width: 12rem;
-    text-transform: uppercase;
+  background-color: #EF3F3F;
+  color: white;
+  border: none;
+  padding: 0.75rem 0;
+  border-radius: 50px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  width: 12rem;
+  text-transform: uppercase;
 }
 
 .aprivText {
-    width: 80%;
-    font-size: 0.7rem;
-    color: #666;
-    text-align: center;
-    margin-top: 1.5rem;
-    font-style: italic;
+  width: 80%;
+  font-size: 0.7rem;
+  color: #666;
+  text-align: center;
+  margin-top: 1.5rem;
+  font-style: italic;
 }
 
 .aformOptions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 0.25rem;
-    margin-bottom: 20px;
-    width: 100%;
-    color: #3d1616;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.25rem;
+  margin-bottom: 20px;
+  width: 100%;
+  color: #3d1616;
 }
 
 .arememberMeContainer {
-    display: flex;
-    align-items: center;
-    gap: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .arememberMeContainer label {
-    font-size: 14px;
-    cursor: pointer;
+  font-size: 14px;
+  cursor: pointer;
 }
 
 .aforgotPass {
-    font-size: 14px;
-    cursor: pointer;
-    margin: 0;
+  font-size: 14px;
+  cursor: pointer;
+  margin: 0;
 }

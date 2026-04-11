@@ -10,6 +10,8 @@ import ASignIn from './Admin/ASignIn';
 import ADashboard from './Admin/ADashboard';
 import AChangePass from './Admin/AChangePass';
 
+import ProtectedRoute from './Components/ProtectedRoute';
+
 function App() {
   return (
     <Router>
@@ -22,8 +24,11 @@ function App() {
         <Route path="/enrollment-form" element={<Enrollment />} />
 
         <Route path="/admin-signin" element={<ASignIn />} />
-        <Route path="/admin-dashboard" element={<ADashboard />} />
-        <Route path="/admin-change-password" element={<AChangePass />} />
+
+        <Route element={<ProtectedRoute />}>
+          <Route path="/admin-dashboard" element={<ADashboard />} />
+          <Route path="/admin-change-password" element={<AChangePass />} />
+        </Route>      
       </Routes>
     </Router>
   );

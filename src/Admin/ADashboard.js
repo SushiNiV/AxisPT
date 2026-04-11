@@ -3,12 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import './ADashboard.css';
 
 function ADashboard() {
+  return (
+    <div className="adashboardContainer">
 
-    return (
-        <div className="adashboardContainer">
-
-        </div>
-    );
+    </div>
+  );
 }
 
 export default ADashboard;

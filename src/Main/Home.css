@@ -1,138 +1,138 @@
 .home-container {
-    background-color: #F8FAFC;
+  background-color: #F8FAFC;
 }
 
 .topBar {
-    background-color: #F8FAFC;
-    height: 1.5rem;
-    color: white;
-    display: flex;
-    align-items: center;
-    padding: 1.25rem;
+  background-color: #F8FAFC;
+  height: 1.5rem;
+  color: white;
+  display: flex;
+  align-items: center;
+  padding: 1.25rem;
 }
 
 .logoArea {
-    flex: 1;
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
 }
 
 .mainLogo {
-    height: 3rem;
-    margin-left: 1rem;
+  height: 3rem;
+  margin-left: 1rem;
 }
 
 .mainTitle {
-    color: #0F172A;
-    font-size: 1rem;
-    margin: 0 0 0 0.5rem;
-    font-family: 'Times New Roman', Times, serif;
-    text-transform: uppercase;
-    padding: 0;
-    line-height: 1;
-    font-size: 1.5rem;
+  color: #0F172A;
+  font-size: 1rem;
+  margin: 0 0 0 0.5rem;
+  font-family: 'Times New Roman', Times, serif;
+  text-transform: uppercase;
+  padding: 0;
+  line-height: 1;
+  font-size: 1.5rem;
 }
 
 .searchArea {
-    flex: 1;
-    display: flex;
-    justify-content: flex-end;
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .searchBar {
-    display: flex;
-    align-items: center;
-    background-color: white;
-    border: 1px solid #0F172A;;
-    border-radius: 50px;
-    padding: 0 0.75rem;
+  display: flex;
+  align-items: center;
+  background-color: white;
+  border: 1px solid #0F172A;;
+  border-radius: 50px;
+  padding: 0 0.75rem;
 }
 
 .searchInput {
-    flex: 1;
-    border: none !important;
-    outline: none;
-    background: transparent;
-    font-size: 0.875rem;
-    width: 15rem;
+  flex: 1;
+  border: none !important;
+  outline: none;
+  background: transparent;
+  font-size: 0.875rem;
+  width: 15rem;
 }
 
 .searchBT {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
 }
 
 .material-icons {
-    font-size: 1.25rem;
-    color: #555;
+  font-size: 1.25rem;
+  color: #555;
 }
 
 .signupBT {
-    background-color: #EF3F3F;
-    color: white;
-    border: none;
-    padding: 0.75rem 0;
-    margin: 0 1rem 0 2rem; 
-    border-radius: 50px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: bold;
-    width: 10rem;
-    text-transform: uppercase;
+  background-color: #EF3F3F;
+  color: white;
+  border: none;
+  padding: 0.75rem 0;
+  margin: 0 1rem 0 2rem; 
+  border-radius: 50px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  width: 10rem;
+  text-transform: uppercase;
 }
 
 .navBar {
-    background-color: #3D1616;
-    height: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-evenly;
-    padding: 1rem 20rem;
+  background-color: #3D1616;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  padding: 1rem 20rem;
 }
 
 .navLink {
-    color: white;
-    text-decoration: none;
-    margin: 0 1rem;
-    font-size: 0.875rem;
+  color: white;
+  text-decoration: none;
+  margin: 0 1rem;
+  font-size: 0.875rem;
 }
 
 .contentArea {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .welcomeSection {
-    background-color: #EF3F3F;
-    height: 35rem;
-    width: 100%;
-    margin: 2rem 0;;
+  background-color: #EF3F3F;
+  height: 35rem;
+  width: 100%;
+  margin: 2rem 0;;
 }
 
 .enrollBar {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    margin: 2rem 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 2rem 0;
 }
 
 .enrollBT {
-    background-color: #3D1616;
-    color: white;
-    border: none;
-    padding: 0.75rem 0;
-    margin: 0 1rem 0 2rem; 
-    border-radius: 50px;
-    cursor: pointer;
-    font-size: 2rem;
-    font-weight: bold;
-    width: 20rem;
-    text-transform: uppercase;
+  background-color: #3D1616;
+  color: white;
+  border: none;
+  padding: 0.75rem 0;
+  margin: 0 1rem 0 2rem; 
+  border-radius: 50px;
+  cursor: pointer;
+  font-size: 2rem;
+  font-weight: bold;
+  width: 20rem;
+  text-transform: uppercase;
 }
