@@ -5,7 +5,6 @@ import './ADashboard.css';
 function ADashboard() {
   return (
     <div className="adashboardContainer">
-
     </div>
   );
 }

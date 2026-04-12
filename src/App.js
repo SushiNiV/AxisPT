@@ -11,7 +11,10 @@ import ADashboard from './Admin/ADashboard';
 import AChangePass from './Admin/AChangePass';
 
 import ProtectedRoute from './Components/ProtectedRoute';
-import Layout from './Components/Layout';
+import ALayout from './Admin/AComponents/ALayout';
+import SLayout from './Student/SComponents/SLayout';
+
+import ASideBar from './Admin/AComponents/ASideBar';
 
 function App() {
   return (
@@ -20,11 +23,13 @@ function App() {
         <Route path="/" element={<Navigate to="/home" />} />
         <Route path="/home" element={<Home />} />
 
+        <Route path="/a-sidebar" element={<ASideBar />} />
+
         {/* ADMIN */}
         <Route path="/admin-signin" element={<ASignIn />} />
 
         <Route element={<ProtectedRoute />}>
-          <Route element={<Layout />}>
+          <Route element={<ALayout />}>
             <Route path="/admin-dashboard" element={<ADashboard />} />
             <Route path="/admin-change-password" element={<AChangePass />} />
           </Route>
@@ -35,8 +40,8 @@ function App() {
         <Route path="/enrollment-form" element={<Enrollment />} />
 
         <Route element={<ProtectedRoute />}>
-          <Route element={<Layout />}>
-          
+          <Route element={<SLayout />}>
+
           </Route>
         </Route> 
  
