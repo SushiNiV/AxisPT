@@ -16,13 +16,16 @@ import SLayout from './Student/SComponents/SLayout';
 
 import ASideBar from './Admin/AComponents/ASideBar';
 
+import StudentForm from './Components/StudentForm'
+import TermGrade from './Components/TermGrade';
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Navigate to="/home" />} />
         <Route path="/home" element={<Home />} />
-
+        <Route path="/student-form" element={<StudentForm />} />
+        <Route path="/term-grade" element={<TermGrade />} />
         <Route path="/a-sidebar" element={<ASideBar />} />
 
         {/* ADMIN */}

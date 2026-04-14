@@ -3,9 +3,9 @@ import { Outlet } from 'react-router-dom';
 
 function ALayout() {
   return (
-    <div className="admin-container" style={{ display: 'flex' }}>
+    <div className="adminContainer" style={{ display: 'flex' }}>
       <ASidebar /> 
-      <div className="main-content" style={{ flex: 1 }}>
+      <div className="mainContent" style={{ flex: 1 }}>
         <Outlet />
       </div>
     </div>

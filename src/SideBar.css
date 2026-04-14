@@ -44,7 +44,7 @@
   padding: 1rem !important;
   cursor: pointer;
   border-radius: 15px;
-  color: #555 !important;
+  color: #555;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
@@ -62,7 +62,7 @@
 
 .navLink.activeLink {
   background-color: #3d1616 ;
-  color: #FFFFFF !important;
+  color: #FFFFFF;
   font-weight: 600;
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
 }
@@ -206,7 +206,7 @@ input:checked + .slider {
   padding: 1rem !important;
   cursor: pointer;
   border-radius: 15px;
-  color: #aaa !important; 
+  color: #aaa; 
 }
 
 .collapsed .navLink:hover {
@@ -216,7 +216,7 @@ input:checked + .slider {
 
 .collapsed .navLink.activeLink {
   background-color: #FFFFFF;
-  color: #3d1616 !important;
+  color: #3d1616;
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
 }
 
