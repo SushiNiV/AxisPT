@@ -4,9 +4,7 @@ import './ASignIn.css';
 
 function ASignIn() {
   const navigate = useNavigate();
-  
   const [showPassword, setShowPassword] = useState(false);
-
   const [formData, setFormData] = useState({
     employeeID: '',
     password: '',
@@ -44,7 +42,7 @@ function ASignIn() {
         sessionStorage.setItem('employeeID', data.employeeID);
           
         if (data.mustChangePassword === true) {
-          navigate('/admin-change-password'); 
+          navigate('/change-password'); 
         } else {
           navigate('/admin-dashboard');
         }

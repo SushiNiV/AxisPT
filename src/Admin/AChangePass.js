@@ -93,7 +93,7 @@ function AChangePass() {
       <form className='AchangepassCard' onSubmit={handlePasswordChange}>
         <p className='AchangepassTitle'>Change Password</p>
 
-        <div className="input-group">
+        <div className="cpinput-group">
           <label>Current Password <span style={{color: 'red'}}>*</span></label>
           <div className="password-wrapper">
             <input 
@@ -111,7 +111,7 @@ function AChangePass() {
           </div>
         </div>
 
-        <div className="input-group">
+        <div className="cpinput-group">
           <label>New Password <span style={{color: 'red'}}>*</span></label>
           <div className="password-wrapper">
             <input 
@@ -130,7 +130,7 @@ function AChangePass() {
           </div>
         </div>
 
-        <div className="input-group">
+        <div className="cpinput-group">
           <label>Confirm New Password <span style={{color: 'red'}}>*</span></label>
           <div className="password-wrapper">
             <input 
@@ -154,7 +154,7 @@ function AChangePass() {
       </form>
 
       <div className="bottomBar">
-          <p className="bottomText">© Copyright 2026. Our Lady of Fatima University - College of Physical Therapy. All Rights reserved. | Powered by VGR </p>
+          <p className="bottomText">© Copyright 2026. Our Lady of Fatima University - College of Physical Therapy. All Rights reserved. | Powered by VDG </p>
       </div>
     </div>
   );

@@ -1,13 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './StudentForm.css';
 
-const StudentForm = ({ data }) => {
+function StudentForm() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/student/form')
+      .then((res) => res.json())
+      .then((json) => {
+        setData(json);
+        setLoading(false);
+      })
+      .catch((err) => console.error("Error fetching student data:", err));
+  }, []);
+
   return (
     <div className="form-container">
       {/* Personal Information */}
       <div className="section-title">Personal Information</div>
 
-      {/* FULL NAME */}
       <div className="grid-row three-cols height-one border-bottom">
         <div className="sfinput-group col-span-4 no-border-right">
           <label>FULL NAME</label>
@@ -409,7 +421,6 @@ const StudentForm = ({ data }) => {
       </div>
 
     </div>
-  );
-};
-
+   );
+}
 export default StudentForm;

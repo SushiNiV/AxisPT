@@ -311,7 +311,7 @@ function Enrollment() {
       </div>
 
       <div className="bottomBar">
-        <p className="bottomText">© Copyright 2026. Our Lady of Fatima University - College of Physical Therapy. All Rights reserved. | Powered by VGR </p>
+        <p className="bottomText">© Copyright 2026. Our Lady of Fatima University - College of Physical Therapy. All Rights reserved. | Powered by VDG </p>
       </div>
     </div>
   );

@@ -153,9 +153,14 @@
   gap: 5px;
 }
 
+.arememberMeContainer input {
+  margin-bottom: auto !important;
+}
+
 .arememberMeContainer label {
   font-size: 14px;
   cursor: pointer;
+  margin: 0 !important;
 }
 
 .aforgotPass {

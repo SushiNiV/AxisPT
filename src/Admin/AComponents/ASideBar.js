@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, NavLink } from 'react-router-dom';
+import React, { useState } from 'react';
+import { NavLink } from 'react-router-dom';
 import './ASideBar.css';
 import cptLogo from '../../assets/cpt-logo.png';
 import { BiGridAlt, BiUser, BiBookAlt, BiGroup, BiBriefcase, BiCheckShield, BiFile, BiBell, BiHistory, BiSun, BiMoon, BiChevronLeft, BiChevronRight } from 'react-icons/bi';
@@ -57,13 +57,6 @@ function ASideBar() {
           <NavLink to="/history" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiHistory className="linkIcon" /> {!isCollapsed && <span>History</span>}
           </NavLink>
-
-          {/* LOGOUT
-          <div className="logoutContainer">
-            <button className="logoutButton">
-              <BiPowerOff className="linkIcon" /> Log out
-            </button>
-          </div> */}
       </nav>
 
       <div className="botBtns">

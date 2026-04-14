@@ -1,7 +1,8 @@
 .AsidebarContainer {
+  background-color: #EFEFEF;
   box-sizing: border-box !important;
   height: 100vh;
-  width: 275px;
+  width: 250px;
   overflow: hidden;
   padding: 1rem;
   display: flex;
@@ -48,6 +49,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
+  text-decoration: none !important;
+  font-size: 0.875rem;
 }
 
 .linkIcon {
@@ -211,7 +214,7 @@ input:checked + .slider {
 
 .collapsed .navLink:hover {
   background-color: #FFFFFFAA;
-  color: #000;
+  color: #3d1616 !important;
 }
 
 .collapsed .navLink.activeLink {

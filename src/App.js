@@ -14,10 +14,9 @@ import ProtectedRoute from './Components/ProtectedRoute';
 import ALayout from './Admin/AComponents/ALayout';
 import SLayout from './Student/SComponents/SLayout';
 
-import ASideBar from './Admin/AComponents/ASideBar';
-
 import StudentForm from './Components/StudentForm'
 import TermGrade from './Components/TermGrade';
+
 function App() {
   return (
     <Router>
@@ -26,7 +25,6 @@ function App() {
         <Route path="/home" element={<Home />} />
         <Route path="/student-form" element={<StudentForm />} />
         <Route path="/term-grade" element={<TermGrade />} />
-        <Route path="/a-sidebar" element={<ASideBar />} />
 
         {/* ADMIN */}
         <Route path="/admin-signin" element={<ASignIn />} />
@@ -34,8 +32,8 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<ALayout />}>
             <Route path="/admin-dashboard" element={<ADashboard />} />
-            <Route path="/admin-change-password" element={<AChangePass />} />
           </Route>
+          <Route path="/change-password" element={<AChangePass />} />
         </Route>   
 
         {/* STUDENT */}

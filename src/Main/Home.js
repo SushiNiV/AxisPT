@@ -30,18 +30,18 @@ function Home() {
       </div>
 
       <div className='navBar'>
-        <a href='#' className='navLink'>Home</a>
-        <a href='#' className='navLink'>About</a>
-        <a href='#' className='navLink'>Academics</a>
-        <a href='#' className='navLink'>Students</a>
-        <a href='#' className='navLink'>Admissions</a>
-        <a href='#' className='navLink'>News</a>
-        <a href='#' className='navLink'>Contact</a>
+        <a href='#' className='home navLink'>Home</a>
+        <a href='#' className='home navLink'>About</a>
+        <a href='#' className='home navLink'>Academics</a>
+        <a href='#' className='home navLink'>Students</a>
+        <a href='#' className='home navLink'>Admissions</a>
+        <a href='#' className='home navLink'>News</a>
+        <a href='#' className='home navLink'>Contact</a>
       </div>
 
       <div className='contentArea'>
         <div className='welcomeSection'>
-          <p className='welcomeText'>Welcome to the College of Physical Therapy!</p>
+          <p className='welcomeText'></p>
         </div>        
         <div className='enrollBar'>
           <button className='enrollBT' onClick={() => navigate('/enrollment-form')}>
