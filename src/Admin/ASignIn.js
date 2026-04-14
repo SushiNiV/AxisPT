@@ -44,7 +44,7 @@ function ASignIn() {
         if (data.mustChangePassword === true) {
           navigate('/change-password'); 
         } else {
-          navigate('/admin-dashboard');
+          navigate('/admin/dashboard');
         }
       } else {
         alert(data.message);

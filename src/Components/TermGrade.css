@@ -194,7 +194,7 @@
 }
 
 .grade-table tbody tr {
-  height: 15px; 
+  height: 10px; 
 }
 
 .grade-table col:nth-child(1) { width: 8%; }  /* Course Code */
@@ -222,6 +222,11 @@
   grid-template-columns: 1.2fr 0.8fr;
 }
 
+.right-very-heavy{
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr;
+}
+
 .even-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -236,7 +241,6 @@
 
 .align-left {
   text-align: left !important;
-  padding-left: 10px;
 }
 
 .align-right {
@@ -246,7 +250,9 @@
 .spacer {
   margin-top: 10px;
 }
-
+.small-spacer {
+  margin-top: 5px;
+}
 .col-small-left {
   text-align: left !important;
   padding-left: 8px;

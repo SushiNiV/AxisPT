@@ -8,7 +8,9 @@ import Enrollment from './Main/Enrollment';
 
 import ASignIn from './Admin/ASignIn';
 import ADashboard from './Admin/ADashboard';
-import AChangePass from './Admin/AChangePass';
+import AStudentManage from './Admin/AStudentManage';
+
+import ChangePass from './Admin/AChangePass';
 
 import ProtectedRoute from './Components/ProtectedRoute';
 import ALayout from './Admin/AComponents/ALayout';
@@ -31,9 +33,10 @@ function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route element={<ALayout />}>
-            <Route path="/admin-dashboard" element={<ADashboard />} />
+            <Route path="/admin/dashboard" element={<ADashboard />} />
+            <Route path="/admin/student-management" element={<AStudentManage />} />
           </Route>
-          <Route path="/change-password" element={<AChangePass />} />
+          <Route path="/change-password" element={<ChangePass />} />
         </Route>   
 
         {/* STUDENT */}

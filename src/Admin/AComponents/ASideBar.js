@@ -30,11 +30,11 @@ function ASideBar() {
       </div>
 
       <nav className='navContainer'>
-          <NavLink to="/admin-dashboard" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+          <NavLink to="/admin/dashboard" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiGridAlt className="linkIcon" /> {!isCollapsed && <span>Dashboard</span>}
           </NavLink>
           
-          <NavLink to="/student-management" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+          <NavLink to="/admin/student-management" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiUser className="linkIcon" /> {!isCollapsed && <span>Student Management</span>}
           </NavLink>
           

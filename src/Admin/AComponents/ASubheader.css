@@ -1,0 +1,40 @@
+.asubheaderContainer {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 10px 20px;
+  background-color: #d9d9d9;
+  height: 2.5rem;
+}
+
+.asubheaderBlob {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #3d1616;
+  color: #fff;
+  border: none;
+  padding: 10px 15px;
+  margin-right: 20px;
+  width: 175px;
+  border-radius: 15px;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+}
+
+.asubheaderBlob:active {
+  background-color: #fff;
+  color: #3d1616;
+  border: 3px solid #3d1616;
+  font-weight: bold;
+}
+
+.asubheaderBlob:hover {
+  background-color: #3d1616aa;
+  border: 3px solid #3d1616;
+  color: #fff;
+  font-weight: bold;
+}

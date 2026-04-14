@@ -191,7 +191,7 @@ const StudentForm = ({ data }) => {
               <th rowSpan="2">Average</th>
               <th rowSpan="2">Transmuted</th>
               <th rowSpan="2">Prelim Point Grade</th>
-              <th  rowSpan="2" className="legend-cell" >P = Passed<br/>F = Failed</th>
+              <th  rowSpan="2" className="legend-cell" ><b>P = Passed<br/>F = Failed</b></th>
             </tr>
             <tr>
               <th>Score</th>
@@ -229,15 +229,216 @@ const StudentForm = ({ data }) => {
           </i> 
         </span>
 
-        <div className='grid-row two-columns right-heavy no-border spacer ' > 
-          <div className="label-group border">
-            <span className="field-label align-right">Verified by:___________________________________(Program Head)</span>
+        <div className='grid-row two-columns right-very-heavy no-border small-spacer' > 
+          <div className="label-group no-border">
+            <span className="field-label align-right">Student Signature over printed name: ____________________________________________</span>
           </div>
 
-          <div className="label-group border">
-            <span className="body-text">Date:______________________</span>
+          <div className="label-group no-border">
+            <span className="field-label">Date:__________________________________</span>
           </div>
         </div>
+
+        <div className='grid-row two-columns right-very-heavy no-border ' > 
+          <div className="label-group no-border">
+            <span className="field-label align-right"> Signature over printed name: ____________________________________________</span>
+          </div>
+
+          <div className="label-group no-border">
+            <span className="field-label">Date:__________________________________</span>
+          </div>
+        </div>
+
+        <div className='grid-row no-border ' > 
+          <div className="label-group no-border">
+            <span className="field-label align-right">Parent/Legal Guardian's Remarks/Comments: ____________________________________________________________________________________</span>
+          </div>
+        </div>
+
+        {/* MIDTERM TERM TABLE */}
+        <div className="part-title spacer">MIDTERM</div>
+        <table className="grade-table">
+          <colgroup>
+            <col /><col /><col /><col /><col /><col />
+            <col /><col /><col /><col /><col />
+          </colgroup>
+          <thead>
+            <tr>
+              <th rowSpan="3">Course <br/>Code</th>
+              <th colSpan="3">LECTURE</th>
+              <th colSpan="2">LABORATORY</th>
+              <th colSpan="3">MIDTERM GRADE</th>
+              <th>REMARKS</th>
+              <th rowSpan="3">FACULTY</th>
+            </tr>
+            <tr>
+              <th rowSpan="2">Quizzes (Average)</th>
+              <th colSpan="2">Midterm Exam</th>
+              <th rowSpan="2">Unit Practical Exam <br/> (Average)</th>
+              <th rowSpan="2">OSCE/OSPE</th>
+              <th rowSpan="2">Average</th>
+              <th rowSpan="2">Transmuted</th>
+              <th rowSpan="2">Midterm Point Grade</th>
+              <th  rowSpan="2" className="legend-cell" ><b>P = Passed<br/>F = Failed</b> </th>
+            </tr>
+            <tr>
+              <th>Score</th>
+              <th>Average</th>
+             
+            </tr>
+          </thead>
+          <tbody>
+
+            {[...Array(5)].map((_, i) => (
+              <tr key={i}>
+                <td>&nbsp;</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <span className="note">
+          <i>By affixing my signature and that of my parent/legal guardian,
+            I have reviewed and acknowledged my academic performance for each
+            term, as provided by my Instructor during the grade consultation.
+            I also acknowledge the academic intervention to be implemented 
+            (if deemed necessary), as set forth in the University Student 
+            Handbook
+          </i> 
+        </span>
+
+        <div className='grid-row two-columns right-very-heavy no-border small-spacer' > 
+          <div className="label-group no-border">
+            <span className="field-label align-right">Student Signature over printed name: ____________________________________________</span>
+          </div>
+
+          <div className="label-group no-border">
+            <span className="field-label">Date:__________________________________</span>
+          </div>
+        </div>
+
+        <div className='grid-row two-columns right-very-heavy no-border ' > 
+          <div className="label-group no-border">
+            <span className="field-label align-right"> Signature over printed name: ____________________________________________</span>
+          </div>
+
+          <div className="label-group no-border">
+            <span className="field-label">Date:__________________________________</span>
+          </div>
+        </div>
+
+        <div className='grid-row no-border ' > 
+          <div className="label-group no-border">
+            <span className="field-label align-right">Parent/Legal Guardian's Remarks/Comments: ____________________________________________________________________________________</span>
+          </div>
+        </div>
+
+        {/* FINAL TERM TABLE */}
+        <div className="part-title spacer">FINAL TERM</div>
+        <table className="grade-table">
+          <colgroup>
+            <col /><col /><col /><col /><col /><col />
+            <col /><col /><col /><col /><col />
+          </colgroup>
+          <thead>
+            <tr>
+              <th rowSpan="3">Course <br/>Code</th>
+              <th colSpan="3">LECTURE</th>
+              <th colSpan="2">LABORATORY</th>
+              <th colSpan="3">FINAL GRADE</th>
+              <th>REMARKS</th>
+              <th rowSpan="3">FACULTY</th>
+            </tr>
+            <tr>
+              <th rowSpan="2">Quizzes (Average)</th>
+              <th colSpan="2">Final Exam</th>
+              <th rowSpan="2">Unit Practical Exam <br/> (Average)</th>
+              <th rowSpan="2">OSCE/OSPE</th>
+              <th rowSpan="2">Average</th>
+              <th rowSpan="2">Transmuted</th>
+              <th rowSpan="2">Final Point Grade</th>
+              <th  rowSpan="2" className="legend-cell" ><b>P = Passed<br/>F = Failed</b></th>
+            </tr>
+            <tr>
+              <th>Score</th>
+              <th>Average</th>
+             
+            </tr>
+          </thead>
+          <tbody>
+
+            {[...Array(5)].map((_, i) => (
+              <tr key={i}>
+                <td>&nbsp;</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <span className="note">
+          <i>By affixing my signature and that of my parent/legal guardian,
+            I have reviewed and acknowledged my academic performance for each
+            term, as provided by my Instructor during the grade consultation.
+            I also acknowledge the academic intervention to be implemented 
+            (if deemed necessary), as set forth in the University Student 
+            Handbook
+          </i> 
+        </span>
+
+        <div className='grid-row two-columns right-very-heavy no-border small-spacer' > 
+          <div className="label-group no-border">
+            <span className="field-label align-right">Student Signature over printed name: ____________________________________________</span>
+          </div>
+
+          <div className="label-group no-border">
+            <span className="field-label">Date:__________________________________</span>
+          </div>
+        </div>
+
+        <div className='grid-row two-columns right-very-heavy no-border ' > 
+          <div className="label-group no-border">
+            <span className="field-label align-right"> Signature over printed name: ____________________________________________</span>
+          </div>
+
+          <div className="label-group no-border">
+            <span className="field-label">Date:__________________________________</span>
+          </div>
+        </div>
+
+        <div className='grid-row no-border ' > 
+          <div className="label-group no-border">
+            <span className="field-label align-right">Parent/Legal Guardian's Remarks/Comments: ____________________________________________________________________________________</span>
+          </div>
+        </div>
+        <div className='grid-row border spacer' ></div>
+          <span className="note">
+            This STAMP form is an official document of the University and shall be duly returned 
+            by the student following acknowledgment by the parent or legal guardian. Any form of modification, tampering, 
+            unauthorized use, non-compliance with its return, or unlawful possession constitutes a violation of University 
+            policies and may warrant disciplinary sanctions as prescribed by the College and University Student Code of Conduct. 
+            Furthermore, this document does not supersede nor serve as a replacement for the official academic records 
+            issued exclusively by the Registrar's Office.
+          </span>
 
     </div>
         

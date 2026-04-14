@@ -8,8 +8,8 @@ function AHeader({ user }) {
 
   const location = useLocation();
   const titleMap = {
-    '/admin-dashboard': 'Dashboard',
-    '/student-management': 'Student Management',
+    '/admin/dashboard': 'Dashboard',
+    '/admin/student-management': 'Student Management',
     '/academics': 'Academics & Grades',
     '/settings': 'Settings'
   };
