@@ -1,24 +1,34 @@
 .AsidebarContainer {
-  background-color: #EFEFEF;
+  background-color: #efefef;
   box-sizing: border-box !important;
   height: 100vh;
-  width: 250px;
+  width: 275px;
   position: sticky;
   top: 0;
   left: 0;
-  z-index: 1000;
+  z-index: 1000;    
   overflow: hidden;
-  padding: 1rem;
+  padding: 0.5rem;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
 }
 
+.AsidebarArea {
+  background-color: #FFFFFF;
+  padding: 0.85rem;
+  height: 100%;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
 .AlogoArea {
   display: flex;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   height: max-content;
   padding: 0;
 }
@@ -31,7 +41,7 @@
 
 .headT {
   padding: 0;
-  margin: 0 0 0 0.5rem;
+  margin: 0 0 0 0.25rem;
   font-family: 'Times New Roman', Times, serif;
   text-transform: uppercase;
   font-size: 1.25rem;
@@ -45,8 +55,8 @@
 
 .navLink {
   display: flex !important;
-  margin: 0 !important;
-  padding: 1rem !important;
+  margin: 0 0 0.25rem 0;
+  padding: 1rem 0.875rem !important;
   cursor: pointer;
   border-radius: 15px;
   color: #555 !important;
@@ -187,12 +197,30 @@ input:checked + .slider {
 
 /* COLLAPSED */
 .AsidebarContainer.collapsed {
-  width: 75px;
-  padding: 1rem 0.5rem;
+  background-color: #efefef;
+  box-sizing: border-box !important;
+  height: 100vh;
+  width: 95px;
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 1000;    
+  overflow: hidden;
+  padding: 0.5rem;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  background-color: #3D1616;
+  justify-content: flex-start;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
+}
+
+.collapsed .AsidebarArea {
+  background-color: #3d1616;
+  padding: 0.85rem;
+  height: 100%;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 
 .AsidebarContainer.collapsed .AlogoArea {
@@ -213,7 +241,8 @@ input:checked + .slider {
   padding: 1rem !important;
   cursor: pointer;
   border-radius: 15px;
-  color: #aaa !important; 
+  color: #aaa !important;
+  margin-bottom: 0.25rem; 
 }
 
 .collapsed .navLink:hover {

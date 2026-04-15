@@ -1,9 +1,8 @@
-/* This locks the whole website to the screen size */
 .adminContainer {
   display: flex;
   height: 100vh;
-  width: 100vw;
-  overflow: hidden !important;
+  overflow-x: hidden;
+  background-color: #EFEFEF; 
 }
 
 .adminMainContainer {
@@ -12,14 +11,17 @@
   flex-direction: column;
   height: 100vh;
   min-width: 0;
-  overflow: hidden !important;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding-right: 0.5rem;
 }
 
 .adminPageContent {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden !important;
-  background-color: #EFEFEF; 
   height: 100%;
   box-sizing: border-box;
 }

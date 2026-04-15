@@ -8,7 +8,9 @@ import Enrollment from './Main/Enrollment';
 
 import ASignIn from './Admin/ASignIn';
 import ADashboard from './Admin/ADashboard';
+
 import AStudentManage from './Admin/AStudentManage';
+import AMasterlist from './Admin/APages/AMasterlist';
 
 import ChangePass from './Admin/AChangePass';
 
@@ -34,7 +36,14 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<ALayout />}>
             <Route path="/admin/dashboard" element={<ADashboard />} />
-            <Route path="/admin/student-management" element={<AStudentManage />} />
+            <Route path="/admin/student-management" element={<AStudentManage />}>
+              <Route index element={<Navigate to="masterlist" replace />} />
+              <Route path="masterlist" element={<AMasterlist />} />
+              {/* Other sub-pages you might create later 
+              <Route path="verification" element={<AVerification />} />
+              <Route path="access-control" element={<AAccessControl />} />
+              <Route path="history" element={<AHistory />} /> */}
+          </Route>
           </Route>
           <Route path="/change-password" element={<ChangePass />} />
         </Route>   

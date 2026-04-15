@@ -19,6 +19,7 @@ function ASideBar() {
 
   return (
     <div className={`AsidebarContainer ${isCollapsed ? 'collapsed' : ''}`}>
+      <div className="AsidebarArea">  
       <div className='AlogoArea'>
         <img src={cptLogo} alt='CPT Logo' className='AmainLogo'/>
         {!isCollapsed && (
@@ -34,7 +35,7 @@ function ASideBar() {
             <BiGridAlt className="linkIcon" /> {!isCollapsed && <span>Dashboard</span>}
           </NavLink>
           
-          <NavLink to="/admin/student-management" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+          <NavLink to="/admin/student-management/masterlist" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiUser className="linkIcon" /> {!isCollapsed && <span>Student Management</span>}
           </NavLink>
           
@@ -75,6 +76,7 @@ function ASideBar() {
             </span>
           </label>
         </div>
+      </div>
       </div>
     </div>
   );

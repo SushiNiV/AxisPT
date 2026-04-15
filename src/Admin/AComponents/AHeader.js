@@ -5,15 +5,18 @@ import { BiPowerOff, BiBell, BiUserCircle } from 'react-icons/bi';
 
 function AHeader({ user }) {
   const profilePic = user?.profileUrl;
-
   const location = useLocation();
-  const titleMap = {
-    '/admin/dashboard': 'Dashboard',
-    '/admin/student-management': 'Student Management',
-    '/academics': 'Academics & Grades',
-    '/settings': 'Settings'
+  const getHeaderTitle = () => {
+    const path = location.pathname;
+    
+    if (path.startsWith('/admin/dashboard')) return 'Dashboard';
+    if (path.startsWith('/admin/student-management')) return 'Student Management';
+    if (path.startsWith('/academics')) return 'Academics & Grades';
+    if (path.startsWith('/settings')) return 'Settings';
+    
+    return 'Administrator';
   };
-  const currentTitle = titleMap[location.pathname];
+    const currentTitle = getHeaderTitle();
 
   return (
     <div className="aheaderContainer">

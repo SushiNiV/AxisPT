@@ -1,15 +1,15 @@
 import ASideBar from './ASideBar';
 import AHeader from './AHeader';
 import ASubheader from './ASubheader';
+import './ALayout.css';
 import { Outlet } from 'react-router-dom';
 
 function ALayout() {
   return (
-    <div className="adminContainer" style={{ display: 'flex' }}>
+    <div className="adminContainer">
       <ASideBar />
-      <div className="adminMainContainer" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div className="adminMainContainer">
         <AHeader />
-        <ASubheader />
         <main className="adminPageContent">
           <Outlet />
         </main>
