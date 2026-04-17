@@ -5,6 +5,9 @@ import './ADashboard.css';
 function ADashboard() {
   return (
     <div className="adashboardContainer">
+      <div className="wcMessageArea">
+        <p>Welcome, Ma'am Admin!</p>
+      </div>
     </div>
   );
 }

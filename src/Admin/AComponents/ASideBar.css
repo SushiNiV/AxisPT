@@ -192,7 +192,7 @@ input:checked + .slider {
 }
 
 .collapseBtn svg {
-  font-size: 5rem;
+  font-size: 2rem;
 }
 
 /* COLLAPSED */
