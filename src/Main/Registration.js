@@ -30,7 +30,7 @@ const initialFields = {
   motherStatus: '', motherOccupation: '', motherContactNumber: '',
   guardianFirstName: '', guardianLastName: '', guardianMiddleName: '', guardianSuffix: '',
   guardianRelationship: '', guardianContactNumber: '',
-  support: [], parentsIncome: '', livingArrangement: '', transportExpense: '', numSibling: '', ordinalPosition: '',
+  support: '', parentsIncome: '', livingArrangement: '', transportExpense: '', numSibling: '', ordinalPosition: '',
   awards: '', interests: '', careerGoal: '', extracurricular: '',
 };
 
@@ -188,8 +188,9 @@ function Enrollment() {
   };
 
   const handleSubmit = async () => {
+    console.log("Data being sent to server:", formData);
     try {
-      const response = await fetch('http://localhost:5000/api/registration', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/student/registration`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
