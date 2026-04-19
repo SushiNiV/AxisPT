@@ -153,10 +153,21 @@
   width: 90%;
   text-align: left;
   padding-left: 0.5rem;
-  margin: 0.75rem 0 0 0;
+  margin: 0.75rem 0 0.5rem 0;
   box-sizing: border-box;
   text-transform: uppercase;
   border-bottom: 1px solid #3d1616; 
+  padding-bottom: 0.5rem;
+}
+
+.enrollmentText {
+  font-size: 0.875rem;
+  color: #3d1616;
+  width: 90%;
+  text-align: center;
+  padding-left: 0.5rem;
+  margin: 0.5rem 0 0 0;
+  box-sizing: border-box;
   padding-bottom: 0.5rem;
 }
 
@@ -171,6 +182,57 @@
   cursor: pointer;
   width: 90%; 
   text-align: left;
+}
+
+.reviewLabel, .reviewValue {
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+
+.reviewLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #3d1616;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 2rem;
+}
+
+.reviewValue {
+  font-size: 0.875rem;
+  color: #3d1616;
+  text-align: center;
+}
+
+.reviewSectionWrapper {
+  width: 100%;
+  margin-bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.reviewRow {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  width: 90%;
+  margin: 0.25rem;
+  line-height: normal;
+}
+
+.reviewRow .reviewCol:first-child {
+  flex: 0 0 200px;
+  display: flex;
+  align-items: center;
+}
+
+.reviewRow .reviewCol:last-child {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
 }
 
 .row {
