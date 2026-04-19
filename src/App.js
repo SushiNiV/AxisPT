@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Home from './Main/Home';
 
 import SignIn from './Student/SignIn';
-import Enrollment from './Main/Enrollment';
+import Registration from './Main/Registration';
 
 import ASignIn from './Admin/ASignIn';
 import ADashboard from './Admin/ADashboard';
@@ -50,7 +50,7 @@ function App() {
 
         {/* STUDENT */}
         <Route path="/signin" element={<SignIn />} />
-        <Route path="/enrollment-form" element={<Enrollment />} />
+        <Route path="/registration" element={<Registration />} />
 
         <Route element={<ProtectedRoute />}>
           <Route element={<SLayout />}>

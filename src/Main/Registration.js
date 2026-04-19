@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './Enrollment.css';
+import './Registration.css';
 import cptLogo from '../assets/cpt-logo.png'; 
 import { BiChevronLeft, BiChevronRight, BiCheck } from 'react-icons/bi';
 
@@ -187,10 +187,29 @@ function Enrollment() {
     setCurrentStep(prev => prev + 1);
   };
 
-  const handleSubmit = () => {
-    localStorage.removeItem("enrollment_data");
-    alert("Enrollment Submitted Successfully!");
-    navigate('/home'); 
+  const handleSubmit = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/registration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        localStorage.removeItem("enrollment_data");
+        alert("Enrollment Submitted Successfully!");
+        navigate('/home');
+      } else {
+        alert("Submission failed: " + result.error);
+      }
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      alert("System error. Please try again later.");
+    }
   };
 
   return (
