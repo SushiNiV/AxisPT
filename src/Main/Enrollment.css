@@ -302,6 +302,18 @@
   background-size: 1.5rem;
 }
 
+.input-error {
+  border: 1px solid #ff4d4d !important;
+  background-color: #fff2f2;
+}
+
+.error-text {
+  color: #ff4d4d;
+  font-size: 12px;
+  margin-top: 4px;
+  padding-left: 0.5rem;
+}
+
 .enrollmentBTs {
   display: flex;
   justify-content: space-between;	

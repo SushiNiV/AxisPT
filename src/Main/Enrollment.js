@@ -11,41 +11,35 @@ import Achievements from '../Components/EnrollmentForm/Achievements';
 import DocumentUpload from '../Components/EnrollmentForm/DocumentUpload';
 import Review from '../Components/EnrollmentForm/Review';
 
+const initialFields = {
+  firstName: '', lastName: '', middleName: '', suffix: '', 
+  sex: '', dateOfBirth: '', placeOfBirth: '',
+  email: '', phoneNumber: '', landline: '',
+  religion: '', nationality: '', civilStatus: '',
+  height: '', weight: '', language: '',
+  visualProblems: '',
+  permHouseNo: '', permStreet: '', permSubdivision: '', permCity: '',
+  provHouseNo: '', provStreet: '', provSubdivision: '', provCity: '',
+  sameAsPermanent: false,
+  fatimaEmail: '', studentID: '',
+  program: '', classification: '', yearLevel: '', section: '',
+  highschoolGraduated: '', pubprivHS: '', schoolAddress: '', hsFinalGWA: '',
+  fatherFirstName: '', fatherLastName: '', fatherMiddleName: '', fatherSuffix: '',
+  fatherStatus: '', fatherOccupation: '', fatherContactNumber: '',
+  motherFirstName: '', motherLastName: '', motherMiddleName: '', motherSuffix: '',
+  motherStatus: '', motherOccupation: '', motherContactNumber: '',
+  guardianFirstName: '', guardianLastName: '', guardianMiddleName: '', guardianSuffix: '',
+  guardianRelationship: '', guardianContactNumber: '',
+  support: [], parentsIncome: '', livingArrangement: '', transportExpense: '', numSibling: '', ordinalPosition: '',
+  awards: '', interests: '', careerGoal: '', extracurricular: '',
+};
+
 function Enrollment() {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState(() => {
     const saved = localStorage.getItem("enrollment_data");
-    const timestamp = localStorage.getItem("enrollment_timestamp");
-          
-    if (saved && timestamp) {
-      const isExpired = Date.now() - parseInt(timestamp) > 3600000; // 1 hour
-        if (!isExpired) {
-          return JSON.parse(saved);
-        }
-    }
-
-    return {
-      firstName: '', lastName: '', middleName: '', suffix: '', 
-      sex: '', dateOfBirth: '', placeOfBirth: '',
-      email: '', phoneNumber: '', landline: '',
-      religion: '', nationality: '', civilStatus: '',
-      height: '', weight: '', language: '',
-      visualProblems: '',
-      permHouseNo: '', permStreet: '', permSubdivision: '', permCity: '',
-      provHouseNo: '', provStreet: '', provSubdivision: '', provCity: '',
-      sameAsPermanent: false,
-
-      program: '', yearLevel: '', classification: '',
-      highschoolGraduated: '', pubprivHS: '', schoolAddress: '', hsFinalGWA: '',
-
-      fatherFirstName: '', fatherLastName: '', fatherMiddleName: '', fatherStatus: '', fatherOccupation: '', fatherContactNumber: '',
-      motherFirstName: '', motherLastName: '', motherMiddleName: '', motherStatus: '', motherOccupation: '', motherContactNumber: '',
-      guardianFirstName: '', guardianLastName: '', guardianMiddleName: '', guardianRelationship: '', guardianContactNumber: '',
-      support: [], parentsIncome: '', livingArrangement: '', transportExpense: '', numSibling: '', ordinalPosition: '',
-
-
-    };
+    return saved ? JSON.parse(saved) : initialFields;
   });
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -53,92 +47,148 @@ function Enrollment() {
 
   useEffect(() => {
     localStorage.setItem("enrollment_data", JSON.stringify(formData));
-    if (!localStorage.getItem("enrollment_timestamp")) {
-      localStorage.setItem("enrollment_timestamp", Date.now().toString());
-    }
   }, [formData]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+
+    if (type === "checkbox") {
+      setFormData(prev => ({ ...prev, [name]: checked }));
+      return;
+    }
+
+    if (name === "hsFinalGWA") {
+      if (value === "") {
+        setFormData(prev => ({ ...prev, [name]: "" }));
+        return;
+      }
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue) && numValue <= 100) {
+        setFormData(prev => ({ ...prev, [name]: value }));
+      }
+      return;
+    }
 
     if (name === "phoneNumber") {
       let cleaned = value.replace(/[^\d+]/g, "");
-      const isPH = cleaned.startsWith('09') || cleaned.startsWith('63') || cleaned.startsWith('+63');
-
-      if (cleaned.startsWith('09')) {
-        cleaned = '+63' + cleaned.substring(1);
-      } else if (cleaned.startsWith('63')) {
-        cleaned = '+63' + cleaned.substring(2);
-      }
+      if (cleaned.startsWith('09')) cleaned = '+63' + cleaned.substring(1);
+      else if (cleaned.startsWith('63')) cleaned = '+63' + cleaned.substring(2);
       
+      const isPH = cleaned.startsWith('+63');
       const limit = isPH ? 13 : 15;
-      const limited = cleaned.slice(0, limit);
-      setFormData(prev => ({ ...prev, [name]: limited }));
-    } 
-    else if (name === "email") {
-      setFormData(prev => ({ ...prev, [name]: value.toLowerCase() }));
+      setFormData(prev => ({ ...prev, [name]: cleaned.slice(0, limit) }));
+      return;
     }
-    else if (["firstName", "lastName", "middleName", "placeOfBirth", "religion", "language", "permHouseNo", "permStreet", "permSubdivision", "permCity", "provHouseNo", "provStreet", "provSubdivision", "provCity"].includes(name)) {
-      setFormData(prev => ({ ...prev, [name]: value.toUpperCase() }));
+
+    const capsRequired = [
+      'firstName', 'lastName', 'middleName', 'suffix', 'sex', 'placeOfBirth',
+      'religion', 'nationality', 'civilStatus', 'language',
+      'permHouseNo', 'permStreet', 'permSubdivision', 'permCity',
+      'provHouseNo', 'provStreet', 'provSubdivision', 'provCity',
+      'program', 'classification', 'yearLevel', 'section', 'acadYear', 'semester',
+      'highschoolGraduated', 'pubprivHS', 'schoolAddress',
+      'fatherFirstName', 'fatherLastName', 'fatherMiddleName', 'fatherSuffix',
+      'fatherStatus', 'fatherOccupation',
+      'motherFirstName', 'motherLastName','motherMiddleName', 'motherSuffix',
+      'motherStatus', 'motherOccupation',
+      'guardianFirstName', 'guardianLastName', 'guardianMiddleName', 'guardianSuffix',
+      'guardianRelationship', 'livingArrangement', 'transportExpense', 'ordinalPosition'
+    ];
+
+      if (capsRequired.includes(name)) {
+        setFormData(prev => ({ ...prev, [name]: value.toUpperCase() }));
+      } else {
+        setFormData(prev => ({ ...prev, [name]: value }));
+      }
+  };
+
+  const [errors, setErrors] = useState({});
+
+  const getStepErrors = () => {
+    let newErrors = {};
+
+    if (currentStep === 1) {
+      const personalRequired = [
+        'firstName', 'lastName', 'sex', 'dateOfBirth', 'placeOfBirth',
+        'email', 'phoneNumber', 'religion', 'nationality', 'civilStatus',
+        'height', 'weight', 'language', 'permHouseNo', 'permStreet', 
+        'permSubdivision', 'permCity'
+      ];
+      
+      personalRequired.forEach(field => {
+        if (!formData[field] || formData[field].toString().trim() === "") {
+          newErrors[field] = "This field is required";
+        }
+      });
+
+      if (!formData.sameAsPermanent) {
+        const provFields = ['provHouseNo', 'provStreet', 'provSubdivision', 'provCity'];
+        provFields.forEach(field => {
+          if (!formData[field] || formData[field].toString().trim() === "") {
+            newErrors[field] = "This field is required";
+          }
+        });
+      }
     }
-    else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+
+    if (currentStep === 2) {
+      const eduFields = ['fatimaEmail', 'studentID', 'program', 'classification', 'yearLevel', 'section', 'acadYear', 'semester', 'highschoolGraduated', 'pubprivHS', 'schoolAddress', 'hsFinalGWA'];
+      eduFields.forEach(field => {
+        if (!formData[field] || formData[field].toString().trim() === "") {
+          newErrors[field] = "This field is required";
+        }
+      });
     }
+
+    if (currentStep === 3) {
+      const familyBase = ['fatherFirstName', 'fatherLastName', 'fatherStatus', 'motherFirstName', 'motherLastName', 'motherStatus', 'parentsIncome', 'livingArrangement', 'transportExpense', 'ordinalPosition'];
+      familyBase.forEach(field => {
+        if (!formData[field] || formData[field].toString().trim() === "") newErrors[field] = "This field is required";
+      });
+
+      if (formData.fatherStatus?.toUpperCase() === 'LIVING') {
+        if (!formData.fatherOccupation) newErrors.fatherOccupation = "This field is required";
+        if (!formData.fatherContactNumber) newErrors.fatherContactNumber = "This field is required";
+      }
+      if (formData.motherStatus?.toUpperCase() === 'LIVING') {
+        if (!formData.motherOccupation) newErrors.motherOccupation = "This field is required";
+        if (!formData.motherContactNumber) newErrors.motherContactNumber = "This field is required";
+      }
+      if (formData.support.length === 0) newErrors.support = "This field is required";
+    }
+
+    if (currentStep === 4) {
+      ['awards', 'interests', 'careerGoal', 'extracurricular'].forEach(field => {
+        if (!formData[field] || formData[field].toString().trim() === "") newErrors[field] = "This field is required";
+      });
+    }
+
+    return newErrors;
   };
 
   const handleNext = () => {
-    if (currentStep === 1) {
-      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      const today = new Date().toISOString().split('T')[0];
-      const phone = formData.phoneNumber;
-      const isPH = phone.startsWith('+63');
-
-      const requiredFields = [
-        'firstName', 'lastName', 'sex', 'dateOfBirth', 
-        'placeOfBirth', 'email', 'phoneNumber', 'religion', 
-        'nationality', 'height', 'weight', 'permHouseNo', 
-        'permStreet', 'permSubdivision', 'permCity'
-      ];
-
-      const isFieldEmpty = requiredFields.some(field => !formData[field]?.toString().trim());
-
-      const isProvincialEmpty = !formData.sameAsPermanent && (
-        !formData.provHouseNo.trim() || 
-        !formData.provStreet.trim() || 
-        !formData.provSubdivision.trim() || 
-        !formData.provCity.trim()
-      );
-
-      if (isFieldEmpty || isProvincialEmpty) {
-        alert("Please fill in all required fields marked with *.");
-        return;
-      }
-
-      if (!emailPattern.test(formData.email)) {
-        alert("Please enter a valid email address.");
-        return;
-      }
-
-      if (isPH && phone.length < 13) {
-        alert("Invalid Philippine phone number.");
-        return;
-      } else if (!isPH && phone.length < 7) {
-        alert("Please enter a valid international phone number.");
-        return;
-      }
-
-      if (formData.dateOfBirth > today) {
-        alert("Date of Birth cannot be a future date.");
-        return;
-      }
-    }
+    const stepErrors = getStepErrors();
     
-    setCurrentStep(Math.min(totalSteps, currentStep + 1));
+    if (Object.keys(stepErrors).length > 0) {
+      setErrors(stepErrors);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return; 
+    }
+
+    setErrors({});
+    setCurrentStep(prev => prev + 1);
   };
 
   const handleSubmit = () => {
     localStorage.removeItem("enrollment_data");
-    localStorage.removeItem("enrollment_timestamp");
     alert("Enrollment Submitted Successfully!");
     navigate('/home'); 
   };
@@ -175,6 +225,7 @@ function Enrollment() {
               formData={formData} 
               setFormData={setFormData} 
               handleChange={handleChange} 
+              errors={errors}
             />
           )}
 
@@ -182,7 +233,8 @@ function Enrollment() {
             <Educational 
               formData={formData} 
               setFormData={setFormData} 
-              handleChange={handleChange} 
+              handleChange={handleChange}
+              errors={errors}
             />
           )}
 
@@ -191,6 +243,7 @@ function Enrollment() {
               formData={formData}
               setFormData={setFormData}
               handleChange={handleChange}
+              errors={errors}
             />
           )}
 
@@ -199,6 +252,7 @@ function Enrollment() {
               formData={formData}
               setFormData={setFormData}
               handleChange={handleChange}
+              errors={errors}
             />
           )}
 

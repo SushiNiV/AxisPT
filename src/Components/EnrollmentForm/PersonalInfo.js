@@ -4,7 +4,7 @@ import './PersonalInfo.css';
 
 nationality.registerLocale(require("i18n-nationality/langs/en.json"));  
 
-function PersonalInfo({ formData, setFormData, handleChange }) {
+function PersonalInfo({ formData, setFormData, handleChange, errors }) {
   const nationalityOptions = useMemo(() => {
     const list = nationality.getNames("en");
     return Object.entries(list).map(([code, name]) => ({
@@ -47,8 +47,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             placeholder="First Name" 
             value={formData.firstName}
             onChange={handleChange}
+            className={errors.firstName ? "input-error" : ""}
             required
           />
+          {errors.firstName && <span className="error-text">{errors.firstName}</span>}
         </div>
         <div className="col">
           <label>Last Name <span style={{color: 'red'}}>*</span></label>
@@ -58,8 +60,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             placeholder="Last Name" 
             value={formData.lastName}
             onChange={handleChange}
+            className={errors.lastName ? "input-error" : ""}
             required
           />
+          {errors.lastName && <span className="error-text">{errors.lastName}</span>}
         </div>
         <div className="col">
           <label>Middle Name</label>
@@ -95,12 +99,14 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             name="sex"
             value={formData.sex}
             onChange={handleChange}
+            className={errors.sex ? "input-error" : ""}
             required
           >
             <option value="" disabled>Select Sex</option>
             <option value="MALE">MALE</option>
             <option value="FEMALE">FEMALE</option>
           </select>
+          {errors.sex && <span className="error-text">{errors.sex}</span>}
         </div>
         <div className="col">
           <label>Date of Birth <span style={{color: 'red'}}>*</span></label>
@@ -111,8 +117,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             value={formData.dateOfBirth}
             onChange={handleChange}
             max={new Date().toISOString().split('T')[0]}
+            className={errors.dateOfBirth ? "input-error" : ""}
             required
           />
+          {errors.dateOfBirth && <span className="error-text">{errors.dateOfBirth}</span>}
         </div>
         <div className="col">
           <label>Place of Birth <span style={{color: 'red'}}>*</span></label>
@@ -122,8 +130,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             placeholder="Place of Birth" 
             value={formData.placeOfBirth}
             onChange={handleChange}
+            className={errors.placeOfBirth ? "input-error" : ""}
             required
           />
+          {errors.placeOfBirth && <span className="error-text">{errors.placeOfBirth}</span>}
         </div>
       </div>
 
@@ -136,8 +146,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             placeholder="Email" 
             value={formData.email}
             onChange={handleChange}
+            className={errors.email ? "input-error" : ""}
             required
           />
+          {errors.email && <span className="error-text">{errors.email}</span>}
         </div>
         <div className="col">
           <label>Phone Number <span style={{color: 'red'}}>*</span></label>
@@ -147,8 +159,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             placeholder="Phone Number" 
             value={formData.phoneNumber}
             onChange={handleChange}
+            className={errors.phoneNumber ? "input-error" : ""}
             required
           />
+          {errors.phoneNumber && <span className="error-text">{errors.phoneNumber}</span>}
         </div>
         <div className="col">
           <label>Landline</label>
@@ -158,7 +172,6 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
               placeholder="Landline" 
               value={formData.landline}
               onChange={handleChange}
-              required
             />
         </div>
       </div>
@@ -172,8 +185,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             placeholder="Religion" 
             value={formData.religion}
             onChange={handleChange}
+            className={errors.religion ? "input-error" : ""}
             required
           />
+          {errors.religion && <span className="error-text">{errors.religion}</span>}
         </div>
         <div className="col">
           <label>Nationality <span style={{color: 'red'}}>*</span></label>
@@ -181,6 +196,7 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             name="nationality" 
             value={formData.nationality}
             onChange={handleChange}
+            className={errors.nationality ? "input-error" : ""}
             required
           >
             <option value="" disabled>Select Nationality</option>              
@@ -192,6 +208,7 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
               </option>
             ))}
           </select>
+          {errors.nationality && <span className="error-text">{errors.nationality}</span>}
         </div>
         <div className="col">
           <label>Civil Status</label>
@@ -199,6 +216,7 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             name="civilStatus"
             value={formData.civilStatus}
             onChange={handleChange}
+            className={errors.civilStatus ? "input-error" : ""}
             required
             >
             <option value="" disabled>Civil Status</option>
@@ -206,6 +224,7 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             <option value="MARRIED">MARRIED</option>
             <option value="WIDOWED">WIDOWED</option>
           </select>
+          {errors.civilStatus && <span className="error-text">{errors.civilStatus}</span>}
         </div>
       </div>
 
@@ -219,8 +238,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             placeholder="Height (ft) (e.g. 5.7)" 
             value={formData.height}
             onChange={handleChange}
+            className={errors.height ? "input-error" : ""}
             required
           />
+          {errors.height && <span className="error-text">{errors.height}</span>}
         </div>
         <div className="col">
           <label>Weight (lbs) <span style={{color: 'red'}}>*</span></label>
@@ -230,8 +251,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             placeholder="Weight (lbs) (e.g. 150)" 
             value={formData.weight}
             onChange={handleChange}
+            className={errors.weight ? "input-error" : ""}
             required
           />
+          {errors.weight && <span className="error-text">{errors.weight}</span>}
         </div>
         <div className="col">
           <label>Language/Dialect</label>
@@ -241,6 +264,7 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             placeholder="Language/Dialect" 
             value={formData.language}
             onChange={handleChange}
+            required
           />
         </div>
       </div>
@@ -268,8 +292,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             placeholder="House No." 
             value={formData.permHouseNo}
             onChange={handleChange}
+            className={errors.permHouseNo ? "input-error" : ""}
             required
           />
+          {errors.permHouseNo && <span className="error-text">{errors.permHouseNo}</span>}
         </div>
         <div className="col">
           <label>Street <span style={{color: 'red'}}>*</span></label>
@@ -279,8 +305,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
             placeholder="Street" 
             value={formData.permStreet}
             onChange={handleChange}
+            className={errors.permStreet ? "input-error" : ""}
             required
           />
+          {errors.permStreet && <span className="error-text">{errors.permStreet}</span>}
         </div>
         <div className="col">
           <label>Subdivision <span style={{color: 'red'}}>*</span></label>
@@ -290,8 +318,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
               placeholder="Subdivision/Barangay" 
               value={formData.permSubdivision}
               onChange={handleChange}
+              className={errors.permSubdivision ? "input-error" : ""}
               required
             />
+            {errors.permSubdivision && <span className="error-text">{errors.permSubdivision}</span>}
         </div>
         <div className="col">
           <label>City <span style={{color: 'red'}}>*</span></label>
@@ -301,8 +331,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
               placeholder="City/Municipality" 
               value={formData.permCity}
               onChange={handleChange}
+              className={errors.permCity ? "input-error" : ""}
               required
             />
+            {errors.permCity && <span className="error-text">{errors.permCity}</span>}
         </div>
       </div>
 
@@ -326,8 +358,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
               placeholder="House No." 
               value={formData.provHouseNo}
               onChange={handleChange}
+              className={errors.provHouseNo ? "input-error" : ""}
               required
             />
+            {errors.provHouseNo && <span className="error-text">{errors.provHouseNo}</span>}
           </div>
           <div className="col">
             <label>Street <span style={{color: 'red'}}>*</span></label>
@@ -337,8 +371,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
               placeholder="Street" 
               value={formData.provStreet}
               onChange={handleChange}
+              className={errors.provStreet ? "input-error" : ""}
               required
             />
+            {errors.provStreet && <span className="error-text">{errors.provStreet}</span>}
           </div>
           <div className="col">
             <label>Subdivision <span style={{color: 'red'}}>*</span></label>
@@ -348,8 +384,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
                 placeholder="Subdivision/Barangay" 
                 value={formData.provSubdivision}
                 onChange={handleChange}
+                className={errors.provSubdivision ? "input-error" : ""}
                 required
               />
+              {errors.provSubdivision && <span className="error-text">{errors.provSubdivision}</span>}
           </div>
           <div className="col">
             <label>City <span style={{color: 'red'}}>*</span></label>
@@ -359,8 +397,10 @@ function PersonalInfo({ formData, setFormData, handleChange }) {
                 placeholder="City/Municipality" 
                 value={formData.provCity}
                 onChange={handleChange}
+                className={errors.provCity ? "input-error" : ""}
                 required
               />
+              {errors.provCity && <span className="error-text">{errors.provCity}</span>}
           </div>
         </div>
       </>

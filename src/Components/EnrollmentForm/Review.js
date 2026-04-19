@@ -7,7 +7,7 @@ const Review = ({ formData }) => {
   {
     title: "Personal Information",
     fields: [
-      { label: "Full Name", value: `${formData.firstName} ${formData.middleName} ${formData.lastName} ${formData.suffix}` },
+      { label: "Full Name", value: `${formData.firstName} ${formData.middleName} ${formData.lastName} ${formData.suffix}`.trim().replace(/\s+/g, ' ') },
       { label: "Sex", value: formData.sex },
       { label: "Date of Birth", value: formData.dateOfBirth },
       { label: "Place of Birth", value: formData.placeOfBirth },
@@ -31,9 +31,14 @@ const Review = ({ formData }) => {
   {
     title: "Program and Education",
     fields: [
+      { label: "Fatima Email", value: formData.fatimaEmail },
+      { label: "Student ID", value: formData.studentID },
       { label: "Program", value: formData.program },
-      { label: "Year Level", value: formData.yearLevel },
       { label: "Classification", value: formData.classification },
+      { label: "Year Level", value: formData.yearLevel },
+      { label: "Section", value: formData.section },
+      { label: "Academic Year", value: formData.acadYear },
+      { label: "Semester", value: formData.semester },
       { label: "High School Graduated", value: formData.highschoolGraduated },
       { label: "Private or Public", value: formData.pubprivHS },
       { label: "School Address", value: formData.schoolAddress },
@@ -43,14 +48,36 @@ const Review = ({ formData }) => {
   {
     title: "Family Information",
     fields: [
-      { label: "Father Full Name", value: formData.fatherName },
+      { label: "Father Full Name", value: `${formData.fatherFirstName} ${formData.fatherMiddleName} ${formData.fatherLastName} ${formData.fatherSuffix}`.trim().replace(/\s+/g, ' ') },
       { label: "Status", value: formData.fatherStatus },
-      { label: "Occupation", value: formData.classification },
-      { label: "Contact Number", value: formData.highschoolGraduated },
-      { label: "Mother Full Name", value: formData.pubprivHS },
+      { label: "Occupation", value: formData.fatherOccupation },
+      { label: "Contact Number", value: formData.fatherContactNumber },
+      { label: "Mother Full Name", value: `${formData.motherFirstName} ${formData.motherMiddleName} ${formData.motherLastName} ${formData.motherSuffix}`.trim().replace(/\s+/g, ' ') },
       { label: "Status", value: formData.motherStatus },
-      { label: "Occupation", value: formData.hsFinalGWA },
-      { label: "Contact Number", value: formData.hsFinalGWA },
+      { label: "Occupation", value: formData.motherOccupation },
+      { label: "Contact Number", value: formData.motherContactNumber },
+      { label: "Guardian Name", 
+        value: formData.guardianFirstName 
+        ? `${formData.guardianFirstName} ${formData.guardianMiddleName} ${formData.guardianLastName} ${formData.guardianSuffix}`.trim().replace(/\s+/g, ' ')
+        : "N/A" 
+      },
+      { label: "Relationship", value: formData.guardianRelationship },
+      { label: "Contact Number", value: formData.guardianContactNumber },
+      { label: "Who supports your college education", value: formData.support },
+      { label: "Parent's Joint Monthly Income", value: formData.parentsIncome },
+      { label: "While studying, will you live in", value: formData.livingArrangement },
+      { label: "Daily Transport Expense", value: formData.transportExpense },
+      { label: "Number of siblings", value: formData.numSiblings },
+      { label: "Ordinal Position", value: formData.ordinalPosition },
+    ]
+  },
+  {
+    title: "Achievements and Interests",
+    fields: [
+      { label: "Awards / Honors Received", value: formData.awards },
+      { label: "Hobbies / Sports / Interests", value: formData.interests },
+      { label: "What Career / Work will you pursue", value: formData.careerGoal },
+      { label: "Clubs / Extracurriculars", value: formData.extracurricular },
     ]
   }
 ];
