@@ -1,6 +1,6 @@
 .AsidebarContainer {
-  background-color: #efefef;
   box-sizing: border-box !important;
+  border: none;
   height: 100vh;
   width: 275px;
   position: sticky;
@@ -19,7 +19,7 @@
   background-color: #FFFFFF;
   padding: 0.85rem;
   height: 100%;
-  border-radius: 10px;
+  border-radius: 5px;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -58,7 +58,7 @@
   margin: 0 0 0.25rem 0;
   padding: 1rem 0.875rem !important;
   cursor: pointer;
-  border-radius: 15px;
+  border-radius: 8px;
   color: #555 !important;
   white-space: nowrap;
   overflow: hidden;

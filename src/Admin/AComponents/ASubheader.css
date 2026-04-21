@@ -5,7 +5,7 @@
   padding: 10px 20px;
   background-color: #3d161625;
   height: 2.5rem !important;
-  border-radius: 10px;
+  border-radius: 5px;
 }
 
 .asubheaderBlob {
@@ -18,7 +18,7 @@
   padding: 10px 15px;
   margin-right: 20px;
   width: 175px;
-  border-radius: 15px;
+  border-radius: 8px;
   cursor: pointer;
   text-decoration: none;
   font-size: 0.875rem;

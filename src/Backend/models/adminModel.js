@@ -20,9 +20,26 @@ const Admin = {
   },
 
   getPending: async () => {
-    const result = await pool.query(
-      'SELECT * FROM students WHERE account_status = false ORDER BY created_at DESC'
-    );
+    const result = await pool.query(`
+      SELECT 
+        s.student_id,
+        s.account_status,
+        s.created_at,
+        pii.firstname,
+        pii.lastname,
+        pii.middlename,
+        pii.email,
+        pii.mobile_no,
+        edu.program,
+        edu.year_level,
+        edu.section,
+        edu.classification
+      FROM students s
+      LEFT JOIN student_pii pii ON s.student_id = pii.student_id
+      LEFT JOIN student_education edu ON s.student_id = edu.student_id
+      WHERE s.account_status = false 
+      ORDER BY s.created_at DESC
+    `);
     return result.rows;
   },
 

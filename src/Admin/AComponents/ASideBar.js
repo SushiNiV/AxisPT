@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import './ASideBar.css';
 import cptLogo from '../../assets/cpt-logo.png';
 import { BiGridAlt, BiUser, BiBookAlt, BiGroup, BiBriefcase, BiCheckShield, BiFile, BiBell, BiHistory, BiSun, BiMoon, BiChevronLeft, BiChevronRight } from 'react-icons/bi';
 
 function ASideBar() {
+  const location = useLocation();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -35,7 +36,12 @@ function ASideBar() {
             <BiGridAlt className="linkIcon" /> {!isCollapsed && <span>Dashboard</span>}
           </NavLink>
           
-          <NavLink to="/admin/student-management/masterlist" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+          <NavLink 
+            to="/admin/student-management/masterlist" 
+            className={() => 
+              `navLink ${location.pathname.includes('/admin/student-management') ? 'activeLink' : ''}`
+            }
+          >
             <BiUser className="linkIcon" /> {!isCollapsed && <span>Student Management</span>}
           </NavLink>
           

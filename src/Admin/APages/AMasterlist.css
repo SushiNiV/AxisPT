@@ -19,7 +19,7 @@
   align-items: center;
   background-color: #fff;
   border: 1px solid #ccc;
-  border-radius: 8px;
+  border-radius: 5px;
   padding: 8px 15px;
   width: 100%;
   transition: border-color 0.3s ease;
@@ -54,7 +54,7 @@
   background-color: #fff;
   border: 1px solid #ccc;
   padding: 8px 20px;
-  border-radius: 8px;
+  border-radius: 5px;
   cursor: pointer;
   color: #3d1616;
   font-weight: 500;
@@ -120,7 +120,7 @@
 .tableContainer {
   overflow-x: auto;
   background-color: #fff;
-  border-radius: 12px;
+  border-radius: 5px;
   margin-bottom: 0.75rem;
 }
 
@@ -142,21 +142,17 @@
   top: 0;
 }
 
-.studentTable th:nth-child(1) { 
-  width: 35px;
-  padding-left: 1.25rem;
+.studentTable th:last-child {
+  text-align: center;
 }
 
-.studentTable th:nth-child(3) { 
-  width: 300px;
-}
-
-.studentTable th:nth-child(7) { 
-  width: 100px;
-}
-
-.studentTable td:first-child {
-  padding-left: 1.25rem;
+.studentTable td:last-child {
+  text-align: center;
+  vertical-align: middle;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-bottom: none;
 }
 
 .studentTable td {
@@ -187,7 +183,7 @@
   background-color: #fff;
   padding: 10px 15px;
   border-top: 1px solid #eee;
-  border-radius: 12px;
+  border-radius: 5px;
 }
 
 .paginationInfo {
@@ -212,7 +208,7 @@
 .pageBtn {
   background-color: #fff;
   border: 1px solid #ddd;
-  border-radius: 6px;
+  border-radius: 5px;
   width: 30px;
   height: 30px;
   display: flex;

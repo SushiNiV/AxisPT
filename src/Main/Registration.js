@@ -258,6 +258,20 @@ function Registration() {
   const [popupStatus, setPopupStatus] = useState(null);
 
   const handleSubmit = async () => {
+    const cleanedData = Object.fromEntries(
+      Object.entries(formData).map(([key, value]) => {
+        if (typeof value === 'string') {
+          const trimmed = value.trim().toLowerCase();
+          
+          const placeholders = ['', 'n/a', 'not applicable', 'none', 'null'];
+
+          if (placeholders.includes(trimmed)) {
+            return [key, null];
+          }
+        }
+        return [key, value];
+      })
+    );
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/student/registration`, {
         method: 'POST',
