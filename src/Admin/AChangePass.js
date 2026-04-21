@@ -46,12 +46,6 @@ function AChangePass() {
       setPopupStatus('error');
       return;
     }
-      
-    if (formData.newPassword === formData.currentPassword) {
-      setErrorMessage("The new password cannot be the same as your current password.");
-      setPopupStatus('error');
-      return;
-    }
 
     const token = sessionStorage.getItem('token');
     const employeeID = sessionStorage.getItem('employeeID');

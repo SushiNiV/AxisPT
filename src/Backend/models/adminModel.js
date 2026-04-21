@@ -1,9 +1,12 @@
 const pool = require('../config/db');
 
+console.log("--- DEBUG: adminModel.js is loading ---");
+console.log("--- DEBUG: pool object is:", typeof pool);
+
 const Admin = {
   findById: async (employeeID) => {
     const result = await pool.query(
-      'SELECT * FROM administrators WHERE employee_id = $1', 
+      'SELECT * FROM administrators WHERE employee_id = $1',
       [employeeID]
     );
     return result.rows[0];
@@ -11,9 +14,7 @@ const Admin = {
 
   logLoginAction: async (user, details) => {
     return await pool.query(
-      `INSERT INTO history_transactions 
-      (user_id, user_role, user_designation, action, target_id, details) 
-      VALUES ($1, $2, $3, $4, $5, $6)`,
+      'INSERT INTO history_transactions (user_id, user_role, user_designation, action, target_id, details) VALUES ($1, $2, $3, $4, $5, $6)',
       [user.employee_id, user.role, user.designation, 'LOGIN', user.employee_id, details]
     );
   },
@@ -34,9 +35,7 @@ const Admin = {
 
   logAction: async (user, actionType, details) => {
     return await pool.query(
-      `INSERT INTO history_transactions 
-      (user_id, user_role, user_designation, action, target_id, details) 
-      VALUES ($1, $2, $3, $4, $5, $6)`,
+      'INSERT INTO history_transactions (user_id, user_role, user_designation, action, target_id, details) VALUES ($1, $2, $3, $4, $5, $6)',
       [user.employee_id, user.role, user.designation, actionType, user.employee_id, details]
     );
   }

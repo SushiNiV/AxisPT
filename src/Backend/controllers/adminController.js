@@ -67,6 +67,10 @@ exports.changePassword = async (req, res) => {
       return res.status(401).json({ success: false, message: "Current password incorrect" });
     }
 
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ success: false, message: "New password cannot be the same as the current one." });
+    }
+
     const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
     await Admin.updatePassword(employeeID, hashedNewPassword);
 
@@ -78,7 +82,6 @@ exports.changePassword = async (req, res) => {
 
     res.json({ success: true, message: "Password updated successfully!" });
   } catch (err) {
-    console.error("Change password error:", err.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
