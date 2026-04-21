@@ -120,6 +120,7 @@ const Education = ({ formData, handleChange, errors }) => {
           >
             <option value="" disabled>Select Academic Year</option>
             <option value="2025-2026">2025-2026</option>
+            <option value="2026-2027">2026-2027</option>
           </select>
           {errors.acadYear && <span className="error-text">{errors.acadYear}</span>}
         </div>

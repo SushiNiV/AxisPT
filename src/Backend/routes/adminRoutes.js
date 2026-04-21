@@ -1,69 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const pool = require('../config/db');
+const adminController = require('../controllers/adminController')
 const { verifyToken } = require('../middleware/auth');
-
-const saltRounds = 10;
-
-router.post('/login', async (req, res) => {
-  const { employeeID, password, rememberMe } = req.body;
-  try {
-    const result = await pool.query('SELECT * FROM administrators WHERE employee_id = $1', [employeeID]);
-    
-    if (result.rows.length > 0) {
-      const user = result.rows[0];
-      const isBcrypt = user.password_hash.startsWith('$2b$') || user.password_hash.startsWith('$2a$');
-      const isMatch = isBcrypt ? await bcrypt.compare(password, user.password_hash) : (password === user.password_hash);
-
-      if (isMatch) {
-        const expiresIn = rememberMe ? '7d' : '2h';
-        
-        const token = jwt.sign(
-            { 
-              id: user.employee_id, 
-              role: user.role, 
-              designation: user.designation 
-            }, 
-            process.env.JWT_SECRET, 
-            { expiresIn }
-        );
-
-        await pool.query(
-            `INSERT INTO history_transactions 
-            (user_id, user_role, user_designation, action, target_id, details) 
-            VALUES ($1, $2, $3, $4, $5, $6)`,
-            [
-              user.employee_id,
-              user.role,
-              user.designation,
-              'LOGIN', 
-              user.employee_id,
-              `Successful login as ${user.designation}`
-            ]
-        );
-
-        res.json({ 
-            success: true, 
-            token, 
-            employeeID: user.employee_id,
-            firstName: user.firstname,
-            role: user.role,
-            designation: user.designation,
-            mustChangePassword: user.must_change_password 
-        });
-      } else {
-          res.status(401).json({ success: false, message: "Invalid credentials" });
-      }
-    } else {
-        res.status(404).json({ success: false, message: "User not found" });
-    }
-  } catch (err) {
-      console.error("DEBUG LOGIN ERROR:", err); 
-      res.status(500).json({ success: false, message: err.message });    
-  }
-});
 
 router.post('/change-password', verifyToken, async (req, res) => {
   const { employeeID, currentPassword, newPassword } = req.body;
@@ -114,5 +52,8 @@ router.post('/change-password', verifyToken, async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
+router.post('/login', adminController.login);
+router.get('/pending-students', verifyToken, adminController.getPendingStudents);
 
 module.exports = router;

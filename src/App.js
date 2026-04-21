@@ -11,6 +11,7 @@ import ADashboard from './Admin/ADashboard';
 
 import AStudentManage from './Admin/AStudentManage';
 import AMasterlist from './Admin/APages/AMasterlist';
+import APendingStudents from './Admin/APages/APendingStudents';
 
 import ChangePass from './Admin/AChangePass';
 
@@ -39,8 +40,8 @@ function App() {
             <Route path="/admin/student-management" element={<AStudentManage />}>
               <Route index element={<Navigate to="masterlist" replace />} />
               <Route path="masterlist" element={<AMasterlist />} />
-              {/* Other sub-pages you might create later 
-              <Route path="verification" element={<AVerification />} />
+              <Route path="pending-students" element={<APendingStudents />} />
+              {/* Other sub-pages
               <Route path="access-control" element={<AAccessControl />} />
               <Route path="history" element={<AHistory />} /> */}
           </Route>

@@ -4,12 +4,14 @@ import './Registration.css';
 import cptLogo from '../assets/cpt-logo.png'; 
 import { BiChevronLeft, BiChevronRight, BiCheck } from 'react-icons/bi';
 
-import PersonalInfo from '../Components/EnrollmentForm/PersonalInfo';
-import Educational from '../Components/EnrollmentForm/Education';
-import FamilyInfo from '../Components/EnrollmentForm/FamilyInfo';
-import Achievements from '../Components/EnrollmentForm/Achievements';
-import DocumentUpload from '../Components/EnrollmentForm/DocumentUpload';
-import Review from '../Components/EnrollmentForm/Review';
+import PersonalInfo from '../Components/RegistrationSection/PersonalInfo';
+import Educational from '../Components/RegistrationSection/Education';
+import FamilyInfo from '../Components/RegistrationSection/FamilyInfo';
+import Achievements from '../Components/RegistrationSection/Achievements';
+import DocumentUpload from '../Components/RegistrationSection/DocumentUpload';
+import Review from '../Components/RegistrationSection/Review';
+
+import PopupOverlay from '../Components/PopupOverlay';
 
 const initialFields = {
   firstName: '', lastName: '', middleName: '', suffix: '', 
@@ -22,7 +24,7 @@ const initialFields = {
   provHouseNo: '', provStreet: '', provSubdivision: '', provCity: '',
   sameAsPermanent: false,
   fatimaEmail: '', studentID: '',
-  program: '', classification: '', yearLevel: '', section: '',
+  program: '', classification: '', yearLevel: '', section: '', acadYear: '', semester: '',
   highschoolGraduated: '', pubprivHS: '', schoolAddress: '', hsFinalGWA: '',
   fatherFirstName: '', fatherLastName: '', fatherMiddleName: '', fatherSuffix: '',
   fatherStatus: '', fatherOccupation: '', fatherContactNumber: '',
@@ -30,11 +32,11 @@ const initialFields = {
   motherStatus: '', motherOccupation: '', motherContactNumber: '',
   guardianFirstName: '', guardianLastName: '', guardianMiddleName: '', guardianSuffix: '',
   guardianRelationship: '', guardianContactNumber: '',
-  support: '', parentsIncome: '', livingArrangement: '', transportExpense: '', numSibling: '', ordinalPosition: '',
+  support: [], parentsIncome: '', livingArrangement: '', transportExpense: '', numSiblings: null, ordinalPosition: '',
   awards: '', interests: '', careerGoal: '', extracurricular: '',
 };
 
-function Enrollment() {
+function Registration() {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState(() => {
@@ -61,7 +63,18 @@ function Enrollment() {
     }
 
     if (type === "checkbox") {
-      setFormData(prev => ({ ...prev, [name]: checked }));
+      if (name === "sameAsPermanent") {
+        setFormData(prev => ({ 
+          ...prev, 
+          [name]: checked,
+          provHouseNo: checked ? prev.permHouseNo : '',
+          provStreet: checked ? prev.permStreet : '',
+          provSubdivision: checked ? prev.permSubdivision : '',
+          provCity: checked ? prev.permCity : '',
+        }));
+      } else {
+        setFormData(prev => ({ ...prev, [name]: checked }));
+      }
       return;
     }
 
@@ -70,21 +83,64 @@ function Enrollment() {
         setFormData(prev => ({ ...prev, [name]: "" }));
         return;
       }
+      
       const numValue = parseFloat(value);
-      if (!isNaN(numValue) && numValue <= 100) {
+      if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
         setFormData(prev => ({ ...prev, [name]: value }));
       }
       return;
     }
 
-    if (name === "phoneNumber") {
-      let cleaned = value.replace(/[^\d+]/g, "");
-      if (cleaned.startsWith('09')) cleaned = '+63' + cleaned.substring(1);
-      else if (cleaned.startsWith('63')) cleaned = '+63' + cleaned.substring(2);
+    if (name === "numSiblings") {
+      if (value === "") {
+        setFormData(prev => ({ ...prev, [name]: "" }));
+        return;
+      }
       
+      if (/^\d+$/.test(value)) {
+        const val = parseInt(value, 10);
+        if (val >= 0) {
+          setFormData(prev => ({ ...prev, [name]: value }));
+        }
+      }
+      return;
+    }
+
+    if (name === "support") {
+      setFormData(prev => {
+        const currentSupport = Array.isArray(prev.support) ? prev.support : [];
+        if (checked) {
+          return { ...prev, support: [...currentSupport, value] };
+        } else {
+          return { ...prev, support: currentSupport.filter(item => item !== value) };
+        }
+      });
+      return;
+    }
+
+    const contactFields = [
+      "phoneNumber", 
+      "fatherContactNumber", 
+      "motherContactNumber", 
+      "guardianContactNumber"
+    ];
+
+    if (contactFields.includes(name)) {
+      let cleaned = value.replace(/[^\d+]/g, "");
+
+      if (cleaned.startsWith('09')) {
+        cleaned = '+63' + cleaned.substring(1);
+      } else if (cleaned.startsWith('63')) {
+        cleaned = '+63' + cleaned.substring(2);
+      }
+
       const isPH = cleaned.startsWith('+63');
       const limit = isPH ? 13 : 15;
-      setFormData(prev => ({ ...prev, [name]: cleaned.slice(0, limit) }));
+
+      setFormData(prev => ({ 
+        ...prev, 
+        [name]: cleaned.slice(0, limit) 
+      }));
       return;
     }
 
@@ -104,11 +160,23 @@ function Enrollment() {
     ];
 
       if (capsRequired.includes(name)) {
-        setFormData(prev => ({ ...prev, [name]: value.toUpperCase() }));
-      } else {
+        const upperValue = value.toUpperCase();
+        setFormData(prev => {
+            const updated = { ...prev, [name]: upperValue };
+            
+            if (prev.sameAsPermanent) {
+                if (name === 'permHouseNo') updated.provHouseNo = upperValue;
+                if (name === 'permStreet') updated.provStreet = upperValue;
+                if (name === 'permSubdivision') updated.provSubdivision = upperValue;
+                if (name === 'permCity') updated.provCity = upperValue;
+            }
+            
+            return updated;
+        });
+    } else {
         setFormData(prev => ({ ...prev, [name]: value }));
-      }
-  };
+    }
+};
 
   const [errors, setErrors] = useState({});
 
@@ -149,7 +217,7 @@ function Enrollment() {
     }
 
     if (currentStep === 3) {
-      const familyBase = ['fatherFirstName', 'fatherLastName', 'fatherStatus', 'motherFirstName', 'motherLastName', 'motherStatus', 'parentsIncome', 'livingArrangement', 'transportExpense', 'ordinalPosition'];
+      const familyBase = ['fatherFirstName', 'fatherLastName', 'fatherStatus', 'motherFirstName', 'motherLastName', 'motherStatus', 'support', 'parentsIncome', 'livingArrangement', 'transportExpense', 'ordinalPosition'];
       familyBase.forEach(field => {
         if (!formData[field] || formData[field].toString().trim() === "") newErrors[field] = "This field is required";
       });
@@ -187,14 +255,13 @@ function Enrollment() {
     setCurrentStep(prev => prev + 1);
   };
 
+  const [popupStatus, setPopupStatus] = useState(null);
+
   const handleSubmit = async () => {
-    console.log("Data being sent to server:", formData);
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/student/registration`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
@@ -202,14 +269,17 @@ function Enrollment() {
 
       if (response.ok) {
         localStorage.removeItem("enrollment_data");
-        alert("Enrollment Submitted Successfully!");
-        navigate('/home');
+        setPopupStatus('success'); 
       } else {
-        alert("Submission failed: " + result.error);
+        if (result.error && result.error.toLowerCase().includes("exists")) {
+          setPopupStatus('duplicate');
+        } else {
+          setPopupStatus('error');
+        }
       }
     } catch (error) {
       console.error("Error submitting form:", error);
-      alert("System error. Please try again later.");
+      setPopupStatus('error');
     }
   };
 
@@ -262,6 +332,7 @@ function Enrollment() {
             <FamilyInfo
               formData={formData}
               setFormData={setFormData}
+              setErrors={setErrors}
               handleChange={handleChange}
               errors={errors}
             />
@@ -313,8 +384,37 @@ function Enrollment() {
       <div className="bottomBar">
         <p className="bottomText">© Copyright 2026. Our Lady of Fatima University - College of Physical Therapy. All Rights reserved. | Powered by VDG </p>
       </div>
+
+      {popupStatus === 'success' && (
+        <PopupOverlay 
+          isOpen={true} 
+          onClose={() => setPopupStatus(null)} 
+          title="SUBMISSION SUCCESSFUL!"
+        >
+          <div className="popup-body-centered">
+            <p>Your registration has been successfully submitted.<br/><br/>
+            We are currently processing your application. Please wait for an email confirmation shortly.</p>
+            <button className="enrollmentBT" onClick={() => window.location.reload()}>Got it</button>
+          </div>
+        </PopupOverlay>
+      )}
+
+      {popupStatus === 'duplicate' && (
+        <PopupOverlay 
+          isOpen={true} 
+          onClose={() => setPopupStatus(null)} 
+          title="RECORD ALREADY EXISTS"
+        >
+          <div className="popup-body-centered">
+            <p>This student ID has already been used for a registration.<br/><br/>
+            If you believe this is an error, please contact the College Administrators.</p>
+            <button className="enrollmentBT" onClick={() => setPopupStatus(null)}>Okay</button>
+          </div>
+        </PopupOverlay>
+      )}
+
     </div>
   );
 }
 
-export default Enrollment;
+export default Registration;

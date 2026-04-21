@@ -9,6 +9,19 @@ const StudentModel = {
 
   //registration
   createFullProfile: async (data, plainPassword) => {
+    const sanitize = (val) => {
+      if (typeof val === 'string') {
+        const trimmed = val.trim().toLowerCase();
+        if (trimmed === "" || trimmed === "n/a" || trimmed === "none" || trimmed === "not applicable") {
+          return null;
+        }
+      }
+      if (val === undefined || val === null) {
+        return null;
+      }
+      return val;
+    };
+
     const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -29,7 +42,7 @@ const StudentModel = {
           data.dateOfBirth,
           false,
           true
-        ] 
+        ].map(sanitize);
         await client.query(studentQuery, studentValue);
 
         const piiQuery = `
@@ -88,7 +101,7 @@ const StudentModel = {
           data.provStreet,
           data.provSubdivision,
           data.provCity
-        ];
+        ].map(sanitize);
         await client.query(piiQuery, piiValues);
         
         const educQuery = `
@@ -119,7 +132,7 @@ const StudentModel = {
           data.pubprivHS,
           data.schoolAddress,
           data.hsFinalGWA
-        ];
+        ].map(sanitize);
         await client.query(educQuery, educValues);
 
         const familyQuery = `
@@ -180,9 +193,9 @@ const StudentModel = {
           data.parentsIncome,
           data.livingArrangement,
           data.transportExpense,
-          data.numSiblings === "" ? null : parseInt(data.numSiblings),
+          data.numSiblings,
           data.ordinalPosition
-        ];
+        ].map(sanitize);
         await client.query(familyQuery, familyValues);
 
         const interestsQuery = `
@@ -201,8 +214,29 @@ const StudentModel = {
           data.interests,
           data.careerGoal,
           data.extracurricular
-        ];
+        ].map(sanitize);
         await client.query(interestsQuery, interestValues);
+
+        const historyQuery = `
+        INSERT INTO history_transactions (
+          user_id,
+          user_role,
+          user_designation,
+          action,
+          target_id,
+          details
+        ) 
+        VALUES ($1, $2, $3, $4, $5, $6)`;
+
+        const historyValues = [
+          data.studentID,
+          'Student',
+          'Student',
+          'Registration of Student Account',
+          data.studentID,
+          `Initial registration for ${data.firstName} ${data.middleName} ${data.lastName} ${data.suffix}`
+        ];
+        await client.query(historyQuery, historyValues);
 
       await client.query('COMMIT');
     } catch (e) {

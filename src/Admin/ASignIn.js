@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ASignIn.css';
+import PopupOverlay from '../Components/PopupOverlay';
 
 function ASignIn() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+
+  const [popupStatus, setPopupStatus] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  
   const [formData, setFormData] = useState({
     employeeID: '',
     password: '',
@@ -47,11 +52,13 @@ function ASignIn() {
           navigate('/admin/dashboard');
         }
       } else {
-        alert(data.message);
+        setErrorMessage(data.message || "Invalid Employee ID or Password.");
+        setPopupStatus('error');
       }
     } catch (error) {
-      console.error("Fetch Catch Triggered:", error);
-      alert("Catch Block Triggered: Check Console");
+      console.error("Login Error:", error);
+      setErrorMessage("Unable to connect to the server. Please try again later.");
+      setPopupStatus('error');
     }
   };
 
@@ -133,6 +140,28 @@ function ASignIn() {
           </div>
         </form>
       </div>
+
+      {popupStatus === 'error' && (
+        <PopupOverlay 
+          isOpen={true} 
+          onClose={() => setPopupStatus(null)} 
+          title="ACCESS DENIED"
+          icon={
+            <span className="material-icons" style={{ color: '#EF4444', fontSize: '50px' }}>
+              report_problem
+            </span>
+          }
+        >
+          <p>{errorMessage}</p>
+          <button 
+            style={{ backgroundColor: '#EF4444' }} 
+            onClick={() => setPopupStatus(null)}
+          >
+            RETRY
+          </button>
+        </PopupOverlay>
+      )}
+
     </div>
   );
 }

@@ -1,9 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './FamilyInfo.css';
 
-const FamilyInfo = ({ formData, handleChange, errors }) => {
+function FamilyInfo({ formData, setFormData, setErrors, handleChange, errors }) {
   const isFatherRequired = formData.fatherStatus !== "DECEASED" && formData.fatherStatus !== "N/A";
   const isMotherRequired = formData.motherStatus !== "DECEASED" && formData.motherStatus !== "N/A";
+
+  const [isOpen, setIsOpen] = useState(false);
+  const options = ["PARENTS", "RELATIVES", "BROTHER/SISTER", "BENEFACTORS", "SCHOLARSHIPS"];
+
+  const toggleOption = (option) => {
+    const current = Array.isArray(formData.support) ? formData.support : [];
+    const newSupport = current.includes(option)
+      ? current.filter(item => item !== option)
+      : [...current, option];
+  
+    setFormData(prev => ({ ...prev, support: newSupport }));
+
+    if (errors.support) {
+      setErrors(prev => {
+        const { support, ... rest } = prev; 
+        return rest;
+      });
+    }
+  };
+
   return (
     <div className="slides">
       <h1 className="enrollmentTitle">Family Information</h1>
@@ -308,20 +328,33 @@ const FamilyInfo = ({ formData, handleChange, errors }) => {
       <div className="row">
         <div className="col">
           <label>Who supports your college education? <span style={{color: 'red'}}>*</span></label>
-          <select 
-            name="support"
-            value={formData.support}
-            onChange={handleChange}
-            className={errors.support ? "input-error" : ""}
-            required
-          >
-            <option value="" disabled>Select an option</option>
-            <option value="PARENTS">PARENTS</option>
-            <option value="RELATIVES">RELATIVES</option>
-            <option value="BROTHER/SISTER">BROTHER/SISTER</option>
-            <option value="BENEFACTORS">BENEFACTORS</option>
-            <option value="SCHOLARSHIPS">SCHOLARSHIPS</option>
-          </select>
+          <div className="custom-multiselect">
+            <div 
+              className={`select-display ${errors.support ? "input-error" : ""}`}   
+              onClick={() => setIsOpen(!isOpen)}
+              tabIndex="0"
+            >
+              <span className="selected-text">
+                {formData.support.length > 0 
+                  ? formData.support.join(", ") 
+                  : "Select options"}
+              </span>
+            </div>
+            {isOpen && (
+              <div className="dropdown-menu">
+                {options.map(option => (
+                  <label key={option} className="dropdown-item">
+                    <input 
+                      type="checkbox"
+                      checked={formData.support.includes(option)}
+                      onChange={() => toggleOption(option)}
+                    />
+                    <span>{option}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
           {errors.support && <span className="error-text">{errors.support}</span>}
         </div>
         <div className="col">

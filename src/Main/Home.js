@@ -44,7 +44,7 @@ function Home() {
           <p className='welcomeText'></p>
         </div>        
         <div className='enrollBar'>
-          <button className='enrollBT' onClick={() => navigate('/enrollment-form')}>
+          <button className='enrollBT' onClick={() => navigate('/registration')}>
             Enroll Now
           </button>
         </div>

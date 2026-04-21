@@ -257,15 +257,17 @@ function PersonalInfo({ formData, setFormData, handleChange, errors }) {
           {errors.weight && <span className="error-text">{errors.weight}</span>}
         </div>
         <div className="col">
-          <label>Language/Dialect</label>
+          <label>Language / Dialect <span style={{color: 'red'}}>*</span></label>
           <input 
             type="text" 
             name="language"
             placeholder="Language/Dialect" 
             value={formData.language}
             onChange={handleChange}
+            className={errors.language ? "input-error" : ""}
             required
           />
+          {errors.language && <span className="error-text">{errors.language}</span>}
         </div>
       </div>
 

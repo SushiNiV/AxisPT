@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AChangePass.css';
+import PopupOverlay from '../Components/PopupOverlay';
 import cptLogo from '../assets/cpt-logo.png'; 
 
 function AChangePass() {
@@ -9,6 +10,9 @@ function AChangePass() {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const [popupStatus, setPopupStatus] = useState(null); 
+  const [errorMessage, setErrorMessage] = useState('');
   
   const [formData, setFormData] = useState({
     currentPassword: '',
@@ -32,22 +36,25 @@ function AChangePass() {
     e.preventDefault();
       
     if (formData.newPassword !== formData.confirmPassword) {
-      alert("New passwords do not match!");
+      setErrorMessage("New passwords do not match!");
+      setPopupStatus('error');
       return;
     }
       
     if (formData.newPassword.length < 8) {
-      alert("New password must be at least 8 characters long.");
+      setErrorMessage("New password must be at least 8 characters long.");
+      setPopupStatus('error');
       return;
     }
       
     if (formData.newPassword === formData.currentPassword) {
-      alert("The new password cannot be the same as your current password.");
+      setErrorMessage("The new password cannot be the same as your current password.");
+      setPopupStatus('error');
       return;
     }
 
     const token = sessionStorage.getItem('token');
-    const employeeID = sessionStorage.getItem('employeeID'); // Make sure you save this during login!
+    const employeeID = sessionStorage.getItem('employeeID');
 
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/change-password`, {
@@ -66,16 +73,22 @@ function AChangePass() {
       const data = await response.json();
 
       if (data.success) {
-        alert("Password changed successfully!");
-        sessionStorage.clear();
-        navigate('/admin-signin');
+        setPopupStatus('success');
       } else {
-        alert(data.message || "Failed to change password.");
+        setErrorMessage(data.message || "Failed to change password.");
+        setPopupStatus('error');
       }
     } catch (err) {
       console.error("Error:", err);
-      alert("Server connection failed.");
+      setErrorMessage("Server connection failed.");
+      setPopupStatus('error');
     }
+  };
+
+  const handleFinalizeSuccess = () => {
+    sessionStorage.clear();
+    setPopupStatus(null);
+    navigate('/admin-signin');
   };
 
   return (
@@ -156,6 +169,46 @@ function AChangePass() {
       <div className="bottomBar">
           <p className="bottomText">© Copyright 2026. Our Lady of Fatima University - College of Physical Therapy. All Rights reserved. | Powered by VDG </p>
       </div>
+
+      {popupStatus === 'success' && (
+        <PopupOverlay 
+          isOpen={true} 
+          onClose={handleFinalizeSuccess} 
+          title="PASSWORD UPDATED"
+          icon={
+            <span className="material-icons" style={{ color: '#22C55E', fontSize: '50px' }}>
+              check_circle
+            </span>
+          }
+        >
+          <p>Your password has been changed successfully. You will now be redirected to the sign-in page.</p>
+          <button onClick={handleFinalizeSuccess}>
+            GOT IT
+          </button>
+        </PopupOverlay>
+      )}
+
+      {popupStatus === 'error' && (
+        <PopupOverlay 
+          isOpen={true} 
+          onClose={() => setPopupStatus(null)} 
+          title="PASSWORD UPDATE FAILED"
+          icon={
+            <span className="material-icons" style={{ color: '#EF4444', fontSize: '50px' }}>
+              error
+            </span>
+          }
+        >
+          <p>{errorMessage}</p>
+          <button 
+            style={{ backgroundColor: '#EF4444' }} 
+            onClick={() => setPopupStatus(null)}
+          >
+            TRY AGAIN
+          </button>
+        </PopupOverlay>
+      )}
+
     </div>
   );
 }
