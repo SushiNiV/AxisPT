@@ -45,7 +45,7 @@ function ASideBar() {
             <BiUser className="linkIcon" /> {!isCollapsed && <span>Student Management</span>}
           </NavLink>
           
-          <NavLink to="/academics-grades" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+          <NavLink to="/admin/academics" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiBookAlt className="linkIcon" /> {!isCollapsed && <span>Academics & Grades</span>}
           </NavLink>
           

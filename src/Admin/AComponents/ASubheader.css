@@ -2,41 +2,44 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding: 10px 20px;
-  background-color: #3d161625;
   height: 2.5rem !important;
   border-radius: 5px;
+  margin-bottom: 0.5rem;
 }
 
 .asubheaderBlob {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #3d1616;
-  color: #fff;
-  border: none;
+  background-color: #fff;
+  color: #3d1616;
   padding: 10px 15px;
-  margin-right: 20px;
+  margin-right: 0.75rem;
   width: 175px;
   border-radius: 8px;
   cursor: pointer;
   text-decoration: none;
   font-size: 0.875rem;
+  font-weight: 500;
   box-sizing: border-box;
 }
 
 .asubheaderBlob.active {
-  background-color: #fff;
-  color: #3d1616;
-  border: 3px solid #3d1616;
+  background-color: #3d1616;
+  color: #fff;
   font-weight: bold;
-  padding: 7px 13px;
+  padding: 10px 15px;
 }
 
 .asubheaderBlob:hover {
-  background-color: #3d1616aa;
-  border: 3px solid #3d1616;
+  background-color: #3D161625;
+  color: #555;
+  padding: 10px 15px;
+}
+
+.asubheaderBlob.active:hover {
+  background-color: #3d1616;
   color: #fff;
   font-weight: bold;
-  padding: 7px 13px;
+  padding: 10px 15px;
 }

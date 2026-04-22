@@ -15,8 +15,8 @@
   background: #F8FAFC;
   width: 90%;
   max-width: 500px;
-  padding: 1.5rem;
-  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  border-radius: 5px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
   animation: slideUp 0.3s ease-out;
 }
@@ -66,7 +66,7 @@
   background-color: #3d1616;
   color: #fff;
   border: none;
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 0.5rem 1rem;
   font-size: 1rem;
   font-weight: 600;

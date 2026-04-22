@@ -13,6 +13,9 @@ import AStudentManage from './Admin/AStudentManage';
 import AMasterlist from './Admin/APages/AMasterlist';
 import APendingStudents from './Admin/APages/APendingStudents';
 
+import AGrades from './Admin/AGrades';
+import ACourses from './Admin/APages/ACourses';
+
 import ChangePass from './Admin/AChangePass';
 
 import ProtectedRoute from './Components/ProtectedRoute';
@@ -44,7 +47,12 @@ function App() {
               {/* Other sub-pages
               <Route path="access-control" element={<AAccessControl />} />
               <Route path="history" element={<AHistory />} /> */}
-          </Route>
+            </Route>
+            <Route path="/admin/academics" element={<AGrades />} >
+              <Route index element={<Navigate to="" replace />} />
+
+              <Route path="courses" element={<ACourses />} />
+            </Route>
           </Route>
           <Route path="/change-password" element={<ChangePass />} />
         </Route>   

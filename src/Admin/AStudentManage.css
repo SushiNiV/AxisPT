@@ -2,7 +2,9 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  height: 100%;
   background-color: #efefef;
+  overflow: hidden;
 }
 
 .pageContent {
@@ -10,4 +12,24 @@
   flex: 1;
   width: 100%;
   overflow-y: auto; 
+  scroll-behavior: smooth;
+}
+
+.pageContent::-webkit-scrollbar {
+  width: 5px; 
+  height: 5px;
+}
+
+.pageContent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pageContent::-webkit-scrollbar-thumb {
+  background-color: #bababa;
+  border-radius: 10px;
+  border: 5px solid transparent;
+}
+
+.pageContent::-webkit-scrollbar-thumb:hover {
+  background-color: #888888;
 }

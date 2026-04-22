@@ -1,68 +1,71 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import './APendingStudents.css';
-import { BiSearch, BiFilterAlt } from 'react-icons/bi';
+import { BiSearch, BiFilterAlt, BiX } from 'react-icons/bi';
 
 function APendingStudents() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const indexOfLastStudent = currentPage * rowsPerPage;
-  const indexOfFirstStudent = indexOfLastStudent - rowsPerPage;
-  const currentStudents = students.slice(indexOfFirstStudent, indexOfLastStudent);
-  const totalPages = Math.ceil(students.length / rowsPerPage);
-
-  const goToNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
-  };
-
-  const goToPrevPage = () => {
-    if (currentPage > 1) setCurrentPage(prev => prev - 1);
-  };
-
-  const goToFirstPage = () => setCurrentPage(1);
-  const goToLastPage = () => setCurrentPage(totalPages);
-
-  const handlePageInput = (e) => {
-    const value = parseInt(e.target.value);
-    if (value > 0 && value <= totalPages) {
-      setCurrentPage(value);
-    }
-  };
-
-  const selectAllRef = useRef(null);
 
   useEffect(() => {
-    const fetchPendingStudents = async () => {
-      try {
-        const token = sessionStorage.getItem('token');
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/pending-students`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-          setStudents(data.students);
-        }
-      } catch (error) {
-        console.error("Error fetching students:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchPendingStudents();
   }, []);
 
+  const fetchPendingStudents = async () => {
+    setLoading(true);
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/pending-students`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.status === 401) {
+        alert("Session expired. Please login again.");
+        window.location.href = '/login';
+        return;
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setStudents(data.students);
+      }
+    } catch (error) {
+      console.error("Error fetching students:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredStudents = students.filter((s) => {
+    const fullName = `${s.firstname} ${s.middlename} ${s.lastname}`.toLowerCase();
+    const search = searchTerm.toLowerCase();
+    return fullName.includes(search) || s.student_id.toLowerCase().includes(search);
+  });
+
+  const totalPages = Math.ceil(filteredStudents.length / rowsPerPage);
+  const indexOfLastStudent = currentPage * rowsPerPage;
+  const indexOfFirstStudent = indexOfLastStudent - rowsPerPage;
+  const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
+
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
+    setCurrentPage(1);
+  };
+
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      const allIds = students.map((s) => s.id); 
-      setSelectedIds(allIds);
+      const visibleIds = currentStudents.map((s) => s.student_id);
+      setSelectedIds(visibleIds);
     } else {
       setSelectedIds([]);
     }
@@ -70,15 +73,12 @@ function APendingStudents() {
 
   const handleSelectRow = (id) => {
     setSelectedIds((prev) =>
-      prev.includes(id) 
-        ? prev.filter((item) => item !== id)
-        : [...prev, id]
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
   const handleAccept = async (studentId) => {
     if (!window.confirm(`Are you sure you want to accept student ${studentId}?`)) return;
-
     try {
       const token = sessionStorage.getItem('token');
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/approve-student`, {
@@ -93,7 +93,8 @@ function APendingStudents() {
       const data = await response.json();
       if (data.success) {
         alert("Student accepted successfully!");
-        setStudents(prev => prev.filter(s => (s.id || s.student_id) !== studentId));
+        setStudents(prev => prev.filter(s => s.student_id !== studentId));
+        setSelectedIds(prev => prev.filter(id => id !== studentId));
       } else {
         alert(data.message || "Failed to accept student.");
       }
@@ -102,6 +103,11 @@ function APendingStudents() {
     }
   };
 
+  const goToNextPage = () => { if (currentPage < totalPages) setCurrentPage(prev => prev + 1); };
+  const goToPrevPage = () => { if (currentPage > 1) setCurrentPage(prev => prev - 1); };
+  const goToFirstPage = () => setCurrentPage(1);
+  const goToLastPage = () => setCurrentPage(totalPages);
+
   return (
     <div className="apendingStudentsContainer">
       <div className="searchBarSection">
@@ -109,25 +115,23 @@ function APendingStudents() {
           <BiSearch className="searchIcon" />
           <input 
             type="text" 
-            placeholder="Search student name or ID..." 
+            placeholder="Search pending student..." 
             className="studentSearchInput"
+            value={searchTerm}
+            onChange={handleSearch}
           />
+          {searchTerm && <BiX className="clearSearchIcon" onClick={clearSearch} style={{cursor: 'pointer'}}/>}
         </div>
 
         <div className="filterContainer">
-          <button 
-            className={`filterToggleBtn ${isFilterOpen ? 'active' : ''}`}
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-          >
-            <BiFilterAlt className="linkIcon" />
-            Filter
+          <button className={`filterToggleBtn ${isFilterOpen ? 'active' : ''}`} onClick={() => setIsFilterOpen(!isFilterOpen)}>
+            <BiFilterAlt className="linkIcon" /> Filter
           </button>
-
           {isFilterOpen && (
             <div className="filterDropdown">
               <div className="filterGroup">
                 <label>Year Level</label>
-                <select>
+                <select onChange={() => setCurrentPage(1)}>
                   <option value="">All Years</option>
                   <option value="1">1st Year</option>
                   <option value="2">2nd Year</option>
@@ -135,7 +139,6 @@ function APendingStudents() {
                   <option value="4">4th Year</option>
                 </select>
               </div>
-
               <button className="applyFilterBtn">Apply Filters</button>
             </div>
           )}
@@ -150,7 +153,7 @@ function APendingStudents() {
                 <input 
                   type="checkbox" 
                   onChange={handleSelectAll}
-                  checked={students.length > 0 && selectedIds.length === students.length}
+                  checked={currentStudents.length > 0 && selectedIds.length === currentStudents.length}
                 />
               </th>
               <th>No.</th>
@@ -159,13 +162,12 @@ function APendingStudents() {
               <th>Year Level</th>
               <th>Section</th>
               <th>Program</th>
-              <th>Action</th>
+              <th style={{ textAlign: 'center' }}>Action</th>
             </tr>
           </thead>
-
           <tbody>
             {loading ? (
-              <tr><td colSpan="8">Loading students...</td></tr>
+              <tr><td colSpan="8" style={{textAlign: 'center', padding: '20px'}}>Loading students...</td></tr>
             ) : currentStudents.length > 0 ? (
               currentStudents.map((student, index) => {
                 const isSelected = selectedIds.includes(student.student_id);
@@ -184,16 +186,14 @@ function APendingStudents() {
                     <td>{student.year_level}</td>
                     <td>{student.section || 'N/A'}</td>
                     <td>{student.program}</td>
-                    <td>
-                      <button className="acceptBtn" onClick={() => handleAccept(student.student_id)}>
-                        Accept
-                      </button>
+                    <td style={{ textAlign: 'center' }}>
+                      <button className="acceptBtn" onClick={() => handleAccept(student.student_id)}>Accept</button>
                     </td>
                   </tr>
                 );
               })
             ) : (
-              <tr><td colSpan="8" style={{textAlign: 'center', padding: '10px'}}>No pending registrations found.</td></tr>
+              <tr><td colSpan="8" style={{textAlign: 'center', padding: '20px'}}>No pending registrations found.</td></tr>
             )}
           </tbody>
         </table>
@@ -201,38 +201,16 @@ function APendingStudents() {
 
       <div className="paginationContainer">
         <div className="paginationControls">
-          <button 
-            className="pageBtn first" 
-            onClick={goToFirstPage} 
-            disabled={currentPage === 1}
-          >«</button>
-          <button 
-            className="pageBtn prev" 
-            onClick={goToPrevPage} 
-            disabled={currentPage === 1}
-          >‹</button>
+          <button className="pageBtn first" onClick={goToFirstPage} disabled={currentPage === 1}>«</button>
+          <button className="pageBtn prev" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
           <div className="currentPageInputWrapper">
-            <input 
-              type="number" 
-              value={currentPage} 
-              onChange={handlePageInput}
-              className="currentPageInput" 
-            />
+            <input type="number" value={currentPage} onChange={(e) => setCurrentPage(Number(e.target.value))} className="currentPageInput" />
           </div>
-
           <div className="paginationInfo">
             <div>out of <span>{totalPages || 1}</span></div>
           </div>
-          <button 
-            className="pageBtn next" 
-            onClick={goToNextPage} 
-            disabled={currentPage === totalPages || totalPages === 0}
-          >›</button>
-          <button 
-            className="pageBtn last" 
-            onClick={goToLastPage} 
-            disabled={currentPage === totalPages || totalPages === 0}
-          >»</button>
+          <button className="pageBtn next" onClick={goToNextPage} disabled={currentPage === totalPages || totalPages === 0}>›</button>
+          <button className="pageBtn last" onClick={goToLastPage} disabled={currentPage === totalPages || totalPages === 0}>»</button>
         </div>
       </div>
     </div>
