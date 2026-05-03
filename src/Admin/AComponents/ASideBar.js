@@ -25,7 +25,7 @@ function ASideBar() {
         <img src={cptLogo} alt='CPT Logo' className='AmainLogo'/>
         {!isCollapsed && (
           <div className='AlogoText'>
-            <h1 className='headT'>Administator</h1>
+            <h1 className='headT'>Administrator</h1>
             <p className='headT'>Axis CPT Portal</p>
           </div>
         )}
@@ -53,15 +53,17 @@ function ASideBar() {
             <BiBriefcase className="linkIcon" /> {!isCollapsed && <span>OJT & Clinical</span>}
           </NavLink>
           
-          <NavLink to="/documents" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+          <NavLink to="/admin/documents" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiFile className="linkIcon" /> {!isCollapsed && <span>Documents</span>}
           </NavLink>
           
+          {/* 
           <NavLink to="/announcements" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiBell className="linkIcon" /> {!isCollapsed && <span>Announcements</span>}
           </NavLink>
+          */}
           
-          <NavLink to="/history" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+          <NavLink to="/admin/history" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiHistory className="linkIcon" /> {!isCollapsed && <span>History</span>}
           </NavLink>
       </nav>

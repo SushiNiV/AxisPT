@@ -14,41 +14,69 @@
 .overlayContent {
   background: #F8FAFC;
   width: 90%;
-  max-width: 500px;
-  padding: 1rem 1.5rem;
+  max-width: 350px;
+  padding: 0.5rem 1.25rem;
   border-radius: 5px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-  animation: slideUp 0.3s ease-out;
+  animation: softRise 0.4s ease-out;
+}
+
+@keyframes softRise {
+  from { 
+    opacity: 0; 
+    transform: translateY(10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+.overlayCloseBTArea {
+  display: flex;
+  justify-content: flex-end; 
+  align-items: center;
+  width: 100%; 
+}
+
+.closeBt {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0;
 }
 
 .overlayHeader {
   display: flex;
-  justify-content: space-between;
+  flex-direction: row;
+  justify-content: flex-start; 
   align-items: center;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
+  gap: 5px;
 }
 
 .overlayIconWrapper {
   display: flex;
   justify-content: center;
-  width: 100%;
-  margin-top: 1rem;
+  align-items: center;
+  border-radius: 50%;
+  padding: 0; 
+  margin: 0;
+}
+
+.overlayIconWrapper svg {
+  display: block;
+  font-size: 24px;
+  margin: 0 !important; 
 }
 
 .overlayHeader h3 {
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  color: #3d1616;
 }
 
-.closeBt {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  font-weight: bold;
-  cursor: pointer;
-}
 
 .overlayBody {
   display: flex;
@@ -59,7 +87,7 @@
 
 .overlayBody p {
   font-size: 0.875rem;
-  margin-bottom: 1rem;
+  margin: 2rem 0;
 }
 
 .overlayBody button {
@@ -72,9 +100,5 @@
   font-weight: 600;
   text-transform: uppercase;
   cursor: pointer;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  margin-bottom: 1rem;
 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './AHeader.css';
-import { BiPowerOff, BiBell, BiUserCircle, BiLogOutCircle } from 'react-icons/bi';
+import { BiPowerOff, BiBell, BiUserCircle, BiInfoCircle } from 'react-icons/bi';
 import PopupOverlay from '../../Components/PopupOverlay';
 
 function AHeader({ user }) {
@@ -14,7 +14,11 @@ function AHeader({ user }) {
     const path = location.pathname;
     if (path.startsWith('/admin/dashboard')) return 'Dashboard';
     if (path.startsWith('/admin/student-management')) return 'Student Management';
-    if (path.startsWith('/academics')) return 'Academics & Grades';
+    if (path.startsWith('/admin/academics')) return 'Academics & Grades';
+    if (path.startsWith('/admin/documents')) return 'Documents';
+    if (path.startsWith('/admin/announcements')) return 'Announcements';
+    if (path.startsWith('/admin/history')) return 'History';
+    
     if (path.startsWith('/settings')) return 'Settings';
     return 'Administrator';
   };
@@ -51,17 +55,11 @@ function AHeader({ user }) {
         isOpen={isLogoutModalOpen} 
         onClose={() => setIsLogoutModalOpen(false)}
         title="Confirm Logout"
-        icon={<BiLogOutCircle size={50} color="#dc3545" />}
+        icon={<BiInfoCircle />}
       >
         <div className="logoutModalContent">
-          <p>Are you sure you want to log out of the system? Any unsaved changes may be lost.</p>
+          <p>Are you sure you want to log out of the system?<br></br>Any unsaved changes may be lost.</p>
           <div className="overlayActionButtons">
-            <button 
-              className="cancelBtn" 
-              onClick={() => setIsLogoutModalOpen(false)}
-            >
-              Cancel
-            </button>
             <button 
               className="confirmBtn" 
               onClick={handleLogoutAction}

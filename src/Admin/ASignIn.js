@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ASignIn.css';
+import { BiInfoCircle } from 'react-icons/bi';
 import PopupOverlay from '../Components/PopupOverlay';
 
 function ASignIn() {
@@ -146,15 +147,11 @@ function ASignIn() {
           isOpen={true} 
           onClose={() => setPopupStatus(null)} 
           title="ACCESS DENIED"
-          icon={
-            <span className="material-icons" style={{ color: '#EF4444', fontSize: '50px' }}>
-              report_problem
-            </span>
-          }
+          icon={<BiInfoCircle />}
         >
           <p>{errorMessage}</p>
           <button 
-            style={{ backgroundColor: '#EF4444' }} 
+            style={{ backgroundColor: '#3d1616  ' }} 
             onClick={() => setPopupStatus(null)}
           >
             RETRY

@@ -43,6 +43,28 @@ const Admin = {
     return result.rows;
   },
 
+  getMasterlist: async () => {
+  const result = await pool.query(`
+    SELECT 
+      s.student_id as id,
+      s.account_status,
+      pii.firstname || ' ' || pii.lastname as name,
+      edu.program,
+      edu.year_level as year,
+      edu.section as block,
+      CASE 
+        WHEN s.account_status = true THEN 'Enrolled'
+        ELSE 'Pending'
+      END as status
+    FROM students s
+    LEFT JOIN student_pii pii ON s.student_id = pii.student_id
+    LEFT JOIN student_education edu ON s.student_id = edu.student_id
+    WHERE s.account_status = true 
+    ORDER BY pii.lastname ASC
+  `);
+  return result.rows;
+},
+
   updatePassword: async (employeeID, hashedNewPassword) => {
     return await pool.query(
       'UPDATE administrators SET password_hash = $1, must_change_password = false WHERE employee_id = $2',
@@ -55,7 +77,26 @@ const Admin = {
       'INSERT INTO history_transactions (user_id, user_role, user_designation, action, target_id, details) VALUES ($1, $2, $3, $4, $5, $6)',
       [user.employee_id, user.role, user.designation, actionType, user.employee_id, details]
     );
+  },
+
+  acceptStudentsBulk: async (ids) => {
+    return await pool.query(
+      `UPDATE students 
+       SET account_status = true, 
+           must_change_password = true 
+       WHERE student_id = ANY($1)`,
+      [ids]
+    );
+  },
+
+  rejectStudentsBulk: async (ids) => {
+    // If rejecting means deleting their record entirely:
+    return await pool.query(
+      'DELETE FROM students WHERE student_id = ANY($1)',
+      [ids]
+    );
   }
 };
+
 
 module.exports = Admin;

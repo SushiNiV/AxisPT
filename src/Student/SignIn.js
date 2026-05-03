@@ -41,13 +41,18 @@ function SignIn() {
       e.preventDefault();
         
       try {
+      console.log("Sending login request with:", formData);
+      console.log("API URL:", `${process.env.REACT_APP_API_URL}/student/login`);
+      
       const response = await fetch(`${process.env.REACT_APP_API_URL}/student/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
 
+      console.log("Response status:", response.status);
       const data = await response.json();
+      console.log("Response data:", data);
         if (data.success) {
           sessionStorage.setItem('token', data.token);
           sessionStorage.setItem('studentID', formData.studentID);
@@ -55,9 +60,9 @@ function SignIn() {
           sessionStorage.setItem('role', 'student');
 
           if (data.mustChangePassword) {
-            navigate('/student-change-password');
+            navigate('/student/change-password');
           } else {
-            navigate('/dashboard');
+            navigate('/student/dashboard');
           } 
         } else {
           alert(data.message);

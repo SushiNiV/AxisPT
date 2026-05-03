@@ -45,80 +45,6 @@
   background: transparent;
 }
 
-.filterContainer {
-  position: relative;
-  margin-left: 0.5rem;
-}
-
-.filterToggleBtn {
-  display: flex;
-  align-items: center;
-  background-color: #fff;
-  border: 1px solid #ccc;
-  padding: 8px 20px;
-  border-radius: 5px;
-  cursor: pointer;
-  color: #3d1616;
-  font-weight: 500;
-  font-size: 0.875rem;
-  transition: all 0.3s ease;
-}
-
-.filterToggleBtn:hover, .filterToggleBtn.active {
-  background-color: #3d1616;
-  color: #fff;
-  border-color: #3d1616;
-}
-
-.filterDropdown {
-  position: absolute;
-  top: 48px;
-  right: 0;
-  background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 12px;
-  padding: 20px;
-  width: 250px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-  z-index: 100;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.filterGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.filterGroup label {
-  font-size: 0.8rem;
-  font-weight: bold;
-  color: #666;
-}
-
-.filterGroup select {
-  padding: 8px;
-  border-radius: 5px;
-  border: 1px solid #ddd;
-  outline: none;
-}
-
-.applyFilterBtn {
-  background-color: #3d1616;
-  color: white;
-  border: none;
-  padding: 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  margin-top: 5px;
-}
-
-.applyFilterBtn:hover {
-  background-color: #5a2020;
-}
-
 .tableContainer {
   overflow-x: auto;
   background-color: #fff;
@@ -126,12 +52,12 @@
   margin-bottom: 0.55rem;
 }
 
-
 .studentTable {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
   font-size: 0.875rem;
+  table-layout: auto;
 }
 
 .studentTable th {
@@ -142,19 +68,6 @@
   border-bottom: 2px solid #eee;
   position: sticky;
   top: 0;
-}
-
-.studentTable th:last-child {
-  text-align: center;
-}
-
-.studentTable td:last-child {
-  text-align: center;
-  vertical-align: middle;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-bottom: none;
 }
 
 .studentTable td {

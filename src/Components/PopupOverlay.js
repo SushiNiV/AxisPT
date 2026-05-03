@@ -18,15 +18,18 @@ const PopupOverlay = ({ isOpen, onClose, icon, title, children }) => {
     <div className="overlayBackdrop" onClick={onClose}>
       <div className="overlayContent" onClick={(e) => e.stopPropagation()}>
         
-        <div className="overlayHeader">
-          <h3>{title}</h3>
+        <div className="overlayCloseBTArea">
           <button className="closeBt" onClick={onClose}>&times;</button>
         </div>
-        {icon && (
+        <div className="overlayHeader">
+          {icon && (
           <div className="overlayIconWrapper">
             {icon}
           </div>
-        )}
+          )}
+          <h3>{title}</h3>
+        </div>
+ 
         <div className="overlayBody">
           {children}
         </div>

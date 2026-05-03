@@ -1,0 +1,15 @@
+.historyPage th {
+  background-color: #f8f9fa;
+  padding: 10px 15px;
+  color: #3d1616;
+  font-weight: 700;
+  border-bottom: 2px solid #eee;
+  position: sticky;
+  top: 0;
+}
+
+.historyPage  th:first-child {
+  padding-left: 2.5rem;
+  width: 1%;
+  min-width: 50px;
+}

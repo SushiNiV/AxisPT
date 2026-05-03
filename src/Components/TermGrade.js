@@ -1,7 +1,7 @@
 import React from 'react';
 import './TermGrade.css';
 
-const StudentForm = ({ data }) => {
+const TermGrade = ({ data }) => {
   return (
     <div className="term-container">
 
@@ -446,4 +446,4 @@ const StudentForm = ({ data }) => {
      
   );
 };
-export default StudentForm;
+export default TermGrade;

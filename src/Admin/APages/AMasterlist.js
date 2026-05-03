@@ -1,34 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './AMasterlist.css';
-import { BiSearch, BiFilterAlt, BiX } from 'react-icons/bi';
+import { BiSearch, BiX, BiTrash, BiExport, BiRefresh } from 'react-icons/bi';
+import SelectionPanel from '../../Components/SelectionPanel';
+import FilterComponent from '../../Components/FilterComponent';
 
 function AMasterlist() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [activeFilters, setActiveFilters] = useState({});
   const [selectedIds, setSelectedIds] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const students = [
-    { id: '01230001234', name: 'Dela Cruz, Juan P.', year: '3rd Year', block: 'BSPT 3-Y2-1', program: 'Computer Science', status: 'Enrolled' },
-    { id: '01230001235', name: 'Santos, Maria L.', year: '2nd Year', block: 'BSPT 2-Y2-1', program: 'Business Administration', status: 'Pending' },
-    { id: '01230001236', name: 'Reyes, Ricardo G.', year: '1st Year', block: 'BSPT 1-Y2-1', program: 'Engineering', status: 'Withdrawn' },
-    { id: '01230001237', name: 'Luna, Antonio K.', year: '4th Year', block: 'BSPT 4-Y2-1', program: 'Physical Therapy', status: 'Enrolled' },
-    { id: '01230001238', name: 'Dela Cruz, Juan P.', year: '3rd Year', block: 'BSPT 3-Y2-1', program: 'Computer Science', status: 'Enrolled' },
-    { id: '01230001239', name: 'Santos, Maria L.', year: '2nd Year', block: 'BSPT 2-Y2-1', program: 'Business Administration', status: 'Pending' },
-    { id: '01230001240', name: 'Reyes, Ricardo G.', year: '1st Year', block: 'BSPT 1-Y2-1', program: 'Engineering', status: 'Withdrawn' },
-    { id: '01230001241', name: 'Luna, Antonio K.', year: '4th Year', block: 'BSPT 4-Y2-1', program: 'Physical Therapy', status: 'Enrolled' },
-    { id: '01230001242', name: 'Dela Cruz, Juan P.', year: '3rd Year', block: 'BSPT 3-Y2-1', program: 'Computer Science', status: 'Enrolled' },
-    { id: '01230001243', name: 'Santos, Maria L.', year: '2nd Year', block: 'BSPT 2-Y2-1', program: 'Business Administration', status: 'Pending' },
-    { id: '01230001244', name: 'Reyes, Ricardo G.', year: '1st Year', block: 'BSPT 1-Y2-1', program: 'Engineering', status: 'Withdrawn' },
-    { id: '01230001245', name: 'Luna, Antonio K.', year: '4th Year', block: 'BSPT 4-Y2-1', program: 'Physical Therapy', status: 'Enrolled' },
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+    useEffect(() => {
+    fetchMasterlist();
+  }, []);
+
+  const fetchMasterlist = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/masterlist`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setStudents(data.students);
+      }
+    } catch (error) {
+      console.error("Error loading masterlist:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const masterlistFilters = [
+    { label: "Status", placeholder: "All Statuses", options: ["Enrolled", "Pending", "Withdrawn"] },
+    { label: "Year Level", options: ["1ST YEAR", "2ND YEAR", "3RD YEAR", "4TH YEAR"] },
+    { label: "Program", options: ["PHYSICAL THERAPY", "RESPIRATORY THERAPY", "RADIOLOGIC TECHNOLOGY"] }
   ];
 
-  const filteredStudents = students.filter((student) =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleFilterApply = (filters) => {
+    setActiveFilters(filters);
+    setCurrentPage(1);
+  };
+
+  const filteredStudents = students.filter((student) => {
+    const matchesSearch = 
+      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.id.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesDropdowns = Object.keys(activeFilters).every(key => {
+      const selectedValues = activeFilters[key];
+      
+      if (!selectedValues || selectedValues.length === 0) return true;
+
+      if (key === "Year Level") return selectedValues.includes(student.year);
+      if (key === "Status") return selectedValues.includes(student.status);
+      if (key === "Program") return selectedValues.includes(student.program);
+      
+      return true;
+    });
+
+    return matchesSearch && matchesDropdowns;
+  });
 
   const totalPages = Math.ceil(filteredStudents.length / rowsPerPage);
   const indexOfLastStudent = currentPage * rowsPerPage;
@@ -100,43 +136,12 @@ function AMasterlist() {
           )}
         </div>
 
-        <div className="filterContainer">
-          <button 
-            className={`filterToggleBtn ${isFilterOpen ? 'active' : ''}`}
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-          >
-            <BiFilterAlt className="linkIcon" />
-            Filter
-          </button>
-
-          {isFilterOpen && (
-            <div className="filterDropdown">
-              <div className="filterGroup">
-                <label>Year Level</label>
-                <select>
-                  <option value="">All Years</option>
-                  <option value="1st Year">1st Year</option>
-                  <option value="2nd Year">2nd Year</option>
-                  <option value="3rd Year">3rd Year</option>
-                  <option value="4th Year">4th Year</option>
-                </select>
-              </div>
-              <div className="filterGroup">
-                <label>Status</label>
-                <select>
-                  <option value="">All Status</option>
-                  <option value="Enrolled">Enrolled</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Withdrawn">Withdrawn</option>
-                </select>
-              </div>
-              <button className="applyFilterBtn">Apply Filters</button>
-            </div>
-          )}
-        </div>
+        <FilterComponent 
+          filters={masterlistFilters} 
+          onApply={handleFilterApply} 
+        />
       </div>
 
-      {/* Table Section */}
       <div className="tableContainer">
         <table className="studentTable">
           <thead>
@@ -186,16 +191,18 @@ function AMasterlist() {
               })
             ) : (
               <tr>
-                <td colSpan="8" style={{textAlign: 'center', padding: '30px', color: '#666'}}>
-                  No students found matching "{searchTerm}"
-                </td>
+                <td colSpan="8" style={{textAlign: 'center', padding: '10px', color: '#666'}}>
+                {searchTerm 
+                  ? `No student found matching "${searchTerm}"` 
+                  : "No students available"
+                }
+              </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* Pagination Section */}
       <div className="paginationContainer">
         <div className="paginationControls">
           <button className="pageBtn first" onClick={goToFirstPage} disabled={currentPage === 1}>«</button>
@@ -218,6 +225,22 @@ function AMasterlist() {
           <button className="pageBtn last" onClick={goToLastPage} disabled={currentPage === totalPages || totalPages === 0}>»</button>
         </div>
       </div>
+      <SelectionPanel 
+        selectedCount={selectedIds.length} 
+        onClear={() => setSelectedIds([])}
+      >
+        <button onClick={() => console.log("Changing Status...")}>
+          <BiRefresh size={18} /> Change Status
+        </button>
+        
+        <button onClick={() => console.log("Exporting...")}>
+          <BiExport size={18} /> Export
+        </button>
+        
+        <button className="deleteBtn" onClick={() => console.log("Deleting...")}>
+          <BiTrash size={18} /> Delete
+        </button>
+      </SelectionPanel>
     </div>
   );
 }

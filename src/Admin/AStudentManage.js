@@ -8,7 +8,6 @@ function AStudentManage() {
     { label: 'Masterlist', path: '/admin/student-management/masterlist' },
     { label: 'Pending Students', path: '/admin/student-management/pending-students' },
     { label: 'Access Control', path: '/admin/student-management/access-control' },
-    { label: 'History', path: '/admin/student-management/history' }
   ];
   return (
     <div className="astudentManageContainer">

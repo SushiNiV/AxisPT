@@ -5,6 +5,8 @@ import Home from './Main/Home';
 
 import SignIn from './Student/SignIn';
 import Registration from './Main/Registration';
+import SChangePass from './Student/SChangePass';
+import SDashboard from './Student/SDashboard';
 
 import ASignIn from './Admin/ASignIn';
 import ADashboard from './Admin/ADashboard';
@@ -16,6 +18,8 @@ import APendingStudents from './Admin/APages/APendingStudents';
 import AGrades from './Admin/AGrades';
 import ACourses from './Admin/APages/ACourses';
 
+import AHistory from './Admin/AHistory';
+
 import ChangePass from './Admin/AChangePass';
 
 import ProtectedRoute from './Components/ProtectedRoute';
@@ -24,6 +28,9 @@ import SLayout from './Student/SComponents/SLayout';
 
 import StudentForm from './Components/StudentForm'
 import TermGrade from './Components/TermGrade';
+import CourseOutline from './Components/CourseOutline';
+import Sample from './Sample'
+import ADocuments from './Admin/ADocuments';
 
 function App() {
   return (
@@ -32,7 +39,9 @@ function App() {
         <Route path="/" element={<Navigate to="/home" />} />
         <Route path="/home" element={<Home />} />
         <Route path="/student-form" element={<StudentForm />} />
-        <Route path="/term-grade" element={<TermGrade />} />
+        <Route path="/admin/documents/term-grade" element={<TermGrade />} />
+        <Route path="/course-outline" element={<CourseOutline />} />
+        <Route path="/sample" element={<Sample />} />
 
         {/* ADMIN */}
         <Route path="/admin-signin" element={<ASignIn />} />
@@ -53,19 +62,27 @@ function App() {
 
               <Route path="courses" element={<ACourses />} />
             </Route>
+
+            <Route path="/admin/documents" element={<ADocuments />} >
+    
+            </Route>
+            <Route path="admin/history" element={<AHistory />} >
+            
+            </Route>
           </Route>
           <Route path="/change-password" element={<ChangePass />} />
         </Route>   
 
         {/* STUDENT */}
-        <Route path="/signin" element={<SignIn />} />
         <Route path="/registration" element={<Registration />} />
 
-        <Route element={<ProtectedRoute />}>
+        <Route path="/signin" element={<SignIn />} />
+        <Route element={<ProtectedRoute/>}>
           <Route element={<SLayout />}>
-
-          </Route>
-        </Route> 
+            <Route path="/student/dashboard" element={<SDashboard/>} />
+          </Route> 
+          <Route path="/student-change-password" element={<SChangePass/>}/>
+        </Route>
  
       </Routes>
     </Router>

@@ -5,8 +5,9 @@ import ASubheader from './AComponents/ASubheader';
 
 function AGrades() {
   const gradesTabs = [
-    { label: 'Academic Grades', path: '/admin/academics/grades' },
+    { label: 'Programs & Sections', path: '/admin/academics/programs&sections' },
     { label: 'Courses', path: '/admin/academics/courses' },
+    { label: 'Academic Grades', path: '/admin/academics/grades' },
   ];
   return (
     <div className="agradesContainer">

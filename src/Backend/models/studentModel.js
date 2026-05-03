@@ -1,11 +1,15 @@
 const pool = require('../config/db');
 
 const StudentModel = {
+
+  //need pala mag add ng log action, pero test muna kung gumagana yung login hohohoho
   //login
   findById: async (studentID) => {
     const result = await pool.query('SELECT * FROM students WHERE student_id = $1', [studentID]);
     return result.rows[0];
   },
+
+
 
   //registration
   createFullProfile: async (data, plainPassword) => {
@@ -232,7 +236,7 @@ const StudentModel = {
           data.studentID,
           'Student',
           'Student',
-          'Registration of Student Account',
+          'STUDENT REGISTRATION',
           data.studentID,
           `Initial registration for ${data.firstName} ${data.middleName} ${data.lastName} ${data.suffix}`
         ];
@@ -245,6 +249,14 @@ const StudentModel = {
     } finally {
       client.release();
     }
+  },
+
+  updatePassword: async (studentID, passwordHash) => {
+    const result = await pool.query(
+      'UPDATE students SET password_hash = $1, must_change_password = false WHERE student_id = $2',
+      [passwordHash, studentID]
+    );
+    return result.rowCount;
   }
 };
 
