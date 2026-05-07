@@ -16,7 +16,13 @@ import AMasterlist from './Admin/APages/AMasterlist';
 import APendingStudents from './Admin/APages/APendingStudents';
 
 import AGrades from './Admin/AGrades';
+import AProgSec from './Admin/APages/AProgSec'
 import ACourses from './Admin/APages/ACourses';
+
+import ADocuments from './Admin/ADocuments';
+import AStudentForm  from './Admin/APages/AStudentForm';
+
+import AAccessCtrl from './Admin/AAccessCtrl'
 
 import AHistory from './Admin/AHistory';
 
@@ -30,7 +36,7 @@ import StudentForm from './Components/StudentForm'
 import TermGrade from './Components/TermGrade';
 import CourseOutline from './Components/CourseOutline';
 import Sample from './Sample'
-import ADocuments from './Admin/ADocuments';
+
 
 function App() {
   return (
@@ -53,19 +59,22 @@ function App() {
               <Route index element={<Navigate to="masterlist" replace />} />
               <Route path="masterlist" element={<AMasterlist />} />
               <Route path="pending-students" element={<APendingStudents />} />
-              {/* Other sub-pages
-              <Route path="access-control" element={<AAccessControl />} />
-              <Route path="history" element={<AHistory />} /> */}
             </Route>
             <Route path="/admin/academics" element={<AGrades />} >
-              <Route index element={<Navigate to="" replace />} />
+              <Route index element={<Navigate to="programs&sections" replace />} />
+              <Route path="programs&sections" element={<AProgSec />} />
 
               <Route path="courses" element={<ACourses />} />
             </Route>
 
             <Route path="/admin/documents" element={<ADocuments />} >
-    
+              <Route path="student-form/:studentId?" element={<AStudentForm/>}/>
             </Route>
+
+            <Route path="/admin/access-control" element={<AAccessCtrl />} >
+              <Route index element={<Navigate to="" replace />} />
+            </Route>
+
             <Route path="admin/history" element={<AHistory />} >
             
             </Route>

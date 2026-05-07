@@ -60,7 +60,7 @@ function SignIn() {
           sessionStorage.setItem('role', 'student');
 
           if (data.mustChangePassword) {
-            navigate('/student/change-password');
+            navigate('/student-change-password');
           } else {
             navigate('/student/dashboard');
           } 

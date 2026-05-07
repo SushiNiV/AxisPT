@@ -1,86 +1,152 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import './StudentForm.css';
 
-function StudentForm() {
+function StudentForm({ adminMode = false }) {
+  const { studentId } = useParams();  
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const formatToPHT = (dateString) => {
+  if (!dateString) return "";
+  
+  const date = new Date(dateString);
+  
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric',
+  }).format(date);
+};
+
+const calculateBMI = (weightLbs, heightFt) => {
+  if (!weightLbs || !heightFt) return "---";
+  const heightInMeters = heightFt * 0.3048;
+  const weightInKg = weightLbs * 0.453592;
+  const bmi = weightInKg / (heightInMeters ** 2);
+  return bmi.toFixed(2);
+};
+
+  const calculateAge = (birthDate) => {
+    if (!birthDate) return "";
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+    }
+    return age;
+};
+
   useEffect(() => {
-    fetch('http://localhost:5000/api/student/form')
+    if (!studentId && adminMode) return;
+
+    const token = sessionStorage.getItem('token');
+    const fetchUrl = studentId 
+      ? `http://localhost:5000/api/admin/student-form/${studentId}` 
+      : `http://localhost:5000/api/student/form/me`;
+
+    setLoading(true);
+
+    fetch(fetchUrl, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then((res) => res.json())
       .then((json) => {
-        setData(json);
+        if (json.success) {
+          let studentData = json.data;
+
+          if (Array.isArray(studentData.support) && studentData.support.length > 0) {
+            const rawString = studentData.support[0]; 
+            studentData.support = rawString
+              .replace(/{|}/g, '')
+              .split(',')
+              .map(item => item.replace(/"/g, '').trim());
+          }
+          
+          setData(studentData);
+        }
         setLoading(false);
       })
-      .catch((err) => console.error("Error fetching student data:", err));
-  }, []);
+      .catch((err) => {
+        console.error("Fetch error:", err);
+        setLoading(false);
+      });
+  }, [studentId, adminMode]);
+
+  const formatFullName = (f, m, l, s) => `${f || ''} ${m || ''} ${l || ''} ${s || ''}`.trim();
+
+  if (loading) return <div className="loading-spinner">Loading Form Data...</div>;
 
   return (
     <div className="form-container">
-      {/* Personal Information */}
       <div className="section-title">Personal Information</div>
 
+      {/* FULL NAME */}
       <div className="grid-row three-cols height-one border-bottom">
         <div className="sfinput-group col-span-4 no-border-right">
           <label>FULL NAME</label>
         </div>
         <div className="sfinput-group">
-          <div className="value-line">{data?.mobile}</div>
+          <div className="value-line">{data?.firstname}</div>
           <span className="sub-label center-text">First Name</span>
         </div>
         <div className="sfinput-group last-cell">
-          <div className="value-line">{data?.email}</div>
+          <div className="value-line">{data?.lastname}</div>
           <span className="sub-label center-text">Last Name</span>
         </div>
         <div className="sfinput-group last-cell">
-          <div className="value-line">{data?.email}</div>
+          <div className="value-line">{data?.middlename}</div>
           <span className="sub-label center-text">Middle Name</span>
         </div>
       </div>
 
-      {/* PRESENT ADDRESS SECTION */}
+      {/* PRESENT ADDRESS */}
       <div className="grid-row four-cols-address height-one border-bottom">
         <div className="sfinput-group col-span-4 no-border-right">
           <label>PRESENT ADDRESS:</label>
         </div>
-        <div className="sfinput-group col-small-left">
-          <div className="value-line">{data?.streetNo}</div>
-          <span className="sub-label">No.</span>
+        <div className="sfinput-group">
+          <div className="value-line">{data?.present_houseno}</div>
+          <span className="sub-label center-text">No.</span>
         </div>
         <div className="sfinput-group">
-          <div className="value-line">{data?.streetName}</div>
-          <span className="sub-label">Street</span>
+          <div className="value-line">{data?.present_street}</div>
+          <span className="sub-label center-text">Street</span>
         </div>
         <div className="sfinput-group">
-          <div className="value-line">{data?.subdivision}</div>
-          <span className="sub-label">Subdivision/Barangay</span>
+          <div className="value-line">{data?.present_sbdvsn_brgy}</div>
+          <span className="sub-label center-text">Subdivision/Barangay</span>
         </div>
         <div className="sfinput-group last-cell">
-          <div className="value-line">{data?.city}</div>
-          <span className="sub-label">City/Municipality</span>
+          <div className="value-line">{data?.present_city_mncplty}</div>
+          <span className="sub-label center-text">City/Municipality</span>
         </div>
       </div>
 
-      {/* PROVINCIAL ADDRESS SECTION */}
+      {/* PROVINCIAL ADDRESS */}
       <div className="grid-row four-cols-address height-one border-bottom">
         <div className="sfinput-group col-span-4 no-border-right">
           <label>PROVINCIAL ADDRESS:</label>
         </div>
-        <div className="sfinput-group col-small-left">
-          <div className="value-line">{data?.streetNo}</div>
-          <span className="sub-label">No.</span>
+        <div className="sfinput-group"> 
+          <div className="value-line">{data?.provincial_houseno}</div>
+          <span className="sub-label center-text">No.</span>
         </div>
         <div className="sfinput-group">
-          <div className="value-line">{data?.streetName}</div>
-          <span className="sub-label">Street</span>
+          <div className="value-line">{data?.provincial_street}</div>
+          <span className="sub-label center-text">Street</span>
         </div>
         <div className="sfinput-group">
-          <div className="value-line">{data?.subdivision}</div>
-          <span className="sub-label">Subdivision/Barangay</span>
+          <div className="value-line">{data?.provincial_sbdvsn_brgy}</div>
+          <span className="sub-label center-text">Subdivision/Barangay</span>
         </div>
         <div className="sfinput-group last-cell">
-          <div className="value-line">{data?.city}</div>
-          <span className="sub-label">City/Municipality</span>
+          <div className="value-line">{data?.provincial_city_mncplty}</div>
+          <span className="sub-label center-text">City/Municipality</span>
         </div>
       </div>
 
@@ -88,18 +154,15 @@ function StudentForm() {
       <div className="grid-row three-cols height-one border-bottom">
         <div className="sfinput-group vertical-border">
           <label>Landline:</label>
-          <div className="value-line">{data?.landline}</div>
-          <span className="sub-label">&nbsp;</span>
+          <div className="value-line">{data?.landline_no}</div>
         </div>
         <div className="sfinput-group vertical-border">
           <label>Mobile Number/s:</label>
-          <div className="value-line">{data?.mobile}</div>
-          <span className="sub-label">&nbsp;</span>
+          <div className="value-line">{data?.mobile_no}</div>
         </div>
         <div className="sfinput-group">
           <label>E-mail Address:</label>
           <div className="value-line">{data?.email}</div>
-          <span className="sub-label">&nbsp;</span>
         </div>
       </div>
 
@@ -107,320 +170,324 @@ function StudentForm() {
       <div className="grid-row six-cols-aligned height-one border-bottom">
         <div className="sfinput-group vertical-border">
           <label>DATE OF BIRTH</label>
-          <div className="value-line">{data?.dob}</div>
-          <span className="sub-label">&nbsp;</span>
+          <div className="value-line">{formatToPHT(data?.birth_date)}</div>
         </div>
         <div className="sfinput-group vertical-border">
           <label>AGE</label>
-          <div className="value-line">{data?.age}</div>
-          <span className="sub-label">&nbsp;</span>
+          <div className="value-line">{calculateAge(data?.birth_date)}</div>
         </div>
         <div className="sfinput-group vertical-border">
           <label>GENDER</label>
-          <div className="value-line">{data?.gender}</div>
-          <span className="sub-label">&nbsp;</span>
+          <div className="value-line">{data?.sex}</div>
         </div>
         <div className="sfinput-group vertical-border">
           <label>RELIGION</label>
           <div className="value-line">{data?.religion}</div>
-          <span className="sub-label">&nbsp;</span>
         </div>
         <div className="sfinput-group vertical-border">
           <label>NATIONALITY</label>
           <div className="value-line">{data?.nationality}</div>
-          <span className="sub-label">&nbsp;</span>
         </div>
         <div className="sfinput-group vertical-border last-cell">
           <label>CIVIL STATUS</label>
-          <div className="value-line">{data?.civilStatus}</div>
-          <span className="sub-label">&nbsp;</span>
+          <div className="value-line">{data?.civil_status}</div>
         </div>
       </div>
 
-      {/* STATUS 2 */}
+      {/* PHYSICAL INFO & HS */}
       <div className="grid-row six-cols-merged height-one border-bottom">
         <div className="sfinput-group vertical-border">
           <label>HEIGHT (ft)</label>
-          <div className="value-line">{data?.dob}</div>
+          <div className="value-line">{data?.height}</div>
         </div>
         <div className="sfinput-group vertical-border">
           <label>WEIGHT (lbs)</label>
-          <div className="value-line">{data?.age}</div>
+          <div className="value-line">{data?.weight}</div>
         </div>
         <div className="sfinput-group vertical-border">
-          <label>BMI (for school nurse)</label>
-          <div className="value-line">{data?.gender}</div>
+          <label>BMI</label>
+          <div className="value-line">{calculateBMI(data?.weight, data?.height)}</div>
         </div>
         <div className="sfinput-group vertical-border span-two">
-          <label>Do you have eye or visual problems?<br></br><i>If yes, please specify</i></label>
-          <div className="value-line">{data?.religion}</div>
+          <label>Eye/Visual Problems?</label>
+          <div className="value-line">{data?.visual_problems}</div>
         </div>
         <div className="sfinput-group vertical-border last-cell">
-          <label>Languages/<br></br>Dialects</label>
-          <div className="value-line">{data?.civilStatus}</div>
+          <label>Languages</label>
+          <div className="value-line">{data?.language_dialects}</div>
         </div>
       </div>
 
       <div className="grid-row six-cols-aligned height-one border-bottom">
         <div className="sfinput-group hs-name">
           <label>HIGH SCHOOL GRADUATED</label>
-          <div className="value-line">{data?.highSchool}</div>
+          <div className="value-line">{data?.highschool_graduated}</div>
         </div>
-
         <div className="sfinput-group hs-type vertical-border">
           <label>Public or Private HS?</label>
-          <div className="value-line">{data?.hsType}</div>
+          <div className="value-line">{data?.pubpriv_hs}</div>
         </div>
-
         <div className="sfinput-group last-cell">
-          <label>4th Year HS Final<br></br>Gen Average</label>
-          <div className="value-line">{data?.hsAverage}</div>
+          <label>HS Final Gen Average</label>
+          <div className="value-line">{data?.hs_final_gwa}</div>
         </div>
       </div>
 
-      {/* Familys Information */}
+      {/* Family Information */}
       <div className="section-title">Family Information</div>
       
+      {/* FATHER */}
       <div className="grid-row two-cols border-bottom">
         <div className="sfinput-group vertical-border">
           <label>FATHER'S NAME:</label>
-          <div className="value-line">{data?.fatherName}</div>
+          <div className="value-line">
+            {formatFullName(data?.father_firstname, data?.father_middlename, data?.father_lastname, data?.father_suffix)}
+          </div>
           <div className="checkbox-row">
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.father_alive === 'LIVING'} readOnly />
               <span className="sub-label">Living</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.father_alive === 'DECEASED'} readOnly />
               <span className="sub-label">Deceased</span>
             </div>
           </div>    
         </div>
-
         <div className="sfinput-group two-rows last-cell">
           <div className="internal-row two-cols border-bottom">
             <label>Occupation:</label>
-            <div className="value-line">{data?.fatherOccupation}</div>
+            <div className="value-line">{data?.father_occupation}</div>
           </div>
           <div className="internal-row">
-            <label>Father's Contact Number:</label>
-            <div className="value-line">{data?.fatherContact}</div>
+            <label>Contact Number:</label>
+            <div className="value-line">{data?.father_contact_no}</div>
           </div>
         </div>
       </div>  
 
+      {/* MOTHER */}
       <div className="grid-row two-cols border-bottom">
         <div className="sfinput-group vertical-border">
           <label>MOTHER'S NAME:</label>
-          <div className="value-line">{data?.fatherName}</div>
+          <div className="value-line">
+            {formatFullName(data?.mother_firstname, data?.mother_middlename, data?.mother_lastname, data?.mother_suffix)}
+          </div>
           <div className="checkbox-row">
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.mother_alive === 'LIVING'} readOnly />
               <span className="sub-label">Living</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.mother_alive === 'DECEASED'} readOnly />
               <span className="sub-label">Deceased</span>
             </div>
           </div>    
         </div>
-
         <div className="sfinput-group two-rows last-cell">
           <div className="internal-row two-cols border-bottom">
             <label>Occupation:</label>
-            <div className="value-line">{data?.fatherOccupation}</div>
+            <div className="value-line">{data?.mother_occupation}</div>
           </div>
           <div className="internal-row">
-            <label>Mother's Contact Number:</label>
-            <div className="value-line">{data?.fatherContact}</div>
+            <label>Contact Number:</label>
+            <div className="value-line">{data?.mother_contact_no}</div>
           </div>
         </div>
       </div> 
 
+      {/* GUARDIAN */}
       <div className="grid-row two-cols height-one border-bottom">
         <div className="sfinput-group vertical-border">
           <label>GUARDIAN'S NAME:</label>
-          <div className="value-line">{data?.fatherName}</div>   
+          <div className="value-line">
+            {formatFullName(data?.guardian_firstname, data?.guardian_middlename, data?.guardian_lastname, data?.guardian_suffix)}
+          </div>   
         </div>
-
         <div className="sfinput-group two-rows last-cell">
           <div className="internal-row two-cols border-bottom">
             <label>Relationship:</label>
-            <div className="value-line">{data?.fatherOccupation}</div>
+            <div className="value-line">{data?.guardian_relation}</div>
           </div>
           <div className="internal-row">
-            <label>Guardians's Contact Number:</label>
-            <div className="value-line">{data?.fatherContact}</div>
+            <label>Contact Number:</label>
+            <div className="value-line">{data?.guardian_contact_no}</div>
           </div>
         </div>
       </div>
 
+      {/* SOCIO-ECONOMIC */}
       <div className="grid-row six-cols-merged height-three border-bottom">
         <div className="sfinput-group vertical-border">
           <label>Who supports your college education?</label>
           <div className="checkbox-col">
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              {/* Use Sentence Case to match standard HTML values */}
+              <input type="checkbox" checked={data?.support?.includes('PARENTS')} readOnly />
               <span className="sub-label">Parents</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.support?.includes('RELATIVES')} readOnly />
               <span className="sub-label">Relatives</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.support?.includes('BROTHER/SISTER')} readOnly />
               <span className="sub-label">Brother or Sister</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.support?.includes('BENEFACTORS')} readOnly />
               <span className="sub-label">Benefactors</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.support?.includes('SCHOLARSHIPS')} readOnly />
               <span className="sub-label">Scholarships</span>
             </div>
-          </div> 
+          </div>
         </div>
         <div className="sfinput-group vertical-border">
           <label>Parent's Joint Monthly Income</label>
           <div className="checkbox-col">
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.parents_income  === 'BELOW P20K'} readOnly />
               <span className="sub-label">Below P20K</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.parents_income === 'P21K TO P40K'} readOnly />
               <span className="sub-label">P21K to P40K</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
-              <span className="sub-label">P41K to P80K</span>
+              <input type="checkbox" checked={data?.parents_income === 'P41K TO P80K'} readOnly />
+              <span className="sub-label">P41K to P60K</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.parents_income === 'ABOVE P80K'} readOnly />
               <span className="sub-label">Above P80K</span>
             </div>
           </div> 
         </div>
         <div className="sfinput-group vertical-border">
-          <label>While studying in OLFU will you live in?</label>
+          <label>While studying in OLFU, will you live in</label>
           <div className="checkbox-col">
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
-              <span className="sub-label">Dorm/Boarding house</span>
+              <input type="checkbox" checked={data?.living_in === 'DORM/BOARDING HOUSE'} readOnly />
+              <span className="sub-label">Dorm/Boarding House</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.living_in === "PARENT'S HOUSE"} readOnly />
               <span className="sub-label">Parent's house</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.living_in === "RELATIVE'S HOUSE"} readOnly />
               <span className="sub-label">Relative's house</span>
             </div>
+              <span className="sub-label gap">Other: </span>
           </div> 
         </div>
         <div className="sfinput-group vertical-border">
-          <label>Daily transportation expense (pesos)</label>
+          <label>Daily Transportation</label>
           <div className="checkbox-col">
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.daily_transpo_expense === '<P50'} readOnly />
               <span className="sub-label">&lt;P50</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.daily_transpo_expense === 'BETWEEN P51-P100'} readOnly />
               <span className="sub-label">Bet. P51-P100</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.daily_transpo_expense === 'P51-P100'} readOnly />
               <span className="sub-label">&gt;P100</span>
             </div>
           </div> 
         </div>
         <div className="sfinput-group vertical-border">
-          <label>Number of siblings? <i>(kapatid, if any)</i></label>
+          <label>Siblings:</label>
+          <div className="value-line large-text">{data?.no_siblings}</div>
         </div>
         <div className="sfinput-group">
-          <label>ORDINAL POSITION:<br></br><i>Are you the (please check)</i></label>
+          <label>Ordinal Position</label>
           <div className="checkbox-col">
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.ordinal_position === 'ONLY CHILD'} readOnly />
               <span className="sub-label">Only Child</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.ordinal_position === 'ELDEST CHILD'} readOnly />
               <span className="sub-label">Eldest Child</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.ordinal_position === 'MIDDLE CHILD'} readOnly />
               <span className="sub-label">Middle Child</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" className="tiny-check" checked={data?.fatherLiving} readOnly />
+              <input type="checkbox" checked={data?.ordinal_position === 'YOUNGEST CHILD'} readOnly />
               <span className="sub-label">Youngest Child</span>
             </div>
           </div> 
         </div>
       </div>
 
-      {/* Familys Information */}
-      <div className="section-title sec-title">Achievements, Hobbies, Interest, Etc.</div>
+      {/* ACHIEVEMENTS */}
+      <div className="section-title sec-title">Achievements & Interests</div>
       <div className="grid-row two-cols height-two border-bottom">
         <div className="sfinput-group vertical-border">
           <label>AWARD'S / HONORS RECEIVED</label>
-          <div className="value-line">{data?.fatherName}</div>   
+          <div className="value-line">{data?.awards_honors}</div>   
         </div>
         <div className="sfinput-group last-cell">
-          <label>WHAT CAREER / WORK DO YOU REALLY LIKE TO PURSUE?</label>
-          <div className="value-line">{data?.fatherName}</div>   
+          <label>WHAT CAREER/WORK DO YOU REALLY LIKE TO PURSUE?</label>
+          <div className="value-line">{data?.future_career}</div>   
         </div>
       </div> 
 
       <div className="grid-row two-cols height-two border-bottom">
         <div className="sfinput-group vertical-border">
           <label>HOBBIES / SPORTS / INTERESTS</label>
-          <div className="value-line">{data?.fatherName}</div>   
+          <div className="value-line">{data?.hobbies_interests}</div>   
         </div>
         <div className="sfinput-group last-cell">
           <label>WHAT ACADEMIC CLUB OR EXTRACURRICULAR ACTIVITIES DO YOU WANT TO JOIN?</label>
-          <div className="value-line">{data?.fatherName}</div>   
+          <div className="value-line">{data?.acad_clubs_extracurr}</div>   
         </div>
       </div>
-
-      {/* Familys Information */}
       <div className="section-title sec-title">Certifications</div>
-      <div className="grid-row ">
-        <div className="sfinput-group">
-          <label><i>I hereby certify that the above information is true and correct to the best  of my knowledge and belief. I understand that I will be subject to disciplinary action should the above information be proved false.</i></label>
-        </div>
+      <div className="grid-row">
+        <span className="sub-label left-text divider">
+          <i> 
+            I hereby certify that the information above is true an correct to the best of my knowledge an belief. 
+            I understand that I will be subject to disciplinary action should the above information to be proved false.
+          </i>
+        </span>
       </div>
+      {/* FOOTER */}
       <div className="grid-row two-cols center-text border-bottom">
         <div className="sfinput-group">
-          <div className="value-line">&nbsp;</div>   
-          <label>SIGNATURE OVER PRINTED NAME</label>
+          <div className="value-line small-text">{data?.firstname} {data?.lastname}</div>   
+          <span className="sub-label center-text closer">SIGNATURE OVER PRINTED NAME </span>
         </div>
         <div className="sfinput-group last-cell">
-          <div className="value-line">{data?.fatherName}</div>   
-          <label>DATE</label>
+          <div className="value-line small-text"> {new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Manila',
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric',
+          }).format(new Date())}
         </div>
-      </div>
-      <div className="grid-row two-cols border-bottom">
-        <div className="sfinput-group vertical-border">
-          <label>Course/Year/Section</label>
-          <div className="value-line">{data?.fatherName}</div>  
-        </div>
-        <div className="sfinput-group last-cell">
-          <label>Name of Class Adviser</label>
-          <div className="value-line">{data?.fatherName}</div>  
+           <span className="sub-label center-text closer">Date</span>
         </div>
       </div>
 
-      <div className="grid-row no-border">
-        <div className="sfinput-group">
-          <label className="footer-label">This record shall only be accomplished by the faculty-in-charge of the course. The student grades below are considered unofficial and are for the STAMP program use only. Any, modification, alteration and unauthorized use of this document is strictly restricted and is subjected to disiplinary actions. The official student academic  records are available only at the Registrar's Office.</label>
+       <div className="grid-row two-cols border-bottom">
+        <div className="sfinput-group vertical-border">
+          <label>COURSE/YEAR/SECTION</label>
+          <div className="value-line">{data?.acad_clubs_extracurr}</div>
         </div>
-      </div>
+        <div className="sfinput-group last-cell">
+          <label>NAME OF CLASS ADVISER</label>
+        </div>
+      </div> 
 
     </div>
-   );
+  );
 }
 export default StudentForm;

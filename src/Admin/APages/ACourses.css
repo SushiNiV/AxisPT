@@ -8,6 +8,8 @@
   align-items: center;
   background-color: #fff;
   border: 1px solid #ccc;
+  width: 145px;
+  justify-content: center;
   padding: 8px 20px;
   border-radius: 5px;
   cursor: pointer;

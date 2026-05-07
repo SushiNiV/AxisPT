@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import './SDashboard.css';
 
 function SDashboard() {
+  const studentName = {};
+
   return (
     <div className="sdashboardContainer">
       <div className="swcMessageArea">
-        <p>Welcome, Ma'am Admin!</p>
+        <p>Hello, {}</p>
       </div>
     </div>
   );

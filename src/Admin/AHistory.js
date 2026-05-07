@@ -14,6 +14,7 @@ function AHistory() {
   const [filterValues, setFilterValues] = useState({});
   const dropdownRef = useRef(null);
 
+  // 1. Data Fetching
   useEffect(() => {
     const fetchHistory = async () => {
       try {
@@ -29,7 +30,7 @@ function AHistory() {
 
         const data = await response.json();
 
-        if (data.success) {
+        if (data.success && data.history) {
           const mappedData = data.history.map(item => ({
             id: item.log_id,
             userId: item.user_id,
@@ -52,32 +53,36 @@ function AHistory() {
   }, []);
 
   const filters = [
-    { label: "Role", options: ["DEVELOPER", "ADMIN"] },
-    { label: "Action", options: ["LOGIN", "BULK_ACCEPT", "BULK_REJECT", "PASSWORD_CHANGE"] }
+    { label: "ROLE", options: ["DEVELOPER", "ADMIN"] },
+    { label: "ACTION", options: ["LOGIN", "BULK_ACCEPT", "BULK_REJECT", "PASSWORD_CHANGE"] }
   ];
 
+  // 2. Filtering Logic
   const filteredHistory = historyData.filter((item) => {
+    const searchStr = searchTerm.toLowerCase();
     const matchesSearch = 
-      item.userId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.action?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.details?.toLowerCase().includes(searchTerm.toLowerCase());
+      (item.userId?.toLowerCase() || "").includes(searchStr) ||
+      (item.action?.toLowerCase() || "").includes(searchStr) ||
+      (item.details?.toLowerCase() || "").includes(searchStr);
 
     const matchesFilters = Object.keys(filterValues).every(key => {
       const selectedValues = filterValues[key];
       if (!selectedValues || selectedValues.length === 0) return true;
-      if (key === "Role") return selectedValues.includes(item.userRole);
-      if (key === "Action") return selectedValues.includes(item.action);
+      if (key === "ROLE") return selectedValues.includes(item.userRole);
+      if (key === "ACTION") return selectedValues.includes(item.action);
       return true;
     });
 
     return matchesSearch && matchesFilters;
   });
 
-  const totalPages = Math.ceil(filteredHistory.length / rowsPerPage);
+  // 3. Pagination Logic
+  const totalPages = Math.ceil(filteredHistory.length / rowsPerPage) || 1;
   const indexOfLastItem = currentPage * rowsPerPage;
   const indexOfFirstItem = indexOfLastItem - rowsPerPage;
   const currentItems = filteredHistory.slice(indexOfFirstItem, indexOfLastItem);
 
+  // 4. Event Handlers
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
     setCurrentPage(1);
@@ -94,22 +99,14 @@ function AHistory() {
     setCurrentPage(1);
   };
 
-  const getSortedDisplay = (label, options) => {
+  const getSortedDisplay = (label) => {
     const currentSelection = filterValues[label] || [];
-    const sortedSelection = options.filter(opt => currentSelection.includes(opt));
-    if (sortedSelection.length > 0) return sortedSelection.join(", ");
+    if (currentSelection.length > 0) return currentSelection.join(", ");
     return `ALL ${label}S`;
   };
 
-  const goToNextPage = () => { if (currentPage < totalPages) setCurrentPage(prev => prev + 1); };
-  const goToPrevPage = () => { if (currentPage > 1) setCurrentPage(prev => prev - 1); };
-  const goToFirstPage = () => setCurrentPage(1);
-  const goToLastPage = () => setCurrentPage(totalPages);
-
-  const handlePageInput = (e) => {
-    const value = parseInt(e.target.value);
-    if (value > 0 && value <= totalPages) setCurrentPage(value);
-  };
+  const goToNextPage = () => { if (currentPage < totalPages) setCurrentPage(p => p + 1); };
+  const goToPrevPage = () => { if (currentPage > 1) setCurrentPage(p => p - 1); };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -123,7 +120,7 @@ function AHistory() {
   }, []);
 
   return (
-    <div className="amasterlistContainer">
+    <div className="ahistoryContainer">
       <div className="searchBarSection">
         <div className="searchWrapper">
           <BiSearch className="searchIcon" />
@@ -134,7 +131,13 @@ function AHistory() {
             value={searchTerm}
             onChange={handleSearch}
           />
-          {searchTerm && <BiX className="clearSearchIcon" onClick={() => {setSearchTerm(""); setCurrentPage(1);}} style={{cursor: 'pointer'}}/>}
+          {searchTerm && (
+            <BiX 
+              className="clearSearchIcon" 
+              onClick={() => {setSearchTerm(""); setCurrentPage(1);}} 
+              style={{cursor: 'pointer'}}
+            />
+          )}
         </div>
         
         <div className="filterContainer" ref={dropdownRef}>
@@ -149,18 +152,19 @@ function AHistory() {
           {isFilterOpen && (
             <div className="filterDropdown">
               {filters.map((f, index) => (
-                <div className="filterGroup" key={index}>
+                <div className="filterGroup" key={f.label}>
                   <label className="sectionLabel">{f.label}</label>
                   <div 
                     className={`customSelectTrigger ${activeGroup === index ? 'focused' : ''}`}
                     onClick={() => setActiveGroup(activeGroup === index ? null : index)}
                   >
-                    <div className="selectedTextDisplay">{getSortedDisplay(f.label, f.options)}</div>
+                    <div className="selectedTextDisplay">{getSortedDisplay(f.label)}</div>
                     <BiChevronDown className={`arrowIcon ${activeGroup === index ? 'rotate' : ''}`} />
+                    
                     {activeGroup === index && (
                       <div className="checkboxListContainer" onClick={(e) => e.stopPropagation()}>
-                        {f.options.map((opt, i) => (
-                          <label key={i} className="checkboxItem">
+                        {f.options.map((opt) => (
+                          <label key={opt} className="checkboxItem">
                             <input 
                               type="checkbox"
                               checked={(filterValues[f.label] || []).includes(opt)}
@@ -176,14 +180,14 @@ function AHistory() {
               ))}
               <div className="filterBtnsContainer">
                 <button className="resetFilterBtn" onClick={() => {setFilterValues({}); setCurrentPage(1);}}>Reset</button>
-                <button className="applyFilterBtn" onClick={() => setIsFilterOpen(false)}>Apply Filters</button>
+                <button className="applyFilterBtn" onClick={() => setIsFilterOpen(false)}>Apply</button>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      <div className="tableContainer">
+      <div className="historyTableContainer">
         <table className="historyPage studentTable">
           <thead>
             <tr>
@@ -198,21 +202,25 @@ function AHistory() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="7" style={{textAlign: 'center'}}>Loading data...</td></tr>
+              <tr><td colSpan="7" style={{textAlign: 'center', padding: '2rem'}}>Loading history...</td></tr>
             ) : currentItems.length > 0 ? (
               currentItems.map((item, index) => (
                 <tr key={item.id || index}>
                   <td>{indexOfFirstItem + index + 1}</td>
                   <td>{item.userId}</td>
                   <td>{item.userRole}</td>
-                  <td><span className={`statusTag ${item.action.toLowerCase()}`}>{item.action}</span></td>
-                  <td>{item.targetId}</td>
+                  <td>
+                    <span className={`statusTag ${item.action?.toLowerCase()}`}>
+                        {item.action}
+                    </span>
+                  </td>
+                  <td>{item.targetId || "—"}</td>
                   <td>{item.details}</td>
                   <td>{item.timestamp}</td>
                 </tr>
               ))
             ) : (
-              <tr><td colSpan="7" style={{textAlign: 'center'}}>No history found.</td></tr>
+              <tr><td colSpan="7" style={{textAlign: 'center', padding: '2rem'}}>No records found matching your criteria.</td></tr>
             )}
           </tbody>
         </table>
@@ -220,16 +228,24 @@ function AHistory() {
 
       <div className="paginationContainer">
         <div className="paginationControls">
-          <button className="pageBtn first" onClick={goToFirstPage} disabled={currentPage === 1}>«</button>
-          <button className="pageBtn prev" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
+          <button className="pageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
+          <button className="pageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
           <div className="currentPageInputWrapper">
-            <input type="number" value={currentPage} onChange={handlePageInput} className="currentPageInput" />
+            <input 
+                type="number" 
+                value={currentPage} 
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (val > 0 && val <= totalPages) setCurrentPage(val);
+                }} 
+                className="currentPageInput" 
+            />
           </div>
           <div className="paginationInfo">
-            <div>out of <span>{totalPages || 1}</span></div>
+            <div>out of <span>{totalPages}</span></div>
           </div>
-          <button className="pageBtn next" onClick={goToNextPage} disabled={currentPage === totalPages || totalPages === 0}>›</button>
-          <button className="pageBtn last" onClick={goToLastPage} disabled={currentPage === totalPages || totalPages === 0}>»</button>
+          <button className="pageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
+          <button className="pageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
         </div>
       </div>
     </div>

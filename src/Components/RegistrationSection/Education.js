@@ -48,7 +48,7 @@ const Education = ({ formData, handleChange, errors }) => {
           >
             <option value="" disabled>Select Program</option>
             <option value="PHYSICAL THERAPY">PHYSICAL THERAPY</option>
-            <option value="RADIOLOGIC TECHNOLOGY">RADIOLOGIC THERAPY</option>
+            <option value="RADIOLOGIC TECHNOLOGY">RADIOLOGIC TECHNOLOGY</option>
             <option value="RESPIRATORY THERAPY">RESPIRATORY THERAPY</option>
           </select>
           {errors.program && <span className="error-text">{errors.program}</span>}

@@ -135,3 +135,84 @@ exports.getPendingStudents = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to fetch pending students" });
   }
 };
+
+// backend/controllers/adminController.js (or similar)
+// adminController.js
+
+exports.getStudentFormData = async (req, res) => {
+    try {
+        const { id } = req.params; 
+        const studentData = await Admin.getStudentFullDetails(id);
+        if (!studentData) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Student record not found" 
+            });
+        }
+        res.json({ 
+            success: true, 
+            data: studentData 
+        });
+    } catch (error) {
+        console.error("Backend Error:", error);
+        res.status(500).json({ 
+            success: false, 
+            error: "Internal Server Error",
+            details: error.message 
+        });
+    }
+};
+
+//program
+exports.addProgram = async (req, res) => {
+    try {
+        const { name, abbreviation, total_years, description, status } = req.body;
+
+        const user = req.user; 
+        if (!user) {
+            return res.status(401).json({ success: false, message: "User not authenticated" });
+        }
+
+        const newProgram = await Admin.createProgram({
+            name, abbreviation, total_years, description, status
+        });
+
+        try {
+            await History.logTransaction({
+                user_id: user.id, 
+                user_role: user.role,
+                user_designation: user.designation,
+                action: 'ADDED PROGRAM',
+                target_id: user.id, 
+                details: `${user.designation} added a program.`
+            });
+        } catch (historyError) {
+            console.error("History logging failed:", historyError.message);
+        }
+
+        res.status(201).json({ 
+            success: true, 
+            message: "Program created successfully", 
+            program: newProgram 
+        });
+    } catch (err) {
+        console.error("Add Program Error:", err);
+        res.status(500).json({ success: false, message: "Failed to create program" });
+    }
+};
+
+exports.getPrograms = async (req, res) => {
+    try {
+        const programs = await Admin.getPrograms();
+        res.json({ 
+            success: true, 
+            data: programs
+        });
+    } catch (err) {
+        console.error("Get Programs Error:", err);
+        res.status(500).json({ 
+            success: false, 
+            message: "Error fetching programs" 
+        });
+    }
+};

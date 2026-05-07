@@ -1,12 +1,25 @@
 import React, { useState } from "react";
 import './Sample.css';
-import { BiChevronDown, BiChevronRight } from 'react-icons/bi';
+import { BiChevronDown } from 'react-icons/bi';
 
 function Sample() {
-  const [expanded, setExpanded] = useState({});
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedYears, setSelectedYears] = useState([]);
+  const [isActive, setIsActive] = useState(true);
 
-  const toggle = (id) => {
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  const options = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"];
+
+  const toggleYear = (year) => {
+    const selectedIndex = options.indexOf(year);
+    const currentMaxIndex = Math.max(...selectedYears.map(y => options.indexOf(y)), -1);
+
+    setSelectedYears(prev => {
+      if (selectedIndex === currentMaxIndex) {
+        return options.slice(0, selectedIndex);
+      }
+
+      return options.slice(0, selectedIndex + 1);
+    });
   };
 
   return (
@@ -17,371 +30,62 @@ function Sample() {
         </div>
         
         <div className="createHeader">
-          <h3>ADD NEW COURSE</h3>
+          <h3>ADD SECTION</h3>
         </div>
 
         <div className="formScrollArea">
           <div className="createFormContent">
+            
             <div className="formGroup">
-              <label>COURSE CODE</label>
-              <input type="text" placeholder="E.G. IT101" />
+              <label>PROGRAM <span style={{color: 'red'}}>*</span></label>
+              <input type="text" placeholder="e.g. BSPT" />
             </div>
 
             <div className="formGroup">
-              <label>COURSE NAME</label>
-              <input type="text" placeholder="E.G. INTRODUCTION TO COMPUTING" />
-            </div>
-
-            <div className="formRow">
-              <div className="formGroup">
-                <label>LEC UNITS</label>
-                <input type="number" placeholder="0" />
-              </div>
-              <div className="formGroup">
-                <label>LAB UNITS</label>
-                <input type="number" placeholder="0" />
-              </div>
-              <div className="formGroup">
-                <label>TOTAL UNITS</label>
-                <input type="number" disabled className="readOnlyInput" placeholder="0" />
-              </div>
+              <label>YEAR LEVEL <span style={{color: 'red'}}>*</span></label>
+              <input type="text" placeholder="e.g. BSPT" />
             </div>
 
             <div className="formGroup">
-            <label>PROGRAM AND YEAR ASSIGNMENT</label>
-            <div className="assignmentBox">
-              
-              <div className="nestedItem">
-                <span className="rowItem">
-                  <input type="checkbox" />
-                  <span>PHYSICAL THERAPY</span>
-                </span>
-                
-                <div className="subTier">
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>1ST YEAR</span>
-                  </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
-                  </div>
+              <label>SEMESTER <span style={{color: 'red'}}>*</span></label>
+              <input type="text" placeholder="e.g. BSPT" />
+            </div>
 
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>2ND YEAR</span>
-                  </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
-                  </div>
+            <div className="formGroup">
+              <label>ACADEMIC YEAR <span style={{color: 'red'}}>*</span></label>
+              <input type="text" placeholder="e.g. BSPT" />
+            </div>
 
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>3RD YEAR</span>
+            <div className="formGroup">
+              <label>TOTAL YEAR <span style={{color: 'red'}}>*</span></label>
+              <div className="custom-multiselect">
+                <div className="select-display" onClick={() => setIsOpen(!isOpen)} tabIndex="0">
+                  <span className="selected-text">
+                    {selectedYears.length > 0 ? selectedYears.join(", ") : "Select options"}
                   </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
-                  </div>
-
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>4TH YEAR</span>
-                  </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
-                  </div>
-
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>5TH YEAR</span>
-                  </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
-                  </div>
+                  <BiChevronDown className={`arrow ${isOpen ? 'open' : ''}`} />
                 </div>
-              </div>
-
-              <div className="nestedItem">
-                <span className="rowItem">
-                  <input type="checkbox" />
-                  <span>RADIOLOGY THERAPY</span>
-                </span>
                 
-                <div className="subTier">
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>1ST YEAR</span>
-                  </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
+                {isOpen && (
+                  <div className="dropdownMenu">
+                    {options.map(year => (
+                      <label key={year} className="dropdownItem">
+                        <input 
+                          type="checkbox" 
+                          checked={selectedYears.includes(year)}
+                          onChange={() => toggleYear(year)}
+                        />
+                        <span>{year}</span>
+                      </label>
+                    ))}
                   </div>
-
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>2ND YEAR</span>
-                  </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
-                  </div>
-
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>3RD YEAR</span>
-                  </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
-                  </div>
-
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>4TH YEAR</span>
-                  </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
-                  </div>
-
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>5TH YEAR</span>
-                  </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
-                  </div>
-                </div>
+                )}
               </div>
-
-              <div className="nestedItem">
-                <span className="rowItem">
-                  <input type="checkbox" />
-                  <span>RESPIRATORY THERAPY</span>
-                </span>
-                
-                <div className="subTier">
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>1ST YEAR</span>
-                  </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
-                  </div>
-
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>2ND YEAR</span>
-                  </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
-                  </div>
-
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>3RD YEAR</span>
-                  </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
-                  </div>
-
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>4TH YEAR</span>
-                  </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
-                  </div>
-
-                  <span className="rowItem">
-                    <input type="checkbox" />
-                    <span>5TH YEAR</span>
-                  </span>
-                  <div className="subTier">
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>1ST SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>2ND SEMESTER</span>
-                    </span>
-                    <span className="rowItem last">
-                      <input type="checkbox" />
-                      <span>SUMMER TERM</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-            <div className="formGroup">
-              <label>PREREQUISITES</label>
-              <div className="customSelectTrigger">
-                <div className="selectedTextDisplay">SELECT PREREQUISITES</div>
-                <BiChevronDown className="arrowIcon" />
-              </div>
-            </div>
-
-            <div className="formGroup">
-              <label>COURSE DESCRIPTION</label>
-              <textarea rows="4" placeholder="ENTER COURSE DESCRIPTION..."></textarea>
             </div>
 
             <div className="filterBtnsContainer">
               <button className="resetFilterBtn">CANCEL</button>
-              <button className="applyFilterBtn">CREATE COURSE</button>
+              <button className="applyFilterBtn">CREATE PROGRAM</button>
             </div>  
 
           </div>

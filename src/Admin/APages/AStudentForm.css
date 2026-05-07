@@ -1,0 +1,155 @@
+/* Layout Container */
+.a-student-forms-layout {
+    display: flex;
+    box-sizing: border-box;
+    height: 100vh;
+    width: 100%;
+    border-radius: 5px;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+}
+
+
+.forms-sidebar {
+    width: 25%; 
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    padding: 0.5rem;
+    box-sizing: border-box;
+    display: flex;
+    background-color: #f8f9fa;
+    flex-direction: column;
+    border-radius: 8px;
+}
+
+
+.sidebar-content-card {
+    background-color: #FFFFFF;
+    padding: 0.85rem;
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    margin-bottom: 0.5rem; 
+}
+
+/* Search Wrapper inside the card */
+.sidebar-search-wrapper {
+    margin-bottom: 1rem;
+    position: relative;
+    width: 100%;
+}
+
+.sidebar-search-wrapper input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.75rem 0.875rem 0.75rem 2.5rem; /* Room for icon */
+    border: 1px solid  #3d1616; /* Theme-based border color */
+    border-radius: 8px; 
+    font-size: 0.875rem;
+}
+
+
+.search-icon-small {
+    position: absolute;
+    left: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #3d1616;
+    font-size: 1.2rem;
+    opacity: 0.6;
+}
+
+.sidebar-list {
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 0.5rem;
+}
+
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 0.875rem; /* Exactly like .navLink */
+    margin-bottom: 0.25rem;
+    cursor: pointer;
+    color: #555;
+}
+
+.sidebar-item-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.item-name {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.item-id {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+.forms-preview-area {
+    width: 75%;
+    flex: 1;
+    overflow-y: auto;
+    background-color: #f9f9f9;
+    margin-left: 0.5rem;
+    height: 100%;
+    box-sizing: border-box; 
+    padding: 0.3rem 0.5rem 4rem 0.3rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.empty-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #888;
+    font-size: 1rem;
+    text-align: center;
+    padding: 1rem;
+}
+
+@media print {
+  /* Hide the sidebar, header, and all action buttons */
+  .forms-sidebar, 
+  .preview-header, 
+  .bottomBar, 
+  .etopBar,
+  .action-btn {
+    display: none !important;
+  }
+
+  /* Expand the preview area to fill the whole page */
+  .a-student-forms-layout {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .forms-preview-area {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure the form itself doesn't have a scrollbar in the PDF */
+  .document-frame {
+    overflow: visible !important;
+    height: auto !important;
+  }
+}

@@ -5,7 +5,7 @@ import ASubheader from './AComponents/ASubheader';
 
 function ADocuments() {
   const documentsTabs = [
-    { label: 'Student Form', path: '/admin/academics/student-form' },
+    { label: 'Student Form', path: '/admin/documents/student-form' },
     { label: 'Course Outline', path: '/admin/documents/course-outline' },
     { label: 'Term Grade', path: '/admin/documents/term-grade' },
     

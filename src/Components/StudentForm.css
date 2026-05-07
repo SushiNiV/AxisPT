@@ -29,6 +29,7 @@
   text-align: center !important;
 }
 
+
 .height-one {
   height: 14mm;
   max-height: 14mm;
@@ -50,6 +51,7 @@
   border-left: 1px solid black;
   border-right: 1px solid black;
   padding: 0;
+  
 }
 
 .three-cols { grid-template-columns: 1fr 1fr 1fr; }
@@ -108,6 +110,7 @@
   display: flex;
   flex-direction: column;
   border-right: none;
+  
 }
 
 .last-cell {
@@ -143,7 +146,6 @@ label {
   text-align: center;
   margin-top: 2px;
   font-family: 'Times New Roman', Times, serif;
-  padding-left: 8px;
 }
 
 .four-cols-address {
@@ -187,7 +189,6 @@ label {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 5px;
   padding: 0.25rem;
   margin-top: 0.25rem;
 }
@@ -234,6 +235,14 @@ input.tiny-check:checked::before {
   text-align: left;
 }
 
+.large-text {
+  font-size: 20px !important;
+}
+
+.small-text {
+  font-size: 10px !important;
+}
+
 @media print {
   @page {
     size: 215.9mm 330.2mm;
@@ -248,3 +257,17 @@ input.tiny-check:checked::before {
     height: auto;
   }
 }
+
+.gap {
+  margin-top: 4px !important;
+  margin-left: 4px !important;
+}
+
+.divider {
+  margin-bottom: 20px !important;
+}
+
+.closer{
+  margin-top: -5px !important;
+}
+

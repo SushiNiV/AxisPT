@@ -45,23 +45,28 @@ function ASideBar() {
             <BiUser className="linkIcon" /> {!isCollapsed && <span>Student Management</span>}
           </NavLink>
           
-          <NavLink to="/admin/academics" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+          <NavLink
+            to="/admin/academics/programs&sections"
+            className={() => 
+              `navLink ${location.pathname.includes('/admin/academics') ? 'activeLink' : ''}`
+            }
+          >
             <BiBookAlt className="linkIcon" /> {!isCollapsed && <span>Academics & Grades</span>}
           </NavLink>
           
+          {/*}
           <NavLink to="/ojt-clinical" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiBriefcase className="linkIcon" /> {!isCollapsed && <span>OJT & Clinical</span>}
           </NavLink>
-          
+          */}
+
           <NavLink to="/admin/documents" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiFile className="linkIcon" /> {!isCollapsed && <span>Documents</span>}
           </NavLink>
           
-          {/* 
-          <NavLink to="/announcements" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
-            <BiBell className="linkIcon" /> {!isCollapsed && <span>Announcements</span>}
+          <NavLink to="/admin/access-control" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+            <BiBell className="linkIcon" /> {!isCollapsed && <span>Access Control</span>}
           </NavLink>
-          */}
           
           <NavLink to="/admin/history" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiHistory className="linkIcon" /> {!isCollapsed && <span>History</span>}

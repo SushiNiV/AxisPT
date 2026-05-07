@@ -1,8 +1,5 @@
 const pool = require('../config/db');
 
-console.log("--- DEBUG: adminModel.js is loading ---");
-console.log("--- DEBUG: pool object is:", typeof pool);
-
 const Admin = {
   findById: async (employeeID) => {
     const result = await pool.query(
@@ -95,7 +92,46 @@ const Admin = {
       'DELETE FROM students WHERE student_id = ANY($1)',
       [ids]
     );
-  }
+  },
+  
+  getStudentFullDetails: async (studentId) => {
+    const result = await pool.query(`
+      SELECT 
+        s.birth_date,
+        fam.parents_income,
+        pii.*, 
+        edu.*, 
+        fam.*, 
+        ach.*
+      FROM student_pii pii
+      INNER JOIN students s ON pii.student_id = s.student_id
+      LEFT JOIN student_education edu ON pii.student_id = edu.student_id
+      LEFT JOIN student_family fam ON pii.student_id = fam.student_id
+      LEFT JOIN student_achievements_interest ach ON pii.student_id = ach.student_id
+      WHERE pii.student_id = $1
+    `, [studentId]);
+
+    return result.rows[0] || null;
+  },
+
+  //programs
+  createProgram: async (data) => {
+    const result = await pool.query(
+      `INSERT INTO programs (name, abbreviation, total_years, description, status) 
+       VALUES ($1, $2, $3, $4, $5) 
+       RETURNING *`,
+      [data.name, data.abbreviation, data.total_years, data.description, data.status]
+    );
+    return result.rows[0];
+  },
+  
+  getPrograms: async () => {
+    const result = await pool.query(
+      'SELECT * FROM programs ORDER BY created_at DESC'
+    );
+    return result.rows;
+  },
+
 };
 
 

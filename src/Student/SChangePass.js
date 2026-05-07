@@ -85,11 +85,11 @@ function SChangePass() {
   const handleFinalizeSuccess = () => {
     sessionStorage.clear();
     setPopupStatus(null);
-    navigate('/student-signin'); // Redirect to student login
+    navigate('/signin'); 
   };
 
   return (
-    <div className='AchangepassContainer'> {/* Reusing your admin container class */}
+    <div className='AchangepassContainer'>
       <div className='AchangepasstopBar'>
         <div className='logoArea'>
           <img src={cptLogo} alt='CPT Logo' className='mainLogo'/>

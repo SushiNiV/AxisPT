@@ -80,6 +80,21 @@
   background-color: #fdfdfd;
 }
 
+.studentTable th:first-child,
+.studentTable td:first-child {
+  width: 50px;
+  min-width: 50px;
+  max-width: 50px;
+  padding: 10px 0;
+  text-align: center;
+}
+
+.studentTable th:nth-child(2),
+.studentTable td:nth-child(2) {
+  text-align: left;
+  padding-left: 10px;
+}
+
 .statusBadge {
   padding: 5px 12px;
   border-radius: 20px;
