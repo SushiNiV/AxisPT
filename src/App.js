@@ -3,7 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 
 import ASignIn from './Admin/ASignIn';
 import AChangePass from './Admin/AChangePass';
+
 import ProtectedRoute from './Components/ProtectedRoute';
+import ALayout from './Admin/AComponents/ALayout';
 
 function App() {
   return (
@@ -15,8 +17,11 @@ function App() {
         <Route path="/admin/signin" element={<ASignIn />} />
 
         <Route element={<ProtectedRoute />}>
-
           <Route path="/change-password" element={<AChangePass />} />
+          <Route element={<ALayout />}>
+            
+          </Route>
+          
         </Route>   
  
       </Routes>

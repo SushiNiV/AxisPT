@@ -39,7 +39,7 @@ function AChangePass() {
     const token = sessionStorage.getItem('token');
     if (!token) {
       alert("Session expired. Please log in.");
-      navigate('/admin-signin');
+      navigate('/admin/signin');
     }
   }, [navigate]);
 
@@ -49,15 +49,15 @@ function AChangePass() {
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-      
-    if (formData.newPassword !== formData.confirmPassword) {
-      setErrorMessage("New passwords do not match!");
+    
+    if (formData.newPassword.length < 8) {
+      setErrorMessage("New password must be at least 8 characters long.");
       setPopupStatus('error');
       return;
     }
-      
-    if (formData.newPassword.length < 8) {
-      setErrorMessage("New password must be at least 8 characters long.");
+    
+    if (formData.newPassword !== formData.confirmPassword) {
+      setErrorMessage("New passwords do not match!");
       setPopupStatus('error');
       return;
     }
@@ -95,7 +95,7 @@ function AChangePass() {
   const handleFinalizeSuccess = () => {
     sessionStorage.clear();
     setPopupStatus(null);
-    navigate('/admin-signin');
+    navigate('/admin/signin');
   };
 
   return (
@@ -181,7 +181,7 @@ function AChangePass() {
           title="PASSWORD UPDATED"
           icon={<BiCheckCircle style={{color: '#3d1616' }} />} 
         >
-          <p>Your password has been changed successfully. You will now be redirected to the sign-in page.</p>
+          <p>Your password has been changed successfully.<br></br>You will now be redirected to the sign-in page.</p>
           <button 
             style={{ backgroundColor: '#3d1616' }} 
             onClick={handleFinalizeSuccess}

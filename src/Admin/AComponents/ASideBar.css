@@ -1,0 +1,309 @@
+.AsidebarContainer {
+  box-sizing: border-box !important;
+  border: none;
+  height: 100vh;
+  width: 275px;
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 1000;    
+  overflow: hidden;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
+}
+
+.AsidebarArea {
+  background-color: #FFFFFF;
+  padding: 0.85rem;
+  height: 100%;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.AlogoArea {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+  height: max-content;
+  padding: 0;
+}
+
+.AmainLogo {
+  padding: 0;
+  margin: 0;
+  height: 45px;
+}
+
+.headT {
+  padding: 0;
+  margin: 0 0 0 0.25rem;
+  font-family: 'Times New Roman', Times, serif;
+  text-transform: uppercase;
+  font-size: 1.25rem;
+  text-align: left;
+  color: #3d1616;
+}
+
+.AlogoArea h1 {
+  letter-spacing: 1px;
+}
+
+.navLink {
+  display: flex !important;
+  margin: 0 0 0.25rem 0;
+  padding: 1rem 0.875rem !important;
+  cursor: pointer;
+  border-radius: 8px;
+  color: #555 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  text-decoration: none !important;
+  font-size: 0.875rem;
+}
+
+.linkIcon {
+  font-size: 20px;
+  margin-right: 15px;
+}
+
+.navLink:hover {
+  background-color: #3d161625;
+  color: #000;
+}
+
+.navLink.activeLink {
+  background-color: #3d1616 ;
+  color: #FFFFFF !important;
+  font-weight: 600;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.botBtns {
+  margin-top: auto;
+  margin-left: 0.5rem;
+}
+
+.themeToggleArea {
+  margin-top: 1rem;
+}
+
+.themeSwitch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 70px;
+  display: flex;
+}
+
+.themeSwitch input {
+  display: none;
+  visibility: hidden;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #3D161625;
+  transition: .4s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 32px;
+  width: 32px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.icon-sun, .icon-moon {
+  position: absolute;
+  left: 11px;
+  bottom: 11px;
+  font-size: 18px;
+  transition: .4s;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.icon-sun {
+  opacity: 1;
+  color: #000;
+}
+
+.icon-moon {
+  opacity: 0;
+  color: #3d1616;
+}
+
+input:checked + .slider:before {
+  transform: translateY(-26px);
+}
+
+input:checked + .slider .icon-sun {
+  opacity: 0;
+  transform: translateY(-26px);
+}
+
+input:checked + .slider .icon-moon {
+  opacity: 1;
+  transform: translateY(-26px);
+}
+
+input:checked + .slider {
+  background-color: #3d1616;
+}
+
+.collapseBtnArea {    
+  display: flex;
+  justify-content: flex-end;
+}
+
+.collapseBtn {
+  background-color: #3D161625;
+  border: none;
+  color: #000;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.collapseBtn:hover {
+  background-color: #3D1616;
+  color: #FFFFFF;
+  transform: scale(1.25);
+}
+
+.collapseBtn svg {
+  font-size: 2rem;
+}
+
+/* COLLAPSED */
+.AsidebarContainer.collapsed {
+  background-color: #efefef;
+  box-sizing: border-box !important;
+  height: 100vh;
+  width: 95px;
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 1000;    
+  overflow: hidden;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
+}
+
+.collapsed .AsidebarArea {
+  background-color: #3d1616;
+  padding: 0.85rem;
+  height: 100%;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.AsidebarContainer.collapsed .AlogoArea {
+  justify-content: center;
+  padding: 0;
+}
+
+.collaped .navContainer {
+  display: flex; 
+  align-items: center;
+  justify-content: center;
+}
+
+.collapsed .navLink {
+  display: flex !important;   
+  align-items: center;
+  justify-content: center;
+  padding: 1rem !important;
+  cursor: pointer;
+  border-radius: 15px;
+  color: #aaa !important;
+  margin-bottom: 0.25rem; 
+}
+
+.collapsed .navLink:hover {
+  background-color: #FFFFFFAA;
+  color: #3d1616 !important;
+}
+
+.collapsed .navLink.activeLink {
+  background-color: #FFFFFF;
+  color: #3d1616 !important;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.collapsed .linkIcon {
+  margin-right: 0; 
+  font-size: 20px;
+}
+
+.collapsed .slider {
+  background-color: #EF3F3F50;
+}
+
+.collaped .slider:before {
+  background-color: white;
+}
+
+.collapsed .botBtns {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  margin-top: auto;
+  margin-left: 0;
+}
+
+.collapsed .collapseBtn {
+  background-color: #FFFFFFAA;
+  color: #3d1616;
+}
+
+.collapsed .collapseBtn:hover {
+  background-color: #FFFFFF;
+  color: black;
+}
+
+.collapsed .slider {
+  background-color: #FFFFFFAA;
+}
+
+.collapsed .slider:before {
+  background-color: white;
+}
+
+.collapsed .icon-sun {
+  color: #3D1616;
+}
+
+.collapsed .icon-moon {
+  color: black;
+}
+
+.collapsed input:checked + .slider {
+  background-color: black;
+}
