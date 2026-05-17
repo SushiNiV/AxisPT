@@ -1,173 +1,208 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Sample.css';
-import { BiChevronDown } from 'react-icons/bi';
+import PopupOverlay from './Components/PopupOverlay';
+import cptLogo from './assets/cpt-logo.png'; 
 
-function AddCourse() {
-  const [checkedItems, setCheckedItems] = useState({});
+function AChangePass() {
+  const navigate = useNavigate();
+  
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
-  const handleCheck = (id) => {
-    setCheckedItems(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
+  const [popupStatus, setPopupStatus] = useState(null); 
+  const [errorMessage, setErrorMessage] = useState('');
+  
+  const [formData, setFormData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
+  useEffect(() => {
+    const token = sessionStorage.getItem('token');
+    if (!token) {
+      alert("Session expired. Please log in.");
+      navigate('/admin-signin');
+    }
+  }, [navigate]);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const renderYear = (programId, yearNum) => {
-    const yearId = `${programId}_Y${yearNum}`;
-    const labels = ["1ST", "2ND", "3RD", "4TH", "5TH"];
-    
-    return (
-      <div key={yearId}>
-        <span className="rowItem">
-          <input 
-            type="checkbox" 
-            id={yearId}
-            checked={!!checkedItems[yearId]} 
-            onChange={() => handleCheck(yearId)} 
-          />
-          <label htmlFor={yearId} className="assignmentLabel">{labels[yearNum - 1]} YEAR</label>
-        </span>
-        
-        {checkedItems[yearId] && (
-          <div className="subTier">
-            {["1ST SEMESTER", "2ND SEMESTER", "SUMMER TERM"].map((sem, idx) => {
-              const semId = `${yearId}_S${idx}`;
-              return (
-                <span className="rowItem last" key={semId}>
-                  <input type="checkbox" id={semId} />
-                  <label htmlFor={semId} className="assignmentLabel">{sem}</label>
-                </span>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+      
+    if (formData.newPassword !== formData.confirmPassword) {
+      setErrorMessage("New passwords do not match!");
+      setPopupStatus('error');
+      return;
+    }
+      
+    if (formData.newPassword.length < 8) {
+      setErrorMessage("New password must be at least 8 characters long.");
+      setPopupStatus('error');
+      return;
+    }
+
+    const token = sessionStorage.getItem('token');
+
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          currentPassword: formData.currentPassword,
+          newPassword: formData.newPassword
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setPopupStatus('success');
+      } else {
+        setErrorMessage(data.message || "Failed to change password.");
+        setPopupStatus('error');
+      }
+    } catch (err) {
+      console.error("Error:", err);
+      setErrorMessage("Server connection failed.");
+      setPopupStatus('error');
+    }
+  };
+
+  const handleFinalizeSuccess = () => {
+    sessionStorage.clear();
+    setPopupStatus(null);
+    navigate('/admin-signin');
   };
 
   return (
-    <div className="sampleBG">
-      <div className="createContainer">
-        <div className="closeBTArea">
-          <button className="closeBt">&times;</button>
+    <div className='AchangepassContainer'>
+      <div className='AchangepasstopBar'>
+        <div className='logoArea'>
+          <img src={cptLogo} alt='CPT Logo' className='mainLogo'/>
+          <p className='mainTitle'>Axis CPT</p>
         </div>
-        
-        <div className="createHeader">
-          <h3>ADD NEW COURSE</h3>
-        </div>
+        <button className='returnBT' onClick={() => navigate('/admin/dashboard')}>
+          <span className="material-icons">arrow_back</span>
+        </button>
+      </div>
 
-        <div className="formScrollArea">
-          <div className="createFormContent">
-            <div className="formGroup">
-              <label>COURSE CODE</label>
-              <input type="text" placeholder="E.G. IT101" />
-            </div>
+      <form className='AchangepassCard' onSubmit={handlePasswordChange}>
+        <p className='AchangepassTitle'>Change Password</p>
 
-            <div className="formGroup">
-              <label>COURSE NAME</label>
-              <input type="text" placeholder="E.G. INTRODUCTION TO COMPUTING" />
-            </div>
-
-            <div className="formRow">
-              <div className="formGroup">
-                <label>LEC UNITS</label>
-                <input type="number" placeholder="0" />
-              </div>
-              <div className="formGroup">
-                <label>LAB UNITS</label>
-                <input type="number" placeholder="0" />
-              </div>
-              <div className="formGroup">
-                <label>TOTAL UNITS</label>
-                <input type="number" disabled className="readOnlyInput" placeholder="0" />
-              </div>
-            </div>
-
-            <div className="formGroupProgYear">
-              <label className="mainlabel">PROGRAM AND YEAR ASSIGNMENT</label>
-              <div className="assignmentBox">
-                
-                {/* --- PHYSICAL THERAPY --- */}
-                <div className="nestedItem">
-                  <span className="rowItem">
-                    <input 
-                      type="checkbox" 
-                      id="PT"
-                      checked={!!checkedItems['PT']} 
-                      onChange={() => handleCheck('PT')} 
-                    />
-                    <label htmlFor="PT" className="assignmentLabel">PHYSICAL THERAPY</label>
-                  </span>
-                  
-                  {checkedItems['PT'] && (
-                    <div className="subTier">
-                      {[1, 2, 3, 4].map(year => renderYear('PT', year))}
-                    </div>
-                  )}
-                </div>
-
-                {/* --- RADIOLOGY THERAPY --- */}
-                <div className="nestedItem">
-                  <span className="rowItem">
-                    <input 
-                      type="checkbox" 
-                      id="RAD"
-                      checked={!!checkedItems['RAD']} 
-                      onChange={() => handleCheck('RAD')} 
-                    />
-                    <label htmlFor="RAD" className="assignmentLabel">RADIOLOGY THERAPY</label>
-                  </span>
-                  {checkedItems['RAD'] && (
-                    <div className="subTier">
-                      {[1, 2, 3, 4].map(year => renderYear('RAD', year))}
-                    </div>
-                  )}
-                </div>
-
-                {/* --- RESPIRATORY THERAPY --- */}
-                <div className="nestedItem">
-                  <span className="rowItem">
-                    <input 
-                      type="checkbox" 
-                      id="RESP"
-                      checked={!!checkedItems['RESP']} 
-                      onChange={() => handleCheck('RESP')} 
-                    />
-                    <label htmlFor="RESP" className="assignmentLabel">RESPIRATORY THERAPY</label>
-                  </span>
-                  {checkedItems['RESP'] && (
-                    <div className="subTier">
-                      {[1, 2, 3, 4].map(year => renderYear('RESP', year))}
-                    </div>
-                  )}
-                </div>
-
-              </div>
-            </div>
-
-            <div className="formGroup">
-              <label>PREREQUISITES</label>
-              <div className="customSelectTrigger">
-                <div className="selectedTextDisplay">SELECT PREREQUISITES</div>
-                <BiChevronDown className="arrowIcon" />
-              </div>
-            </div>
-
-            <div className="formGroup">
-              <label>COURSE DESCRIPTION</label>
-              <textarea rows="4" placeholder="ENTER COURSE DESCRIPTION..."></textarea>
-            </div>
-
-            <div className="filterBtnsContainer">
-              <button className="resetFilterBtn">CANCEL</button>
-              <button className="applyFilterBtn">CREATE COURSE</button>
-            </div>  
-
+        <div className="cpinput-group">
+          <label>Current Password <span style={{color: 'red'}}>*</span></label>
+          <div className="password-wrapper">
+            <input 
+              type={showCurrent ? "text" : "password"} 
+              name="currentPassword"
+              placeholder="Current Password" 
+              className='AchangepassInput'
+              value={formData.currentPassword}
+              onChange={handleChange}
+              required 
+            />
+            <span className="material-icons eye-icon" onClick={() => setShowCurrent(!showCurrent)}>
+              {showCurrent ? 'visibility' : 'visibility_off'}
+            </span>
           </div>
         </div>
+
+        <div className="cpinput-group">
+          <label>New Password <span style={{color: 'red'}}>*</span></label>
+          <div className="password-wrapper">
+            <input 
+              type={showNew ? "text" : "password"} 
+              name="newPassword"
+              placeholder="New Password" 
+              className='AchangepassInput'
+              value={formData.newPassword}
+              onChange={handleChange}
+              required 
+              minLength="8" 
+            />
+            <span className="material-icons eye-icon" onClick={() => setShowNew(!showNew)}>
+              {showNew ? 'visibility' : 'visibility_off'}
+            </span>
+          </div>
+        </div>
+
+        <div className="cpinput-group">
+          <label>Confirm New Password <span style={{color: 'red'}}>*</span></label>
+          <div className="password-wrapper">
+            <input 
+              type={showConfirm ? "text" : "password"} 
+              name="confirmPassword"
+              placeholder="Confirm New Password" 
+              className='AchangepassInput'
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required 
+            />
+            <span className="material-icons eye-icon" onClick={() => setShowConfirm(!showConfirm)}>
+              {showConfirm ? 'visibility' : 'visibility_off'}
+            </span>
+          </div>
+        </div>
+
+        <button type='submit' className='AchangepassBT'>
+          Change Password
+        </button>
+      </form>
+
+      <div className="bottomBar">
+          <p className="bottomText">© Copyright 2026. Our Lady of Fatima University - College of Physical Therapy. All Rights reserved. | Powered by VDG </p>
       </div>
+
+      {popupStatus === 'success' && (
+        <PopupOverlay 
+          isOpen={true} 
+          onClose={handleFinalizeSuccess} 
+          title="PASSWORD UPDATED"
+          icon={
+            <span className="material-icons" style={{ color: '#22C55E', fontSize: '50px' }}>
+              check_circle
+            </span>
+          }
+        >
+          <p>Your password has been changed successfully. You will now be redirected to the sign-in page.</p>
+          <button onClick={handleFinalizeSuccess}>
+            GOT IT
+          </button>
+        </PopupOverlay>
+      )}
+
+      {popupStatus === 'error' && (
+        <PopupOverlay 
+          isOpen={true} 
+          onClose={() => setPopupStatus(null)} 
+          title="PASSWORD UPDATE FAILED"
+          icon={
+            <span className="material-icons" style={{ color: '#EF4444', fontSize: '50px' }}>
+              error
+            </span>
+          }
+        >
+          <p>{errorMessage}</p>
+          <button 
+            style={{ backgroundColor: '#EF4444' }} 
+            onClick={() => setPopupStatus(null)}
+          >
+            TRY AGAIN
+          </button>
+        </PopupOverlay>
+      )}
+
     </div>
   );
 }
 
-export default AddCourse;
+export default AChangePass;

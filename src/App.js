@@ -90,8 +90,10 @@
               
               </Route>
             </Route>
-            <Route path="/change-password" element={<ChangePass />} />
-          </Route>   
+            
+          </Route> 
+
+          <Route path="/change-password" element={<ChangePass />} />  
 
           {/* STUDENT */}
           <Route path="/registration" element={<Registration />} />

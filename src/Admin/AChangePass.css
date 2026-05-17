@@ -67,6 +67,7 @@
 .AchangepassContainer .mainLogo {
   height: 2rem;
   margin-left: 1rem;
+  background-color: yellow;
 }
 
 .AchangepassContainer .returnBT {

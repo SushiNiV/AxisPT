@@ -3,21 +3,6 @@
   margin-left: 0.5rem;
 }
 
-.createBtn {
-  display: flex;
-  align-items: center;
-  background-color: #fff;
-  border: 1px solid #ccc;
-  width: 145px;
-  justify-content: center;
-  padding: 8px 20px;
-  border-radius: 5px;
-  cursor: pointer;
-  color: #3d1616;
-  font-weight: 500;
-  font-size: 0.875rem;
-  transition: all 0.3s ease;
-}
 
 .createBtn:hover, .createBtn.active {
   background-color: #3d1616;

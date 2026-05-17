@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import './ACourses.css';
+import './ACurricula.css';
 import { BiSearch, BiPlusCircle, BiX, BiTrash } from 'react-icons/bi';
 import AddCurriculum from '../AComponents/AddCurriculum';
 
@@ -52,7 +52,7 @@ function ACurricula() {
   };
 
   return (
-    <div className="amasterlistContainer">
+    <div className="curriculaContainer">
       {showAdd && (
         <AddCurriculum
           onClose={() => setShowAdd(false)}
@@ -60,22 +60,22 @@ function ACurricula() {
         />
       )}
 
-      <div className="searchBarSection">
-        <div className="searchWrapper">
-          <BiSearch className="searchIcon" />
-          <input type="text" placeholder="Search program or year..." className="studentSearchInput"
+      <div className="curriculaSearchBar">
+        <div className="curriculaSearchWrapper">
+          <BiSearch className="curriculaSearchIcon" />
+          <input type="text" placeholder="Search program or year..." className="curriculaSearchInput"
             value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} />
-          {searchTerm && <BiX className="clearSearchIcon" onClick={() => { setSearchTerm(""); setCurrentPage(1); }} />}
+          {searchTerm && <BiX className="curriculaClearIcon" onClick={() => { setSearchTerm(""); setCurrentPage(1); }} />}
         </div>
-        <div className="createBtnContainer">
-          <button className="createBtn" onClick={() => setShowAdd(true)}>
-            <BiPlusCircle className="linkIcon" /> Curriculum
+        <div className="curriculaCreateBtnContainer">
+          <button className="curriculaCreateBtn" onClick={() => setShowAdd(true)}>
+            <BiPlusCircle className="curriculaBtnIcon" /> Curriculum
           </button>
         </div>
       </div>
 
-      <div className="tableContainer">
-        <table className="studentTable">
+      <div className="curriculaTableContainer">
+        <table className="curriculaTable">
           <thead>
             <tr>
               <th>Program</th>
@@ -88,7 +88,7 @@ function ACurricula() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="6" style={{textAlign: 'center'}}>Loading...</td></tr>
+              <tr><td colSpan="6" className="curriculaEmpty">Loading...</td></tr>
             ) : paginated.length > 0 ? (
               paginated.map(c => (
                 <tr key={c.id}>
@@ -97,37 +97,39 @@ function ACurricula() {
                   <td>{c.version_name}</td>
                   <td>{c.course_count}</td>
                   <td>
-                    <span className={`statusBadge ${c.is_active ? 'badge-green' : 'badge-gray'}`}>
+                    <span className={`curriculaStatusBadge ${c.is_active ? 'curriculaActive' : 'curriculaInactive'}`}>
                       {c.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td>
-                    <button onClick={() => handleDelete(c.id)} className="deleteBtn" disabled={c.is_active}>
+                    <button onClick={() => handleDelete(c.id)} className="curriculaDeleteBtn" disabled={c.is_active}>
                       <BiTrash />
                     </button>
                   </td>
                 </tr>
               ))
             ) : (
-              <tr><td colSpan="6" style={{textAlign: 'center'}}>No curricula found.</td></tr>
+              <tr><td colSpan="6" className="curriculaEmpty">No curricula found.</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      <div className="paginationContainer">
-        <div className="paginationControls">
-          <button className="pageBtn first" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
-          <button className="pageBtn prev" onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1}>‹</button>
-          <div className="currentPageInputWrapper">
+      <div className="curriculaPagination">
+        <div className="curriculaPaginationControls">
+          <button className="curriculaPageBtn first" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
+          <button className="curriculaPageBtn prev" onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1}>‹</button>
+          <div className="curriculaPageInputWrapper">
             <input type="number" value={currentPage} onChange={(e) => {
               const val = Number(e.target.value);
               if (val >= 1 && val <= totalPages) setCurrentPage(val);
-            }} className="currentPageInput" min="1" max={totalPages || 1} />
+            }} className="curriculaPageInput" min="1" max={totalPages || 1} />
           </div>
-          <div className="paginationInfo"><div>out of <span>{totalPages || 1}</span></div></div>
-          <button className="pageBtn next" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages}>›</button>
-          <button className="pageBtn last" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
+          <div className="curriculaPaginationInfo">
+            <div>out of <span>{totalPages || 1}</span></div>
+          </div>
+          <button className="curriculaPageBtn next" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages}>›</button>
+          <button className="curriculaPageBtn last" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
         </div>
       </div>
     </div>
