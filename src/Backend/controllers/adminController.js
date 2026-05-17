@@ -1,4 +1,3 @@
-// controllers/adminController.js
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const AdminModel = require('../models/adminModel');
@@ -23,7 +22,6 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Check if password is bcrypt hash or plain text
     const isBcrypt = admin.password_hash && 
                      (admin.password_hash.startsWith('$2b$') || 
                       admin.password_hash.startsWith('$2a$'));
@@ -89,7 +87,6 @@ exports.changePassword = async (req, res) => {
       });
     }
 
-    // Verify current password (handle both bcrypt and plain text)
     const isBcrypt = admin.password_hash && 
                      (admin.password_hash.startsWith('$2b$') || 
                       admin.password_hash.startsWith('$2a$'));
@@ -108,10 +105,8 @@ exports.changePassword = async (req, res) => {
       });
     }
 
-    // Hash the new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     
-    // Update with hashed password and set changed_pass to true
     const updated = await AdminModel.updatePassword(userId, hashedPassword);
     
     if (!updated) {

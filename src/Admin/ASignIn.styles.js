@@ -135,6 +135,10 @@ export const SignInButton = styled.button`
   font-weight: bold;
   width: 12rem;
   text-transform: uppercase;
+  
+  &:hover {
+    background-color: #d63232;
+  }
 `;
 
 export const PrivText = styled.div`

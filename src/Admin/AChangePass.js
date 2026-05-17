@@ -1,8 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './AChangePass.css';
+import { BiInfoCircle, BiCheckCircle } from 'react-icons/bi';
 import PopupOverlay from '../Components/PopupOverlay';
-import cptLogo from '../assets/cpt-logo.png'; 
+import cptLogo from '../assets/cpt-logo.png';
+import {
+  Container,
+  TopBar,
+  LogoArea,
+  MainLogo,
+  ReturnButton,
+  Card,
+  Title,
+  InputGroup,
+  PasswordWrapper,
+  EyeIcon,
+  ChangeButton,
+  BottomBar,
+  BottomText
+} from './AChangePass.styles';
 
 function AChangePass() {
   const navigate = useNavigate();
@@ -84,97 +99,93 @@ function AChangePass() {
   };
 
   return (
-    <div className='AchangepassContainer'>
-      <div className='AchangepasstopBar'>
-        <div className='logoArea'>
-          <img src={cptLogo} alt='CPT Logo' className='mainLogo'/>
-          <p className='mainTitle'>Axis CPT</p>
-        </div>
-        <button className='returnBT' onClick={() => navigate('/admin/dashboard')}>
+    <Container>
+      <TopBar>
+        <LogoArea>
+          <MainLogo src={cptLogo} alt='CPT Logo' />
+          <p>AXIS CPT</p>
+        </LogoArea>
+        <ReturnButton onClick={() => navigate('/admin/signin')}>
           <span className="material-icons">arrow_back</span>
-        </button>
-      </div>
+        </ReturnButton>
+      </TopBar>
 
-      <form className='AchangepassCard' onSubmit={handlePasswordChange}>
-        <p className='AchangepassTitle'>Change Password</p>
+      <Card onSubmit={handlePasswordChange}>
+        <Title>Change Password</Title>
 
-        <div className="cpinput-group">
+        <InputGroup>
           <label>Current Password <span style={{color: 'red'}}>*</span></label>
-          <div className="password-wrapper">
+          <PasswordWrapper>
             <input 
               type={showCurrent ? "text" : "password"} 
               name="currentPassword"
               placeholder="Current Password" 
-              className='AchangepassInput'
               value={formData.currentPassword}
               onChange={handleChange}
               required 
             />
-            <span className="material-icons eye-icon" onClick={() => setShowCurrent(!showCurrent)}>
+            <EyeIcon className="material-icons" onClick={() => setShowCurrent(!showCurrent)}>
               {showCurrent ? 'visibility' : 'visibility_off'}
-            </span>
-          </div>
-        </div>
+            </EyeIcon>
+          </PasswordWrapper>
+        </InputGroup>
 
-        <div className="cpinput-group">
+        <InputGroup>
           <label>New Password <span style={{color: 'red'}}>*</span></label>
-          <div className="password-wrapper">
+          <PasswordWrapper>
             <input 
               type={showNew ? "text" : "password"} 
               name="newPassword"
               placeholder="New Password" 
-              className='AchangepassInput'
               value={formData.newPassword}
               onChange={handleChange}
               required 
               minLength="8" 
             />
-            <span className="material-icons eye-icon" onClick={() => setShowNew(!showNew)}>
+            <EyeIcon className="material-icons" onClick={() => setShowNew(!showNew)}>
               {showNew ? 'visibility' : 'visibility_off'}
-            </span>
-          </div>
-        </div>
+            </EyeIcon>
+          </PasswordWrapper>
+        </InputGroup>
 
-        <div className="cpinput-group">
+        <InputGroup>
           <label>Confirm New Password <span style={{color: 'red'}}>*</span></label>
-          <div className="password-wrapper">
+          <PasswordWrapper>
             <input 
               type={showConfirm ? "text" : "password"} 
               name="confirmPassword"
               placeholder="Confirm New Password" 
-              className='AchangepassInput'
               value={formData.confirmPassword}
               onChange={handleChange}
               required 
             />
-            <span className="material-icons eye-icon" onClick={() => setShowConfirm(!showConfirm)}>
+            <EyeIcon className="material-icons" onClick={() => setShowConfirm(!showConfirm)}>
               {showConfirm ? 'visibility' : 'visibility_off'}
-            </span>
-          </div>
-        </div>
+            </EyeIcon>
+          </PasswordWrapper>
+        </InputGroup>
 
-        <button type='submit' className='AchangepassBT'>
+        <ChangeButton type='submit'>
           Change Password
-        </button>
-      </form>
+        </ChangeButton>
+      </Card>
 
-      <div className="bottomBar">
-          <p className="bottomText">© Copyright 2026. Our Lady of Fatima University - College of Physical Therapy. All Rights reserved. | Powered by VDG </p>
-      </div>
+      <BottomBar>
+        <BottomText>© Copyright 2026. Our Lady of Fatima University - College of Physical Therapy. All Rights reserved. | Powered by VDG</BottomText>
+      </BottomBar>
 
       {popupStatus === 'success' && (
         <PopupOverlay 
           isOpen={true} 
           onClose={handleFinalizeSuccess} 
           title="PASSWORD UPDATED"
-          icon={
-            <span className="material-icons" style={{ color: '#22C55E', fontSize: '50px' }}>
-              check_circle
-            </span>
-          }
+          icon={<BiCheckCircle style={{color: '#3d1616' }} />} 
         >
           <p>Your password has been changed successfully. You will now be redirected to the sign-in page.</p>
-          <button onClick={handleFinalizeSuccess}>
+          <button 
+            style={{ backgroundColor: '#3d1616' }} 
+            onClick={handleFinalizeSuccess}
+          >
             GOT IT
           </button>
         </PopupOverlay>
@@ -185,23 +196,18 @@ function AChangePass() {
           isOpen={true} 
           onClose={() => setPopupStatus(null)} 
           title="PASSWORD UPDATE FAILED"
-          icon={
-            <span className="material-icons" style={{ color: '#EF4444', fontSize: '50px' }}>
-              error
-            </span>
-          }
+          icon={<BiInfoCircle style={{color: '#3d1616' }} />} 
         >
           <p>{errorMessage}</p>
           <button 
-            style={{ backgroundColor: '#EF4444' }} 
+            style={{ backgroundColor: '#3d1616' }} 
             onClick={() => setPopupStatus(null)}
           >
-            TRY AGAIN
+            RETRY
           </button>
         </PopupOverlay>
       )}
-
-    </div>
+    </Container>
   );
 }
 
