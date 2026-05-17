@@ -1,21 +1,23 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import './ASubheader.css';
+import {
+  AsubheaderContainer,
+  AsubheaderBlob
+} from './ASubheader.styles';
 
 function ASubheader({ tabs }) {
   if (!tabs || tabs.length === 0) return null;
+  
   return (
-    <div className="asubheaderContainer">
+    <AsubheaderContainer>
       {tabs.map((tab, index) => (
-          <NavLink 
-            key={index} 
-            to={tab.path} 
-            className={({ isActive }) => `asubheaderBlob ${isActive ? 'active' : ''}`}
-          >
-            {tab.label}
-          </NavLink>
-        ))}
-    </div>
+        <AsubheaderBlob 
+          key={index} 
+          to={tab.path}
+        >
+          {tab.label}
+        </AsubheaderBlob>
+      ))}
+    </AsubheaderContainer>
   );
 }
 

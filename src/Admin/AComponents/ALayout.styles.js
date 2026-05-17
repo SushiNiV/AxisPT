@@ -1,11 +1,13 @@
-.adminContainer {
+import styled from 'styled-components';
+
+export const AdminContainer = styled.div`
   display: flex;
   height: 100vh;
   overflow-x: hidden;
-  background-color: #EFEFEF; 
-}
+  background-color: #EFEFEF;
+`;
 
-.adminMainContainer {
+export const AdminMainContainer = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -13,9 +15,9 @@
   min-width: 0;
   overflow: hidden;
   box-sizing: border-box;
-}
+`;
 
-.adminPageContent {
+export const AdminPageContent = styled.main`
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -23,4 +25,4 @@
   height: 100%;
   padding-right: 0.5rem;
   box-sizing: border-box;
-}
+`;

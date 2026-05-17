@@ -1,4 +1,6 @@
-.adashboardContainer {
+import styled from 'styled-components';
+
+export const DashboardContainer = styled.div`
   display: flex;
   flex: 1;
   background-color: #efefef;
@@ -6,14 +8,14 @@
   height: 100vh;
   margin: 0;
   padding: 0;
-}
+  
+  p {
+    margin: 0;
+    padding: 0;
+  }
+`;
 
-.adashboardContainer p {
-  margin: 0;
-  padding: 0;
-}
-
-.wcMessageArea {
+export const WcMessageArea = styled.div`
   display: flex;
   align-items: center;
   justify-content: left;
@@ -22,4 +24,4 @@
   padding-left: 1rem;
   height: 2rem;
   background-color: aquamarine;
-}
+`;

@@ -1,6 +1,15 @@
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import './PopupOverlay.css';
+import {
+  OverlayBackdrop,
+  OverlayContent,
+  OverlayCloseBTArea,
+  CloseBt,
+  OverlayHeader,
+  OverlayIconWrapper,
+  OverlayHeaderTitle,
+  OverlayBody
+} from './PopupOverlay.styles.js';
 
 const PopupOverlay = ({ isOpen, onClose, icon, title, children }) => {
   useEffect(() => {
@@ -9,32 +18,32 @@ const PopupOverlay = ({ isOpen, onClose, icon, title, children }) => {
     } else {
       document.body.style.overflow = 'unset';
     }
-    return () => {document.body.style.overflow = 'unset'};
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   return ReactDOM.createPortal(
-    <div className="overlayBackdrop" onClick={onClose}>
-      <div className="overlayContent" onClick={(e) => e.stopPropagation()}>
-        
-        <div className="overlayCloseBTArea">
-          <button className="closeBt" onClick={onClose}>&times;</button>
-        </div>
-        <div className="overlayHeader">
+    <OverlayBackdrop onClick={onClose}>
+      <OverlayContent onClick={(e) => e.stopPropagation()}>
+        <OverlayCloseBTArea>
+          <CloseBt onClick={onClose}>&times;</CloseBt>
+        </OverlayCloseBTArea>
+        <OverlayHeader>
           {icon && (
-          <div className="overlayIconWrapper">
-            {icon}
-          </div>
+            <OverlayIconWrapper>
+              {icon}
+            </OverlayIconWrapper>
           )}
-          <h3>{title}</h3>
-        </div>
- 
-        <div className="overlayBody">
+          <OverlayHeaderTitle>{title}</OverlayHeaderTitle>
+        </OverlayHeader>
+        <OverlayBody>
           {children}
-        </div>
-      </div>
-    </div>,
+        </OverlayBody>
+      </OverlayContent>
+    </OverlayBackdrop>,
     document.getElementById('portal-root')
   );
 };

@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import './ADashboard.css';
+import React from 'react';
+import { DashboardContainer, WcMessageArea } from './ADashboard.styles';
 
 function ADashboard() {
   return (
-    <div className="adashboardContainer">
-      <div className="wcMessageArea">
+    <DashboardContainer>
+      <WcMessageArea>
         <p>Welcome, Ma'am Admin!</p>
-      </div>
-    </div>
+      </WcMessageArea>
+    </DashboardContainer>
   );
 }
 
