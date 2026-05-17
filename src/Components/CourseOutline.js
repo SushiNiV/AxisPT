@@ -11,7 +11,8 @@ const CourseOutline = () => {
     { code: 'MATM111', title: 'Mathematics in the Modern World', lec: 3, lab: 0, total: 3, pre: 'None' },
     { code: 'VRTS111', title: 'Veritas et Misericordia 1', lec: 1, lab: 0, total: 1, pre: 'None' },
     { code: 'PSYP111', title: 'Psychology for Physical Therapy', lec: 2, lab: 0, total: 2, pre: 'None' },
-    { code: 'FOHA111', title: 'Fundamentals of Human Physiology', lec: 2, lab: 1, total: 3, pre: 'None' },
+    { code: 'FOHA111', title: 'Fundamentals of Human Anatomy', lec: 2, lab: 1, total: 3, pre: 'None' },
+    { code: 'FOHP111', title: 'Fundamentals of Human Physiology', lec: 2, lab: 1, total: 3, pre: 'None' },
     { code: 'LSDG111', title: 'Lifespan Development with Genetics', lec: 2, lab: 1, total: 3, pre: 'None' },
     { code: 'FOHA111', title: 'Theoretical Foundation for Physical Therapy Practice', lec: 2, lab: 1, total: 3, pre: 'None' },
   ];

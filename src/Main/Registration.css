@@ -337,7 +337,6 @@
 .selected-text {
   font-size: 0.75rem;
   color: #333;
-  text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

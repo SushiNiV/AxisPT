@@ -48,7 +48,6 @@ function AChangePass() {
     }
 
     const token = sessionStorage.getItem('token');
-    const employeeID = sessionStorage.getItem('employeeID');
 
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/change-password`, {
@@ -58,7 +57,6 @@ function AChangePass() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          employeeID: employeeID,
           currentPassword: formData.currentPassword,
           newPassword: formData.newPassword
         }),
@@ -92,7 +90,7 @@ function AChangePass() {
           <img src={cptLogo} alt='CPT Logo' className='mainLogo'/>
           <p className='mainTitle'>Axis CPT</p>
         </div>
-        <button className='returnBT' onClick={() => navigate('/dashboard')}>
+        <button className='returnBT' onClick={() => navigate('/admin/dashboard')}>
           <span className="material-icons">arrow_back</span>
         </button>
       </div>

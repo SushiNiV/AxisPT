@@ -16,7 +16,7 @@ function AHeader({ user }) {
     if (path.startsWith('/admin/student-management')) return 'Student Management';
     if (path.startsWith('/admin/academics')) return 'Academics & Grades';
     if (path.startsWith('/admin/documents')) return 'Documents';
-    if (path.startsWith('/admin/announcements')) return 'Announcements';
+    if (path.startsWith('/admin/access-control')) return 'Access Control';
     if (path.startsWith('/admin/history')) return 'History';
     
     if (path.startsWith('/settings')) return 'Settings';

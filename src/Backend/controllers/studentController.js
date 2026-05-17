@@ -8,32 +8,47 @@ const registerStudent = async (req, res) => {
   try {
     const formData = req.body;
 
-    const studentID = formData.studentID;
-    const existing = await studentModel.findById(studentID);
+    // Check if student ID already exists
+    const existing = await studentModel.findById(formData.studentID);
     if (existing) {
       return res.status(409).json({
-        success: false, 
-        error: "exists", 
-        message: "This Student ID is already registered." 
+        success: false,
+        error: "exists",
+        message: "This Student ID is already registered."
       });
     }
 
-    const surname = formData.lastName.toLowerCase().trim();
+    // Generate password hash
+    const bcrypt = require('bcrypt');
+    const surname = (formData.lastName || '').toLowerCase().trim();
     const plainPassword = `axis-cpt-${surname}`;
+    const passwordHash = await bcrypt.hash(plainPassword, 10);
 
-    await studentModel.createFullProfile(formData, plainPassword);
+    // Add password hash to data
+    const dataWithPassword = {
+      ...formData,
+      passwordHash
+    };
 
-    res.status(200).json({ success: true, message: "Registration submitted for admin review!" });
+    await studentModel.createFullProfile(dataWithPassword);
+
+    res.status(200).json({
+      success: true,
+      message: "Registration submitted for admin review!"
+    });
   } catch (error) {
     if (error.code === '23505') {
-      return res.status(409).json({ 
-        success: false, 
-        error: "exists", 
-        message: "Duplicate record detected." 
+      return res.status(409).json({
+        success: false,
+        error: "exists",
+        message: "Duplicate record detected."
       });
     }
     console.error("Registration Error:", error);
-    res.status(500).json({ success: false, message: "Database error during registration" });
+    res.status(500).json({
+      success: false,
+      message: "Database error during registration"
+    });
   }
 };
 

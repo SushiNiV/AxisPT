@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './FamilyInfo.css';
 
 function FamilyInfo({ formData, setFormData, setErrors, handleChange, errors }) {
@@ -6,6 +6,21 @@ function FamilyInfo({ formData, setFormData, setErrors, handleChange, errors }) 
   const isMotherRequired = formData.motherStatus !== "DECEASED" && formData.motherStatus !== "N/A";
 
   const [isOpen, setIsOpen] = useState(false);
+  const multiselectRef = useRef(null);
+  
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (multiselectRef.current && !multiselectRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const options = ["PARENTS", "RELATIVES", "BROTHER/SISTER", "BENEFACTORS", "SCHOLARSHIPS"];
 
   const toggleOption = (option) => {
@@ -328,7 +343,7 @@ function FamilyInfo({ formData, setFormData, setErrors, handleChange, errors }) 
       <div className="row">
         <div className="col">
           <label>Who supports your college education? <span style={{color: 'red'}}>*</span></label>
-          <div className="custom-multiselect">
+          <div className="custom-multiselect" ref={multiselectRef}>
             <div 
               className={`select-display ${errors.support ? "input-error" : ""}`}   
               onClick={() => setIsOpen(!isOpen)}

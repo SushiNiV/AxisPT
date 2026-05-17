@@ -60,7 +60,7 @@ function ASideBar() {
           </NavLink>
           */}
 
-          <NavLink to="/admin/documents" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+          <NavLink to="/admin/documents/student-form" className={() => `navLink ${location.pathname.includes('/admin/documents') ? 'activeLink' : ''}`}>
             <BiFile className="linkIcon" /> {!isCollapsed && <span>Documents</span>}
           </NavLink>
           

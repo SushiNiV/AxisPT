@@ -3,11 +3,11 @@ import { Outlet } from 'react-router-dom';
 import './AAcademics.css';
 import ASubheader from './AComponents/ASubheader';
 
-function AGrades() {
+function AAcademics() {
   const gradesTabs = [
     { label: 'Programs & Sections', path: '/admin/academics/programs&sections' },
     { label: 'Courses', path: '/admin/academics/courses' },
-    { label: 'Academic Grades', path: '/admin/academics/grades' },
+    { label: 'Curriculum', path: '/admin/academics/curriculum' },
   ];
   return (
     <div className="agradesContainer">
@@ -19,4 +19,4 @@ function AGrades() {
   );
 }
 
-export default AGrades;
+export default AAcademics;

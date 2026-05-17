@@ -20,9 +20,10 @@ exports.getHistory = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { employeeID, password, rememberMe } = req.body;
+  const { username, password, rememberMe } = req.body; 
+
   try {
-    const user = await Admin.findById(employeeID);
+    const user = await Admin.findById(username);
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     const isBcrypt = user.password_hash.startsWith('$2b$') || user.password_hash.startsWith('$2a$');
@@ -31,23 +32,28 @@ exports.login = async (req, res) => {
 
     const expiresIn = rememberMe ? '7d' : '2h';
     const token = jwt.sign(
-      { id: user.employee_id, role: user.role, designation: user.designation },
+      { id: user.user_id, role: user.role_name }, 
       process.env.JWT_SECRET,
       { expiresIn }
     );
-
-    await History.logTransaction({
-      user_id: user.employee_id,
-      user_role: user.role,
-      user_designation: user.designation,
-      action: 'LOGIN',
-      target_id: user.employee_id,
-      details: `Successful login as ${user.designation}`
+  
+    await Admin.logAction(user.user_id, 'LOGIN', `Successful login as ${user.role_name}`);
+    
+    res.json({ 
+      success: true, 
+      token, 
+      userId: user.user_id, 
+      username: user.username,
+      role: user.role_name, 
+      changedPass: !user.changed_pass 
     });
-
-    res.json({ success: true, token, employeeID: user.employee_id, firstName: user.firstname, role: user.role, designation: user.designation, mustChangePassword: user.must_change_password });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }  catch (err) {
+  console.error("DETAILED LOGIN ERROR:", {
+    message: err.message,
+    stack: err.stack,
+    detail: err.detail 
+  });
+  res.status(500).json({ success: false, message: err.message }); 
   }
 };
 
@@ -92,28 +98,32 @@ exports.bulkRejectStudents = async (req, res) => {
 };
 
 exports.changePassword = async (req, res) => {
-  const { employeeID, currentPassword, newPassword } = req.body;
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.user.id; // From JWT token
+  
   try {
-    const user = await Admin.findById(employeeID);
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-    let isMatch = user.must_change_password ? (currentPassword === user.password_hash) : await bcrypt.compare(currentPassword, user.password_hash);
-    if (!isMatch) return res.status(401).json({ success: false, message: "Current password incorrect" });
+    const user = await Admin.findByUserId(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    const isBcrypt = user.password_hash.startsWith('$2b$') || user.password_hash.startsWith('$2a$');
+    const isMatch = isBcrypt 
+      ? await bcrypt.compare(currentPassword, user.password_hash) 
+      : (currentPassword === user.password_hash);
+    
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: "Current password is incorrect" });
+    }
 
     const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
-    await Admin.updatePassword(employeeID, hashedNewPassword);
-
-    await History.logTransaction({
-      user_id: user.employee_id,
-      user_role: user.role,
-      user_designation: user.designation,
-      action: 'PASSWORD CHANGE',
-      target_id: user.employee_id,
-      details: `${user.designation} updated their own password.`
-    });
+    
+    await Admin.updatePassword(userId, hashedNewPassword);
+    
+    await Admin.logAction(userId, 'PASSWORD_CHANGE', 'User changed their password');
 
     res.json({ success: true, message: "Password updated successfully!" });
   } catch (err) {
+    console.error("Change Password Error:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -182,7 +192,7 @@ exports.addProgram = async (req, res) => {
                 user_id: user.id, 
                 user_role: user.role,
                 user_designation: user.designation,
-                action: 'ADDED PROGRAM',
+                action: 'Added a Program',
                 target_id: user.id, 
                 details: `${user.designation} added a program.`
             });
@@ -215,4 +225,207 @@ exports.getPrograms = async (req, res) => {
             message: "Error fetching programs" 
         });
     }
+};
+
+// Add Section
+exports.addSection = async (req, res) => {
+  try {
+    const { section_name, program_id, year_id, semester_id, year_level } = req.body;
+    const user = req.user;
+
+    const newSection = await Admin.createSection({
+      section_name,
+      program_id,
+      year_id,
+      semester_id,
+      year_level
+    });
+
+    try {
+      await History.logTransaction({
+        user_id: user.id,
+        user_role: user.role,
+        user_designation: user.designation,
+        action: 'Added Section',
+        target_id: user.id,
+        details: `${user.designation} added section ${section_name}.`
+      });
+    } catch (logError) {
+      console.error("History log failed:", logError.message);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Section created successfully",
+      data: newSection
+    });
+  } catch (err) {
+    console.error("Add Section Error:", err);
+    res.status(500).json({ success: false, message: "Failed to create section" });
+  }
+};
+
+// Get Sections
+exports.getSections = async (req, res) => {
+  try {
+    const sections = await Admin.getSections();
+    res.json({
+      success: true,
+      data: sections
+    });
+  } catch (err) {
+    console.error("Get Sections Error:", err);
+    res.status(500).json({ success: false, message: "Error fetching sections" });
+  }
+};
+
+// Add Course
+exports.addCourse = async (req, res) => {
+  try {
+    const { course_code, course_name, lec_units, lab_units, total_units, 
+            course_desc, prerequisites, assignments } = req.body;
+    const user = req.user;
+
+    const newCourse = await Admin.createCourse({
+      course_code,
+      course_name,
+      lec_units,
+      lab_units,
+      total_units,
+      course_desc,
+      prerequisites,
+      assignments
+    });
+
+    try {
+      await History.logTransaction({
+        user_id: user.id,
+        user_role: user.role,
+        user_designation: user.designation,
+        action: 'Added Course',
+        target_id: user.id,
+        details: `${user.designation} added course ${course_code} - ${course_name}.`
+      });
+    } catch (logError) {
+      console.error("History log failed:", logError.message);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Course created successfully",
+      data: newCourse
+    });
+  } catch (err) {
+    console.error("Add Course Error:", err);
+    if (err.code === '23505') {
+      return res.status(409).json({ success: false, message: "Course code already exists" });
+    }
+    res.status(500).json({ success: false, message: "Failed to create course" });
+  }
+};
+
+exports.getCourses = async (req, res) => {
+  try {
+    const courses = await Admin.getCourses();
+    res.json({ success: true, data: courses });
+  } catch (err) {
+    console.error("Get Courses Error:", err);
+    res.status(500).json({ success: false, message: "Error fetching courses" });
+  }
+};
+
+// Add Curriculum
+exports.addCurriculum = async (req, res) => {
+  try {
+    const { program_id, curriculum_year, version_name, is_active } = req.body;
+    
+    const newCurriculum = await Admin.createCurriculum({
+      program_id,
+      curriculum_year,
+      version_name,
+      is_active
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Curriculum created successfully",
+      data: newCurriculum
+    });
+  } catch (err) {
+    console.error("Add Curriculum Error:", err);
+    res.status(500).json({ success: false, message: "Failed to create curriculum" });
+  }
+};
+
+// Get Curricula
+exports.getCurricula = async (req, res) => {
+  try {
+    const curricula = await Admin.getCurricula();
+    res.json({ success: true, data: curricula });
+  } catch (err) {
+    console.error("Get Curricula Error:", err);
+    res.status(500).json({ success: false, message: "Error fetching curricula" });
+  }
+};
+
+// Delete Curriculum
+exports.deleteCurriculum = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Admin.deleteCurriculum(id);
+    res.json({ success: true, message: "Curriculum deleted" });
+  } catch (err) {
+    console.error("Delete Curriculum Error:", err);
+    res.status(500).json({ success: false, message: "Failed to delete curriculum" });
+  }
+};
+
+
+exports.addAcademicYear = async (req, res) => {
+  try {
+    const { startYear, endYear, isActive } = req.body;
+    const year_label = `${startYear}-${endYear}`;
+    const user = req.user;
+
+    const newYear = await Admin.createAcademicYear({
+      year_label,      // Changed from acad_year
+      is_active: isActive
+    });
+
+    try {
+      await History.logTransaction({
+        user_id: user.id,
+        user_role: user.role,
+        user_designation: user.designation,
+        action: 'Added Academic Year',
+        target_id: user.id,
+        details: `${user.designation} added Academic Year ${year_label}.`
+      });
+    } catch (logError) {
+      console.error("History log failed:", logError.message);
+    }
+
+    res.status(201).json({ 
+      success: true, 
+      message: "Academic Year created successfully", 
+      data: newYear 
+    });
+  } catch (err) {
+    console.error("Add Academic Year Error:", err);
+    res.status(500).json({ success: false, message: "Failed to create academic year" });
+  }
+};
+
+
+exports.getAcademicYears = async (req, res) => {
+  try {
+    const years = await Admin.getAcademicYears();
+    res.json({ 
+      success: true, 
+      data: years 
+    });
+  } catch (err) {
+    console.error("Get Academic Years Error:", err);
+    res.status(500).json({ success: false, message: "Error fetching academic years" });
+  }
 };

@@ -1,0 +1,229 @@
+.a-student-forms-layout {
+    display: flex;
+    box-sizing: border-box;
+    height: calc(100vh - 106.5px); 
+    width: 100%;
+    overflow: hidden; 
+    font-family: 'Inter', sans-serif;
+
+    padding: 1.5rem 0 1.5rem  0; 
+}
+.forms-sidebar {
+    width: 350px;
+    min-width: 350px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    background-color: transparent; 
+}
+
+.sidebar-content-card {
+    background-color: #FFFFFF;
+    padding: 1rem;
+    flex: 1; 
+    display: flex;
+    flex-direction: column;
+
+    border-radius: 8px; 
+    overflow: hidden; 
+}
+
+.sidebar-list {
+    flex: 1;
+    overflow-y: auto; 
+    margin-top: 0.5rem;
+}
+
+/* Search Wrapper */
+
+.sidebar-search-wrapper {
+    margin-bottom: 1rem;
+    position: relative;
+    width: 100%;
+}
+
+
+
+.sidebar-search-wrapper input {
+
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.75rem 0.875rem 0.75rem 2.5rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.875rem;
+}
+
+
+
+.search-icon-small {
+
+    position: absolute;
+    left: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #3d1616;
+    font-size: 1.2rem;
+    opacity: 0.6;
+
+}
+.student-checkbox{
+  width: 16px;
+  height: 16px;
+  accent-color: #3D1616;
+}
+
+.select-all-label{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+
+.select-all-label.active{
+     background-color: #f0ecec;  
+}
+
+
+.select-all-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #3D1616;
+}
+
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    padding: 0.8rem;
+    margin-bottom: 0.25rem;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.sidebar-item.active {
+    background-color: #f0ecec;  
+}
+
+.sidebar-controls-row{
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    align-items: center;
+}
+
+.sidebar-item-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    
+}
+
+.item-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.item-name {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.item-id {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+/* Preview Area: Fills Remaining Space */
+.forms-preview-area {
+    flex: 1; 
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    margin-left: 1rem;
+    padding-bottom: 1rem; 
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;          
+    padding: 0 1rem ;
+    flex-shrink: 0; /* Header stays at top */
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+.preview-container {
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column; 
+    align-items: center; 
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+
+}
+
+.empty-preview {
+    text-align: center;
+    justify-content: center;
+}
+
+.document-frame {
+    background: white;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    width: 210mm;
+    min-height: 297mm;
+
+    flex-shrink: 0; /* Prevents the document from squishing */
+}
+
+/* Buttons */
+.action-btn {
+    display: flex;           
+    align-items: center;      
+    justify-content: center;  
+    gap: 8px;                
+    padding: 0.6rem 1.2rem;
+    background-color: #3d1616; 
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.action-btn:hover:not(:disabled) {
+    background-color: #3d1616;
+}
+
+.action-btn.batch-mode {
+    background-color: #3d1616; 
+}
+
+.action-btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Print Specifics */
+@media print {
+    .page-break {
+        display: block;
+        break-after: page;
+        page-break-after: always;
+    }
+}
+
+.batch-print-hidden {
+    display: none !important;
+}

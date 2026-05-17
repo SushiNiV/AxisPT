@@ -12,29 +12,24 @@ function ASignIn() {
   const [errorMessage, setErrorMessage] = useState('');
   
   const [formData, setFormData] = useState({
-    employeeID: '',
-    password: '',
-    rememberMe: false
+      username: '',  
+      password: '',
+      rememberMe: false
   });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    if (name === "employeeID") {
-      const onlyNums = value.replace(/\D/g, "");
-      setFormData(prev => ({ ...prev, [name]: onlyNums }));
-    } else {
-      setFormData(prev => ({ 
-        ...prev, 
-        [name]: type === 'checkbox' ? checked : value 
-      }));
-    }
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? checked : value 
+    }));
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
     try {
-      const response = await fetch((`${process.env.REACT_APP_API_URL}/admin/login`), {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -45,15 +40,15 @@ function ASignIn() {
 
       if (data.success) {
         sessionStorage.setItem('token', data.token);
-        sessionStorage.setItem('employeeID', data.employeeID);
+        sessionStorage.setItem('username', data.username);
           
-        if (data.mustChangePassword === true) {
+        if (data.changedPass === true) {
           navigate('/change-password'); 
         } else {
           navigate('/admin/dashboard');
         }
       } else {
-        setErrorMessage(data.message || "Invalid Employee ID or Password.");
+        setErrorMessage(data.message || "Invalid Username or Password.");
         setPopupStatus('error');
       }
     } catch (error) {
@@ -86,13 +81,14 @@ function ASignIn() {
           
           <div className="aformColumn">
             <div className="ascol">
-              <label>Employee ID <span style={{color: 'red'}}>*</span></label>
+              <label>Username <span style={{color: 'red'}}>*</span></label>
               <input 
                 type="text" 
-                name="employeeID"
-                placeholder="Enter employee ID" 
-                value={formData.employeeID}
+                name="username"
+                placeholder="Enter username" 
+                value={formData.username}
                 onChange={handleChange}
+                autoComplete='username'
                 required
               />
             </div>
@@ -106,6 +102,7 @@ function ASignIn() {
                   placeholder="Enter your password" 
                   value={formData.password}
                   onChange={handleChange}
+                  autoComplete='current-password'
                   required 
                 />
                 <span className="material-icons aeyeIcon" onClick={() => setShowPassword(!showPassword)}>

@@ -2,31 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import './StudentForm.css';
 
-function StudentForm({ adminMode = false }) {
-  const { studentId } = useParams();  
+
+function StudentForm({ adminMode = false, studentId: propsId }) {
+  const { studentId: paramId } = useParams();  
+  
+
+  const effectiveId = propsId || paramId;
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const formatToPHT = (dateString) => {
-  if (!dateString) return "";
-  
-  const date = new Date(dateString);
-  
-  return new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Manila',
-    month: '2-digit',
-    day: '2-digit',
-    year: 'numeric',
-  }).format(date);
-};
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Manila',
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+    }).format(date);
+  };
 
-const calculateBMI = (weightLbs, heightFt) => {
-  if (!weightLbs || !heightFt) return "---";
-  const heightInMeters = heightFt * 0.3048;
-  const weightInKg = weightLbs * 0.453592;
-  const bmi = weightInKg / (heightInMeters ** 2);
-  return bmi.toFixed(2);
-};
+  const calculateBMI = (weightLbs, heightFt) => {
+    if (!weightLbs || !heightFt) return "---";
+    const heightInMeters = heightFt * 0.3048;
+    const weightInKg = weightLbs * 0.453592;
+    const bmi = weightInKg / (heightInMeters ** 2);
+    return bmi.toFixed(2);
+  };
 
   const calculateAge = (birthDate) => {
     if (!birthDate) return "";
@@ -34,19 +37,19 @@ const calculateBMI = (weightLbs, heightFt) => {
     const birth = new Date(birthDate);
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
-    
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
         age--;
     }
     return age;
-};
+  };
 
   useEffect(() => {
-    if (!studentId && adminMode) return;
+    if (adminMode && !effectiveId) return;
 
     const token = sessionStorage.getItem('token');
-    const fetchUrl = studentId 
-      ? `http://localhost:5000/api/admin/student-form/${studentId}` 
+    
+    const fetchUrl = adminMode && effectiveId 
+      ? `http://localhost:5000/api/admin/student-form/${effectiveId}` 
       : `http://localhost:5000/api/student/form/me`;
 
     setLoading(true);
@@ -75,7 +78,7 @@ const calculateBMI = (weightLbs, heightFt) => {
         console.error("Fetch error:", err);
         setLoading(false);
       });
-  }, [studentId, adminMode]);
+  }, [effectiveId, adminMode]); // 5. Added effectiveId as dependency
 
   const formatFullName = (f, m, l, s) => `${f || ''} ${m || ''} ${l || ''} ${s || ''}`.trim();
 
@@ -83,9 +86,9 @@ const calculateBMI = (weightLbs, heightFt) => {
 
   return (
     <div className="form-container">
+      {/* ... Personal Information Section ... */}
       <div className="section-title">Personal Information</div>
 
-      {/* FULL NAME */}
       <div className="grid-row three-cols height-one border-bottom">
         <div className="sfinput-group col-span-4 no-border-right">
           <label>FULL NAME</label>
@@ -104,7 +107,7 @@ const calculateBMI = (weightLbs, heightFt) => {
         </div>
       </div>
 
-      {/* PRESENT ADDRESS */}
+      {/* ... Present Address ... */}
       <div className="grid-row four-cols-address height-one border-bottom">
         <div className="sfinput-group col-span-4 no-border-right">
           <label>PRESENT ADDRESS:</label>
@@ -127,7 +130,7 @@ const calculateBMI = (weightLbs, heightFt) => {
         </div>
       </div>
 
-      {/* PROVINCIAL ADDRESS */}
+      {/* ... Provincial Address ... */}
       <div className="grid-row four-cols-address height-one border-bottom">
         <div className="sfinput-group col-span-4 no-border-right">
           <label>PROVINCIAL ADDRESS:</label>
@@ -150,7 +153,7 @@ const calculateBMI = (weightLbs, heightFt) => {
         </div>
       </div>
 
-      {/* CONTACT INFO */}
+      {/* ... Contact Info ... */}
       <div className="grid-row three-cols height-one border-bottom">
         <div className="sfinput-group vertical-border">
           <label>Landline:</label>
@@ -166,7 +169,7 @@ const calculateBMI = (weightLbs, heightFt) => {
         </div>
       </div>
 
-      {/* STATUS */}
+      {/* ... Status & Personal Details ... */}
       <div className="grid-row six-cols-aligned height-one border-bottom">
         <div className="sfinput-group vertical-border">
           <label>DATE OF BIRTH</label>
@@ -194,7 +197,7 @@ const calculateBMI = (weightLbs, heightFt) => {
         </div>
       </div>
 
-      {/* PHYSICAL INFO & HS */}
+      {/* ... BMI & Physical ... */}
       <div className="grid-row six-cols-merged height-one border-bottom">
         <div className="sfinput-group vertical-border">
           <label>HEIGHT (ft)</label>
@@ -218,6 +221,7 @@ const calculateBMI = (weightLbs, heightFt) => {
         </div>
       </div>
 
+      {/* ... School Info ... */}
       <div className="grid-row six-cols-aligned height-one border-bottom">
         <div className="sfinput-group hs-name">
           <label>HIGH SCHOOL GRADUATED</label>
@@ -322,7 +326,6 @@ const calculateBMI = (weightLbs, heightFt) => {
           <label>Who supports your college education?</label>
           <div className="checkbox-col">
             <div className="checkbox-item">
-              {/* Use Sentence Case to match standard HTML values */}
               <input type="checkbox" checked={data?.support?.includes('PARENTS')} readOnly />
               <span className="sub-label">Parents</span>
             </div>
@@ -348,7 +351,7 @@ const calculateBMI = (weightLbs, heightFt) => {
           <label>Parent's Joint Monthly Income</label>
           <div className="checkbox-col">
             <div className="checkbox-item">
-              <input type="checkbox" checked={data?.parents_income  === 'BELOW P20K'} readOnly />
+              <input type="checkbox" checked={data?.parents_income === 'BELOW P20K'} readOnly />
               <span className="sub-label">Below P20K</span>
             </div>
             <div className="checkbox-item">
@@ -380,7 +383,6 @@ const calculateBMI = (weightLbs, heightFt) => {
               <input type="checkbox" checked={data?.living_in === "RELATIVE'S HOUSE"} readOnly />
               <span className="sub-label">Relative's house</span>
             </div>
-              <span className="sub-label gap">Other: </span>
           </div> 
         </div>
         <div className="sfinput-group vertical-border">
@@ -395,7 +397,7 @@ const calculateBMI = (weightLbs, heightFt) => {
               <span className="sub-label">Bet. P51-P100</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" checked={data?.daily_transpo_expense === 'P51-P100'} readOnly />
+              <input type="checkbox" checked={data?.daily_transpo_expense === '>P100'} readOnly />
               <span className="sub-label">&gt;P100</span>
             </div>
           </div> 
@@ -450,6 +452,7 @@ const calculateBMI = (weightLbs, heightFt) => {
           <div className="value-line">{data?.acad_clubs_extracurr}</div>   
         </div>
       </div>
+
       <div className="section-title sec-title">Certifications</div>
       <div className="grid-row">
         <span className="sub-label left-text divider">
@@ -459,6 +462,7 @@ const calculateBMI = (weightLbs, heightFt) => {
           </i>
         </span>
       </div>
+
       {/* FOOTER */}
       <div className="grid-row two-cols center-text border-bottom">
         <div className="sfinput-group">
@@ -473,14 +477,14 @@ const calculateBMI = (weightLbs, heightFt) => {
             year: 'numeric',
           }).format(new Date())}
         </div>
-           <span className="sub-label center-text closer">Date</span>
+          <span className="sub-label center-text closer">Date</span>
         </div>
       </div>
 
        <div className="grid-row two-cols border-bottom">
         <div className="sfinput-group vertical-border">
           <label>COURSE/YEAR/SECTION</label>
-          <div className="value-line">{data?.acad_clubs_extracurr}</div>
+          <div className="value-line">{data?.program} {data?.year_level} {data?.section}</div>
         </div>
         <div className="sfinput-group last-cell">
           <label>NAME OF CLASS ADVISER</label>

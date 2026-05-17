@@ -243,6 +243,17 @@ input.tiny-check:checked::before {
   font-size: 10px !important;
 }
 
+.loading-spinner{
+  background-color: gray;
+  text-align: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+
+
 @media print {
   @page {
     size: 215.9mm 330.2mm;

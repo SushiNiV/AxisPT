@@ -1,4 +1,4 @@
-.addprogramBG {
+.modalOverlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -15,16 +15,12 @@
 .createContainer {
   background: #F8FAFC;
   width: 90%;
-  max-width: 400px;
-  height: 90%;
-  max-height: 500px;
-  padding: 0.5rem 1.25rem 0 1.75rem;
-  border-radius: 5px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-  animation: softRise 0.4s ease-out;
+  max-width: 450px; /* Increased slightly for better proportions */
+  padding: 0 1.25rem 1.25rem 1.75rem; 
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden; 
 }
 
 .closeBTArea {
@@ -33,14 +29,36 @@
 }
 
 .createHeader {
-  text-transform: uppercase;
-  color: #3d1616;
-  padding-bottom: 0.25rem;
-  border-bottom: 1px solid #ccc;
+  height: 50px;
+  background-color: #3D1616; /* OLFU Maroon */
+  margin: -0.5rem -1.25rem 0 -1.75rem; /* Offsets container padding to reach edges */
+  padding: 1rem 1.5rem 2rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
 }
 
 .createHeader h3 {
-  margin: 0;
+  margin: 0; 
+  padding: 0;
+  color: white;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.closeBt {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: opacity 0.2s;
+}
+
+.closeBt:hover {
+  opacity: 0.7;
 }
 
 .formScrollArea {
@@ -83,6 +101,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  align-items: stretch;
 }
 
 
@@ -105,7 +124,7 @@
 }
 
 .formGroup input:focus {
-  border-color: #ff5f5f;
+  border-color: #3D1616;
   box-shadow: 0 0 0 3px rgba(255, 95, 95, 0.1);
 }
 
@@ -203,40 +222,22 @@ textarea {
   font-size: 0.75rem;
 }
 
-.text-active { color: #4caf50; }
-.text-inactive { color: #f44336; }
-
-
-.dropdownMenu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 100%;
-  background: white;
-  border: 1px solid #777;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  z-index: 1000;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.dropdownItem {
-  display: flex;
-  align-items: center;
-  padding: 0;
-  gap: 10px;
+.select-display {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none; 
+  
+  background-color: white;
+  padding-right: 40px; 
   cursor: pointer;
-  transition: background 0.2s;
-  font-size: 0.75rem !important;
-  font-weight: 400 !important;
-  color: #000 !important;
 }
 
-.dropdownItem:hover {
-  background: #f5f5f5;
-}
-
-.dropdownItem input {
-  width: 16px;
-  height: 16px;
+.select-display {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none; 
+  
+  background-color: white;
+  padding-right: 40px; 
+  cursor: pointer;
 }

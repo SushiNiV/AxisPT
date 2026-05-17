@@ -74,53 +74,6 @@
   align-items: flex-start;
 }
 
-.formGroup {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-
-.formGroup label {
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: #555;
-  margin: 0 0 0 0.75rem;
-}
-
-.formGroup input, 
-.formGroup textarea {
-  padding: 12px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  outline: none;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.formGroup input:focus {
-  border-color: #ff5f5f;
-  box-shadow: 0 0 0 3px rgba(255, 95, 95, 0.1);
-}
-
-.formGroupProgYear {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.formGroupProgYear .mainlabel {
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: #555;
-  margin: 0 0 0 0.75rem;
-}
-
 .readOnlyInput {
   background-color: #f8f8f8;
   border-style: dashed !important;
@@ -155,85 +108,47 @@ textarea {
   resize: none;
 }
 
-.statusToggleContainer {
+.nestedItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.assignmentLabel {
   cursor: pointer;
+  font-weight: normal !important;
+  margin: 0 !important;
+  display: inline-block;
+  user-select: none;
+  color: #555;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.rowItem {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding-left: 0.5rem;
-}
-
-.statusSwitch {
-  width: 50px;
-  height: 24px;
-  background-color: #ccc;
-  border-radius: 50px;
-  position: relative;
-  transition: background-color 0.3s ease;
-}
-
-.statusSwitch.active {
-  background-color: #4caf50;
-}
-
-.statusSwitch.inactive {
-  background-color: #f44336;
-}
-
-.switchHandle {
-  width: 18px;
-  height: 18px;
-  background-color: white;
-  border-radius: 50%;
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  transition: transform 0.3s ease;
-}
-
-.active .switchHandle {
-  transform: translateX(26px);
-}
-
-.statusLabel {
-  font-weight: 600;
-  font-size: 0.75rem;
-}
-
-.text-active { color: #4caf50; }
-.text-inactive { color: #f44336; }
-
-
-.dropdownMenu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 100%;
-  background: white;
-  border: 1px solid #777;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  z-index: 1000;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.dropdownItem {
-  display: flex;
-  align-items: center;
-  padding: 0;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   transition: background 0.2s;
-  font-size: 0.75rem !important;
-  font-weight: 400 !important;
-  color: #000 !important;
 }
 
-.dropdownItem:hover {
-  background: #f5f5f5;
+.rowItem:hover {
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
-.dropdownItem input {
-  width: 16px;
-  height: 16px;
+.rowItem span {
+  color: #555;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.rowItem input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #000;
+  cursor: pointer;
+}
+
+.subTier {
+  margin-left: 2rem;
 }
