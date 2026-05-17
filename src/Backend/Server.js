@@ -3,7 +3,6 @@ const cors = require('cors');
 require('dotenv').config();
 
 const adminRoutes = require('./routes/adminRoutes');
-const studentRoutes = require('./routes/studentRoutes');
 
 const helmet = require('helmet');
 const compression = require('compression')
@@ -26,10 +25,7 @@ const logRoutes = (prefix, router) => {
 };
 
 app.use('/api/admin', adminRoutes);
-app.use('/api/student', studentRoutes);
-
 logRoutes('/api/admin', adminRoutes);
-logRoutes('/api/student', studentRoutes);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Production server running on port ${PORT}`));
+const PORT = process.env.BACK_PORT || 8080;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

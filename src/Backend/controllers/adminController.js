@@ -1,218 +1,135 @@
+// controllers/adminController.js
 const bcrypt = require('bcrypt');
-const saltRounds = 10;
 const jwt = require('jsonwebtoken');
-
-const Admin = require('../models/adminModel');
-const History = require('../models/historyModel');
-
-exports.getHistory = async (req, res) => {
-  try {
-    const { id, role, designation } = req.user; 
-    const isPowerUser = 
-      designation?.toLowerCase() === 'superadmin' || 
-      role?.toLowerCase() === 'developer';
-
-    const history = await History.getHistory(id, isPowerUser);
-    res.json({ success: true, history });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Error fetching history" });
-  }
-};
+const AdminModel = require('../models/adminModel');
 
 exports.login = async (req, res) => {
-  const { employeeID, password, rememberMe } = req.body;
+  const { username, password, rememberMe } = req.body;
+  
   try {
-    const user = await Admin.findById(employeeID);
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const admin = await AdminModel.findByUsername(username);
+    
+    if (!admin) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Access denied. Only SuperAdmin and Admin roles can login." 
+      });
+    }
 
-    const isBcrypt = user.password_hash.startsWith('$2b$') || user.password_hash.startsWith('$2a$');
-    const isMatch = isBcrypt ? await bcrypt.compare(password, user.password_hash) : (password === user.password_hash);
-    if (!isMatch) return res.status(401).json({ success: false, message: "Invalid credentials" });
+    if (!admin.is_active || !admin.faculty_status) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Account is deactivated. Please contact administrator." 
+      });
+    }
+
+    // Check if password is bcrypt hash or plain text
+    const isBcrypt = admin.password_hash && 
+                     (admin.password_hash.startsWith('$2b$') || 
+                      admin.password_hash.startsWith('$2a$'));
+    
+    let isMatch;
+    if (isBcrypt) {
+      isMatch = await bcrypt.compare(password, admin.password_hash);
+    } else {
+      isMatch = (password === admin.password_hash);
+    }
+    
+    if (!isMatch) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Invalid credentials" 
+      });
+    }
 
     const expiresIn = rememberMe ? '7d' : '2h';
     const token = jwt.sign(
-      { id: user.employee_id, role: user.role, designation: user.designation },
+      { 
+        id: admin.user_id, 
+        role: admin.roles, 
+        designation: admin.designation_name,
+        faculty_id: admin.faculty_id
+      },
       process.env.JWT_SECRET,
       { expiresIn }
     );
 
-    await History.logTransaction({
-      user_id: user.employee_id,
-      user_role: user.role,
-      user_designation: user.designation,
-      action: 'LOGIN',
-      target_id: user.employee_id,
-      details: `Successful login as ${user.designation}`
+    await AdminModel.updateLastLogin(admin.user_id);
+
+    res.json({ 
+      success: true, 
+      token, 
+      employeeID: admin.username,
+      firstName: admin.first_name,
+      role: admin.roles,
+      designation: admin.designation_name,
+      mustChangePassword: admin.changed_pass === false
     });
 
-    res.json({ success: true, token, employeeID: user.employee_id, firstName: user.firstname, role: user.role, designation: user.designation, mustChangePassword: user.must_change_password });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Internal Server Error" });
-  }
-};
-
-exports.bulkAcceptStudents = async (req, res) => {
-  try {
-    const { ids } = req.body;
-    await Admin.acceptStudentsBulk(ids);
-
-    await History.logTransaction({
-      user_id: req.user.id,
-      user_role: req.user.role,
-      user_designation: req.user.designation,
-      action: 'BULK_ACCEPT',
-      target_id: ids.join(','),
-      details: `Accepted ${ids.length} student applications.`
+    console.error("Login error:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal Server Error" 
     });
-
-    res.json({ success: true, message: "Students accepted." });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Database error" });
-  }
-};
-
-exports.bulkRejectStudents = async (req, res) => {
-  const { ids } = req.body;
-  try {
-    await Admin.rejectStudentsBulk(ids);
-
-    await History.logTransaction({
-      user_id: req.user.id,
-      user_role: req.user.role,
-      user_designation: req.user.designation,
-      action: 'BULK_REJECT',
-      target_id: ids.join(','),
-      details: `Rejected ${ids.length} student applications.`
-    });
-
-    res.json({ success: true, message: `Successfully rejected ${ids.length} applications.` });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to reject students" });
   }
 };
 
 exports.changePassword = async (req, res) => {
-  const { employeeID, currentPassword, newPassword } = req.body;
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.user.id;
+
   try {
-    const user = await Admin.findById(employeeID);
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const admin = await AdminModel.findById(userId);
+    
+    if (!admin) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Admin not found" 
+      });
+    }
 
-    let isMatch = user.must_change_password ? (currentPassword === user.password_hash) : await bcrypt.compare(currentPassword, user.password_hash);
-    if (!isMatch) return res.status(401).json({ success: false, message: "Current password incorrect" });
+    // Verify current password (handle both bcrypt and plain text)
+    const isBcrypt = admin.password_hash && 
+                     (admin.password_hash.startsWith('$2b$') || 
+                      admin.password_hash.startsWith('$2a$'));
+    
+    let isValid;
+    if (isBcrypt) {
+      isValid = await bcrypt.compare(currentPassword, admin.password_hash);
+    } else {
+      isValid = (currentPassword === admin.password_hash);
+    }
 
-    const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
-    await Admin.updatePassword(employeeID, hashedNewPassword);
+    if (!isValid) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Current password is incorrect" 
+      });
+    }
 
-    await History.logTransaction({
-      user_id: user.employee_id,
-      user_role: user.role,
-      user_designation: user.designation,
-      action: 'PASSWORD CHANGE',
-      target_id: user.employee_id,
-      details: `${user.designation} updated their own password.`
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update with hashed password and set changed_pass to true
+    const updated = await AdminModel.updatePassword(userId, hashedPassword);
+    
+    if (!updated) {
+      return res.status(500).json({ 
+        success: false, 
+        message: "Failed to update password" 
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Password changed successfully. Please login again." 
     });
-
-    res.json({ success: true, message: "Password updated successfully!" });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Change password error:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal Server Error" 
+    });
   }
-};
-
-exports.getMasterlist = async (req, res) => {
-  try {
-    const students = await Admin.getMasterlist(); 
-    res.json({ success: true, students }); 
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Database error" });
-  }
-};
-
-exports.getPendingStudents = async (req, res) => {
-  try {
-    const students = await Admin.getPending();
-    res.json({ success: true, students });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to fetch pending students" });
-  }
-};
-
-// backend/controllers/adminController.js (or similar)
-// adminController.js
-
-exports.getStudentFormData = async (req, res) => {
-    try {
-        const { id } = req.params; 
-        const studentData = await Admin.getStudentFullDetails(id);
-        if (!studentData) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Student record not found" 
-            });
-        }
-        res.json({ 
-            success: true, 
-            data: studentData 
-        });
-    } catch (error) {
-        console.error("Backend Error:", error);
-        res.status(500).json({ 
-            success: false, 
-            error: "Internal Server Error",
-            details: error.message 
-        });
-    }
-};
-
-//program
-exports.addProgram = async (req, res) => {
-    try {
-        const { name, abbreviation, total_years, description, status } = req.body;
-
-        const user = req.user; 
-        if (!user) {
-            return res.status(401).json({ success: false, message: "User not authenticated" });
-        }
-
-        const newProgram = await Admin.createProgram({
-            name, abbreviation, total_years, description, status
-        });
-
-        try {
-            await History.logTransaction({
-                user_id: user.id, 
-                user_role: user.role,
-                user_designation: user.designation,
-                action: 'ADDED PROGRAM',
-                target_id: user.id, 
-                details: `${user.designation} added a program.`
-            });
-        } catch (historyError) {
-            console.error("History logging failed:", historyError.message);
-        }
-
-        res.status(201).json({ 
-            success: true, 
-            message: "Program created successfully", 
-            program: newProgram 
-        });
-    } catch (err) {
-        console.error("Add Program Error:", err);
-        res.status(500).json({ success: false, message: "Failed to create program" });
-    }
-};
-
-exports.getPrograms = async (req, res) => {
-    try {
-        const programs = await Admin.getPrograms();
-        res.json({ 
-            success: true, 
-            data: programs
-        });
-    } catch (err) {
-        console.error("Get Programs Error:", err);
-        res.status(500).json({ 
-            success: false, 
-            message: "Error fetching programs" 
-        });
-    }
 };
