@@ -3,7 +3,6 @@ import styled from 'styled-components';
 export const DashboardContainer = styled.div`
   display: flex;
   flex: 1;
-  background-color: #efefef;
   width: 100%;
   height: 100vh;
   margin: 0;

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BiInfoCircle } from 'react-icons/bi';
 import PopupOverlay from '../Components/PopupOverlay';
 
-import '../SigninGlobal.css';
+import '../GlobalSignin.css';
 import '../Global.css';
 
 function SignIn() {

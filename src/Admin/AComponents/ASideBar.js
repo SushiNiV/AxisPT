@@ -1,26 +1,10 @@
 import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { BiGridAlt, BiUser, BiBookAlt, BiGroup, BiBriefcase, BiCheckShield, BiFile, BiBell, BiHistory, BiSun, BiMoon, BiChevronLeft, BiChevronRight } from 'react-icons/bi';
+import { NavLink, useLocation } from 'react-router-dom';
 import cptLogo from '../../assets/cpt-logo.png';
-import {
-  AsidebarContainer,
-  AsidebarArea,
-  AlogoArea,
-  AmainLogo,
-  AlogoText,
-  HeadT,
-  NavContainer,
-  StyledNavLink,
-  LinkIcon,
-  BotBtns,
-  CollapseBtnArea,
-  CollapseBtn,
-  ThemeToggleArea,
-  ThemeSwitch,
-  Slider,
-  IconSun,
-  IconMoon
-} from './ASideBar.styles';
+import { BiGridAlt, BiUser, BiBookAlt, BiGroup, BiBriefcase, BiCheckShield, BiFile, BiBell, BiHistory, BiSun, BiMoon, BiChevronLeft, BiChevronRight } from 'react-icons/bi';
+
+import '../../GlobalSidebar.css';
+import '../../Global.css';
 
 function ASideBar() {
   const location = useLocation();
@@ -36,114 +20,80 @@ function ASideBar() {
     setIsCollapsed(!isCollapsed);
   };
 
-  const isActiveCheck = (paths) => {
-    return paths.some(path => location.pathname.includes(path));
-  };
-
   return (
-    <AsidebarContainer $isCollapsed={isCollapsed}>
-      <AsidebarArea $isCollapsed={isCollapsed}>
-        <AlogoArea $isCollapsed={isCollapsed}>
-          <AmainLogo src={cptLogo} alt='CPT Logo' />
-          {!isCollapsed && (
-            <AlogoText>
-              <HeadT as="h1">Administrator</HeadT>
-              <HeadT as="p">Axis CPT Portal</HeadT>
-            </AlogoText>
-          )}
-        </AlogoArea>
+    <div className={`SidebarContainer ${isCollapsed ? 'collapsed' : ''}`}>
+      <div className="SidebarArea">  
+      <div className='Sidebar LogoArea'>
+        <img src={cptLogo} alt='CPT Logo' className='Logo'/>
+        {!isCollapsed && (
+          <div>
+            <h1 className='LogoText'>Administrator</h1>
+            <p className='LogoText'>Axis CPT Portal</p>
+          </div>
+        )}
+      </div>
 
-        <NavContainer $isCollapsed={isCollapsed}>
-          <StyledNavLink 
-            to="/admin/dashboard" 
-            $isCollapsed={isCollapsed}
-            className={({ isActive }) => isActive ? 'active' : ''}
-          >
-            <LinkIcon $isCollapsed={isCollapsed}>
-              <BiGridAlt />
-            </LinkIcon>
-            {!isCollapsed && <span>Dashboard</span>}
-          </StyledNavLink>
+      <nav className='NavContainer'>
+          <NavLink to="/admin/dashboard" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+            <BiGridAlt className="linkIcon" /> {!isCollapsed && <span>Dashboard</span>}
+          </NavLink>
           
-          <StyledNavLink 
+          <NavLink 
             to="/admin/student-management/masterlist" 
-            $isCollapsed={isCollapsed}
-            className={isActiveCheck(['/admin/student-management']) ? 'active' : ''}
+            className={() => 
+              `navLink ${location.pathname.includes('/admin/student-management') ? 'activeLink' : ''}`
+            }
           >
-            <LinkIcon $isCollapsed={isCollapsed}>
-              <BiUser />
-            </LinkIcon>
-            {!isCollapsed && <span>Student Management</span>}
-          </StyledNavLink>
+            <BiUser className="linkIcon" /> {!isCollapsed && <span>Student Management</span>}
+          </NavLink>
           
-          <StyledNavLink
+          <NavLink
             to="/admin/academics/programs&sections"
-            $isCollapsed={isCollapsed}
-            className={isActiveCheck(['/admin/academics']) ? 'active' : ''}
+            className={() => 
+              `navLink ${location.pathname.includes('/admin/academics') ? 'activeLink' : ''}`
+            }
           >
-            <LinkIcon $isCollapsed={isCollapsed}>
-              <BiBookAlt />
-            </LinkIcon>
-            {!isCollapsed && <span>Academics & Grades</span>}
-          </StyledNavLink>
-
-          <StyledNavLink 
-            to="/admin/documents/student-form" 
-            $isCollapsed={isCollapsed}
-            className={isActiveCheck(['/admin/documents']) ? 'active' : ''}
-          >
-            <LinkIcon $isCollapsed={isCollapsed}>
-              <BiFile />
-            </LinkIcon>
-            {!isCollapsed && <span>Documents</span>}
-          </StyledNavLink>
+            <BiBookAlt className="linkIcon" /> {!isCollapsed && <span>Academics & Grades</span>}
+          </NavLink>
           
-          <StyledNavLink 
-            to="/admin/access-control" 
-            $isCollapsed={isCollapsed}
-            className={({ isActive }) => isActive ? 'active' : ''}
-          >
-            <LinkIcon $isCollapsed={isCollapsed}>
-              <BiBell />
-            </LinkIcon>
-            {!isCollapsed && <span>Access Control</span>}
-          </StyledNavLink>
+          {/*}
+          <NavLink to="/ojt-clinical" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+            <BiBriefcase className="linkIcon" /> {!isCollapsed && <span>OJT & Clinical</span>}
+          </NavLink>
+          */}
+
+          <NavLink to="/admin/documents/student-form" className={() => `navLink ${location.pathname.includes('/admin/documents') ? 'activeLink' : ''}`}>
+            <BiFile className="linkIcon" /> {!isCollapsed && <span>Documents</span>}
+          </NavLink>
           
-          <StyledNavLink 
-            to="/admin/history" 
-            $isCollapsed={isCollapsed}
-            className={({ isActive }) => isActive ? 'active' : ''}
-          >
-            <LinkIcon $isCollapsed={isCollapsed}>
-              <BiHistory />
-            </LinkIcon>
-            {!isCollapsed && <span>History</span>}
-          </StyledNavLink>
-        </NavContainer>
+          <NavLink to="/admin/access-control" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+            <BiBell className="linkIcon" /> {!isCollapsed && <span>Access Control</span>}
+          </NavLink>
+          
+          <NavLink to="/admin/history" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+            <BiHistory className="linkIcon" /> {!isCollapsed && <span>History</span>}
+          </NavLink>
+      </nav>
 
-        <BotBtns $isCollapsed={isCollapsed}>
-          <CollapseBtnArea $isCollapsed={isCollapsed}>
-            <CollapseBtn onClick={toggleCollapse} $isCollapsed={isCollapsed}>
-              {isCollapsed ? <BiChevronRight /> : <BiChevronLeft />}
-            </CollapseBtn>
-          </CollapseBtnArea>
+      <div className="SidebarFooter">
+        <div className='collapseBtnArea'>
+        <button className="collapseBtn" onClick={toggleCollapse}>
+          {isCollapsed ? <BiChevronRight /> : <BiChevronLeft />}
+        </button>
+      </div>
 
-          <ThemeToggleArea $isCollapsed={isCollapsed}>
-            <ThemeSwitch>
-              <input type="checkbox" onChange={toggleTheme} checked={isDarkMode} />
-              <Slider $isChecked={isDarkMode} $isCollapsed={isCollapsed}>
-                <IconSun $isChecked={isDarkMode} $isCollapsed={isCollapsed}>
-                  <BiSun />
-                </IconSun>
-                <IconMoon $isChecked={isDarkMode} $isCollapsed={isCollapsed}>
-                  <BiMoon />
-                </IconMoon>
-              </Slider>
-            </ThemeSwitch>
-          </ThemeToggleArea>
-        </BotBtns>
-      </AsidebarArea>
-    </AsidebarContainer>
+        <div className="themeToggleArea">
+          <label className="themeSwitch">
+            <input type="checkbox" onChange={toggleTheme} checked={isDarkMode} />
+            <span className="slider">
+              <BiSun className="icon-sun" />
+              <BiMoon className="icon-moon" />
+            </span>
+          </label>
+        </div>
+      </div>
+      </div>
+    </div>
   );
 }
 

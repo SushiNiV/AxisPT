@@ -1,24 +1,20 @@
 import ASideBar from './ASideBar';
 import AHeader from './AHeader';
-import ASubheader from './ASubheader';
 import { Outlet } from 'react-router-dom';
-import {
-  AdminContainer,
-  AdminMainContainer,
-  AdminPageContent
-} from './ALayout.styles';
+
+import '../../Global.css'
 
 function ALayout() {
   return (
-    <AdminContainer>
+    <div className="Container NoScroll">
       <ASideBar />
-      <AdminMainContainer>
+      <div className="MainContainer">
         <AHeader />
-        <AdminPageContent>
+        <main className="PageContent">
           <Outlet />
-        </AdminPageContent>
-      </AdminMainContainer>
-    </AdminContainer>
+        </main>
+      </div>
+    </div>
   );
 }
 

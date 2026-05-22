@@ -2,19 +2,9 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { BiPowerOff, BiBell, BiUserCircle, BiInfoCircle } from 'react-icons/bi';
 import PopupOverlay from '../../Components/PopupOverlay';
-import {
-  AheaderContainer,
-  HeaderTitle,
-  HeaderRight,
-  NotificationBtn,
-  ProfileBtn,
-  LogoutBtn,
-  LogoutIconMar,
-  ProfilePic,
-  LogoutModalContent,
-  OverlayActionButtons,
-  ConfirmBtn
-} from './AHeader.styles';
+
+import '../../Global.css'
+import '../../GlobalHeader.css'
 
 function AHeader({ user }) {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -30,40 +20,37 @@ function AHeader({ user }) {
     if (path.startsWith('/admin/documents')) return 'Documents';
     if (path.startsWith('/admin/access-control')) return 'Access Control';
     if (path.startsWith('/admin/history')) return 'History';
+    
     if (path.startsWith('/settings')) return 'Settings';
     return 'Administrator';
   };
 
   const handleLogoutAction = () => {
     sessionStorage.clear();
-    navigate('/admin/signin');
+    navigate('/admin-signin');
   };
 
   return (
-    <AheaderContainer>
-      <HeaderTitle>{getHeaderTitle()}</HeaderTitle>
+    <div className="HeaderContainer">
+      <span className="HeaderTitle">{getHeaderTitle()}</span>
       
-      <HeaderRight>
-        <NotificationBtn>
-          <BiBell style={{ fontSize: '20px', color: '#3d1616' }} />
-          <span className="notificationBadge"></span>
-        </NotificationBtn>
+      <div className="HeaderRight">
+        <div className="notificationBtn">
+          <BiBell className="HeaderIcon" />
+        </div>
         
-        <ProfileBtn>
+        <div className="profileBtn">
           {user && profilePic ? (
-            <ProfilePic src={profilePic} alt="Profile" />
+            <img src={profilePic} alt="Profile" className="profilePic" />
           ) : (
-            <BiUserCircle style={{ fontSize: '20px', color: '#3d1616' }} />
+            <BiUserCircle className="HeaderIcon profileIconPlaceholder" />
           )}
-        </ProfileBtn>
+        </div>
 
-        <LogoutBtn onClick={() => setIsLogoutModalOpen(true)}>
-          <LogoutIconMar>
-            <BiPowerOff style={{ fontSize: '20px' }} />
-          </LogoutIconMar>
-          Log out
-        </LogoutBtn>
-      </HeaderRight>
+        <div className="logoutBtn" onClick={() => setIsLogoutModalOpen(true)}>
+          <BiPowerOff className="linkIcon logoutIconMar" /> Log out
+        </div>
+      </div>
 
       <PopupOverlay 
         isOpen={isLogoutModalOpen} 
@@ -71,16 +58,19 @@ function AHeader({ user }) {
         title="Confirm Logout"
         icon={<BiInfoCircle />}
       >
-        <LogoutModalContent>
-          <p>Are you sure you want to log out of the system?<br />Any unsaved changes may be lost.</p>
-          <OverlayActionButtons>
-            <ConfirmBtn onClick={handleLogoutAction}>
+        <div>
+          <p>Are you sure you want to log out of the system?<br></br>Any unsaved changes may be lost.</p>
+          <div className="overlayActionButtons">
+            <button 
+              className="confirmBtn" 
+              onClick={handleLogoutAction}
+            >
               Log out
-            </ConfirmBtn>
-          </OverlayActionButtons>
-        </LogoutModalContent>
+            </button>
+          </div>
+        </div>
       </PopupOverlay>
-    </AheaderContainer>
+    </div>
   );
 }
 
