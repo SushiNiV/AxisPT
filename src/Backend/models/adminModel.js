@@ -6,47 +6,56 @@ const Admin = {
   findById: async (username) => {
     const result = await pool.query(
       `SELECT u.user_id, u.username, u.password_hash, u.changed_pass, r.role_name 
-       FROM users u
-       JOIN user_roles ur ON u.user_id = ur.user_id
-       JOIN roles r ON ur.role_id = r.role_id
-       WHERE u.username = $1 AND r.role_name = 'Admin'`, 
-      [username]
-    );
-    return result.rows[0];
-  },
+      FROM users u
+      JOIN user_roles ur ON u.user_id = ur.user_id
+      JOIN roles r ON ur.role_id = r.role_id
+      WHERE u.username = $1 AND r.role_name = 'Admin'`, 
+    [username]
+  );
+  return result.rows[0];
+},
+
 findByUserId: async (userId) => {
   const result = await pool.query(
     `SELECT u.user_id, u.username, u.password_hash, u.changed_pass, r.role_name 
-     FROM users u
-     JOIN user_roles ur ON u.user_id = ur.user_id
-     JOIN roles r ON ur.role_id = r.role_id
-     WHERE u.user_id = $1`, 
+    FROM users u
+    JOIN user_roles ur ON u.user_id = ur.user_id
+    JOIN roles r ON ur.role_id = r.role_id
+    WHERE u.user_id = $1`, 
     [userId]
   );
   return result.rows[0];
 },
 
-  getPending: async () => {
-    const result = await pool.query(`
-      SELECT 
-        s.student_id,
-        s.account_status,
-        s.created_at,
-        pii.first_name, -- Fix: Schema uses first_name
-        pii.last_name,  -- Fix: Schema uses last_name
-        pii.middle_name, -- Fix: Schema uses middle_name
-        pii.personal_email as email, -- Fix: Schema uses personal_email
-        pii.mobile_no,
-        edu.year_level,
-        edu.classification
-      FROM students s
-      LEFT JOIN student_pii pii ON s.student_id = pii.student_id
-      LEFT JOIN student_education edu ON s.student_id = edu.student_id
-      WHERE s.account_status = false 
-      ORDER BY s.created_at DESC
-    `);
-    return result.rows;
-  },
+ getPending: async () => {
+  const result = await pool.query(`
+    SELECT 
+      s.student_id,
+      u.username as student_id,  
+      s.account_status,
+      s.created_at,
+      pii.first_name as firstname,
+      pii.last_name as lastname,
+      pii.middle_name as middlename,
+      pii.personal_email as email,
+      pii.mobile_no,
+      edu.year_level,
+      edu.classification,
+      p.program_abbr as program,
+      sec.section_name as section
+    FROM students s
+    JOIN users u ON s.user_id = u.user_id
+    LEFT JOIN student_pii pii ON s.student_id = pii.student_id
+    LEFT JOIN student_education edu ON s.student_id = edu.student_id
+    LEFT JOIN curricula c ON edu.curriculum_id = c.curriculum_id
+    LEFT JOIN programs p ON c.program_id = p.program_id
+    LEFT JOIN section_assignments sa ON edu.assignment_id = sa.assignment_id
+    LEFT JOIN sections sec ON sa.section_id = sec.section_id
+    WHERE s.account_status = false 
+    ORDER BY s.created_at DESC
+  `);
+  return result.rows;
+},
 
   getMasterlist: async () => {
     const result = await pool.query(`
@@ -100,16 +109,20 @@ findByUserId: async (userId) => {
   acceptStudentsBulk: async (ids) => {
     return await pool.query(
       `UPDATE students 
-       SET account_status = true
-       WHERE student_id = ANY($1)`, // Fix: Removed non-existent must_change_password
+      SET account_status = true
+      WHERE user_id IN (
+        SELECT user_id FROM users WHERE username = ANY($1)
+      )`,
       [ids]
     );
   },
 
   rejectStudentsBulk: async (ids) => {
-    // If rejecting means deleting their record entirely:
     return await pool.query(
-      'DELETE FROM students WHERE student_id = ANY($1)',
+      `DELETE FROM students 
+      WHERE user_id IN (
+        SELECT user_id FROM users WHERE username = ANY($1)
+      )`,
       [ids]
     );
   },
@@ -117,22 +130,111 @@ findByUserId: async (userId) => {
   getStudentFullDetails: async (studentId) => {
     const result = await pool.query(`
       SELECT 
+        -- Personal Info
+        pii.first_name as firstname,
+        pii.last_name as lastname,
+        pii.middle_name as middlename,
+        pii.suffix,
+        pii.sex,
+        pii.birth_place,
+        pii.personal_email as email,
+        pii.mobile_no,
+        pii.landline as landline_no,
+        pii.religion,
+        pii.nationality,
+        pii.civil_status,
+        pii.height,
+        pii.weight,
+        pii.language_dialects,
+        pii.visual_problems,
+        
+        -- Student
         s.birth_date,
-        pii.*, 
-        edu.*, 
-        fam.*, 
-        ach.*
-      FROM student_pii pii
-      INNER JOIN students s ON pii.student_id = s.student_id
-      LEFT JOIN student_education edu ON pii.student_id = edu.student_id
-      LEFT JOIN student_family fam ON pii.student_id = fam.student_id
-      LEFT JOIN student_achievements ach ON pii.student_id = ach.student_id -- Fixed table name
-      WHERE pii.student_id = $1
+        
+        -- Present Address
+        pa.house_no as present_houseno,
+        pa.street as present_street,
+        pa.barangay as present_sbdvsn_brgy,
+        pa.city_municipality as present_city_mncplty,
+        
+        -- Provincial Address
+        pra.house_no as provincial_houseno,
+        pra.street as provincial_street,
+        pra.barangay as provincial_sbdvsn_brgy,
+        pra.city_municipality as provincial_city_mncplty,
+        
+        -- Education
+        edu.year_level,
+        edu.classification,
+        p.program_abbr as program,
+        sec.section_name as section,
+        
+        -- Highschool
+        hs.highschool_graduated,
+        hs.pubpriv_hs,
+        hs.highschool_address,
+        hs.hs_final_gwa,
+        
+        -- Father
+        father.first_name as father_firstname,
+        father.middle_name as father_middlename,
+        father.last_name as father_lastname,
+        father.suffix as father_suffix,
+        father.occupation as father_occupation,
+        father.contact_no as father_contact_no,
+        CASE WHEN father.is_alive THEN 'LIVING' ELSE 'DECEASED' END as father_alive,
+        
+        -- Mother
+        mother.first_name as mother_firstname,
+        mother.middle_name as mother_middlename,
+        mother.last_name as mother_lastname,
+        mother.suffix as mother_suffix,
+        mother.occupation as mother_occupation,
+        mother.contact_no as mother_contact_no,
+        CASE WHEN mother.is_alive THEN 'LIVING' ELSE 'DECEASED' END as mother_alive,
+        
+        -- Guardian
+        guardian.first_name as guardian_firstname,
+        guardian.middle_name as guardian_middlename,
+        guardian.last_name as guardian_lastname,
+        guardian.suffix as guardian_suffix,
+        guardian.occupation as guardian_relation,
+        guardian.contact_no as guardian_contact_no,
+        
+        -- Family
+        fam.support,
+        fam.parents_income,
+        fam.living_in,
+        fam.daily_transpo_expense,
+        fam.no_siblings,
+        fam.ordinal_position,
+        
+        -- Achievements
+        ach.awards_honors,
+        ach.hobbies_interests,
+        ach.future_career,
+        ach.acad_extracurr as acad_clubs_extracurr
+        
+      FROM students s
+      JOIN student_pii pii ON s.student_id = pii.student_id
+      LEFT JOIN student_addresses pa ON s.student_id = pa.student_id AND pa.address_type = 'Present'
+      LEFT JOIN student_addresses pra ON s.student_id = pra.student_id AND pra.address_type = 'Provincial'
+      LEFT JOIN student_education edu ON s.student_id = edu.student_id
+      LEFT JOIN curricula c ON edu.curriculum_id = c.curriculum_id
+      LEFT JOIN programs p ON c.program_id = p.program_id
+      LEFT JOIN section_assignments sa ON edu.assignment_id = sa.assignment_id
+      LEFT JOIN sections sec ON sa.section_id = sec.section_id
+      LEFT JOIN student_highschool hs ON s.student_id = hs.student_id
+      LEFT JOIN student_family_members father ON s.student_id = father.student_id AND father.relation_type = 'Father'
+      LEFT JOIN student_family_members mother ON s.student_id = mother.student_id AND mother.relation_type = 'Mother'
+      LEFT JOIN student_family_members guardian ON s.student_id = guardian.student_id AND guardian.relation_type = 'Guardian'
+      LEFT JOIN student_family fam ON s.student_id = fam.student_id
+      LEFT JOIN student_achievements ach ON s.student_id = ach.student_id
+      WHERE s.student_id = $1
     `, [studentId]);
 
     return result.rows[0] || null;
   },
-
   //programs
   createProgram: async (data) => {
     const result = await pool.query(

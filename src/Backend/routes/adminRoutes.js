@@ -7,6 +7,9 @@ const { verifyToken } = require('../middleware/auth');
 
 router.post('/login', adminController.login);
 router.post('/change-password', verifyToken, adminController.changePassword);
+router.get('/public/programs', adminController.getPrograms);
+router.get('/public/sections', adminController.getSections);
+router.get('/public/academic-years', adminController.getAcademicYears);
 
 //Student Management 
 router.get('/masterlist', verifyToken, adminController.getMasterlist);

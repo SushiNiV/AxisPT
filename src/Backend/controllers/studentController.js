@@ -29,7 +29,8 @@ const registerStudent = async (req, res) => {
       ...formData,
       passwordHash
     };
-
+    console.log('Year Level received:', formData.yearLevel);
+    console.log('All form data:', JSON.stringify(formData, null, 2));
     await studentModel.createFullProfile(dataWithPassword);
 
     res.status(200).json({

@@ -1,7 +1,41 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './Education.css';
 
 const Education = ({ formData, handleChange, errors }) => {
+  const [programs, setPrograms] = useState([]);
+  const [academicYears, setAcademicYears] = useState([]);
+  const [sections, setSections] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [progRes, acadRes, sectRes] = await Promise.all([
+          fetch(`${process.env.REACT_APP_API_URL}/admin/public/programs`),
+          fetch(`${process.env.REACT_APP_API_URL}/admin/public/academic-years`),
+          fetch(`${process.env.REACT_APP_API_URL}/admin/public/sections`)
+        ]);
+
+        const progData = await progRes.json();
+        const acadData = await acadRes.json();
+        const sectData = await sectRes.json();
+
+        if (progData.success) setPrograms(progData.data);
+        if (acadData.success) setAcademicYears(acadData.data);
+        if (sectData.success) setSections(sectData.data);
+      } catch (error) {
+        console.error("Error fetching education data:", error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Filter sections based on selected program
+  const filteredSections = sections.filter(s => {
+    if (!formData.program) return false;
+    const prog = programs.find(p => p.program_name === formData.program || p.program_abbr === formData.program);
+    return s.program_name === prog?.program_abbr;
+  });
+
   return (
     <div className="slides">
       <h1 className="enrollmentTitle">Education and Program</h1>
@@ -47,9 +81,11 @@ const Education = ({ formData, handleChange, errors }) => {
             required
           >
             <option value="" disabled>Select Program</option>
-            <option value="PHYSICAL THERAPY">PHYSICAL THERAPY</option>
-            <option value="RADIOLOGIC TECHNOLOGY">RADIOLOGIC TECHNOLOGY</option>
-            <option value="RESPIRATORY THERAPY">RESPIRATORY THERAPY</option>
+            {programs.map(p => (
+              <option key={p.program_id} value={p.program_name}>
+                {p.program_abbr} - {p.program_name}
+              </option>
+            ))}
           </select>
           {errors.program && <span className="error-text">{errors.program}</span>}
         </div>
@@ -71,7 +107,7 @@ const Education = ({ formData, handleChange, errors }) => {
             <option value="CROSS-ENROLLEE">CROSS-ENROLLEE</option>
             <option value="SECOND COURSER">SECOND COURSER</option>
           </select>
-          {errors.classification && <span className="error-text">{errors.classificaation}</span>}
+          {errors.classification && <span className="error-text">{errors.classification}</span>}
         </div>
       </div>
 
@@ -103,9 +139,9 @@ const Education = ({ formData, handleChange, errors }) => {
             required
           >
             <option value="" disabled>Select Section</option>
-            <option value="-1">-1</option>
-            <option value="-2">-2</option>
-            <option value="-3">-3</option>
+            {filteredSections.map(s => (
+              <option key={s.id} value={s.name}>{s.name}</option>
+            ))}
           </select>
           {errors.section && <span className="error-text">{errors.section}</span>}
         </div>
@@ -119,8 +155,9 @@ const Education = ({ formData, handleChange, errors }) => {
             required
           >
             <option value="" disabled>Select Academic Year</option>
-            <option value="2025-2026">2025-2026</option>
-            <option value="2026-2027">2026-2027</option>
+            {academicYears.map(y => (
+              <option key={y.year_id} value={y.year_label}>{y.year_label}</option>
+            ))}
           </select>
           {errors.acadYear && <span className="error-text">{errors.acadYear}</span>}
         </div>

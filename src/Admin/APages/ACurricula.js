@@ -37,20 +37,6 @@ function ACurricula() {
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const paginated = filtered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this curriculum?")) return;
-    try {
-      const token = sessionStorage.getItem('token');
-      await fetch(`${process.env.REACT_APP_API_URL}/admin/curriculum/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      fetchCurricula();
-    } catch (err) {
-      console.error("Delete error:", err);
-    }
-  };
-
   return (
     <div className="curriculaContainer">
       {showAdd && (
@@ -83,7 +69,6 @@ function ACurricula() {
               <th>Version</th>
               <th>Courses</th>
               <th>Status</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -100,11 +85,6 @@ function ACurricula() {
                     <span className={`curriculaStatusBadge ${c.is_active ? 'curriculaActive' : 'curriculaInactive'}`}>
                       {c.is_active ? 'Active' : 'Inactive'}
                     </span>
-                  </td>
-                  <td>
-                    <button onClick={() => handleDelete(c.id)} className="curriculaDeleteBtn" disabled={c.is_active}>
-                      <BiTrash />
-                    </button>
                   </td>
                 </tr>
               ))

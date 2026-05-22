@@ -1,27 +1,14 @@
-// backend/drop-course-columns.js
+// backend/fix-ordinal-position.js
 const { newPool } = require('./config/db');
 
-async function dropColumns() {
+async function fixOrdinal() {
   try {
-    await newPool.query(`ALTER TABLE courses DROP COLUMN IF EXISTS year_level_offered`);
-    console.log('✅ year_level_offered dropped');
-    
-    await newPool.query(`ALTER TABLE courses DROP COLUMN IF EXISTS semester_offered`);
-    console.log('✅ semester_offered dropped');
-    
-    // Verify
-    const result = await newPool.query(`
-      SELECT column_name FROM information_schema.columns 
-      WHERE table_name = 'courses' 
-      ORDER BY ordinal_position
-    `);
-    console.log('\n📋 Remaining columns:');
-    result.rows.forEach(c => console.log('  -', c.column_name));
-    
+    await newPool.query(`ALTER TABLE student_family ALTER COLUMN ordinal_position TYPE varchar`);
+    console.log('✅ ordinal_position changed to varchar');
   } catch(e) {
     console.log('Error:', e.message);
   }
   await newPool.end();
 }
 
-dropColumns();
+fixOrdinal();

@@ -1,8 +1,20 @@
 const { newPool } = require('../config/db');
-const pool = newPool; // Use newPool
+const pool = newPool;
+
+// Enum mapper
+const mapEnum = (val) => {
+  const map = {
+    'MALE': 'Male', 'FEMALE': 'Female',
+    'SINGLE': 'Single', 'MARRIED': 'Married', 'WIDOWED': 'Widowed',
+    'PUBLIC': 'Public', 'PRIVATE': 'Private',
+    'NEW': 'New', 'CONTINUING': 'Continuing', 'RETURNEE': 'Returnee',
+    'SHIFTEE': 'Shiftee', 'TRANSFEREE': 'Transferee',
+    'CROSS-ENROLLEE': 'Transferee', 'SECOND COURSER': 'Transferee',
+  };
+  return map[val] || val || null;
+};
 
 const StudentModel = {
-  // Login - find by student_id
   findById: async (studentID) => {
     const result = await pool.query(
       `SELECT s.student_id, s.birth_date, s.account_status,
@@ -17,7 +29,6 @@ const StudentModel = {
     return result.rows[0];
   },
 
-  // Registration - create full profile
   createFullProfile: async (data) => {
     const client = await pool.connect();
     
@@ -26,7 +37,7 @@ const StudentModel = {
 
       // 1. Create user account
       const userResult = await client.query(
-        `INSERT INTO users (username, password_hash, fatima_email)
+        `INSERT INTO users (username, password_hash, recovery_email)
          VALUES ($1, $2, $3)
          RETURNING user_id`,
         [data.studentID, data.passwordHash, data.fatimaEmail || null]
@@ -34,14 +45,10 @@ const StudentModel = {
       const userId = userResult.rows[0].user_id;
 
       // 2. Assign Student role
-      const roleResult = await client.query(
-        `SELECT role_id FROM roles WHERE role_name = 'Student'`
-      );
-      
+      const roleResult = await client.query(`SELECT role_id FROM roles WHERE role_name = 'Student'`);
       if (roleResult.rows.length > 0) {
         await client.query(
-          `INSERT INTO user_roles (user_id, role_id)
-           VALUES ($1, $2)`,
+          `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`,
           [userId, roleResult.rows[0].role_id]
         );
       }
@@ -55,7 +62,7 @@ const StudentModel = {
       );
       const studentId = studentResult.rows[0].student_id;
 
-      // 4. Student PII (Personal Info)
+      // 4. Student PII
       await client.query(
         `INSERT INTO student_pii (
           student_id, last_name, first_name, middle_name, suffix,
@@ -66,8 +73,9 @@ const StudentModel = {
         [
           studentId,
           data.lastName, data.firstName, data.middleName, data.suffix,
-          data.sex, data.placeOfBirth, data.email, data.phoneNumber, data.landline,
-          data.religion, data.nationality, data.civilStatus,
+          mapEnum(data.sex),
+          data.placeOfBirth, data.email, data.phoneNumber, data.landline,
+          data.religion, data.nationality, mapEnum(data.civilStatus),
           data.height ? parseFloat(data.height) : null,
           data.weight ? parseFloat(data.weight) : null,
           data.language, data.visualProblems
@@ -76,112 +84,115 @@ const StudentModel = {
 
       // 5. Student Addresses (Present)
       await client.query(
-        `INSERT INTO student_addresses (
-          student_id, address_type, house_no, street, barangay, city_municipality, province
-        ) VALUES ($1, 'Present', $2, $3, $4, $5, $6)`,
+        `INSERT INTO student_addresses (student_id, address_type, house_no, street, barangay, city_municipality, province)
+         VALUES ($1, 'Present', $2, $3, $4, $5, $6)`,
         [studentId, data.permHouseNo, data.permStreet, data.permSubdivision, data.permCity, null]
       );
 
       // 6. Student Addresses (Provincial)
       if (!data.sameAsPermanent) {
         await client.query(
-          `INSERT INTO student_addresses (
-            student_id, address_type, house_no, street, barangay, city_municipality, province
-          ) VALUES ($1, 'Provincial', $2, $3, $4, $5, $6)`,
+          `INSERT INTO student_addresses (student_id, address_type, house_no, street, barangay, city_municipality, province)
+           VALUES ($1, 'Provincial', $2, $3, $4, $5, $6)`,
           [studentId, data.provHouseNo, data.provStreet, data.provSubdivision, data.provCity, null]
         );
       } else {
         await client.query(
-          `INSERT INTO student_addresses (
-            student_id, address_type, house_no, street, barangay, city_municipality, province
-          ) VALUES ($1, 'Provincial', $2, $3, $4, $5, $6)`,
+          `INSERT INTO student_addresses (student_id, address_type, house_no, street, barangay, city_municipality, province)
+           VALUES ($1, 'Provincial', $2, $3, $4, $5, $6)`,
           [studentId, data.permHouseNo, data.permStreet, data.permSubdivision, data.permCity, null]
         );
       }
 
       // 7. Highschool Info
       await client.query(
-        `INSERT INTO student_highschool (
-          student_id, highschool_graduated, pubpriv_hs, highschool_address, hs_final_gwa
-        ) VALUES ($1, $2, $3, $4, $5)`,
-        [
-          studentId,
-          data.highschoolGraduated,
-          data.pubprivHS,
-          data.schoolAddress,
-          data.hsFinalGWA ? parseFloat(data.hsFinalGWA) : null
-        ]
+        `INSERT INTO student_highschool (student_id, highschool_graduated, pubpriv_hs, highschool_address, hs_final_gwa)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [studentId, data.highschoolGraduated, mapEnum(data.pubprivHS), data.schoolAddress,
+         data.hsFinalGWA ? parseFloat(data.hsFinalGWA) : null]
       );
 
-      // 8. Family Members (Father)
+      // 8. Student Education
+      let curriculumId = null, yearId = null, semesterId = null, assignmentId = null;
+
+      if (data.program) {
+        const currResult = await client.query(
+          `SELECT c.curriculum_id FROM curricula c
+           JOIN programs p ON c.program_id = p.program_id
+           WHERE (p.program_name ILIKE $1 OR p.program_abbr ILIKE $1) AND c.is_active = true LIMIT 1`,
+          [`%${data.program}%`]
+        );
+        if (currResult.rows.length > 0) curriculumId = currResult.rows[0].curriculum_id;
+      }
+
+      if (data.acadYear) {
+        const yr = await client.query(`SELECT year_id FROM academic_year WHERE year_label = $1`, [data.acadYear]);
+        if (yr.rows.length > 0) yearId = yr.rows[0].year_id;
+      }
+
+      const semMap = { '1ST SEMESTER': 1, '2ND SEMESTER': 2, 'SUMMER': 3 };
+      semesterId = semMap[data.semester] || null;
+
+      if (data.section && data.program && yearId && semesterId) {
+        const prog = await client.query(
+          `SELECT program_id FROM programs WHERE program_name ILIKE $1 OR program_abbr ILIKE $1`,
+          [`%${data.program}%`]
+        );
+        if (prog.rows.length > 0) {
+          const assign = await client.query(
+            `SELECT sa.assignment_id FROM section_assignments sa
+             JOIN sections s ON sa.section_id = s.section_id
+             WHERE s.section_name = $1 AND s.program_id = $2 AND sa.year_id = $3 AND sa.semester_id = $4`,
+            [data.section, prog.rows[0].program_id, yearId, semesterId]
+          );
+          if (assign.rows.length > 0) assignmentId = assign.rows[0].assignment_id;
+        }
+      }
+
+      const yrLvl = { '1ST YEAR': 1, '2ND YEAR': 2, '3RD YEAR': 3, '4TH YEAR': 4, '5TH YEAR': 5 };
+      const yearLevel = yrLvl[data.yearLevel] || null;
+
+      await client.query(
+        `INSERT INTO student_education (student_id, curriculum_id, assignment_id, year_id, semester_id,
+          year_level, classification, enrollment_status, is_current)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'Enrolled', true)`,
+        [studentId, curriculumId, assignmentId, yearId, semesterId, yearLevel, mapEnum(data.classification)]
+      );
+
+      // 9-13: Family, Achievements (unchanged)
       if (data.fatherFirstName) {
         await client.query(
-          `INSERT INTO student_family_members (
-            student_id, relation_type, first_name, middle_name, last_name, suffix,
-            occupation, contact_no, is_alive, is_guardian
-          ) VALUES ($1, 'Father', $2, $3, $4, $5, $6, $7, $8, false)`,
-          [
-            studentId,
-            data.fatherFirstName, data.fatherMiddleName, data.fatherLastName,
-            data.fatherSuffix, data.fatherOccupation, data.fatherContactNumber,
-            data.fatherStatus?.toLowerCase() === 'living'
-          ]
+          `INSERT INTO student_family_members (student_id, relation_type, first_name, middle_name, last_name, suffix, occupation, contact_no, is_alive, is_guardian)
+           VALUES ($1, 'Father', $2, $3, $4, $5, $6, $7, $8, false)`,
+          [studentId, data.fatherFirstName, data.fatherMiddleName, data.fatherLastName, data.fatherSuffix, data.fatherOccupation, data.fatherContactNumber, data.fatherStatus?.toLowerCase() === 'living']
         );
       }
 
-      // 9. Family Members (Mother)
       if (data.motherFirstName) {
         await client.query(
-          `INSERT INTO student_family_members (
-            student_id, relation_type, first_name, middle_name, last_name, suffix,
-            occupation, contact_no, is_alive, is_guardian
-          ) VALUES ($1, 'Mother', $2, $3, $4, $5, $6, $7, $8, false)`,
-          [
-            studentId,
-            data.motherFirstName, data.motherMiddleName, data.motherLastName,
-            data.motherSuffix, data.motherOccupation, data.motherContactNumber,
-            data.motherStatus?.toLowerCase() === 'living'
-          ]
+          `INSERT INTO student_family_members (student_id, relation_type, first_name, middle_name, last_name, suffix, occupation, contact_no, is_alive, is_guardian)
+           VALUES ($1, 'Mother', $2, $3, $4, $5, $6, $7, $8, false)`,
+          [studentId, data.motherFirstName, data.motherMiddleName, data.motherLastName, data.motherSuffix, data.motherOccupation, data.motherContactNumber, data.motherStatus?.toLowerCase() === 'living']
         );
       }
 
-    
       if (data.guardianFirstName) {
         await client.query(
-          `INSERT INTO student_family_members (
-            student_id, relation_type, first_name, middle_name, last_name, suffix,
-            occupation, contact_no, is_alive, is_guardian
-          ) VALUES ($1, 'Guardian', $2, $3, $4, $5, $6, $7, true, true)`,
-          [
-            studentId,
-            data.guardianFirstName, data.guardianMiddleName, data.guardianLastName,
-            data.guardianSuffix, data.guardianRelationship, data.guardianContactNumber
-          ]
+          `INSERT INTO student_family_members (student_id, relation_type, first_name, middle_name, last_name, suffix, occupation, contact_no, is_alive, is_guardian)
+           VALUES ($1, 'Guardian', $2, $3, $4, $5, $6, $7, true, true)`,
+          [studentId, data.guardianFirstName, data.guardianMiddleName, data.guardianLastName, data.guardianSuffix, data.guardianRelationship, data.guardianContactNumber]
         );
       }
 
-      // 11. Student Family Info
       await client.query(
-        `INSERT INTO student_family (
-          student_id, support, parents_income, living_in,
-          daily_transpo_expense, no_siblings, ordinal_position
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [
-          studentId,
-          Array.isArray(data.support) ? data.support.join(', ') : data.support,
-          data.parentsIncome,
-          data.livingArrangement,
-          data.transportExpense,
-          data.numSiblings ? parseInt(data.numSiblings) : null,
-          data.ordinalPosition ? parseInt(data.ordinalPosition) : null
-        ]
+        `INSERT INTO student_family (student_id, support, parents_income, living_in, daily_transpo_expense, no_siblings, ordinal_position)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [studentId, Array.isArray(data.support) ? data.support.join(', ') : data.support, data.parentsIncome, data.livingArrangement, data.transportExpense, data.numSiblings ? parseInt(data.numSiblings) || null : null, data.ordinalPosition]
       );
 
-      // 12. Student Achievements
       await client.query(
-        `INSERT INTO student_achievements (
-          student_id, awards_honors, hobbies_interests, future_career, acad_extracurr
-        ) VALUES ($1, $2, $3, $4, $5)`,
+        `INSERT INTO student_achievements (student_id, awards_honors, hobbies_interests, future_career, acad_extracurr)
+         VALUES ($1, $2, $3, $4, $5)`,
         [studentId, data.awards, data.interests, data.careerGoal, data.extracurricular]
       );
 
@@ -195,20 +206,11 @@ const StudentModel = {
     }
   },
 
-  // Update password
   updatePassword: async (studentID, passwordHash) => {
-    // Find user_id from student_id
-    const student = await pool.query(
-      'SELECT user_id FROM students WHERE student_id = $1',
-      [studentID]
-    );
-    
+    const student = await pool.query('SELECT user_id FROM students WHERE student_id = $1', [studentID]);
     if (student.rows.length === 0) return 0;
-    
     const result = await pool.query(
-      `UPDATE users 
-       SET password_hash = $1, changed_pass = true, updated_at = NOW()
-       WHERE user_id = $2`,
+      `UPDATE users SET password_hash = $1, changed_pass = true, updated_at = NOW() WHERE user_id = $2`,
       [passwordHash, student.rows[0].user_id]
     );
     return result.rowCount;

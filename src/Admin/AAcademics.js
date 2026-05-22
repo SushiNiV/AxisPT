@@ -7,7 +7,6 @@ function AAcademics() {
   const gradesTabs = [
     { label: 'Programs & Sections', path: '/admin/academics/programs&sections' },
     { label: 'Courses', path: '/admin/academics/courses' },
-    { label: 'Curriculum', path: '/admin/academics/curriculum' },
   ];
   return (
     <div className="agradesContainer">

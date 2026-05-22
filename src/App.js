@@ -72,7 +72,6 @@
                 <Route index element={<Navigate to="programs&sections" replace />} />
                 <Route path="programs&sections" element={<AProgSec />} />
                 <Route path="courses" element={<ACourses />} />
-                <Route path="curriculum" element={<ACurricula />} />
               </Route>
 
               <Route path="/admin/documents" element={<ADocuments />} >
@@ -84,6 +83,7 @@
               <Route path="/admin/access-control" element={<AAccessCtrl />} >
                 <Route index element={<Navigate to="" replace />} />
                 <Route path="academic-year" element={<AAcadYear />} />
+                <Route path="curricula" element={<ACurricula />} />
               </Route>
 
               <Route path="admin/history" element={<AHistory />} >
