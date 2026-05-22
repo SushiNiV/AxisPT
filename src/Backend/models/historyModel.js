@@ -33,17 +33,40 @@ const HistoryModel = {
   async getHistoryLogs({ limit = 100, offset = 0, userId = null, action = null }) {
     let query = `
       SELECT 
-        h.*,
+        h.id,
+        h.user_id,
+        h.target_user_id,
+        h.table_name,
+        h.record_id,
+        h.action,
+        h.old_values,
+        h.new_values,
+        h.ip_address,
+        h.user_agent,
+        h.created_at,
         u.username as user_name,
         tu.username as target_user_name,
-        d.designation_name  -- Get designation from designations table
+        f.first_name,
+        f.last_name,
+        d.designation_name,
+        COALESCE(d.designation_name, 
+          CASE 
+            WHEN STRING_AGG(DISTINCT r.role_name, ',') LIKE '%SUPERADMIN%' THEN 'Developer'
+            WHEN STRING_AGG(DISTINCT r.role_name, ',') LIKE '%ADMIN%' THEN 'Admin'
+            ELSE 'Unknown'
+          END
+        ) as display_designation,
+        STRING_AGG(DISTINCT r.role_name, ',') as roles
       FROM history_logs h
       LEFT JOIN users u ON h.user_id = u.user_id
       LEFT JOIN users tu ON h.target_user_id = tu.user_id
-      LEFT JOIN faculties f ON u.user_id = f.user_id  -- Join to faculties
-      LEFT JOIN designations d ON f.designation = d.designation_id  -- Join to designations
+      LEFT JOIN faculties f ON u.user_id = f.user_id
+      LEFT JOIN designations d ON f.designation = d.designation_id
+      LEFT JOIN user_roles ur ON u.user_id = ur.user_id
+      LEFT JOIN roles r ON ur.role_id = r.role_id
       WHERE 1=1
     `;
+
     const values = [];
     let paramIndex = 1;
 
@@ -59,7 +82,15 @@ const HistoryModel = {
       paramIndex++;
     }
 
-    query += ` ORDER BY h.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    query += ` 
+      GROUP BY 
+        h.id, h.user_id, h.target_user_id, h.table_name, h.record_id, 
+        h.action, h.old_values, h.new_values, h.ip_address, h.user_agent, h.created_at,
+        u.username, tu.username, f.first_name, f.last_name, d.designation_name
+      ORDER BY h.created_at DESC 
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+
     values.push(limit, offset);
 
     try {

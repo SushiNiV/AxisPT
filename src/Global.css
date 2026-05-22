@@ -31,6 +31,14 @@ p, h1 {
   background-color: #F2F4F6;
 }
 
+.ContentContainer {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1;
+  height: 100%;
+  overflow: hidden;
+}
+
 .NoScroll {
   overflow: hidden;
 }
@@ -51,7 +59,7 @@ p, h1 {
   flex-direction: column;
   overflow: hidden;
   height: 100%;
-  padding-right: 1rem;
+  padding: 0 1rem 0 0.5rem;
   box-sizing: border-box;
 }
 
@@ -86,7 +94,7 @@ p, h1 {
   margin-right: 10px;
 }
 
-.StudentSearchInput {
+.SearchInput {
   border: none;
   outline: none;
   width: 100%;
@@ -282,6 +290,60 @@ p, h1 {
   margin: 0 4px;
 }
 
+.TableContainer {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background-color: #fff;
+  border-radius: 5px 5px 0 0;
+  margin-bottom: 0;
+}
+
+.TableContainer::-webkit-scrollbar {
+  height: 6px;
+  width: 4px;
+}
+
+.TableContainer::-webkit-scrollbar-track {
+  background: #ffffff;
+}
+
+.TableContainer::-webkit-scrollbar-thumb {
+  background: #3d1616aa;
+}
+
+.TableContainer::-webkit-scrollbar-thumb:hover {
+  background: #3d1616;
+}
+
+.Table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+  table-layout: auto;
+}
+
+.Table th {
+  background-color: #ffffff;
+  padding: 10px 15px;
+  color: #3d1616;
+  font-weight: 700;
+  border-bottom: 2px solid #eee;
+  position: sticky;
+  top: 0;
+  text-transform: uppercase;
+}
+
+.Table td {
+  padding: 10px 15px;
+  border-bottom: 1px solid #eee;
+  color: #444;
+}
+
+.Table tr:hover {
+  background-color: #fdfdfd;
+}
 
 .PopUpCard {
   display: flex;

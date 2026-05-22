@@ -5,6 +5,10 @@ import ASignIn from './Admin/ASignIn';
 import AChangePass from './Admin/AChangePass';
 import ADashboard from './Admin/ADashboard';
 
+import AAccessCtrl from './Admin/AAccessCtrl';
+import AcadYear from './Admin/APages/AcadYear';
+import Curricula from './Admin/APages/Curricula';
+
 import AHistory from './Admin/AHistory';
 
 import ProtectedRoute from './Components/ProtectedRoute';
@@ -26,6 +30,11 @@ function App() {
           <Route element={<ALayout />}>
             <Route path="/admin/dashboard" element={<ADashboard />} />
 
+            <Route path="/admin/access-control" element={<AAccessCtrl />} >
+              <Route index element={<Navigate to="" replace />} />
+              <Route path="academic-year" element={<AcadYear />} />
+              <Route path="curricula" element={<Curricula />} />
+            </Route>
             <Route path="/admin/history" element={<AHistory />} />
           </Route>
           

@@ -1,0 +1,120 @@
+.aacadyearContainer {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1;
+  height: 100%;
+  background-color: #efefef;
+  overflow: hidden;
+}
+
+.timelineContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 0.5rem;
+  overflow-y: auto;
+}
+
+.activityCard {
+  display: flex;
+  align-items: flex-start;
+  padding: 1rem 1.5rem;
+  background: #ffffff;
+  border-radius: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s ease;
+}
+
+.activityCard:hover {
+  background: #fafafa;
+}
+
+.cardIconWrapper {
+  display: flex;
+  margin-right: 18px;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconCircle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f3f4;
+  color: #5f6368;
+  font-size: 22px;
+}
+
+.iconCircle.active {
+  background: #e6f4ea;
+  color: #1e8e3e;
+}
+
+.cardContent {
+  flex: 1;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.statusBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+
+.active-bg {
+  background-color: #e6f4ea;
+  color: #1e8e3e;
+}
+
+.archived-bg {
+  background-color: #f3e8ff;
+  color: #7c3aed;
+}
+
+.cardTimestamp {
+  font-size: 0.75rem;
+  color: #9aa0a6;
+  display: flex;
+  align-items: center;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #3c4043;
+}
+
+.cardDetails {
+  margin: 2px 0 0 0;
+  font-size: 14px;
+  color: #70757a;
+}
+
+.createBtn {
+  background-color: #431916 !important;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 10px;
+}

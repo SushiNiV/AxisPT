@@ -22,23 +22,24 @@ class AdminModel {
           d.designation_name,
           STRING_AGG(DISTINCT r.role_name, ',') as roles
         FROM users u
-        INNER JOIN faculties f ON u.user_id = f.user_id
+        LEFT JOIN faculties f ON u.user_id = f.user_id
         LEFT JOIN designations d ON f.designation = d.designation_id
         LEFT JOIN user_roles ur ON u.user_id = ur.user_id
         LEFT JOIN roles r ON ur.role_id = r.role_id
-        WHERE u.username = $1 
-          AND u.is_active = true 
-          AND f.account_status = true
-          AND r.role_name IN ('SuperAdmin', 'Admin')
-        GROUP BY u.user_id, f.faculty_id, d.designation_name
+        WHERE u.username = $1
+        GROUP BY 
+          u.user_id, u.username, u.password_hash, u.school_email, 
+          u.is_active, u.changed_pass, u.created_at, u.updated_at,
+          f.faculty_id, f.last_name, f.first_name, f.middle_name, 
+          f.suffix, f.designation, f.program_id, f.account_status,
+          d.designation_name
       `;
       
       const result = await db.query(query, [username]);
       
       if (result.rows.length === 0) return null;
       
-      const user = result.rows[0];
-      return user;
+      return result.rows[0];
     } catch (err) {
       console.error("Error in findByUsername:", err);
       throw err;
@@ -65,23 +66,24 @@ class AdminModel {
           d.designation_name,
           STRING_AGG(DISTINCT r.role_name, ',') as roles
         FROM users u
-        INNER JOIN faculties f ON u.user_id = f.user_id
+        LEFT JOIN faculties f ON u.user_id = f.user_id
         LEFT JOIN designations d ON f.designation = d.designation_id
         LEFT JOIN user_roles ur ON u.user_id = ur.user_id
         LEFT JOIN roles r ON ur.role_id = r.role_id
-        WHERE u.user_id = $1 
-          AND u.is_active = true 
-          AND f.account_status = true
-          AND r.role_name IN ('SuperAdmin', 'Admin')
-        GROUP BY u.user_id, f.faculty_id, d.designation_name
+        WHERE u.user_id = $1
+        GROUP BY 
+          u.user_id, u.username, u.password_hash, u.school_email, 
+          u.is_active, u.changed_pass, u.created_at, u.updated_at,
+          f.faculty_id, f.last_name, f.first_name, f.middle_name, 
+          f.suffix, f.designation, f.program_id, f.account_status,
+          d.designation_name
       `;
       
       const result = await db.query(query, [userId]);
       
       if (result.rows.length === 0) return null;
       
-      const user = result.rows[0];
-      return user;
+      return result.rows[0];
     } catch (err) {
       console.error("Error in findById:", err);
       throw err;

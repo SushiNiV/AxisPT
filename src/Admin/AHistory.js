@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BiSearch, BiFilterAlt, BiChevronDown, BiX } from 'react-icons/bi';
-import './AHistory.css';
+import './../GlobalHistory.css';
 import './../Global.css'
 
 function AHistory() {
@@ -147,7 +147,7 @@ function AHistory() {
           <input 
             type="text" 
             placeholder="Search history..." 
-            className="StudentSearchInput"
+            className="SearchInput"
             value={searchTerm}
             onChange={handleSearch}
           />

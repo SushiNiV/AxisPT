@@ -1,0 +1,58 @@
+.HistoryContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.HistoryContainer.Table th:nth-child(6) { width: 20%; }
+
+.HistoryContainer.Table td:nth-child(6) {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.StatusTag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.StatusTag.login-success,
+.StatusTag.password-changed,
+.StatusTag.bulk-accept {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* Failed/Error - Red */
+.StatusTag.login-failed,
+.StatusTag.password-change-failed,
+.StatusTag.bulk-reject {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+/* System Error - Orange */
+.StatusTag.login-error,
+.StatusTag.password-change-error {
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+/* Info - Blue */
+.StatusTag.bulk-accept {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+/* Warning - Yellow/Orange */
+.StatusTag.password-expiring {
+  background-color: #fff9c4;
+  color: #f57f17;
+}

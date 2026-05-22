@@ -30,11 +30,13 @@ exports.login = async (req, res) => {
 
       return res.status(404).json({ 
         success: false, 
-        message: "Access denied. Only SuperAdmin and Admin roles can login." 
+        message: "Access denied. Invalid credentials." 
       });
     }
 
-    if (!admin.is_active || !admin.faculty_status) {
+    const hasAdminRole = admin.roles && (admin.roles.includes('SUPERADMIN') || admin.roles.includes('ADMIN'));
+    
+    if (!admin.is_active) {
       await HistoryModel.log({
         userId: admin.user_id,
         targetUserId: admin.user_id,
@@ -54,6 +56,29 @@ exports.login = async (req, res) => {
       return res.status(401).json({ 
         success: false, 
         message: "Account is deactivated. Please contact administrator." 
+      });
+    }
+
+    if (!hasAdminRole && !admin.faculty_status) {
+      await HistoryModel.log({
+        userId: admin.user_id,
+        targetUserId: admin.user_id,
+        tableName: 'users',
+        recordId: admin.user_id,
+        action: 'Login Failed',
+        oldValues: null,
+        newValues: { 
+          username, 
+          reason: 'No faculty record',
+          timestamp: new Date().toISOString()
+        },
+        ipAddress,
+        userAgent
+      });
+
+      return res.status(401).json({ 
+        success: false, 
+        message: "Access denied. Faculty account not active." 
       });
     }
 
@@ -368,6 +393,15 @@ exports.getHistory = async (req, res) => {
             .replace(/\b\w/g, char => char.toUpperCase());
       }
       
+      let displayName = '';
+      if (item.first_name && item.last_name) {
+        displayName = `${item.first_name} ${item.last_name}`;
+      } else if (item.user_name) {
+        displayName = item.user_name;
+      } else {
+        displayName = 'System';
+      }
+      
       let formattedDetails = '';
       
       if (item.new_values && typeof item.new_values === 'object') {
@@ -375,7 +409,7 @@ exports.getHistory = async (req, res) => {
         
         switch(item.action) {
           case 'LOGIN_SUCCESS':
-            formattedDetails = `${newValues.username || item.user_name} logged in successfully`;
+            formattedDetails = `${displayName} logged in successfully`;
             if (newValues.designation) {
               formattedDetails += ` as ${newValues.designation}`;
             }
@@ -383,14 +417,14 @@ exports.getHistory = async (req, res) => {
             
           case 'LOGIN_FAILED':
             const reason = newValues.reason || 'Invalid credentials';
-            formattedDetails = `${newValues.username || item.user_name} failed to login`;
+            formattedDetails = `${displayName} failed to login`;
             if (reason) {
               formattedDetails += ` - ${reason}`;
             }
             break;
             
           case 'PASSWORD_CHANGED':
-            formattedDetails = `${item.user_name} changed their password`;
+            formattedDetails = `${displayName} changed their password`;
             if (newValues.changed_at) {
               formattedDetails += ` on ${new Date(newValues.changed_at).toLocaleString()}`;
             }
@@ -398,41 +432,40 @@ exports.getHistory = async (req, res) => {
             
           case 'PASSWORD_CHANGE_FAILED':
             const failReason = newValues.reason || 'Unknown error';
-            formattedDetails = `${item.user_name} failed to change password`;
+            formattedDetails = `${displayName} failed to change password`;
             if (failReason) {
               formattedDetails += ` - ${failReason}`;
             }
             break;
             
           case 'BULK_ACCEPT':
-            formattedDetails = `${item.user_name} bulk accepted requests`;
+            formattedDetails = `${displayName} bulk accepted requests`;
             if (newValues.count) {
               formattedDetails += ` (${newValues.count} items)`;
             }
             break;
             
           case 'BULK_REJECT':
-            formattedDetails = `${item.user_name} bulk rejected requests`;
+            formattedDetails = `${displayName} bulk rejected requests`;
             if (newValues.count) {
               formattedDetails += ` (${newValues.count} items)`;
             }
             break;
             
           default:
-            // For other actions, try to extract meaningful info
             formattedDetails = newValues.details || 
                               newValues.reason || 
-                              `${item.user_name} performed ${formattedAction}`;
+                              `${displayName} performed ${formattedAction}`;
         }
       } 
       else if (item.old_values && typeof item.old_values === 'object') {
         const oldValues = item.old_values;
         formattedDetails = oldValues.details || 
                           oldValues.reason || 
-                          `${item.user_name} performed ${formattedAction}`;
+                          `${displayName} performed ${formattedAction}`;
       } 
       else {
-        formattedDetails = `${item.user_name} performed ${formattedAction}`;
+        formattedDetails = `${displayName} performed ${formattedAction}`;
       }
       
       formattedDetails = formattedDetails
@@ -444,14 +477,25 @@ exports.getHistory = async (req, res) => {
         .replace(/\s+/g, ' ')
         .trim();
       
+      let designation = item.designation_name;
+      if (!designation || designation === 'Unknown') {
+        if (item.roles && item.roles.includes('SUPERADMIN')) {
+          designation = 'Developer';
+        } else if (item.roles && item.roles.includes('ADMIN')) {
+          designation = 'Admin';
+        } else {
+          designation = 'Unknown';
+        }
+      }
+      
       return {
         log_id: item.id,
         user_id: item.user_id,
-        username: item.user_name || 'System',
-        designation: item.designation_name || item.role_name || 'Unknown',
+        username: displayName,
+        designation: designation,
         action: formattedAction,
         target_id: item.target_user_id,
-        target_username: item.target_user_name || item.user_name,
+        target_username: item.target_user_name || 'System',
         details: formattedDetails,
         timestamp: new Date(item.created_at).toLocaleString()
       };

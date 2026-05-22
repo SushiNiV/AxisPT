@@ -44,7 +44,7 @@ function ASignIn() {
         sessionStorage.setItem('token', data.token);
         sessionStorage.setItem('username', data.username);
           
-        if (data.changedPass === true) {
+        if (data.mustChangePassword === true) {
           navigate('/change-password'); 
         } else {
           navigate('/admin/dashboard');

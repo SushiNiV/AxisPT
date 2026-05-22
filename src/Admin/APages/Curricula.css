@@ -1,0 +1,242 @@
+.CurriculaContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.curriculaSearchBar {
+  display: flex;
+  margin-bottom: 0.5rem;
+  background-color: #efefef;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.curriculaSearchWrapper {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 8px 15px;
+  width: 100%;
+  transition: border-color 0.3s ease;
+}
+
+.curriculaSearchWrapper:focus-within {
+  border-color: #3d1616;
+}
+
+.curriculaSearchIcon {
+  color: #888;
+  font-size: 1.2rem;
+  margin-right: 10px;
+}
+
+.CurriculaSearchInput {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 0.875rem;
+  background: transparent;
+}
+
+.curriculaClearIcon {
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #888;
+}
+
+.curriculaCreateBtnContainer {
+  margin-left: auto;
+}
+
+.curriculaCreateBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 15px;
+  background: #3d1616;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.curriculaCreateBtn:hover {
+  background: #2d1010;
+}
+
+.curriculaBtnIcon {
+  font-size: 1rem;
+}
+
+.curriculaTableContainer {
+  overflow-x: auto;
+  background-color: #fff;
+  border-radius: 5px;
+  margin-bottom: 0.55rem;
+}
+
+.curriculaTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+  table-layout: auto;
+}
+
+.curriculaTable th {
+  background-color: #f8f9fa;
+  padding: 10px 15px;
+  color: #3d1616;
+  font-weight: 700;
+  border-bottom: 2px solid #eee;
+  position: sticky;
+  top: 0;
+}
+
+.curriculaTable td {
+  padding: 10px 15px;
+  border-bottom: 1px solid #eee;
+  color: #444;
+}
+
+.curriculaTable tr:hover {
+  background-color: #fdfdfd;
+}
+
+.curriculaTable th:first-child,
+.curriculaTable td:first-child {
+  text-align: left;
+  padding-left: 15px;
+}
+
+.curriculaTable th:last-child,
+.curriculaTable td:last-child {
+  width: 80px;
+  text-align: center;
+}
+
+.curriculaEmpty {
+  text-align: center !important;
+  padding: 20px !important;
+  color: #888;
+}
+
+.curriculaStatusBadge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.curriculaActive {
+  background-color: #e6f4ea;
+  color: #1e7e34;
+}
+
+.curriculaInactive {
+  background-color: #fce8e8;
+  color: #c62828;
+}
+
+.curriculaDeleteBtn {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  padding: 4px;
+  font-size: 1rem;
+}
+
+.curriculaDeleteBtn:disabled {
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.curriculaDeleteBtn:not(:disabled):hover {
+  color: #b02a37;
+}
+
+/* Pagination */
+.curriculaPagination {
+  display: flex;
+  justify-content: center;
+  background-color: #fff;
+  padding: 10px 15px;
+  margin-bottom: 0.5rem;
+  border-top: 1px solid #eee;
+  border-radius: 5px;
+}
+
+.curriculaPaginationControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.curriculaPaginationInfo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.curriculaPaginationInfo span {
+  font-weight: bold;
+  color: #3d1616;
+}
+
+.curriculaPageBtn {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #333;
+}
+
+.curriculaPageBtn:hover:not(:disabled) {
+  background-color: #3d161625;
+  border-color: #3d1616;
+  color: #3d1616;
+}
+
+.curriculaPageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.curriculaPageInputWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.curriculaPageInput {
+  width: 25px;
+  height: 25px;
+  text-align: center;
+  border: 1px solid #3d1616;
+  border-radius: 6px;
+  font-weight: bold;
+  outline: none;
+}
+
+.curriculaPageInput::-webkit-outer-spin-button,
+.curriculaPageInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
