@@ -1,24 +1,30 @@
-import React, { useState, useRef, useEffect } from 'react';
-import './AHistory.css';
+import React, { useState, useEffect } from 'react';
 import { BiSearch, BiFilterAlt, BiChevronDown, BiX } from 'react-icons/bi';
+import './AHistory.css';
+import './../Global.css'
 
 function AHistory() {
   const [historyData, setHistoryData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage] = useState(50);
-  const [loading, setLoading] = useState(true);
-
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("");
+  const [selectedDesignation, setSelectedDesignation] = useState("");
   const [selectedAction, setSelectedAction] = useState("");
-  const dropdownRef = useRef(null);
+  
+  // Dynamic options from fetched data
+  const [designationOptions, setDesignationOptions] = useState([]);
+  const [actionOptions, setActionOptions] = useState([]);
 
-  // Data Fetching
+  // Fetch history data from backend
   useEffect(() => {
     const fetchHistory = async () => {
       try {
         setLoading(true);
+        setError(null);
+        
         const token = sessionStorage.getItem('token');
         const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/history`, {
           method: 'GET',
@@ -31,19 +37,31 @@ function AHistory() {
         const data = await response.json();
 
         if (data.success && data.history) {
+          // Map the data to match your frontend structure
           const mappedData = data.history.map(item => ({
             id: item.log_id,
-            userId: item.user_id,
-            userRole: item.user_role,
+            userId: item.username,
+            designation: item.designation || item.user_role, // Use designation from backend
             action: item.action,
-            targetId: item.target_id,
+            targetId: item.target_username || item.username, // Show username even for self
             details: item.details,
-            timestamp: new Date(item.timestamp).toLocaleString()
+            timestamp: item.timestamp
           }));
+          
           setHistoryData(mappedData);
+          
+          // Extract unique designations and actions for filters
+          const uniqueDesignations = [...new Set(mappedData.map(item => item.designation))];
+          const uniqueActions = [...new Set(mappedData.map(item => item.action))];
+          
+          setDesignationOptions(uniqueDesignations);
+          setActionOptions(uniqueActions);
+        } else {
+          setError(data.message || "Failed to fetch history data");
         }
-      } catch (error) {
-        console.error("Fetch error:", error);
+      } catch (err) {
+        console.error("Fetch error:", err);
+        setError("Failed to connect to the server");
       } finally {
         setLoading(false);
       }
@@ -52,10 +70,6 @@ function AHistory() {
     fetchHistory();
   }, []);
 
-  const roleOptions = ["DEVELOPER", "ADMIN"];
-  const actionOptions = ["LOGIN_SUCCESS", "LOGIN_FAILED", "BULK_ACCEPT", "BULK_REJECT", "PASSWORD_CHANGED", "PASSWORD_CHANGE_FAILED"];
-
-  // Filtering Logic
   const safeString = (value) => {
     if (value === null || value === undefined) return "";
     return String(value);
@@ -69,19 +83,17 @@ function AHistory() {
       safeString(item.action).toLowerCase().includes(searchStr) ||
       safeString(item.details).toLowerCase().includes(searchStr);
 
-    const matchesRole = !selectedRole || safeString(item.userRole) === selectedRole;
+    const matchesDesignation = !selectedDesignation || safeString(item.designation) === selectedDesignation;
     const matchesAction = !selectedAction || safeString(item.action) === selectedAction;
 
-    return matchesSearch && matchesRole && matchesAction;
+    return matchesSearch && matchesDesignation && matchesAction;
   });
 
-  // Pagination Logic
   const totalPages = Math.ceil(filteredHistory.length / rowsPerPage) || 1;
   const indexOfLastItem = currentPage * rowsPerPage;
   const indexOfFirstItem = indexOfLastItem - rowsPerPage;
   const currentItems = filteredHistory.slice(indexOfFirstItem, indexOfLastItem);
 
-  // Event Handlers
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
     setCurrentPage(1);
@@ -93,7 +105,7 @@ function AHistory() {
   };
 
   const resetFilters = () => {
-    setSelectedRole("");
+    setSelectedDesignation("");
     setSelectedAction("");
     setCurrentPage(1);
   };
@@ -106,65 +118,75 @@ function AHistory() {
     if (currentPage > 1) setCurrentPage(p => p - 1); 
   };
 
-  // Click outside to close filter dropdown
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsFilterOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  if (loading) {
+    return (
+      <div className="HistoryContainer">
+        <div style={{ textAlign: 'center', padding: '3rem' }}>
+          Loading history...
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="HistoryContainer">
+        <div style={{ textAlign: 'center', padding: '3rem', color: 'red' }}>
+          Error: {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="ahistory-container">
-      <div className="ahistory-searchBarSection">
-        <div className="ahistory-searchWrapper">
-          <BiSearch className="ahistory-searchIcon" />
+    <div className="HistoryContainer">
+
+      <div className="TopSection">
+        <div className="SearchWrapper">
+          <BiSearch className="SearchIcon" />
           <input 
             type="text" 
             placeholder="Search history..." 
-            className="ahistory-studentSearchInput"
+            className="StudentSearchInput"
             value={searchTerm}
             onChange={handleSearch}
           />
           {searchTerm && (
             <BiX 
-              className="ahistory-clearSearchIcon" 
+              className="ClearSearchIcon" 
               onClick={clearSearch}
             />
           )}
         </div>
         
-        <div className="ahistory-filterContainer" ref={dropdownRef}>
+        <div className="FilterContainer">
           <button 
-            className={`ahistory-filterToggleBtn ${isFilterOpen ? 'ahistory-active' : ''}`}
+            className={`TopbarBtn ${isFilterOpen ? 'Active' : ''}`}
             onClick={() => setIsFilterOpen(!isFilterOpen)}
           >
-            <BiFilterAlt className="ahistory-linkIcon" />
+            <BiFilterAlt className="linkIcon" />
             Filter
           </button>
 
           {isFilterOpen && (
-            <div className="ahistory-filterDropdown">
-              <div className="ahistory-filterGroup">
-                <label>ROLE</label>
+            <div className="FilterDropdown">
+              <div className="FilterGroup">
+                <label>DESIGNATION</label>
                 <select 
-                  value={selectedRole} 
+                  value={selectedDesignation} 
                   onChange={(e) => {
-                    setSelectedRole(e.target.value);
+                    setSelectedDesignation(e.target.value);
                     setCurrentPage(1);
                   }}
                 >
-                  <option value="">ALL ROLES</option>
-                  {roleOptions.map(role => (
-                    <option key={role} value={role}>{role}</option>
+                  <option value="">ALL DESIGNATIONS</option>
+                  {designationOptions.map(designation => (
+                    <option key={designation} value={designation}>{designation}</option>
                   ))}
                 </select>
               </div>
 
-              <div className="ahistory-filterGroup">
+              <div className="FilterGroup">
                 <label>ACTION</label>
                 <select 
                   value={selectedAction} 
@@ -180,22 +202,22 @@ function AHistory() {
                 </select>
               </div>
 
-              <div className="ahistory-filterBtnsContainer">
-                <button className="ahistory-resetFilterBtn" onClick={resetFilters}>Reset</button>
-                <button className="ahistory-applyFilterBtn" onClick={() => setIsFilterOpen(false)}>Apply</button>
+              <div className="FilterBtnsContainer">
+                <button className="ResetFilterBtn" onClick={resetFilters}>Reset</button>
+                <button className="ApplyFilterBtn" onClick={() => setIsFilterOpen(false)}>Apply</button>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      <div className="ahistory-historyTableContainer">
-        <table className="ahistory-historyPage ahistory-studentTable">
+      <div className="TableContainer History">
+        <table className="Table">
           <thead>
             <tr>
               <th>No.</th>
               <th>User ID</th>
-              <th>User Role</th>
+              <th>Designation</th>
               <th>Action</th>
               <th>Target ID</th>
               <th>Details</th>
@@ -203,18 +225,14 @@ function AHistory() {
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan="7" style={{textAlign: 'center', padding: '2rem'}}>Loading history...</td>
-              </tr>
-            ) : currentItems.length > 0 ? (
+            {currentItems.length > 0 ? (
               currentItems.map((item, index) => (
-                <tr key={item.id || index}>
+                <tr key={item.id}>
                   <td>{indexOfFirstItem + index + 1}</td>
                   <td>{item.userId}</td>
-                  <td>{item.userRole}</td>
+                  <td>{item.designation}</td>
                   <td>
-                    <span className={`ahistory-statusTag ahistory-${safeString(item.action).toLowerCase()}`}>
+                    <span className={`StatusTag ${safeString(item.action).toLowerCase().replace(/ /g, '-')}`}>
                       {item.action}
                     </span>
                   </td>
@@ -225,37 +243,37 @@ function AHistory() {
               ))
             ) : (
               <tr>
-                <td colSpan="7" style={{textAlign: 'center', padding: '2rem'}}>No records found matching your criteria.</td>
+                <td colSpan="7" style={{textAlign: 'center', padding: '2rem'}}>
+                  No records found matching your criteria.
+                </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="ahistory-paginationContainer">
-          <div className="ahistory-paginationControls">
-            <button className="ahistory-pageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
-            <button className="ahistory-pageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
-            <div className="ahistory-currentPageInputWrapper">
-              <input 
-                type="number" 
-                value={currentPage} 
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  if (val > 0 && val <= totalPages) setCurrentPage(val);
-                }} 
-                className="ahistory-currentPageInput" 
-              />
-            </div>
-            <div className="ahistory-paginationInfo">
-              out of <span>{totalPages}</span>
-            </div>
-            <button className="ahistory-pageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
-            <button className="ahistory-pageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
+      <div className="PaginationContainer">
+        <div className="PaginationControls">
+          <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
+          <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
+          <div className="ahistory-currentPageInputWrapper">
+            <input 
+              type="number" 
+              value={currentPage} 
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                if (val > 0 && val <= totalPages) setCurrentPage(val);
+              }} 
+              className="CurrentPageInput" 
+            />
           </div>
+          <div className="PaginationInfo">
+            out of <span>{totalPages}</span>
+          </div>
+          <button className="PageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
+          <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

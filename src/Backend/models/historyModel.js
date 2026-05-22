@@ -32,30 +32,36 @@ const HistoryModel = {
 
   async getHistoryLogs({ limit = 100, offset = 0, userId = null, action = null }) {
     let query = `
-      SELECT h.*, u.username as user_name, tu.username as target_user_name
+      SELECT 
+        h.*,
+        u.username as user_name,
+        tu.username as target_user_name,
+        d.designation_name  -- Get designation from designations table
       FROM history_logs h
       LEFT JOIN users u ON h.user_id = u.user_id
       LEFT JOIN users tu ON h.target_user_id = tu.user_id
+      LEFT JOIN faculties f ON u.user_id = f.user_id  -- Join to faculties
+      LEFT JOIN designations d ON f.designation = d.designation_id  -- Join to designations
       WHERE 1=1
     `;
     const values = [];
     let paramIndex = 1;
-    
+
     if (userId) {
       query += ` AND (h.user_id = $${paramIndex} OR h.target_user_id = $${paramIndex})`;
       values.push(userId);
       paramIndex++;
     }
-    
+
     if (action) {
       query += ` AND h.action = $${paramIndex}`;
       values.push(action);
       paramIndex++;
     }
-    
+
     query += ` ORDER BY h.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     values.push(limit, offset);
-    
+
     try {
       const result = await db.query(query, values);
       return result.rows;
@@ -63,7 +69,7 @@ const HistoryModel = {
       console.error("Error fetching history logs:", err);
       throw err;
     }
-  }
+    }
 };
 
 module.exports = HistoryModel;

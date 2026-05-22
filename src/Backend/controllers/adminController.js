@@ -341,15 +341,121 @@ exports.getHistory = async (req, res) => {
       offset: parseInt(offset) 
     });
     
-    const formattedHistory = history.map(item => ({
-      log_id: item.id,
-      user_id: item.user_id,
-      user_role: item.user_name || 'System',
-      action: item.action,
-      target_id: item.target_user_id,
-      details: item.new_values?.details || item.new_values?.reason || JSON.stringify(item.new_values),
-      timestamp: item.created_at
-    }));
+    const formattedHistory = history.map(item => {
+      let formattedAction = item.action;
+      
+      switch(item.action) {
+        case 'LOGIN_SUCCESS':
+          formattedAction = 'Login Success';
+          break;
+        case 'LOGIN_FAILED':
+          formattedAction = 'Login Failed';
+          break;
+        case 'BULK_ACCEPT':
+          formattedAction = 'Bulk Accept';
+          break;
+        case 'BULK_REJECT':
+          formattedAction = 'Bulk Reject';
+          break;
+        case 'PASSWORD_CHANGED':
+          formattedAction = 'Password Changed';
+          break;
+        case 'PASSWORD_CHANGE_FAILED':
+          formattedAction = 'Password Change Failed';
+          break;
+        default:
+          formattedAction = item.action.replace(/_/g, ' ').toLowerCase()
+            .replace(/\b\w/g, char => char.toUpperCase());
+      }
+      
+      let formattedDetails = '';
+      
+      if (item.new_values && typeof item.new_values === 'object') {
+        const newValues = item.new_values;
+        
+        switch(item.action) {
+          case 'LOGIN_SUCCESS':
+            formattedDetails = `${newValues.username || item.user_name} logged in successfully`;
+            if (newValues.designation) {
+              formattedDetails += ` as ${newValues.designation}`;
+            }
+            break;
+            
+          case 'LOGIN_FAILED':
+            const reason = newValues.reason || 'Invalid credentials';
+            formattedDetails = `${newValues.username || item.user_name} failed to login`;
+            if (reason) {
+              formattedDetails += ` - ${reason}`;
+            }
+            break;
+            
+          case 'PASSWORD_CHANGED':
+            formattedDetails = `${item.user_name} changed their password`;
+            if (newValues.changed_at) {
+              formattedDetails += ` on ${new Date(newValues.changed_at).toLocaleString()}`;
+            }
+            break;
+            
+          case 'PASSWORD_CHANGE_FAILED':
+            const failReason = newValues.reason || 'Unknown error';
+            formattedDetails = `${item.user_name} failed to change password`;
+            if (failReason) {
+              formattedDetails += ` - ${failReason}`;
+            }
+            break;
+            
+          case 'BULK_ACCEPT':
+            formattedDetails = `${item.user_name} bulk accepted requests`;
+            if (newValues.count) {
+              formattedDetails += ` (${newValues.count} items)`;
+            }
+            break;
+            
+          case 'BULK_REJECT':
+            formattedDetails = `${item.user_name} bulk rejected requests`;
+            if (newValues.count) {
+              formattedDetails += ` (${newValues.count} items)`;
+            }
+            break;
+            
+          default:
+            // For other actions, try to extract meaningful info
+            formattedDetails = newValues.details || 
+                              newValues.reason || 
+                              `${item.user_name} performed ${formattedAction}`;
+        }
+      } 
+      else if (item.old_values && typeof item.old_values === 'object') {
+        const oldValues = item.old_values;
+        formattedDetails = oldValues.details || 
+                          oldValues.reason || 
+                          `${item.user_name} performed ${formattedAction}`;
+      } 
+      else {
+        formattedDetails = `${item.user_name} performed ${formattedAction}`;
+      }
+      
+      formattedDetails = formattedDetails
+        .replace(/[{}"]/g, '')
+        .replace(/timestamp:/g, 'at')
+        .replace(/rememberMe:/g, '')
+        .replace(/false/g, '')
+        .replace(/true/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      return {
+        log_id: item.id,
+        user_id: item.user_id,
+        username: item.user_name || 'System',
+        designation: item.designation_name || item.role_name || 'Unknown',
+        action: formattedAction,
+        target_id: item.target_user_id,
+        target_username: item.target_user_name || item.user_name,
+        details: formattedDetails,
+        timestamp: new Date(item.created_at).toLocaleString()
+      };
+    });
     
     res.json({ 
       success: true, 
@@ -362,14 +468,4 @@ exports.getHistory = async (req, res) => {
       message: "Internal Server Error" 
     });
   }
-};
-
-exports.extractDetails = (item) => {
-  if (item.new_values?.details) return item.new_values.details;
-  if (item.new_values?.reason) return item.new_values.reason;
-  if (item.action === 'Login Success') return `Logged in as ${item.user_name}`;
-  if (item.action === 'Login Failed') return `Failed login attempt - ${item.new_values?.reason || 'Unknown reason'}`;
-  if (item.action === 'Password Changed') return 'Password was changed successfully';
-  if (item.action === 'Password Change Failed') return `Password change failed - ${item.new_values?.reason || 'Unknown error'}`;
-  return 'Action performed';
 };

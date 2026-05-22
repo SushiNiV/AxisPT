@@ -27,7 +27,8 @@ p, h1 {
 .Container {
   display: flex;
   height: 100vh;
-  width: 100vw;background-color: #F2F4F6; ;
+  width: 100vw;
+  background-color: #F2F4F6;
 }
 
 .NoScroll {
@@ -53,6 +54,234 @@ p, h1 {
   padding-right: 1rem;
   box-sizing: border-box;
 }
+
+.TopSection {
+  display: flex;
+  margin-bottom: 0.5rem;
+  background-color: #efefef;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.SearchWrapper {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 8px 15px;
+  width: 100%;
+  transition: border-color 0.3s ease;
+  position: relative;
+}
+
+.SearchWrapper:focus-within {
+  border-color: #3d1616;
+}
+
+.SearchIcon {
+  color: #888;
+  font-size: 1.2rem;
+  margin-right: 10px;
+}
+
+.StudentSearchInput {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 0.875rem;
+  background: transparent;
+}
+
+.ClearSearchIcon {
+  color: #888;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  margin-left: 8px;
+}
+
+.ClearSearchIcon:hover {
+  color: #3d1616;
+}
+
+.FilterContainer {
+  position: relative;
+  margin-left: 0.5rem;
+}
+
+.TopbarBtn {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  padding: 8px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: #3d1616;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.TopbarBtn:hover,
+.TopbarBtn.Active {
+  background-color: #3d1616;
+  color: #fff;
+  border-color: #3d1616;
+}
+
+.linkIcon {
+  margin-right: 5px;
+}
+
+.FilterDropdown {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 20px;
+  width: 250px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.FilterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.FilterGroup label {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #666;
+}
+
+.FilterGroup select {
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+  outline: none;
+}
+
+.FilterBtnsContainer {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.ApplyFilterBtn {
+  flex: 1;
+  background-color: #3D1616;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ResetFilterBtn {
+  flex: 1;
+  background-color: #f0f0f0;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Pagination */
+.PaginationContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #fff;
+  padding: 15px;
+  border-top: 1px solid #eee;
+  border-radius: 0 0 5px 5px;
+  margin: 0.5rem 0;
+}
+
+.PaginationControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.PageBtn {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #333;
+}
+
+.PageBtn:hover:not(:disabled) {
+  background-color: #3d161625;
+  border-color: #3d1616;
+  color: #3d1616;
+}
+
+.PageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.CurrentPageInputWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.CurrentPageInput {
+  width: 50px;
+  height: 30px;
+  text-align: center;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-weight: bold;
+  outline: none;
+}
+
+.CurrentPageInput:active,
+.CurrentPageInput:focus {
+  border-color: #3D1616;
+}
+
+.CurrentPageInput::-webkit-outer-spin-button,
+.CurrentPageInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.PaginationInfo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: #666;
+  margin-left: 8px;
+}
+
+.PaginationInfo span {
+  font-weight: bold;
+  color: #3d1616;
+  margin: 0 4px;
+}
+
 
 .PopUpCard {
   display: flex;
