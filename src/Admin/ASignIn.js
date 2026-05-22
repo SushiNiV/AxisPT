@@ -2,145 +2,115 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BiInfoCircle } from 'react-icons/bi';
 import PopupOverlay from '../Components/PopupOverlay';
-import {
-  SignInContainer,
-  LeftCard,
-  RightContainer,
-  TopBar,
-  SignInText,
-  SignInForm,
-  FormTitle,
-  FormColumn,
-  FormCol,
-  Label,
-  PasswordWrapper,
-  Input,
-  EyeIcon,
-  FormOptions,
-  RememberMeContainer,
-  ForgotPass,
-  SignInButtonContainer,
-  SignInButton,
-  PrivText
-} from './ASignIn.styles';
+
+import '../SigninGlobal.css';
 
 function ASignIn() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+
   const [popupStatus, setPopupStatus] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   
   const [formData, setFormData] = useState({
-    employeeID: '',
-    password: '',
-    rememberMe: false
+      username: '',  
+      password: '',
+      rememberMe: false
   });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    if (name === "employeeID") {
-      const onlyNums = value.replace(/\D/g, "");
-      setFormData(prev => ({ ...prev, [name]: onlyNums }));
-    } else {
-      setFormData(prev => ({ 
-        ...prev, 
-        [name]: type === 'checkbox' ? checked : value 
-      }));
-    }
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? checked : value 
+    }));
   };
 
   const handleLogin = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  try {
-    // Map employeeID to username for backend compatibility
-    const requestBody = {
-      username: formData.employeeID,  // Change this line
-      password: formData.password,
-      rememberMe: formData.rememberMe
-    };
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
 
-    const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)  // Use the mapped body
-    });
+      const data = await response.json();
+      console.log("Server Response:", data);
 
-    const data = await response.json();
-    console.log("Server Response:", data);
-
-    if (data.success) {
-      sessionStorage.setItem('token', data.token);
-      sessionStorage.setItem('employeeID', data.employeeID);
-        
-      if (data.mustChangePassword === true) {
-        navigate('/change-password'); 
+      if (data.success) {
+        sessionStorage.setItem('token', data.token);
+        sessionStorage.setItem('username', data.username);
+          
+        if (data.changedPass === true) {
+          navigate('/change-password'); 
+        } else {
+          navigate('/admin/dashboard');
+        }
       } else {
-        navigate('/admin/dashboard');
+        setErrorMessage(data.message || "Invalid Username or Password.");
+        setPopupStatus('error');
       }
-    } else {
-      setErrorMessage(data.message || "Invalid Employee ID or Password.");
+    } catch (error) {
+      console.error("Login Error:", error);
+      setErrorMessage("Unable to connect to the server. Please try again later.");
       setPopupStatus('error');
     }
-  } catch (error) {
-    console.error("Login Error:", error);
-    setErrorMessage("Unable to connect to the server. Please try again later.");
-    setPopupStatus('error');
-  }
-};
+  };
 
   return (
-    <SignInContainer>
-      <LeftCard>
-        <div className="brandingContent">
-          {/* Content here */}
-        </div>
-      </LeftCard>
+    <div className="Container">
 
-      <RightContainer>
-        <TopBar>
-          <SignInText>
+      <div className="SigninCard">
+      </div>
+
+      <div className="SigninFormCard">
+        <div className="SigninTopbar Left">
+          <p className="SigninText">
             <span>Have Trouble Signing In? </span>
             <b>Contact CPT Administrator.</b>
-          </SignInText>
-        </TopBar>
+          </p>
+        </div>
 
-        <SignInForm onSubmit={handleLogin}>
-          <FormTitle>Administrative</FormTitle>
-          <FormTitle>Axis Portal</FormTitle>
+        <form className="SigninForm" onSubmit={handleLogin}>
+          <p className="SigninTitle">Administrative</p>
+          <p className="SigninTitle">Axis Portal</p>
           
-          <FormColumn>
-            <FormCol>
-              <Label>Employee ID <span style={{color: 'red'}}>*</span></Label>
-              <Input 
+          <div className="Signin FormColumn">
+            <div className="Signin Column">
+              <label>Username <span style={{color: 'red'}}>*</span></label>
+              <input 
                 type="text" 
-                name="employeeID"
-                placeholder="Enter employee ID" 
-                value={formData.employeeID}
+                name="username"
+                placeholder="Enter username" 
+                value={formData.username}
                 onChange={handleChange}
+                autoComplete='username'
                 required
               />
-            </FormCol>
+            </div>
 
-            <FormCol>
-              <Label>Password <span style={{color: 'red'}}>*</span></Label>
-              <PasswordWrapper>
-                <Input 
+            <div className="Signin Column">
+              <label>Password <span style={{color: 'red'}}>*</span></label>
+              <div className="PasswordWrapper">
+                <input 
                   type={showPassword ? "text" : "password"} 
                   name="password"
                   placeholder="Enter your password" 
                   value={formData.password}
                   onChange={handleChange}
+                  autoComplete='current-password'
                   required 
                 />
-                <EyeIcon className="material-icons" onClick={() => setShowPassword(!showPassword)}>
+                <span className="Material-Icon Icon" onClick={() => setShowPassword(!showPassword)}>
                   {showPassword ? 'visibility' : 'visibility_off'}
-                </EyeIcon>
-              </PasswordWrapper>
-            </FormCol>
+                </span>
+              </div>
+            </div>
 
-            <FormOptions>
-              <RememberMeContainer>
+            <div className="FormOptions">
+              <div className="OptionsContainer">
                 <input 
                     type="checkbox" 
                     name="rememberMe" 
@@ -149,21 +119,23 @@ function ASignIn() {
                     onChange={handleChange}
                 />
                 <label htmlFor="rememberMe">Remember Me</label>
-              </RememberMeContainer>
-              <ForgotPass>Forgot Password?</ForgotPass>
-            </FormOptions>
+              </div>
+              <div className="OptionsContainer">
+                  <p>Forgot Password?</p>
+              </div>
+            </div>
                       
-            <SignInButtonContainer>
-              <SignInButton type="submit">
-                Sign In
-              </SignInButton>
-              <PrivText>
-                <p>"By logging in, you agree to handle all data in accordance with the Data Privacy Act of 2012 and Privacy Policies."</p>
-              </PrivText>
-            </SignInButtonContainer>
-          </FormColumn>
-        </SignInForm>
-      </RightContainer>
+            <div className="ButtonContainer">
+                <button type="submit" className="Button">
+                    Sign In
+                </button>
+                <div className="PrivacyText small italic">
+                    <p>"By logging in, you agree to handle all data in accordance with the Data Privacy Act of 2012 and Privacy Policies."</p>
+                </div>
+            </div>
+          </div>
+        </form>
+      </div>
 
       {popupStatus === 'error' && (
         <PopupOverlay 
@@ -174,14 +146,15 @@ function ASignIn() {
         >
           <p>{errorMessage}</p>
           <button 
-            style={{ backgroundColor: '#3d1616' }} 
+            style={{ backgroundColor: '#3d1616  ' }} 
             onClick={() => setPopupStatus(null)}
           >
             RETRY
           </button>
         </PopupOverlay>
       )}
-    </SignInContainer>
+
+    </div>
   );
 }
 

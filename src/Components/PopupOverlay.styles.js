@@ -70,6 +70,7 @@ export const OverlayIconWrapper = styled.div`
     display: block;
     font-size: 24px;
     margin: 0 !important;
+    color: #3d1616;
   }
 `;
 
@@ -88,7 +89,7 @@ export const OverlayBody = styled.div`
   
   p {
     font-size: 0.875rem;
-    margin: 2rem 0;
+    margin: 1.5rem 0;
   }
   
   button {

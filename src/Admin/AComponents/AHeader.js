@@ -36,7 +36,7 @@ function AHeader({ user }) {
 
   const handleLogoutAction = () => {
     sessionStorage.clear();
-    navigate('/admin-signin');
+    navigate('/admin/signin');
   };
 
   return (

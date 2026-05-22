@@ -5,7 +5,7 @@ const ProtectedRoute = () => {
   const token = sessionStorage.getItem('token');
 
   if (!token) {
-    return <Navigate to="/admin-signin" replace />;
+    return <Navigate to="/admin/signin" replace />;
   }
 
   return <Outlet />;

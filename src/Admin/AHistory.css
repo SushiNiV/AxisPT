@@ -1,0 +1,320 @@
+.ahistory-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 100px); /* Adjust '100px' based on your header/navbar height */
+  min-height: 0;
+  margin-right: 0.5rem;
+  overflow: hidden; /* This prevents the whole page from scrolling */
+}
+
+.ahistory-searchBarSection {
+  display: flex;
+  margin-bottom: 0.5rem;
+  background-color: #efefef;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ahistory-searchWrapper {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 8px 15px;
+  width: 100%;
+  transition: border-color 0.3s ease;
+  position: relative;
+}
+
+.ahistory-searchWrapper:focus-within {
+  border-color: #3d1616;
+}
+
+.ahistory-searchIcon {
+  color: #888;
+  font-size: 1.2rem;
+  margin-right: 10px;
+}
+
+.ahistory-studentSearchInput {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 0.875rem;
+  background: transparent;
+}
+
+.ahistory-clearSearchIcon {
+  color: #888;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  margin-left: 8px;
+}
+
+.ahistory-clearSearchIcon:hover {
+  color: #3d1616;
+}
+
+.ahistory-filterContainer {
+  position: relative;
+  margin-left: 0.5rem;
+}
+
+.ahistory-filterToggleBtn {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  padding: 8px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: #3d1616;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.ahistory-filterToggleBtn:hover,
+.ahistory-filterToggleBtn.ahistory-active {
+  background-color: #3d1616;
+  color: #fff;
+  border-color: #3d1616;
+}
+
+.ahistory-linkIcon {
+  margin-right: 5px;
+}
+
+.ahistory-filterDropdown {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 20px;
+  width: 250px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.ahistory-filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ahistory-filterGroup label {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #666;
+}
+
+.ahistory-filterGroup select {
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+  outline: none;
+}
+
+.ahistory-filterBtnsContainer {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.ahistory-applyFilterBtn {
+  flex: 1;
+  background-color: #3D1616;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ahistory-resetFilterBtn {
+  flex: 1;
+  background-color: #f0f0f0;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ahistory-historyTableContainer {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto; /* Only the table area scrolls */
+  background-color: #fff;
+  border-radius: 5px 5px 0 0; /* Match the top corners */
+  margin-bottom: 0; /* Remove margin so it touches the pagination */
+}
+
+.ahistory-studentTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+  table-layout: auto;
+}
+
+.ahistory-studentTable th {
+  background-color: #f8f9fa;
+  padding: 10px 15px;
+  color: #3d1616;
+  font-weight: 700;
+  border-bottom: 2px solid #eee;
+  position: sticky;
+  top: 0;
+}
+
+.ahistory-studentTable td {
+  padding: 10px 15px;
+  border-bottom: 1px solid #eee;
+  color: #444;
+}
+
+.ahistory-studentTable tr:hover {
+  background-color: #fdfdfd;
+}
+
+.ahistory-studentTable th:first-child,
+.ahistory-studentTable td:first-child {
+  width: 50px;
+  min-width: 50px;
+  max-width: 50px;
+  padding: 10px 0;
+  text-align: center;
+}
+
+.ahistory-studentTable th:nth-child(2),
+.ahistory-studentTable td:nth-child(2) {
+  text-align: left;
+  padding-left: 10px;
+}
+
+.ahistory-statusTag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.ahistory-statusTag.ahistory-login_success {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.ahistory-statusTag.ahistory-login_failed {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.ahistory-statusTag.ahistory-password_changed {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.ahistory-statusTag.ahistory-password_change_failed {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.ahistory-statusTag.ahistory-bulk_accept {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.ahistory-statusTag.ahistory-bulk_reject {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.ahistory-paginationContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #fff;
+  padding: 15px;
+  border-top: 1px solid #eee;
+  border-radius: 0 0 5px 5px;
+  margin-top: -1px;
+}
+
+.ahistory-paginationControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ahistory-pageBtn {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #333;
+}
+
+.ahistory-pageBtn:hover:not(:disabled) {
+  background-color: #3d161625;
+  border-color: #3d1616;
+  color: #3d1616;
+}
+
+.ahistory-pageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ahistory-currentPageInputWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.ahistory-currentPageInput {
+  width: 50px;
+  height: 30px;
+  text-align: center;
+  border: 1px solid #3d1616;
+  border-radius: 6px;
+  font-weight: bold;
+  outline: none;
+}
+
+.ahistory-currentPageInput::-webkit-outer-spin-button,
+.ahistory-currentPageInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ahistory-paginationInfo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: #666;
+  margin-left: 8px;
+}
+
+.ahistory-paginationInfo span {
+  font-weight: bold;
+  color: #3d1616;
+  margin: 0 4px;
+}

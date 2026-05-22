@@ -1,4 +1,3 @@
-// models/adminModel.js
 const db = require('../config/db');
 
 class AdminModel {

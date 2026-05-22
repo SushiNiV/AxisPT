@@ -42,7 +42,7 @@ body {
     }
 }
 
-.popUpOverlay {
+.PopUpOverlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -55,7 +55,7 @@ body {
     z-index: 1000;
 }
 
-.popUpContainer {
+.PopUpContainer {
     background: white;
     padding-bottom: 2rem;
     border-radius: 12px;
@@ -63,14 +63,14 @@ body {
     position: relative;
 }
 
-.popUpContainer .topBar {
+.PopUpContainer .topBar {
     height: 1.5rem; 
     display: flex;
     background-color: transparent;
     max-width: 100%;
 }
 
-.popUpContainer .returnBT {
+.PopUpContainer .returnBT {
     background: none;
     border: none;
     padding: 0 0.5rem;
@@ -80,13 +80,13 @@ body {
     align-items: center; 
 }
 
-.popUpContainer .returnBT .material-icons {
+.PopUpContainer .returnBT .material-icons {
     font-size: 1.5rem;
     font-weight: bold;
     color: #3d1616;
 }
 
-.popUpCard {
+.PopUpCard {
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -94,7 +94,7 @@ body {
     padding: 0 3rem;
 }
 
-.popUpCard label {
+.PopUpCard label {
     font-size: 0.85rem;
     font-weight: 600;
     color: #3d1616;
@@ -103,7 +103,7 @@ body {
     letter-spacing: 0.5px;
 }
 
-.popUpCard input {
+.PopUpCard input {
     padding: 0.8rem;
     border: 1px solid #c2c6cb;
     border-radius: 6px;
@@ -113,16 +113,16 @@ body {
     width: 20rem;
 }
 
-.popUpCard input:focus {
+.PopUpCard input:focus {
     border-color: #ff5f5f;
     box-shadow: 0 0 0 3px rgba(255, 95, 95, 0.1); 
 }
 
-.popUpCard input::placeholder {
+.PopUpCard input::placeholder {
     color: #c2c6cb;
 }
 
-.popUpCard .signInBT {
+.PopUpCard .signInBT {
     margin-top: 1.5rem;
     background-color: #EF3F3F;
     color: white;

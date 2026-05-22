@@ -5,8 +5,12 @@ import ASignIn from './Admin/ASignIn';
 import AChangePass from './Admin/AChangePass';
 import ADashboard from './Admin/ADashboard';
 
+import AHistory from './Admin/AHistory';
+
 import ProtectedRoute from './Components/ProtectedRoute';
 import ALayout from './Admin/AComponents/ALayout';
+
+import SSignIn from './Student/SignIn';
 
 function App() {
   return (
@@ -22,10 +26,13 @@ function App() {
           <Route element={<ALayout />}>
             <Route path="/admin/dashboard" element={<ADashboard />} />
 
-
+            <Route path="/admin/history" element={<AHistory />} />
           </Route>
           
         </Route>   
+
+         {/* STUDENT */}
+        <Route path="/student/signin" element={<SSignIn />} />
  
       </Routes>
     </Router>
