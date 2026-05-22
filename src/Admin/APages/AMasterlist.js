@@ -49,7 +49,7 @@ function AMasterlist() {
   const filteredStudents = students.filter((student) => {
     const matchesSearch = 
       student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.id.toLowerCase().includes(searchTerm.toLowerCase());
+      String(student.id).toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesDropdowns = Object.keys(activeFilters).every(key => {
       const selectedValues = activeFilters[key];

@@ -68,8 +68,8 @@ exports.login = async (req, res) => {
         user_id: req.user.id,
         user_role: req.user.role,
         user_designation: req.user.role,
-        action: 'BULK_ACCEPT',
-        target_id: studentId,  // Single ID per row
+        action: 'ACCEPT',
+        target_id: studentId,  
         details: `Accepted student application.`
       });
     }
@@ -90,7 +90,7 @@ exports.bulkRejectStudents = async (req, res) => {
         user_id: req.user.id,
         user_role: req.user.role,
         user_designation: req.user.role,
-        action: 'BULK_REJECT',
+        action: 'REJECT',
         target_id: studentId,
         details: `Rejected student application.`
       });
