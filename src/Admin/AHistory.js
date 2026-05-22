@@ -12,11 +12,12 @@ function AHistory() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeGroup, setActiveGroup] = useState(null);
   const [filterValues, setFilterValues] = useState({});
-  const dropdownRef = useRef(null);
-
+  const dropdownRef = useRef(null); 
+  
   // 1. Data Fetching
   useEffect(() => {
     const fetchHistory = async () => {
+      
       try {
         setLoading(true);
         const token = sessionStorage.getItem('token');
@@ -29,16 +30,16 @@ function AHistory() {
         });
 
         const data = await response.json();
-
+        console.log('Raw history data:', JSON.stringify(data, null, 2));
         if (data.success && data.history) {
           const mappedData = data.history.map(item => ({
-            id: item.log_id,
+            id: item.id,                             
             userId: item.user_id,
-            userRole: item.user_role,
+            userRole: item.user_role || '—',          
             action: item.action,
-            targetId: item.target_id,
-            details: item.details,
-            timestamp: new Date(item.timestamp).toLocaleString()
+            targetId: item.target_user_id,            
+            details: item.details || '',
+            timestamp: new Date(item.created_at).toLocaleString()  
           }));
           setHistoryData(mappedData);
         }
@@ -61,9 +62,9 @@ function AHistory() {
   const filteredHistory = historyData.filter((item) => {
     const searchStr = searchTerm.toLowerCase();
     const matchesSearch = 
-      (item.userId?.toLowerCase() || "").includes(searchStr) ||
-      (item.action?.toLowerCase() || "").includes(searchStr) ||
-      (item.details?.toLowerCase() || "").includes(searchStr);
+    (String(item.userId || '')).toLowerCase().includes(searchStr) ||
+    (item.action?.toLowerCase() || "").includes(searchStr) ||
+    (item.details?.toLowerCase() || "").includes(searchStr);
 
     const matchesFilters = Object.keys(filterValues).every(key => {
       const selectedValues = filterValues[key];

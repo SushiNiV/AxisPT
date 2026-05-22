@@ -21,15 +21,37 @@ const History = {
 
   getHistory: async (viewerId, isPowerUser) => {
     if (isPowerUser) {
-      const result = await pool.query(
-        'SELECT * FROM history_logs ORDER BY created_at DESC'
-      );
+      const result = await pool.query(`
+        SELECT 
+          id,
+          user_id,
+          target_user_id,
+          action,
+          new_values,
+          created_at,
+          new_values->>'user_role' as user_role,
+          new_values->>'user_designation' as user_designation,
+          new_values->>'details' as details
+        FROM history_logs 
+        ORDER BY created_at DESC
+      `);
       return result.rows;
     } else {
-      const result = await pool.query(
-        'SELECT * FROM history_logs WHERE user_id = $1 ORDER BY created_at DESC',
-        [viewerId]
-      );
+      const result = await pool.query(`
+        SELECT 
+          id,
+          user_id,
+          target_user_id,
+          action,
+          new_values,
+          created_at,
+          new_values->>'user_role' as user_role,
+          new_values->>'user_designation' as user_designation,
+          new_values->>'details' as details
+        FROM history_logs 
+        WHERE user_id = $1 
+        ORDER BY created_at DESC
+      `, [viewerId]);
       return result.rows;
     }
   }

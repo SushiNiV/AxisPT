@@ -57,21 +57,24 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.bulkAcceptStudents = async (req, res) => {
+  exports.bulkAcceptStudents = async (req, res) => {
   try {
     const { ids } = req.body;
     await Admin.acceptStudentsBulk(ids);
 
-    await History.logTransaction({
-      user_id: req.user.id,
-      user_role: req.user.role,
-      user_designation: req.user.designation,
-      action: 'BULK_ACCEPT',
-      target_id: ids.join(','),
-      details: `Accepted ${ids.length} student applications.`
-    });
+    // Create one history entry per student
+    for (const studentId of ids) {
+      await History.logTransaction({
+        user_id: req.user.id,
+        user_role: req.user.role,
+        user_designation: req.user.role,
+        action: 'BULK_ACCEPT',
+        target_id: studentId,  // Single ID per row
+        details: `Accepted student application.`
+      });
+    }
 
-    res.json({ success: true, message: "Students accepted." });
+    res.json({ success: true, message: `${ids.length} students accepted.` });
   } catch (err) {
     res.status(500).json({ success: false, message: "Database error" });
   }
@@ -82,16 +85,18 @@ exports.bulkRejectStudents = async (req, res) => {
   try {
     await Admin.rejectStudentsBulk(ids);
 
-    await History.logTransaction({
-      user_id: req.user.id,
-      user_role: req.user.role,
-      user_designation: req.user.designation,
-      action: 'BULK_REJECT',
-      target_id: ids.join(','),
-      details: `Rejected ${ids.length} student applications.`
-    });
+    for (const studentId of ids) {
+      await History.logTransaction({
+        user_id: req.user.id,
+        user_role: req.user.role,
+        user_designation: req.user.role,
+        action: 'BULK_REJECT',
+        target_id: studentId,
+        details: `Rejected student application.`
+      });
+    }
 
-    res.json({ success: true, message: `Successfully rejected ${ids.length} applications.` });
+    res.json({ success: true, message: `${ids.length} students rejected.` });
   } catch (err) {
     res.status(500).json({ success: false, message: "Failed to reject students" });
   }
@@ -191,10 +196,10 @@ exports.addProgram = async (req, res) => {
             await History.logTransaction({
                 user_id: user.id, 
                 user_role: user.role,
-                user_designation: user.designation,
+                user_designation: user.role,
                 action: 'Added a Program',
                 target_id: user.id, 
-                details: `${user.designation} added a program.`
+                details: `${user.role} added a program.`
             });
         } catch (historyError) {
             console.error("History logging failed:", historyError.message);
@@ -245,10 +250,10 @@ exports.addSection = async (req, res) => {
       await History.logTransaction({
         user_id: user.id,
         user_role: user.role,
-        user_designation: user.designation,
+        user_designation: user.role,
         action: 'Added Section',
         target_id: user.id,
-        details: `${user.designation} added section ${section_name}.`
+        details: `${user.role} added section ${section_name}.`
       });
     } catch (logError) {
       console.error("History log failed:", logError.message);
@@ -301,10 +306,10 @@ exports.addCourse = async (req, res) => {
       await History.logTransaction({
         user_id: user.id,
         user_role: user.role,
-        user_designation: user.designation,
+        user_designation: user.role,
         action: 'Added Course',
         target_id: user.id,
-        details: `${user.designation} added course ${course_code} - ${course_name}.`
+        details: `${user.role} added course ${course_code} - ${course_name}.`
       });
     } catch (logError) {
       console.error("History log failed:", logError.message);
@@ -338,6 +343,7 @@ exports.getCourses = async (req, res) => {
 exports.addCurriculum = async (req, res) => {
   try {
     const { program_id, curriculum_year, version_name, is_active } = req.body;
+    const user = req.user;
     
     const newCurriculum = await Admin.createCurriculum({
       program_id,
@@ -345,6 +351,19 @@ exports.addCurriculum = async (req, res) => {
       version_name,
       is_active
     });
+
+    try {
+      await History.logTransaction({
+        user_id: user.id,
+        user_role: user.role,
+        user_designation: user.role,
+        action: 'Added Curriculum',
+        target_id: user.id,
+        details: `${user.role} added curriculum ${curriculum_year}.`
+      });
+    } catch (logError) {
+      console.error("History log failed:", logError.message);
+    }
 
     res.status(201).json({
       success: true,
@@ -396,10 +415,10 @@ exports.addAcademicYear = async (req, res) => {
       await History.logTransaction({
         user_id: user.id,
         user_role: user.role,
-        user_designation: user.designation,
+        user_designation: user.role,
         action: 'Added Academic Year',
         target_id: user.id,
-        details: `${user.designation} added Academic Year ${year_label}.`
+        details: `${user.role} added Academic Year ${year_label}.`
       });
     } catch (logError) {
       console.error("History log failed:", logError.message);
