@@ -5,6 +5,11 @@ import ASignIn from './Admin/ASignIn';
 import AChangePass from './Admin/AChangePass';
 import ADashboard from './Admin/ADashboard';
 
+import AStudentManage from './Admin/AStudentManage';
+
+import AAcademics from './Admin/AGrades';
+import AProgSec from './Admin/APages/AProgSec';
+
 import AAccessCtrl from './Admin/AAccessCtrl';
 import AcadYear from './Admin/APages/AcadYear';
 import Curricula from './Admin/APages/Curricula';
@@ -29,6 +34,14 @@ function App() {
           <Route path="/change-password" element={<AChangePass />} />
           <Route element={<ALayout />}>
             <Route path="/admin/dashboard" element={<ADashboard />} />
+
+            <Route path="/admin/student-management" element={<AStudentManage />} >
+              <Route index element={<Navigate to="" replace />} />
+            </Route>
+            <Route path="/admin/academics" element={<AAcademics />} >
+                <Route index element={<Navigate to="programs&sections" replace />} />
+                <Route path="programs&sections" element={<AProgSec />} />
+              </Route>
 
             <Route path="/admin/access-control" element={<AAccessCtrl />} >
               <Route index element={<Navigate to="" replace />} />

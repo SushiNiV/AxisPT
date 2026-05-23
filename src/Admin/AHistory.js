@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BiSearch, BiFilterAlt, BiChevronDown, BiX } from 'react-icons/bi';
 import './../GlobalHistory.css';
 import './../Global.css'
@@ -14,11 +14,26 @@ function AHistory() {
   const [selectedDesignation, setSelectedDesignation] = useState("");
   const [selectedAction, setSelectedAction] = useState("");
   
-  // Dynamic options from fetched data
+  const filterRef = useRef(null);
+  
   const [designationOptions, setDesignationOptions] = useState([]);
   const [actionOptions, setActionOptions] = useState([]);
 
-  // Fetch history data from backend
+  const hasActiveFilters = selectedDesignation !== "" || selectedAction !== "";
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterRef.current && !filterRef.current.contains(event.target)) {
+        setIsFilterOpen(false);
+      }
+    };
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   useEffect(() => {
     const fetchHistory = async () => {
       try {
@@ -37,20 +52,18 @@ function AHistory() {
         const data = await response.json();
 
         if (data.success && data.history) {
-          // Map the data to match your frontend structure
           const mappedData = data.history.map(item => ({
             id: item.log_id,
             userId: item.username,
-            designation: item.designation || item.user_role, // Use designation from backend
+            designation: item.designation || item.user_role,
             action: item.action,
-            targetId: item.target_username || item.username, // Show username even for self
+            targetId: item.target_username || item.username,
             details: item.details,
             timestamp: item.timestamp
           }));
           
           setHistoryData(mappedData);
           
-          // Extract unique designations and actions for filters
           const uniqueDesignations = [...new Set(mappedData.map(item => item.designation))];
           const uniqueActions = [...new Set(mappedData.map(item => item.action))];
           
@@ -139,7 +152,7 @@ function AHistory() {
   }
 
   return (
-    <div className="HistoryContainer">
+    <div className="InnerContainer">
 
       <div className="TopSection">
         <div className="SearchWrapper">
@@ -159,9 +172,9 @@ function AHistory() {
           )}
         </div>
         
-        <div className="FilterContainer">
+        <div className="TopbarBtnContainer" ref={filterRef}>
           <button 
-            className={`TopbarBtn ${isFilterOpen ? 'Active' : ''}`}
+            className={`TopbarBtn ${isFilterOpen ? 'Active' : ''} ${hasActiveFilters ? 'FilterActive' : ''}`}
             onClick={() => setIsFilterOpen(!isFilterOpen)}
           >
             <BiFilterAlt className="linkIcon" />
@@ -256,7 +269,7 @@ function AHistory() {
         <div className="PaginationControls">
           <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
           <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
-          <div className="ahistory-currentPageInputWrapper">
+          <div className="CurrentPageInputWrapper">
             <input 
               type="number" 
               value={currentPage} 

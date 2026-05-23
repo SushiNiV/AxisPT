@@ -48,6 +48,7 @@ export const CloseBt = styled.button`
   font-size: 2rem;
   cursor: pointer;
   padding: 0;
+  color: #3d1616;
 `;
 
 export const OverlayHeader = styled.div`

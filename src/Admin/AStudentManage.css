@@ -1,0 +1,8 @@
+.astudentManageContainer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  background-color: #f2f4f6;
+  overflow: hidden;
+}

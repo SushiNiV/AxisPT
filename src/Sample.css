@@ -9,20 +9,7 @@
   z-index: 1000;
 }
 
-.createContainer {
-  background: #F8FAFC;
-  width: 90%;
-  max-width: 400px;
-  height: 90%;
-  max-height: 500px;
-  padding: 0.5rem 1.25rem 0 1.75rem;
-  border-radius: 5px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-  animation: softRise 0.4s ease-out;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
+
 
 .closeBTArea {
   display: flex;

@@ -1,0 +1,268 @@
+.progsecTableContainer {
+  overflow-x: auto;
+  background-color: #fff;
+  border-radius: 5px;
+}
+
+.progsecTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+  table-layout: auto;
+}
+
+.progsecTable th {
+  background-color: #f8f9fa;
+  padding: 10px 15px;
+  color: #3d1616;
+  font-weight: 700;
+  border-bottom: 2px solid #eee;
+  position: sticky;
+  top: 0;
+}
+
+.progsecTable td {
+  padding: 10px 15px;
+  border-bottom: 1px solid #eee;
+  color: #444;
+}
+
+.progsecRow:hover {
+  background-color: #fdfdfd;
+}
+
+.progsecRowSelected {
+  background-color: #f8f4f4 !important;
+}
+
+.progsecRowExpanded {
+  background-color: #f8f4f4 !important;
+}
+
+.progsecExpandCell {
+  text-align: center !important;
+  padding: 10px 5px !important;
+  color: #3d1616;
+}
+
+.progsecClickable {
+  cursor: pointer;
+}
+
+.progsecEmpty {
+  text-align: center !important;
+  padding: 20px !important;
+  color: #888;
+}
+
+/* Status Badges */
+.progsecStatusBadge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.progsecActive {
+  background-color: #e6f4ea;
+  color: #1e7e34;
+}
+
+.progsecInactive {
+  background-color: #fce8e8;
+  color: #c62828;
+}
+
+.progsecExpandedRow td {
+
+  padding: 0;
+}
+
+.progsecExpandedCell {
+  padding: 0 !important;
+}
+
+.progsecSectionDropdown {
+  padding: 12px 20px;
+  background-color: #fafafa;
+  border-top: 1px solid #e0e0e0;
+}
+
+.progsecSectionSearch {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+}
+
+.progsecSectionSearch input[type="text"] {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 0.8rem;
+  background: transparent;
+}
+
+.progsecSelectAllLabel {
+  font-size: 11px;
+  margin-left: 4px;
+  color: #666;
+}
+
+/* Nested Table */
+.progsecNestedTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+
+}
+
+
+.progsecNestedTable th {
+  background: #f0f0f0;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 0.75rem;
+  color: #555;
+  font-weight: 600;
+}
+
+.progsecNestedTable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.progsecNestedRow:hover {
+  background-color: #f5f5f5;
+}
+
+.progsecNoSections {
+  text-align: center;
+  padding: 15px;
+  color: #999;
+  font-size: 0.85rem;
+}
+
+/* Course Dropdown inside Section */
+.progsecCourseDropdown {
+  padding: 8px 0 8px 20px;
+  background-color: #f5f5f5;
+  border-top: 1px solid #e8e8e8;
+}
+
+.progsecCourseHeader {
+  display: flex;
+  align-items: center;
+  padding: 8px 15px;
+  background-color: #ede8e8;
+  font-weight: 700;
+  font-size: 0.7rem;
+  color: #3d1616;
+  border-radius: 4px 4px 0 0;
+}
+
+.progsecCourseRow {
+  display: flex;
+  align-items: center;
+  padding: 8px 15px;
+  border-bottom: 1px solid #e8e8e8;
+  font-size: 0.75rem;
+  color: #444;
+  background-color: #fff;
+}
+
+.progsecCourseRow:hover {
+  background-color: #fafafa;
+}
+
+.progsecCourseCol {
+  padding: 0 5px;
+}
+
+.progsecNoCourses {
+  text-align: center;
+  padding: 12px;
+  color: #999;
+  font-size: 0.8rem;
+}
+
+/* Pagination */
+.progsecPagination {
+  display: flex;
+  justify-content: center;
+  background-color: #fff;
+  padding: 10px 15px;
+  margin-bottom: 0.5rem;
+  border-top: 1px solid #eee;
+  border-radius: 5px;
+}
+
+.progsecPaginationControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progsecPaginationInfo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.progsecPaginationInfo span {
+  font-weight: bold;
+  color: #3d1616;
+}
+
+.progsecPageBtn {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #333;
+}
+
+.progsecPageBtn:hover:not(:disabled) {
+  background-color: #3d161625;
+  border-color: #3d1616;
+  color: #3d1616;
+}
+
+.progsecPageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.progsecPageInputWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.progsecPageInput {
+  width: 25px;
+  height: 25px;
+  text-align: center;
+  border: 1px solid #3d1616;
+  border-radius: 6px;
+  font-weight: bold;
+  outline: none;
+}
+
+.progsecPageInput::-webkit-outer-spin-button,
+.progsecPageInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

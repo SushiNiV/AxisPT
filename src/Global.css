@@ -19,7 +19,7 @@
   --branding-pink: #d32f2f;
 }
 
-p, h1 {
+p, h1, td, tr {
   margin: 0;
   padding: 0;
 }
@@ -61,6 +61,13 @@ p, h1 {
   height: 100%;
   padding: 0 1rem 0 0.5rem;
   box-sizing: border-box;
+}
+
+.InnerContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .TopSection {
@@ -114,7 +121,7 @@ p, h1 {
   color: #3d1616;
 }
 
-.FilterContainer {
+.TopbarBtnContainer {
   position: relative;
   margin-left: 0.5rem;
 }
@@ -138,6 +145,16 @@ p, h1 {
   background-color: #3d1616;
   color: #fff;
   border-color: #3d1616;
+}
+
+.TopbarBtn.FilterActive {
+  background-color: #d32f2f;
+  color: white;
+  border-color: #d32f2f;
+}
+
+.TopbarBtn.FilterActive .linkIcon {
+  color: white;
 }
 
 .linkIcon {

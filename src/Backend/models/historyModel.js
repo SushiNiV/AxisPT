@@ -49,13 +49,6 @@ const HistoryModel = {
         f.first_name,
         f.last_name,
         d.designation_name,
-        COALESCE(d.designation_name, 
-          CASE 
-            WHEN STRING_AGG(DISTINCT r.role_name, ',') LIKE '%SUPERADMIN%' THEN 'Developer'
-            WHEN STRING_AGG(DISTINCT r.role_name, ',') LIKE '%ADMIN%' THEN 'Admin'
-            ELSE 'Unknown'
-          END
-        ) as display_designation,
         STRING_AGG(DISTINCT r.role_name, ',') as roles
       FROM history_logs h
       LEFT JOIN users u ON h.user_id = u.user_id
@@ -100,7 +93,7 @@ const HistoryModel = {
       console.error("Error fetching history logs:", err);
       throw err;
     }
-    }
+  }
 };
 
 module.exports = HistoryModel;

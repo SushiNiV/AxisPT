@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const AdminModel = require('../models/adminModel');
+const ProgramModel = require('../models/programModel');
 const HistoryModel = require('../models/historyModel');
 
 exports.login = async (req, res) => {
@@ -357,6 +358,117 @@ exports.changePassword = async (req, res) => {
   }
 };
 
+exports.addProgram = async (req, res) => {
+  const { program_name, program_abbr, total_year, program_description, program_status } = req.body;
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    if (!program_name || !program_abbr || !total_year) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Program name, abbreviation, and total years are required." 
+      });
+    }
+
+    const existingPrograms = await ProgramModel.getAll();
+    const existing = existingPrograms.find(p => p.program_abbr === program_abbr);
+
+    if (existing) {
+      await HistoryModel.log({
+        userId: userId,
+        targetUserId: userId,
+        tableName: 'programs',
+        recordId: null,
+        action: 'PROGRAM_CREATE_FAILED',
+        oldValues: null,
+        newValues: { 
+          program_name, 
+          program_abbr, 
+          reason: 'Program abbreviation already exists',
+          timestamp: new Date().toISOString()
+        },
+        ipAddress,
+        userAgent
+      });
+
+      return res.status(400).json({ 
+        success: false, 
+        message: "Program abbreviation already exists." 
+      });
+    }
+
+    const newProgram = await ProgramModel.create({
+      program_name,
+      program_abbr,
+      total_year,
+      program_description: program_description || null,
+      program_status
+    });
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'programs',
+      recordId: newProgram.program_id,
+      action: 'PROGRAM_CREATED',
+      oldValues: null,
+      newValues: {
+        program_id: newProgram.program_id,
+        program_name: newProgram.program_name,
+        program_abbr: newProgram.program_abbr,
+        total_year: newProgram.total_year,
+        program_status: newProgram.program_status,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Program created successfully.",
+      data: newProgram
+    });
+
+  } catch (error) {
+    console.error("Error creating program:", error);
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'programs',
+      recordId: null,
+      action: 'PROGRAM_CREATE_ERROR',
+      oldValues: null,
+      newValues: {
+        program_name,
+        program_abbr,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error." 
+    });
+  }
+};
+
+exports.getPrograms = async (req, res) => {
+  try {
+    const programs = await ProgramModel.getAll();
+    res.json({ success: true, data: programs });
+  } catch (error) {
+    console.error("Error fetching programs:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
 exports.getHistory = async (req, res) => {
   const { limit = 100, offset = 0 } = req.query;
 
@@ -387,6 +499,15 @@ exports.getHistory = async (req, res) => {
           break;
         case 'PASSWORD_CHANGE_FAILED':
           formattedAction = 'Password Change Failed';
+          break;
+        case 'PROGRAM_CREATED':
+          formattedAction = 'Program Created';
+          break;
+        case 'PROGRAM_CREATE_FAILED':
+          formattedAction = 'Program Creation Failed';
+          break;
+        case 'PROGRAM_CREATE_ERROR':
+          formattedAction = 'Program Creation Error';
           break;
         default:
           formattedAction = item.action.replace(/_/g, ' ').toLowerCase()
@@ -450,6 +571,18 @@ exports.getHistory = async (req, res) => {
             if (newValues.count) {
               formattedDetails += ` (${newValues.count} items)`;
             }
+            break;
+            
+          case 'PROGRAM_CREATED':
+            formattedDetails = `${displayName} created program: ${newValues.program_name} (${newValues.program_abbr}) with ${newValues.total_year} year(s)`;
+            break;
+            
+          case 'PROGRAM_CREATE_FAILED':
+            formattedDetails = `${displayName} failed to create program ${newValues.program_abbr || newValues.program_name} - ${newValues.reason}`;
+            break;
+            
+          case 'PROGRAM_CREATE_ERROR':
+            formattedDetails = `Error creating program: ${newValues.error}`;
             break;
             
           default:
