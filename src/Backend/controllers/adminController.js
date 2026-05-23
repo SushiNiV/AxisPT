@@ -459,6 +459,85 @@ exports.addProgram = async (req, res) => {
   }
 };
 
+exports.updateProgram = async (req, res) => {
+  const { program_id } = req.params;
+  const { program_name, program_abbr, total_year, program_description, program_status } = req.body;
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    const existingProgram = await ProgramModel.findById(program_id);
+    
+    if (!existingProgram) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Program not found." 
+      });
+    }
+
+    const updatedProgram = await ProgramModel.update(program_id, {
+      program_name,
+      program_abbr,
+      total_year,
+      program_description: program_description || null,
+      program_status
+    });
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'programs',
+      recordId: updatedProgram.program_id,
+      action: 'PROGRAM_UPDATED',
+      oldValues: {
+        program_name: existingProgram.program_name,
+        program_abbr: existingProgram.program_abbr,
+        total_year: existingProgram.total_year,
+        program_status: existingProgram.program_status
+      },
+      newValues: {
+        program_name: updatedProgram.program_name,
+        program_abbr: updatedProgram.program_abbr,
+        total_year: updatedProgram.total_year,
+        program_status: updatedProgram.program_status,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Program updated successfully.",
+      data: updatedProgram
+    });
+
+  } catch (error) {
+    console.error("Error updating program:", error);
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'programs',
+      recordId: program_id,
+      action: 'PROGRAM_UPDATE_ERROR',
+      oldValues: null,
+      newValues: {
+        error: error.message,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error." 
+    });
+  }
+};
+
 exports.getPrograms = async (req, res) => {
   try {
     const programs = await ProgramModel.getAll();
@@ -508,6 +587,12 @@ exports.getHistory = async (req, res) => {
           break;
         case 'PROGRAM_CREATE_ERROR':
           formattedAction = 'Program Creation Error';
+          break;
+        case 'PROGRAM_UPDATED':
+          formattedAction = 'Program Updated';
+          break;
+        case 'PROGRAM_UPDATE_ERROR':
+          formattedAction = 'Program Update Error';
           break;
         default:
           formattedAction = item.action.replace(/_/g, ' ').toLowerCase()
@@ -583,6 +668,14 @@ exports.getHistory = async (req, res) => {
             
           case 'PROGRAM_CREATE_ERROR':
             formattedDetails = `Error creating program: ${newValues.error}`;
+            break;
+            
+          case 'PROGRAM_UPDATED':
+            formattedDetails = `${displayName} updated program: ${newValues.program_name} (${newValues.program_abbr})`;
+            break;
+            
+          case 'PROGRAM_UPDATE_ERROR':
+            formattedDetails = `Error updating program: ${newValues.error}`;
             break;
             
           default:

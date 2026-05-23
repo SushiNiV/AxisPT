@@ -5,7 +5,7 @@ import '../../GlobalForm.css'
 import '../../GlobalOverlay.css';
 import '../../Global.css';
 
-function AddProgram({ onClose, onSuccess }) {
+function AddProgram({ onClose, onSuccess, programToEdit = null }) {
   const [programName, setProgramName] = useState("");
   const [abbreviation, setAbbreviation] = useState("");
   const [selectedYears, setSelectedYears] = useState([]);
@@ -16,6 +16,7 @@ function AddProgram({ onClose, onSuccess }) {
   const [portalRoot, setPortalRoot] = useState(document.getElementById('portal-root') || document.body);
   
   const dropdownRef = useRef(null);
+  const isEditMode = !!programToEdit;
 
   const options = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"];
   const yearOrder = {
@@ -24,6 +25,29 @@ function AddProgram({ onClose, onSuccess }) {
     "3rd Year": 3,
     "4th Year": 4,
     "5th Year": 5
+  };
+
+  useEffect(() => {
+    if (programToEdit) {
+      setProgramName(programToEdit.program_name || "");
+      setAbbreviation(programToEdit.program_abbr || "");
+      setDescription(programToEdit.program_description || "");
+      setIsActive(programToEdit.program_status === true);
+      
+      const yearsArray = [];
+      const totalYears = programToEdit.total_year || 0;
+      for (let i = 1; i <= totalYears; i++) {
+        yearsArray.push(`${i}${getYearSuffix(i)} Year`);
+      }
+      setSelectedYears(yearsArray);
+    }
+  }, [programToEdit]);
+
+  const getYearSuffix = (year) => {
+    if (year === 1) return "st";
+    if (year === 2) return "nd";
+    if (year === 3) return "rd";
+    return "th";
   };
 
   useEffect(() => {
@@ -38,12 +62,6 @@ function AddProgram({ onClose, onSuccess }) {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  const toggleYear = (year) => {
-    setSelectedYears(prev =>
-      prev.includes(year) ? prev.filter(y => y !== year) : [...prev, year]
-    );
-  };
 
   const handleYearClick = (clickedYear) => {
     const clickedYearNum = yearOrder[clickedYear];
@@ -77,8 +95,14 @@ function AddProgram({ onClose, onSuccess }) {
 
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, {
-        method: 'POST',
+      const url = isEditMode 
+        ? `${process.env.REACT_APP_API_URL}/admin/programs/${programToEdit.program_id}`
+        : `${process.env.REACT_APP_API_URL}/admin/programs`;
+      
+      const method = isEditMode ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -95,13 +119,13 @@ function AddProgram({ onClose, onSuccess }) {
       const data = await response.json();
 
       if (data.success) {
-        alert("Program created successfully!");
+        alert(isEditMode ? "Program updated successfully!" : "Program created successfully!");
         onSuccess();
       } else {
-        alert(data.message || "Failed to create program.");
+        alert(data.message || (isEditMode ? "Failed to update program." : "Failed to create program."));
       }
     } catch (error) {
-      console.error("Error creating program:", error);
+      console.error("Error submitting program:", error);
       alert("An error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -115,7 +139,7 @@ function AddProgram({ onClose, onSuccess }) {
           <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
         </div>
         <div className="modalHeader">
-          <h3 className="modalTitle">ADD NEW PROGRAM</h3>
+          <h3 className="modalTitle">{isEditMode ? "UPDATE PROGRAM" : "ADD NEW PROGRAM"}</h3>
         </div>
 
         <div className="modalScrollArea">
@@ -197,7 +221,7 @@ function AddProgram({ onClose, onSuccess }) {
             <div className="FilterBtnsContainer">
               <button className="ResetFilterBtn" onClick={onClose} disabled={isSubmitting}>CANCEL</button>
               <button className="ApplyFilterBtn" onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? "CREATING..." : "CREATE"}
+                {isSubmitting ? (isEditMode ? "UPDATING..." : "CREATING...") : (isEditMode ? "UPDATE" : "CREATE")}
               </button>
             </div>
           </div>

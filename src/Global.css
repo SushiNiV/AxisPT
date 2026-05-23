@@ -19,7 +19,7 @@
   --branding-pink: #d32f2f;
 }
 
-p, h1, td, tr {
+p, h1, h3, td, tr {
   margin: 0;
   padding: 0;
 }
@@ -67,13 +67,11 @@ p, h1, td, tr {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden;
 }
 
 .TopSection {
   display: flex;
   margin-bottom: 0.5rem;
-  background-color: #efefef;
   align-items: center;
   width: 100%;
   box-sizing: border-box;
@@ -138,6 +136,8 @@ p, h1, td, tr {
   font-weight: 500;
   font-size: 0.875rem;
   transition: all 0.3s ease;
+  white-space: nowrap;
+  min-width: fit-content; 
 }
 
 .TopbarBtn:hover,

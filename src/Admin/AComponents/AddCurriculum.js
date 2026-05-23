@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import ReactDOM from 'react-dom';
 import { BiChevronDown } from 'react-icons/bi';
 
-import './AddModal.css';
 import '../../GlobalForm.css'
 import '../../GlobalOverlay.css';
 import '../../Global.css';
