@@ -4,6 +4,10 @@ const AdminModel = require('../models/adminModel');
 const ProgramModel = require('../models/programModel');
 const AcademicYearModel = require('../models/acadyearModel');
 const CurriculumModel = require('../models/curriculumModel');
+const FacultyModel = require('../models/facultyModel');
+const SectionModel = require('../models/sectionModel');
+const SectionAssignmentModel = require('../models/sectionassignModel');
+
 const HistoryModel = require('../models/historyModel');
 
 exports.login = async (req, res) => {
@@ -611,6 +615,57 @@ exports.deleteAcademicYear = async (req, res) => {
   }
 };
 
+exports.updateAcademicYearSemester = async (req, res) => {
+  const { year_id } = req.params;
+  const { current_sem } = req.body;
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    const existingYear = await AcademicYearModel.findById(year_id);
+    
+    if (!existingYear) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Academic year not found." 
+      });
+    }
+
+    const oldSemester = existingYear.current_sem;
+
+    const updatedYear = await AcademicYearModel.updateSemester(year_id, current_sem);
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'academic_year',
+      recordId: year_id,
+      action: 'SEMESTER_CHANGED',
+      oldValues: { current_sem: oldSemester },
+      newValues: { 
+        current_sem: current_sem,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Semester updated successfully.",
+      data: updatedYear
+    });
+
+  } catch (error) {
+    console.error("Error updating semester:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error." 
+    });
+  }
+};
+
 exports.activateAcademicYear = async (req, res) => {
   const { year_id } = req.params;
   const userId = req.user.id;
@@ -661,60 +716,27 @@ exports.activateAcademicYear = async (req, res) => {
   }
 };
 
-exports.updateAcademicYearSemester = async (req, res) => {
-  const { year_id } = req.params;
-  const { current_sem } = req.body;
-  const userId = req.user.id;
-  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
-  const userAgent = req.headers['user-agent'];
-
+exports.getActiveSectionsByProgram = async (req, res) => {
+  const { program_id } = req.query;
+  
   try {
-    const existingYear = await AcademicYearModel.findById(year_id);
-    
-    if (!existingYear) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Academic year not found." 
-      });
-    }
-
-    if (!existingYear.is_active) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Cannot set semester for an inactive academic year. Activate the academic year first." 
-      });
-    }
-
-    const oldSemester = existingYear.current_sem;
-    const updatedYear = await AcademicYearModel.updateSemester(year_id, current_sem);
-
-    await HistoryModel.log({
-      userId: userId,
-      targetUserId: userId,
-      tableName: 'academic_year',
-      recordId: year_id,
-      action: 'SEMESTER_CHANGED',
-      oldValues: { current_sem: oldSemester },
-      newValues: { 
-        current_sem: current_sem,
-        timestamp: new Date().toISOString()
-      },
-      ipAddress,
-      userAgent
-    });
-
-    res.json({ 
-      success: true, 
-      message: "Semester updated successfully.",
-      data: updatedYear
-    });
-
+    const sections = await SectionModel.getActiveByProgramId(program_id);
+    res.json({ success: true, data: sections });
   } catch (error) {
-    console.error("Error updating semester:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Internal server error." 
-    });
+    console.error("Error fetching active sections:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.getAllSectionsByProgram = async (req, res) => {
+  const { program_id } = req.query;
+  
+  try {
+    const sections = await SectionModel.getAllByProgram(program_id);
+    res.json({ success: true, data: sections });
+  } catch (error) {
+    console.error("Error fetching all sections:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
   }
 };
 
@@ -1104,6 +1126,117 @@ exports.getPrograms = async (req, res) => {
   }
 };
 
+exports.getFaculties = async (req, res) => {
+  try {
+    const faculties = await FacultyModel.getAll();
+    res.json({ success: true, data: faculties });
+  } catch (error) {
+    console.error("Error fetching faculties:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.getSectionsByProgram = async (req, res) => {
+  const { program_id } = req.query;
+  
+  try {
+    const sections = await SectionModel.getAllByProgram(program_id);
+    console.log("Sections returned:", sections); // Debug
+    res.json({ success: true, data: sections });
+  } catch (error) {
+    console.error("Error fetching sections:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.addSectionAssignment = async (req, res) => {
+  const { 
+    section_option, 
+    section_name, 
+    section_number, 
+    section_id, 
+    program_id, 
+    year_level, 
+    semester_id, 
+    year_id, 
+    adviser_id, 
+    is_active 
+  } = req.body;
+  
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    let finalSectionId = section_id;
+    let finalYearLevel = year_level;
+    let finalSemesterId = semester_id;
+    let finalYearId = year_id;
+    
+    if (section_option === "new") {
+      finalSectionId = await SectionAssignmentModel.createOrGetSection(section_name, program_id);
+    } else if (section_option === "existing") {
+      const existingAssignment = await SectionAssignmentModel.getLatestAssignmentBySectionId(section_id);
+      if (existingAssignment) {
+        finalYearLevel = existingAssignment.year_level;
+        finalSemesterId = existingAssignment.semester_id;
+        if (!finalYearId) finalYearId = existingAssignment.year_id;
+      }
+    }
+    
+    const assignment = await SectionAssignmentModel.createAssignment({
+      section_id: finalSectionId,
+      year_id: finalYearId,
+      semester_id: finalSemesterId,
+      year_level: finalYearLevel,
+      adviser_id: adviser_id,
+      is_active: is_active
+    });
+    
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'section_assignments',
+      recordId: assignment.assignment_id,
+      action: 'SECTION_ASSIGNMENT_CREATED',
+      oldValues: null,
+      newValues: {
+        section_name: section_name || null,
+        year_level: finalYearLevel,
+        semester_id: finalSemesterId,
+        year_id: finalYearId,
+        adviser_id: adviser_id,
+        is_active: is_active,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+    
+    res.json({ success: true, message: "Section assignment added successfully!", data: assignment });
+    
+  } catch (error) {
+    console.error("Error adding section assignment:", error);
+    
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'section_assignments',
+      recordId: null,
+      action: 'SECTION_ASSIGNMENT_ERROR',
+      oldValues: null,
+      newValues: {
+        error: error.message,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+    
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
 exports.getHistory = async (req, res) => {
   const { limit = 100, offset = 0 } = req.query;
 
@@ -1184,13 +1317,13 @@ exports.getHistory = async (req, res) => {
           formattedAction = 'Academic Year Activated';
           break;
         case 'CURRICULUM_CREATED':
-          formattedDetails = `${displayName} created curriculum for ${newValues.program_id} (${newValues.version_name}) for year ${newValues.start_year}`;
+          formattedAction = 'Curriculum Created';
           break;
         case 'CURRICULUM_UPDATED':
-          formattedDetails = `${displayName} updated curriculum for ${newValues.program_id}`;
+          formattedAction = 'Curriculum Updated';
           break;
         case 'CURRICULUM_DELETED':
-          formattedDetails = `${displayName} deleted curriculum for ${oldValues.program_id} (${oldValues.version_name})`;
+          formattedAction = 'Curriculum Deleted';
           break;
         default:
           formattedAction = item.action.replace(/_/g, ' ').toLowerCase()
@@ -1201,6 +1334,7 @@ exports.getHistory = async (req, res) => {
       
       if (item.new_values && typeof item.new_values === 'object') {
         const newValues = item.new_values;
+        const oldValues = item.old_values || {};
         
         switch(item.action) {
           case 'LOGIN_SUCCESS':
@@ -1267,6 +1401,18 @@ exports.getHistory = async (req, res) => {
             formattedDetails = `Error updating program: ${newValues.error}`;
             break;
             
+          case 'CURRICULUM_CREATED':
+            formattedDetails = `${displayName} created curriculum for program ID ${newValues.program_id} (${newValues.version_name}) for year ${newValues.start_year}`;
+            break;
+            
+          case 'CURRICULUM_UPDATED':
+            formattedDetails = `${displayName} updated curriculum for program ID ${newValues.program_id}`;
+            break;
+            
+          case 'CURRICULUM_DELETED':
+            formattedDetails = `${displayName} deleted curriculum for program ID ${oldValues.program_id} (${oldValues.version_name})`;
+            break;
+            
           case 'SEMESTER_CHANGED':
             const getSemesterName = (semId) => {
               if (semId === 1) return '1st Semester';
@@ -1274,7 +1420,7 @@ exports.getHistory = async (req, res) => {
               if (semId === 3) return 'Summer Term';
               return 'None';
             };
-            formattedDetails = `${displayName} changed semester from ${getSemesterName(item.old_values?.current_sem)} to ${getSemesterName(newValues.current_sem)}`;
+            formattedDetails = `${displayName} changed semester from ${getSemesterName(oldValues.current_sem)} to ${getSemesterName(newValues.current_sem)}`;
             break;
             
           default:

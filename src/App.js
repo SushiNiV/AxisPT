@@ -9,6 +9,7 @@ import AStudentManage from './Admin/AStudentManage';
 
 import AAcademics from './Admin/AGrades';
 import AProgSec from './Admin/APages/AProgSec';
+import Course from './Admin/APages/ACourses';
 
 import AAccessCtrl from './Admin/AAccessCtrl';
 import AcadYear from './Admin/APages/AcadYear';
@@ -20,6 +21,7 @@ import ProtectedRoute from './Components/ProtectedRoute';
 import ALayout from './Admin/AComponents/ALayout';
 
 import SSignIn from './Student/SignIn';
+import ACourses from './Admin/APages/ACourses';
 
 function App() {
   return (
@@ -41,6 +43,7 @@ function App() {
             <Route path="/admin/academics" element={<AAcademics />} >
                 <Route index element={<Navigate to="programs&sections" replace />} />
                 <Route path="programs&sections" element={<AProgSec />} />
+                <Route path="courses" element={<ACourses />} />
               </Route>
 
             <Route path="/admin/access-control" element={<AAccessCtrl />} >

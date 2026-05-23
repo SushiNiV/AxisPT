@@ -218,9 +218,6 @@ function AAcadYear() {
             return (
               <div className="Card" key={year.year_id}>
                 <div className="CardMain">
-                  <div className="cardCheckbox">
-                    <input type="checkbox" />
-                  </div>
                   <div className={`cardIcon ${status === 'current' ? 'active' : 'inactive'}`}>
                     <BiCalendar />
                   </div>

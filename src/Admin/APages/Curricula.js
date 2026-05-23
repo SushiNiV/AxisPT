@@ -145,9 +145,6 @@ function ACurricula() {
             return (
               <div className="Card" key={curriculum.curriculum_id}>
                 <div className="CardMain">
-                  <div className="cardCheckbox">
-                    <input type="checkbox" />
-                  </div>
                   <div className={`cardIcon ${status === 'current' ? 'active' : 'inactive'}`}>
                     <BiBook />
                   </div>
@@ -159,7 +156,7 @@ function ACurricula() {
                     </div>
                     <h3 className="cardTitle">{curriculum.program_name}</h3>
                     <div className="CardDetails">
-                      <span className="detailBadge">AY: {academicYear}</span>
+                      <span className="detailBadge">From: {curriculum.start_year}</span>
                       <span className="detailBadge">Version: {curriculum.version_name}</span>
                       <span className="detailBadge">Courses: {curriculum.course_count || 0}</span>
                     </div>
