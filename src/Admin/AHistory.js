@@ -14,7 +14,6 @@ function AHistory() {
   const [filterValues, setFilterValues] = useState({});
   const dropdownRef = useRef(null); 
   
-  // 1. Data Fetching
   useEffect(() => {
     const fetchHistory = async () => {
       
@@ -58,7 +57,6 @@ function AHistory() {
     { label: "ACTION", options: ["LOGIN", "BULK_ACCEPT", "BULK_REJECT", "PASSWORD_CHANGE"] }
   ];
 
-  // 2. Filtering Logic
   const filteredHistory = historyData.filter((item) => {
     const searchStr = searchTerm.toLowerCase();
     const matchesSearch = 
@@ -77,13 +75,11 @@ function AHistory() {
     return matchesSearch && matchesFilters;
   });
 
-  // 3. Pagination Logic
   const totalPages = Math.ceil(filteredHistory.length / rowsPerPage) || 1;
   const indexOfLastItem = currentPage * rowsPerPage;
   const indexOfFirstItem = indexOfLastItem - rowsPerPage;
   const currentItems = filteredHistory.slice(indexOfFirstItem, indexOfLastItem);
 
-  // 4. Event Handlers
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
     setCurrentPage(1);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BiEdit, BiSave, BiX } from 'react-icons/bi';
 import './GradeModal.css';
-
+import DetailedModal from './DetailedModal';
 function GradeModal({ student, onClose }) {
   const [activeYear, setActiveYear] = useState(1);
   const [activeSemester, setActiveSemester] = useState(1);
@@ -9,6 +9,7 @@ function GradeModal({ student, onClose }) {
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [grades, setGrades] = useState({});
+  const [selectedCourse, setSelectedCourse] = useState(null);
   const fetchCourses = async () => {
       setLoading(true);
       try {
@@ -164,7 +165,11 @@ function GradeModal({ student, onClose }) {
                 </thead>
                 <tbody>
                   {filteredCourses.map(course => (
-                    <tr key={course.course_id}>
+                    <tr key={course.course_id} 
+                        className="gradeRow"
+                        onClick={() => setSelectedCourse(course)}  
+                        style={{ cursor: 'pointer' }}
+                    >
                       <td>{course.course_code}</td>
                       <td>{course.course_name}</td>
                       <td>{course.total_units || (course.lec_units + course.lab_units)}</td>
@@ -257,6 +262,18 @@ function GradeModal({ student, onClose }) {
           </div>
         </div>
       </div>
+
+      {selectedCourse && (
+      <DetailedModal
+        student={student}
+        course={selectedCourse}
+        onClose={() => setSelectedCourse(null)}
+        onSave={() => {
+          setSelectedCourse(null);
+          fetchCourses();
+        }}
+      />
+    )}
     </div>
   );
 }

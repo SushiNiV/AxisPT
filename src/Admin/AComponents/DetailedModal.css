@@ -1,0 +1,167 @@
+.gradeDetailOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+.gradeDetailContainer {
+  background: #F8FAFC;
+  width: 90%;
+  max-width: 550px;
+  max-height: 85vh;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gradeDetailHeader {
+  background-color: #3D1616;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  color: white;
+}
+
+.gradeDetailHeader h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.gradeDetailSubtitle {
+  font-size: 0.7rem;
+  opacity: 0.8;
+  margin-top: 3px;
+  display: block;
+}
+
+.gradeDetailCloseBt {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.3rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.gradeDetailFormScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px 20px;
+}
+
+.gradeDetailFormContent {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.gradeDetailSection {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px 15px;
+}
+
+.gradeDetailSectionTitle {
+  margin: 0 0 10px 0;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #3D1616;
+  text-transform: uppercase;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 6px;
+}
+
+.gradeDetailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.gradeDetailRow label {
+  font-size: 0.72rem;
+  color: #555;
+  flex: 1;
+}
+
+.gradeDetailInput,
+.gradeDetailSelect {
+  width: 80px;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  text-align: center;
+  outline: none;
+}
+
+.gradeDetailInput:focus,
+.gradeDetailSelect:focus {
+  border-color: #3D1616;
+}
+
+.gradeDetailTotalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background: #3D1616;
+  border-radius: 8px;
+  color: white;
+}
+
+.gradeDetailTotalRow label {
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.gradeDetailTotal {
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.gradeDetailBtns {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.gradeDetailCancelBtn,
+.gradeDetailSaveBtn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.gradeDetailCancelBtn {
+  background: #eee;
+  color: #333;
+}
+
+.gradeDetailSaveBtn {
+  background: #3D1616;
+  color: white;
+}
+
+.gradeDetailSaveBtn:hover {
+  background: #2d1010;
+}

@@ -12,8 +12,6 @@ function ACourses() {
   const [activeFilters, setActiveFilters] = useState({});
   const [selectedIds, setSelectedIds] = useState([]);
   const [showAddCourse, setShowAddCourse] = useState(false);
-  
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 
