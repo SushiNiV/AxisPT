@@ -448,3 +448,39 @@ exports.getAcademicYears = async (req, res) => {
     res.status(500).json({ success: false, message: "Error fetching academic years" });
   }
 };
+
+exports.getStudentCourses = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { year_level, semester_id } = req.query;
+    const courses = await Admin.getStudentCourses(id, year_level, semester_id);
+    res.json({ success: true, courses });
+  } catch (err) {
+    console.error("Get Student Courses Error:", err);
+    res.status(500).json({ success: false, message: "Error fetching courses" });
+  }
+};
+// Get Student Grades
+// Get Student Courses with Grades
+exports.getStudentCourses = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { year_level, semester_id } = req.query;
+    const courses = await Admin.getStudentCourses(id, year_level, semester_id);
+    res.json({ success: true, courses });
+  } catch (err) {
+    console.error("Get Student Courses Error:", err);
+    res.status(500).json({ success: false, message: "Error fetching courses" });
+  }
+};
+
+// Save Student Grades
+exports.saveGrades = async (req, res) => {
+  try {
+    await Admin.saveGrades(req.body);
+    res.json({ success: true, message: "Grades saved successfully" });
+  } catch (err) {
+    console.error("Save Grades Error:", err);
+    res.status(500).json({ success: false, message: "Error saving grades" });
+  }
+};

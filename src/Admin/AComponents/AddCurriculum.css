@@ -1,0 +1,344 @@
+.addCurriculumOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(1px);
+}
+
+.addCurriculumContainer {
+  background: #F8FAFC;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  padding: 0 1.25rem 1.25rem 1.75rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.addCurriculumHeader {
+  height: 50px;
+  background-color: #3D1616;
+  margin: -0.5rem -1.25rem 0 -1.75rem;
+  padding: 1rem 1.5rem 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.addCurriculumHeader h3 {
+  margin: 0;
+  padding: 0;
+  color: white;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.addCurriculumCloseBt {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: opacity 0.2s;
+}
+
+.addCurriculumCloseBt:hover {
+  opacity: 0.7;
+}
+
+.addCurriculumFormScroll {
+  flex: 1;
+  margin: 0.5rem 0 1rem 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.addCurriculumFormScroll::-webkit-scrollbar {
+  width: 5px;
+  background-color: transparent;
+}
+
+.addCurriculumFormScroll::-webkit-scrollbar-thumb {
+  background-color: #ddd;
+  border-radius: 10px;
+}
+
+.addCurriculumFormContent {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin: 0.75rem 0;
+  padding-right: 0.5rem;
+}
+
+.addCurriculumFormRow {
+  display: flex;
+  gap: 15px;
+}
+
+.addCurriculumFormRow .addCurriculumFormGroup {
+  flex: 1;
+}
+
+.addCurriculumFormGroup {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.addCurriculumFormGroup label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #555;
+}
+
+.addCurriculumRequired {
+  color: red;
+}
+
+.addCurriculumInput,
+.addCurriculumSelect {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  background: white;
+}
+
+.addCurriculumSelect {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.addCurriculumInput:focus,
+.addCurriculumSelect:focus {
+  border-color: #3D1616;
+  box-shadow: 0 0 0 3px rgba(61, 22, 22, 0.1);
+}
+
+.addCurriculumToggle {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.addCurriculumSwitch {
+  width: 50px;
+  height: 24px;
+  background-color: #ccc;
+  border-radius: 50px;
+  position: relative;
+  transition: background-color 0.3s ease;
+}
+
+.addCurriculumSwitch.active {
+  background-color: #4caf50;
+}
+
+.addCurriculumSwitch.inactive {
+  background-color: #f44336;
+}
+
+.addCurriculumSwitchHandle {
+  width: 18px;
+  height: 18px;
+  background-color: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.3s ease;
+}
+
+.addCurriculumSwitch.active .addCurriculumSwitchHandle {
+  transform: translateX(26px);
+}
+
+.addCurriculumStatusLabel {
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.addCurriculumStatusLabel.text-active {
+  color: #4caf50;
+}
+
+.addCurriculumStatusLabel.text-inactive {
+  color: #f44336;
+}
+
+.addCurriculumCoursesHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.addCurriculumAddCourseBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  background: #3D1616;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-weight: 500;
+}
+
+.addCurriculumAddCourseBtn:hover {
+  background: #2d1010;
+}
+
+.addCurriculumMiniForm {
+  background: #f1f5f9;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.addCurriculumMiniField {
+  flex: 1;
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.addCurriculumMiniField label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #555;
+}
+
+.addCurriculumAddBtn {
+  padding: 10px 16px;
+  background: #22c55e;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.addCurriculumAddBtn:hover {
+  background: #1ea34e;
+}
+
+.addCurriculumCoursesList {
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+.addCurriculumCourseItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 4px;
+  margin-bottom: 3px;
+  font-size: 12px;
+}
+
+.addCurriculumCourseItem.even {
+  background: #f8fafc;
+}
+
+.addCurriculumCourseItem.odd {
+  background: #fff;
+}
+
+.addCurriculumCourseInfo strong {
+  color: #333;
+}
+
+.addCurriculumCourseMeta {
+  color: #888;
+  margin-left: 8px;
+  font-size: 11px;
+}
+
+.addCurriculumRemoveBtn {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.addCurriculumRemoveBtn:hover {
+  color: #b02a37;
+}
+
+.addCurriculumNoCourses {
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  padding: 15px;
+}
+
+.addCurriculumBtns {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.addCurriculumCancelBtn,
+.addCurriculumSubmitBtn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+  font-size: 0.8rem;
+}
+
+.addCurriculumCancelBtn {
+  background: #eee;
+  color: #333;
+}
+
+.addCurriculumSubmitBtn {
+  background: #3D1616;
+  color: white;
+}
+
+.addCurriculumCancelBtn:disabled,
+.addCurriculumSubmitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.addCurriculumSelect option:hover,
+.addCurriculumSelect option:focus {
+  background-color: #3D1616 !important;
+  border: none !important;
+  color: white !important;
+}   

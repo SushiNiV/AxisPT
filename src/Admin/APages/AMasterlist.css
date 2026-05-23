@@ -23,9 +23,10 @@
   background-color: #fff;
   border: 1px solid #ccc;
   border-radius: 5px;
-  padding: 8px 15px;
+  padding: 0 15px;
   width: 100%;
-  transition: border-color 0.3s ease;
+  position: relative;
+  height: 36px;
 }
 
 .searchWrapper:focus-within {
@@ -39,12 +40,19 @@
 }
 
 .studentSearchInput {
-  border: none;
-  outline: none;
+  border: none !important;
+  outline: none !important;
   width: 100%;
   font-size: 0.875rem;
-  background: transparent;
+  background: #fff;
 }
+
+.studentSearchInput:focus {
+  outline: none;
+  border: none;
+  box-shadow: none;
+}
+
 
 .tableContainer {
   overflow-x: auto;
@@ -160,18 +168,19 @@
 .currentPageInputWrapper {
   display: flex;
   align-items: center;
+  width: 40px
 }
 
 .currentPageInput {
   width: 25px;
   height: 25px;
   text-align: center;
-  border: 1px solid #3d1616;
+  border: none;
   border-radius: 6px;
   font-weight: bold;
   outline: none;
-/*  -moz-appearance: textfield; */
 }
+
 
 .currentPageInput::-webkit-outer-spin-button,
 .currentPageInput::-webkit-inner-spin-button {

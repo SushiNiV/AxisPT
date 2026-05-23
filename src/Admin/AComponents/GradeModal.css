@@ -118,3 +118,61 @@
 .closeModalBtn:hover {
   opacity: 0.7;
 }
+
+.semesterTabContainer {
+  display: flex;  
+  align-items: center; 
+  gap: 10px;
+  padding: 12px 2rem;  
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Make your tabs sleek and consistent */
+.semesterTab {
+  height: 2.2rem;
+  padding: 0 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.semesterTab.active {
+  background: #3D1616;
+  color: #fff;
+  border-color: #3D1616;
+}
+
+.semesterTab:hover:not(.active) {
+  background: #eee;
+}
+
+.semesterTabContainer .editGradeBtn,
+.semesterTabContainer .saveGradeBtn {
+  margin-left: auto; /* magic bullet: pushes this element all the way to the right side */
+  height: 2.2rem;
+  width: auto;       /* Let padding manage text size dynamically */
+  padding: 0 16px;
+  border: #3d1616 solid 1px;
+  background-color: #3d1616 !important;
+  color: white;
+  font-weight: 500;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.editGradeBtn svg,
+.saveGradeBtn svg {
+  font-size: 20px;
+  margin-right: 4px;
+}

@@ -58,26 +58,30 @@ findByUserId: async (userId) => {
 },
 
   getMasterlist: async () => {
-    const result = await pool.query(`
-      SELECT 
-        s.student_id as id,
-        s.account_status,
-        pii.first_name || ' ' || pii.last_name as name, -- Fixed column names
-        p.program_abbr as program, -- Joined programs table to get the name
-        edu.year_level as year,
-        CASE 
-          WHEN s.account_status = true THEN 'Enrolled'
-          ELSE 'Pending'
-        END as status
-      FROM students s
-      LEFT JOIN student_pii pii ON s.student_id = pii.student_id
-      LEFT JOIN student_education edu ON s.student_id = edu.student_id
-      LEFT JOIN curricula c ON edu.curriculum_id = c.curriculum_id -- Needed for program name
-      LEFT JOIN programs p ON c.program_id = p.program_id
-      WHERE s.account_status = true 
-      ORDER BY pii.last_name ASC
-    `);
-    return result.rows;
+      const result = await pool.query(`
+        SELECT 
+          u.username as id,
+          s.account_status,
+          pii.first_name || ' ' || pii.last_name as name, 
+          p.program_abbr as program, 
+          edu.year_level as year,
+          sec.section_name as block,
+          CASE 
+            WHEN s.account_status = true THEN 'Enrolled'
+            ELSE 'Pending'
+          END as status
+        FROM students s
+        JOIN users u ON s.user_id = u.user_id
+        LEFT JOIN student_pii pii ON s.student_id = pii.student_id
+        LEFT JOIN student_education edu ON s.student_id = edu.student_id
+        LEFT JOIN curricula c ON edu.curriculum_id = c.curriculum_id
+        LEFT JOIN programs p ON c.program_id = p.program_id
+        LEFT JOIN section_assignments sa ON edu.assignment_id = sa.assignment_id
+        LEFT JOIN sections sec ON sa.section_id = sec.section_id
+        WHERE s.account_status = true 
+        ORDER BY pii.last_name ASC
+      `);
+      return result.rows;
   },
 
   updatePassword: async (userId, hashedNewPassword) => {
@@ -286,25 +290,25 @@ findByUserId: async (userId) => {
   },
 
   getSections: async () => {
-    const result = await pool.query(`
-      SELECT 
-        sa.assignment_id as id,
-        s.section_name as name,
-        p.program_abbr as program_name,
-        sa.year_level,
-        sem.semester_label as semester,
-        ay.year_label as academic_year,
-        0 as student_count
-      FROM section_assignments sa
-      JOIN sections s ON sa.section_id = s.section_id
-      JOIN programs p ON s.program_id = p.program_id
-      JOIN semester sem ON sa.semester_id = sem.semester_id
-      JOIN academic_year ay ON sa.year_id = ay.year_id
-      WHERE sa.is_active = true
-      ORDER BY ay.year_label DESC, sem.semester_label, sa.year_level, s.section_name
-    `);
-    return result.rows;
-  },
+  const result = await pool.query(`
+    SELECT 
+      sa.assignment_id as id,
+      s.section_name as name,
+      p.program_abbr as program_name,
+      sa.year_level,
+      sem.semester_label as semester,
+      ay.year_label as academic_year,
+      (SELECT COUNT(*) FROM student_education se WHERE se.assignment_id = sa.assignment_id) as student_count
+    FROM section_assignments sa
+    JOIN sections s ON sa.section_id = s.section_id
+    JOIN programs p ON s.program_id = p.program_id
+    JOIN semester sem ON sa.semester_id = sem.semester_id
+    JOIN academic_year ay ON sa.year_id = ay.year_id
+    WHERE sa.is_active = true
+    ORDER BY ay.year_label DESC, sem.semester_label, sa.year_level, s.section_name
+  `);
+  return result.rows;
+},  
 
   // COURSES
 createCourse: async (data) => {
@@ -365,37 +369,37 @@ createCourse: async (data) => {
   }
 },
 
-  getCourses: async () => {
-    const result = await pool.query(`
-      SELECT 
-        c.course_id as id,
-        c.course_code as code,
-        c.course_name as name,
-        c.lec_units,
-        c.lab_units,
-        c.total_units as units,
-        c.prerequisites as prereq,
-        c.is_active,
-        STRING_AGG(DISTINCT p.program_abbr, ', ') as programs,
-        STRING_AGG(DISTINCT 
-          CASE cc.year_level
-            WHEN 1 THEN '1st Year'
-            WHEN 2 THEN '2nd Year'
-            WHEN 3 THEN '3rd Year'
-            WHEN 4 THEN '4th Year'
-            WHEN 5 THEN '5th Year'
-          END || ' - ' || sem.semester_label, ', '
-        ) as year_sem
-      FROM courses c
-      LEFT JOIN curriculum_courses cc ON c.course_id = cc.course_id
-      LEFT JOIN curricula cur ON cc.curriculum_id = cur.curriculum_id
-      LEFT JOIN programs p ON cur.program_id = p.program_id
-      LEFT JOIN semester sem ON cc.semester_id = sem.semester_id
-      GROUP BY c.course_id
-      ORDER BY c.course_code
-    `);
-    return result.rows;
-  },
+ getCourses: async () => {
+  const result = await pool.query(`
+    SELECT 
+      c.course_id as id,
+      c.course_code as code,
+      c.course_name as name,
+      c.lec_units,
+      c.lab_units,
+      (c.lec_units + c.lab_units) as units,
+      c.prerequisites as prereq,
+      c.is_active,
+      STRING_AGG(DISTINCT p.program_abbr, ', ') as programs,
+      STRING_AGG(DISTINCT 
+        CASE cc.year_level
+          WHEN 1 THEN '1st Year'
+          WHEN 2 THEN '2nd Year'
+          WHEN 3 THEN '3rd Year'
+          WHEN 4 THEN '4th Year'
+          WHEN 5 THEN '5th Year'
+        END || ' - ' || sem.semester_label, ', '
+      ) as year_sem
+    FROM courses c
+    LEFT JOIN curriculum_courses cc ON c.course_id = cc.course_id
+    LEFT JOIN curricula cur ON cc.curriculum_id = cur.curriculum_id
+    LEFT JOIN programs p ON cur.program_id = p.program_id
+    LEFT JOIN semester sem ON cc.semester_id = sem.semester_id
+    GROUP BY c.course_id
+    ORDER BY c.course_code
+  `);
+  return result.rows;
+},
 
 
   createAcademicYear: async (data) => {
@@ -487,6 +491,126 @@ createCourse: async (data) => {
     return result.rows;
   },
 
+  // Get student courses with grades
+getStudentCourses: async (username, yearLevel, semesterId) => {
+  const result = await pool.query(`
+    SELECT 
+      c.course_id,
+      c.course_code,
+      c.course_name,
+      c.lec_units,
+      c.lab_units,
+      c.total_units,
+      cc.year_level,
+      cc.semester_id,
+      g.grade_id,
+      g.final_grade,
+      g.remarks,
+      gc_prelim.score as prelim,
+      gc_midterm.score as midterm,
+      gc_final.score as finals
+    FROM students s
+    JOIN users u ON s.user_id = u.user_id
+    JOIN student_education se ON s.student_id = se.student_id
+    JOIN curriculum_courses cc ON se.curriculum_id = cc.curriculum_id 
+      AND cc.year_level = $2 AND cc.semester_id = $3
+    JOIN courses c ON cc.course_id = c.course_id
+    LEFT JOIN grades g ON s.student_id = g.student_id 
+      AND c.course_id = g.course_id 
+      AND g.semester_id = $3
+    LEFT JOIN grade_components gc_prelim ON g.grade_id = gc_prelim.grade_id AND gc_prelim.term = 'Prelim'
+    LEFT JOIN grade_components gc_midterm ON g.grade_id = gc_midterm.grade_id AND gc_midterm.term = 'Midterm'
+    LEFT JOIN grade_components gc_final ON g.grade_id = gc_final.grade_id AND gc_final.term = 'Final'
+    WHERE u.username = $1
+    ORDER BY c.course_code
+  `, [username, yearLevel, semesterId]);
+  return result.rows;
+},
+
+// Save student grades
+saveGrades: async (data) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    for (const [courseId, gradeData] of Object.entries(data.grades)) {
+      const { prelim, midterm, finals, remarks } = gradeData;
+      
+      if (!prelim && !midterm && !finals && !remarks) continue;
+
+      // Calculate final grade
+      const scores = [parseFloat(prelim), parseFloat(midterm), parseFloat(finals)].filter(s => !isNaN(s));
+      const finalGrade = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2) : null;
+
+      // Get student's internal ID
+      const studentRes = await client.query(
+        `SELECT s.student_id FROM students s JOIN users u ON s.user_id = u.user_id WHERE u.username = $1`,
+        [data.student_id]
+      );
+      if (studentRes.rows.length === 0) continue;
+      const studentId = studentRes.rows[0].student_id;
+
+      // Check if grade exists
+      const existingGrade = await client.query(
+        `SELECT grade_id FROM grades WHERE student_id = $1 AND course_id = $2 AND semester_id = $3`,
+        [studentId, courseId, data.semester_id]
+      );
+
+      let gradeId;
+      if (existingGrade.rows.length > 0) {
+        gradeId = existingGrade.rows[0].grade_id;
+        await client.query(
+          `UPDATE grades SET final_grade = $1, remarks = $2, updated_at = NOW() WHERE grade_id = $3`,
+          [finalGrade, remarks || null, gradeId]
+        );
+      } else {
+        const newGrade = await client.query(
+          `INSERT INTO grades (student_id, course_id, year_id, semester_id, final_grade, remarks)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING grade_id`,
+          [studentId, courseId, data.year_id, data.semester_id, finalGrade, remarks || null]
+        );
+        gradeId = newGrade.rows[0].grade_id;
+      }
+
+      // Save grade components
+      const terms = [
+        { name: 'Prelim', score: prelim },
+        { name: 'Midterm', score: midterm },
+        { name: 'Final', score: finals }
+      ];
+
+      for (const term of terms) {
+        if (term.score && !isNaN(parseFloat(term.score))) {
+          const existingComp = await client.query(
+            `SELECT component_id FROM grade_components WHERE grade_id = $1 AND term = $2`,
+            [gradeId, term.name]
+          );
+          if (existingComp.rows.length > 0) {
+            await client.query(
+              `UPDATE grade_components SET score = $1, updated_at = NOW() WHERE component_id = $2`,
+              [parseFloat(term.score), existingComp.rows[0].component_id]
+            );
+          } else {
+            await client.query(
+              `INSERT INTO grade_components (grade_id, term, component_name, score, percentage)
+               VALUES ($1, $2, $3, $4, 33.33)`,
+              [gradeId, term.name, term.name + ' Grade', parseFloat(term.score)]
+            );
+          }
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+    return { success: true };
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+},
 
 };
 

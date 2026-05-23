@@ -22,9 +22,10 @@
   background-color: #fff;
   border: 1px solid #ccc;
   border-radius: 5px;
-  padding: 8px 15px;
+  padding: 0 15px;
   width: 100%;
-  transition: border-color 0.3s ease;
+  height: 36px;
+  position: relative;
 }
 
 .curriculaSearchWrapper:focus-within {
@@ -38,11 +39,17 @@
 }
 
 .curriculaSearchInput {
-  border: none;
-  outline: none;
+  border: none !important;
+  outline: none !important;
   width: 100%;
   font-size: 0.875rem;
-  background: transparent;
+  background: #fff;
+}
+
+.curriculaSearchInput:focus {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .curriculaClearIcon {
@@ -56,18 +63,18 @@
 }
 
 .curriculaCreateBtn {
+  border: #3d1616 solid 1px;
+  margin-left: 0.5rem;
+  background-color: #3d1616 !important;
+  color: white;
+  font-weight: 500;
+  padding: 8px 20px;
+  border-radius: 5px;
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 8px 15px;
-  background: #3d1616;
-  color: #fff;
-  border: none;
-  border-radius: 5px;
+  gap: 8px;
   cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
+  font-size: 0.875rem;
 }
 
 .curriculaCreateBtn:hover {

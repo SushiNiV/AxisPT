@@ -15,28 +15,28 @@
 .createContainer {
   background: #F8FAFC;
   width: 90%;
-  max-width: 450px; /* Increased slightly for better proportions */
+  max-width: 450px;
   padding: 0 1.25rem 1.25rem 1.75rem; 
   border-radius: 8px;
   display: flex;
   flex-direction: column;
-  overflow: hidden; 
+  overflow: visible;  /* Change from hidden to visible */
+}
+
+.createHeader {
+  height: 50px;
+  background-color: #3D1616;
+  margin: -0.5rem -1.25rem 0 -1.75rem;
+  padding: 1rem 1.5rem 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 8px 8px 0 0;  /* Add this to match container */
 }
 
 .closeBTArea {
   display: flex;
   justify-content: flex-end;
-}
-
-.createHeader {
-  height: 50px;
-  background-color: #3D1616; /* OLFU Maroon */
-  margin: -0.5rem -1.25rem 0 -1.75rem; /* Offsets container padding to reach edges */
-  padding: 1rem 1.5rem 2rem 1.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
 }
 
 .createHeader h3 {

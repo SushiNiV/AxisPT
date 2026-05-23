@@ -230,7 +230,6 @@ const filteredStudents = students.filter((s) => {
           <button className="pageBtn last" onClick={goToLastPage} disabled={currentPage === totalPages || totalPages === 0}>»</button>
         </div>
       </div>
-      <A></A>
       <SelectionPanel 
         selectedCount={selectedIds.length} 
         onClear={() => setSelectedIds([])}

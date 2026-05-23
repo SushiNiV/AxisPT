@@ -35,36 +35,42 @@ function AMasterlist() {
     }
   };
 
-  const masterlistFilters = [
-    { label: "Status", placeholder: "All Statuses", options: ["Enrolled", "Pending", "Withdrawn"] },
-    { label: "Year Level", options: ["1ST YEAR", "2ND YEAR", "3RD YEAR", "4TH YEAR"] },
-    { label: "Program", options: ["PHYSICAL THERAPY", "RESPIRATORY THERAPY", "RADIOLOGIC TECHNOLOGY"] }
-  ];
 
-  const handleFilterApply = (filters) => {
-    setActiveFilters(filters);
-    setCurrentPage(1);
-  };
+  const yearLevelMap = {
+  "1ST YEAR": "1",
+  "2ND YEAR": "2",
+  "3RD YEAR": "3",
+  "4TH YEAR": "4"
+};
 
-  const filteredStudents = students.filter((student) => {
-    const matchesSearch = 
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(student.id).toLowerCase().includes(searchTerm.toLowerCase());
+const masterlistFilters = [
+  { label: "Status", placeholder: "All Statuses", options: ["Enrolled", "Pending"] },
+  { label: "Year Level", placeholder: "All Years", options: ["1ST YEAR", "2ND YEAR", "3RD YEAR", "4TH YEAR"] },
+  { label: "Program", placeholder: "All Programs", options: [...new Set(students.map(s => s.program).filter(Boolean))] }
+];
 
-      const matchesDropdowns = Object.keys(activeFilters).every(key => {
-      const selectedValues = activeFilters[key];
-      
-      if (!selectedValues || selectedValues.length === 0) return true;
+const handleFilterApply = (filters) => {
+  setActiveFilters(filters);
+  setCurrentPage(1);
+};
 
-      if (key === "Year Level") return selectedValues.includes(student.year);
-      if (key === "Status") return selectedValues.includes(student.status);
-      if (key === "Program") return selectedValues.includes(student.program);
-      
-      return true;
-    });
+const filteredStudents = students.filter((student) => {
+  const matchesSearch = 
+    student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(student.id).includes(searchTerm);
 
-    return matchesSearch && matchesDropdowns;
+  const matchesDropdowns = Object.keys(activeFilters).every(key => {
+    const selectedValues = activeFilters[key];
+    if (!selectedValues || selectedValues.length === 0) return true;
+
+    if (key === "Year Level") return selectedValues.some(v => yearLevelMap[v] === String(student.year));
+    if (key === "Status") return selectedValues.includes(student.status);
+    if (key === "Program") return selectedValues.includes(student.program);
+    return true;
   });
+
+  return matchesSearch && matchesDropdowns;
+});
 
   const totalPages = Math.ceil(filteredStudents.length / rowsPerPage);
   const indexOfLastStudent = currentPage * rowsPerPage;

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import './AddYear.css';
+import './AddModal.css';
 
 function AddYear({ onClose, onSuccess }) { 
   const currentYear = new Date().getFullYear();

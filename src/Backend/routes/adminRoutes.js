@@ -16,6 +16,8 @@ router.get('/masterlist', verifyToken, adminController.getMasterlist);
 router.get('/pending-students', verifyToken, adminController.getPendingStudents);
 router.post('/bulk-accept', verifyToken, adminController.bulkAcceptStudents);
 router.post('/bulk-reject', verifyToken, adminController.bulkRejectStudents);
+router.get('/student-courses/:id', verifyToken, adminController.getStudentCourses);
+router.post('/save-grades', verifyToken, adminController.saveGrades);
 
 //Academics & Grades
 router.post('/add-program', verifyToken, adminController.addProgram);
@@ -24,9 +26,7 @@ router.post('/add-section', verifyToken, adminController.addSection);
 router.get('/sections', verifyToken, adminController.getSections);
 router.post('/add-course', verifyToken, adminController.addCourse);
 router.get('/courses', verifyToken, adminController.getCourses);
-router.post('/add-curriculum', verifyToken, adminController.addCurriculum);
-router.get('/curricula', verifyToken, adminController.getCurricula);
-router.delete('/curriculum/:id', verifyToken, adminController.deleteCurriculum);
+
 
 //Documents
 router.get('/student-form/:id', verifyToken, adminController.getStudentFormData);
@@ -34,6 +34,9 @@ router.get('/student-form/:id', verifyToken, adminController.getStudentFormData)
 //Access Control
 router.post('/add-academic-year', verifyToken, adminController.addAcademicYear);
 router.get('/academic-years', verifyToken, adminController.getAcademicYears);
+router.post('/add-curriculum', verifyToken, adminController.addCurriculum);
+router.get('/curricula', verifyToken, adminController.getCurricula);
+router.delete('/curriculum/:id', verifyToken, adminController.deleteCurriculum);
 
 router.get('/history', verifyToken, adminController.getHistory);
 

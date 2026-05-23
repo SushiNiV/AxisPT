@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import './AddModal.css';
+import './AddCurriculum.css';
 import { BiTrash, BiPlus } from 'react-icons/bi';
 
 function AddCurriculum({ onClose, onSuccess }) {
   const [programs, setPrograms] = useState([]);
+  const [academicYears, setAcademicYears] = useState([]);
   const [allCourses, setAllCourses] = useState([]);
   
   const [formData, setFormData] = useState({
@@ -17,8 +18,8 @@ function AddCurriculum({ onClose, onSuccess }) {
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [newCourse, setNewCourse] = useState({
     course_id: "",
-    year_level: "1",
-    semester_id: "1"
+    year_level: "",
+    semester_id: ""
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,14 +42,17 @@ function AddCurriculum({ onClose, onSuccess }) {
       const token = sessionStorage.getItem('token');
       const headers = { 'Authorization': `Bearer ${token}` };
       try {
-        const [progRes, courseRes] = await Promise.all([
+        const [progRes, courseRes, acadRes] = await Promise.all([
           fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, { headers }),
-          fetch(`${process.env.REACT_APP_API_URL}/admin/courses`, { headers })
+          fetch(`${process.env.REACT_APP_API_URL}/admin/courses`, { headers }),
+          fetch(`${process.env.REACT_APP_API_URL}/admin/academic-years`, { headers })
         ]);
         const progData = await progRes.json();
         const courseData = await courseRes.json();
+        const acadData = await acadRes.json();
         if (progData.success) setPrograms(progData.data);
         if (courseData.success) setAllCourses(courseData.data);
+        if (acadData.success) setAcademicYears(acadData.data);
       } catch (err) {
         console.error("Error fetching data:", err);
       }
@@ -86,7 +90,7 @@ function AddCurriculum({ onClose, onSuccess }) {
 
   const handleSubmit = async () => {
     if (!formData.program_id || !formData.curriculum_year) {
-      alert("Please fill in Program and Year Label");
+      alert("Please fill in Program and Academic Year");
       return;
     }
 
@@ -123,24 +127,21 @@ function AddCurriculum({ onClose, onSuccess }) {
   );
 
   return (
-    <div className="modalOverlay">
-      <div className="createContainer" style={{ maxWidth: '600px', maxHeight: '90vh' }}>
-        
-        <div className="closeBTArea">
-          <button className="closeBt" onClick={onClose} disabled={isSubmitting}>&times;</button>
-        </div>
+    <div className="addCurriculumOverlay">
+      <div className="addCurriculumContainer">
 
-        <div className="createHeader">
+        <div className="addCurriculumHeader">
           <h3>CREATE CURRICULUM</h3>
+          <button className="addCurriculumCloseBt" onClick={onClose} disabled={isSubmitting}>&times;</button>
         </div>
 
-        <div className="formScrollArea">
-          <div className="createFormContent">
+        <div className="addCurriculumFormScroll">
+          <div className="addCurriculumFormContent">
 
             {/* PROGRAM */}
-            <div className="formGroup">
-              <label>PROGRAM <span style={{color: 'red'}}>*</span></label>
-              <select className="select-display" value={formData.program_id}
+            <div className="addCurriculumFormGroup">
+              <label>PROGRAM <span className="addCurriculumRequired">*</span></label>
+              <select className="addCurriculumSelect" value={formData.program_id}
                 onChange={(e) => setFormData({...formData, program_id: e.target.value})}>
                 <option value="">Select Program</option>
                 {programs.map(p => (
@@ -149,45 +150,46 @@ function AddCurriculum({ onClose, onSuccess }) {
               </select>
             </div>
 
-            {/* YEAR LABEL + VERSION */}
-            <div className="formRow">
-              <div className="formGroup">
-                <label>YEAR LABEL <span style={{color: 'red'}}>*</span></label>
-                <input type="text" placeholder="e.g. 2025-2026" value={formData.curriculum_year}
-                  onChange={(e) => setFormData({...formData, curriculum_year: e.target.value})} />
+            {/* ACADEMIC YEAR + VERSION */}
+            <div className="addCurriculumFormRow">
+              <div className="addCurriculumFormGroup">
+                <label>ACADEMIC YEAR <span className="addCurriculumRequired">*</span></label>
+                <select className="addCurriculumSelect" value={formData.curriculum_year}
+                  onChange={(e) => setFormData({...formData, curriculum_year: e.target.value})}>
+                  <option value="">Select Academic Year</option>
+                  {academicYears.map(y => (
+                    <option key={y.year_id} value={y.year_label}>{y.year_label}</option>
+                  ))}
+                </select>
               </div>
-              <div className="formGroup">
+              <div className="addCurriculumFormGroup">
                 <label>VERSION</label>
-                <input type="text" placeholder="e.g. Default" value={formData.version_name}
+                <input type="text" className="addCurriculumInput" placeholder="e.g. Default" value={formData.version_name}
                   onChange={(e) => setFormData({...formData, version_name: e.target.value})} />
               </div>
             </div>
 
             {/* STATUS */}
-            <div className="formGroup">
+            <div className="addCurriculumFormGroup">
               <label>STATUS</label>
-              <div className="statusToggleContainer" onClick={() => setFormData({...formData, is_active: !formData.is_active})}>
-                <div className={`statusSwitch ${formData.is_active ? 'active' : 'inactive'}`}>
-                  <div className="switchHandle"></div>
+              <div className="addCurriculumToggle" onClick={() => setFormData({...formData, is_active: !formData.is_active})}>
+                <div className={`addCurriculumSwitch ${formData.is_active ? 'active' : 'inactive'}`}>
+                  <div className="addCurriculumSwitchHandle"></div>
                 </div>
-                <span className="statusLabel">
+                <span className={`addCurriculumStatusLabel ${formData.is_active ? 'text-active' : 'text-inactive'}`}>
                   {formData.is_active ? "ACTIVE" : "INACTIVE"}
                 </span>
               </div>
             </div>
 
             {/* COURSES SECTION */}
-            <div className="formGroup">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="addCurriculumFormGroup">
+              <div className="addCurriculumCoursesHeader">
                 <label>COURSES ({curriculumCourses.length})</label>
                 <button 
                   type="button"
+                  className="addCurriculumAddCourseBtn"
                   onClick={() => setShowAddCourse(!showAddCourse)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '5px',
-                    padding: '5px 10px', fontSize: '11px', cursor: 'pointer',
-                    background: '#3D1616', color: '#fff', border: 'none', borderRadius: '5px'
-                  }}
                 >
                   <BiPlus size={14} /> Add Course
                 </button>
@@ -195,83 +197,67 @@ function AddCurriculum({ onClose, onSuccess }) {
 
               {/* ADD COURSE MINI-FORM */}
               {showAddCourse && (
-                <div style={{ 
-                  background: '#f1f5f9', padding: '12px', borderRadius: '8px',
-                  marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'flex-end', flexWrap: 'wrap'
-                }}>
-                  <div style={{ flex: 2, minWidth: '140px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <label style={{ fontSize: '10px', fontWeight: 600, color: '#555' }}>Course</label>
-                    <select className="select-display" value={newCourse.course_id}
+                <div className="addCurriculumMiniForm">
+                  <div className="addCurriculumMiniField">
+                    <label>Course</label>
+                    <select className="addCurriculumSelect" value={newCourse.course_id}
                       onChange={(e) => setNewCourse({...newCourse, course_id: e.target.value})}>
-                      <option value="">Select</option>
+                      <option value="" disabled>Select Course</option>
                       {availableCourses.map(c => (
                         <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
                       ))}
                     </select>
                   </div>
-                  <div style={{ flex: 1, minWidth: '90px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <label style={{ fontSize: '10px', fontWeight: 600, color: '#555' }}>Year</label>
-                    <select className="select-display" value={newCourse.year_level}
+                  <div className="addCurriculumMiniField">
+                    <label>Year</label>
+                    <select className="addCurriculumSelect" value={newCourse.year_level}
                       onChange={(e) => setNewCourse({...newCourse, year_level: e.target.value})}>
+                      <option value="" disabled>Year</option>
                       {yearOptions.map(y => (
                         <option key={y.value} value={y.value}>{y.label}</option>
                       ))}
                     </select>
                   </div>
-                  <div style={{ flex: 1, minWidth: '110px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <label style={{ fontSize: '10px', fontWeight: 600, color: '#555' }}>Semester</label>
-                    <select className="select-display" value={newCourse.semester_id}
+                  <div className="addCurriculumMiniField">
+                    <label>Semester</label>
+                    <select className="addCurriculumSelect" value={newCourse.semester_id}
                       onChange={(e) => setNewCourse({...newCourse, semester_id: e.target.value})}>
+                      <option value="" disabled>Semester</option>
                       {semesterOptions.map(s => (
                         <option key={s.value} value={s.value}>{s.label}</option>
                       ))}
                     </select>
                   </div>
-                  <button 
-                    type="button"
-                    onClick={handleAddCourse}
-                    style={{
-                      padding: '10px 16px', background: '#22c55e', color: '#fff',
-                      border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 600
-                    }}>
-                    Add
-                  </button>
+                  <button type="button" className="addCurriculumAddBtn" onClick={handleAddCourse}>Add</button>
                 </div>
               )}
 
               {/* COURSES LIST */}
-              <div style={{ maxHeight: '180px', overflowY: 'auto', marginTop: '8px' }}>
+              <div className="addCurriculumCoursesList">
                 {curriculumCourses.length > 0 ? (
                   curriculumCourses.map((c, idx) => (
-                    <div key={idx} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '8px 10px', background: idx % 2 === 0 ? '#f8fafc' : '#fff',
-                      borderRadius: '4px', marginBottom: '3px', fontSize: '12px'
-                    }}>
-                      <div>
+                    <div key={idx} className={`addCurriculumCourseItem ${idx % 2 === 0 ? 'even' : 'odd'}`}>
+                      <div className="addCurriculumCourseInfo">
                         <strong>{c.course_code}</strong> - {c.course_name}
-                        <span style={{ color: '#888', marginLeft: '8px', fontSize: '11px' }}>
+                        <span className="addCurriculumCourseMeta">
                           {yearOptions.find(y => y.value == c.year_level)?.label} | {semesterOptions.find(s => s.value == c.semester_id)?.label}
                         </span>
                       </div>
-                      <button 
-                        type="button"
-                        onClick={() => handleRemoveCourse(c.course_id)}
-                        style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', padding: '2px' }}>
+                      <button type="button" className="addCurriculumRemoveBtn" onClick={() => handleRemoveCourse(c.course_id)}>
                         <BiTrash size={14} />
                       </button>
                     </div>
                   ))
                 ) : (
-                  <p style={{ textAlign: 'center', color: '#999', fontSize: '12px', padding: '15px' }}>No courses added yet</p>
+                  <p className="addCurriculumNoCourses">No courses added yet</p>
                 )}
               </div>
             </div>
 
             {/* BUTTONS */}
-            <div className="filterBtnsContainer">
-              <button className="resetFilterBtn" onClick={onClose} disabled={isSubmitting}>CANCEL</button>
-              <button className="applyFilterBtn" onClick={handleSubmit} disabled={isSubmitting}>
+            <div className="addCurriculumBtns">
+              <button className="addCurriculumCancelBtn" onClick={onClose} disabled={isSubmitting}>CANCEL</button>
+              <button className="addCurriculumSubmitBtn" onClick={handleSubmit} disabled={isSubmitting}>
                 {isSubmitting ? "CREATING..." : "CREATE CURRICULUM"}
               </button>
             </div>

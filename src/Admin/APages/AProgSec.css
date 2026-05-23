@@ -22,9 +22,10 @@
   background-color: #fff;
   border: 1px solid #ccc;
   border-radius: 5px;
-  padding: 8px 15px;
+  padding: 0 15px;
   width: 100%;
-  transition: border-color 0.3s ease;
+  height: 36px;
+  position: relative;
 }
 
 .progsecSearchWrapper:focus-within {
@@ -38,12 +39,18 @@
 }
 
 .progsecSearchInput {
-  border: none;
-  outline: none;
+  border: none !important;
+  outline: none !important;
   width: 100%;
   font-size: 0.875rem;
-  background: transparent;
+  background: #fff;
 }
+.progsecSearchInput:focus {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
 
 .progsecClearIcon {
   cursor: pointer;
