@@ -83,3 +83,51 @@
 .modalScrollArea::-webkit-scrollbar-thumb:hover {
   background: #3d1616;
 }
+
+.statusToggleContainer {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 0.5rem;
+}
+
+.statusSwitch {
+  width: 50px;
+  height: 24px;
+  background-color: #ccc;
+  border-radius: 50px;
+  position: relative;
+  transition: background-color 0.3s ease;
+}
+
+.statusSwitch.active {
+  background-color: #4caf50;
+}
+
+.statusSwitch.inactive {
+  background-color: #f44336;
+}
+
+.switchHandle {
+  width: 18px;
+  height: 18px;
+  background-color: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.3s ease;
+}
+
+.active .switchHandle {
+  transform: translateX(26px);
+}
+
+.statusLabel {
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.text-active { color: #4caf50; }
+.text-inactive { color: #f44336; }

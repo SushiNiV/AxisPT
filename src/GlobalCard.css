@@ -1,15 +1,38 @@
 .CardsContainer {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: scroll;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0.5rem;
+  padding-right: 4px;
+  box-sizing: border-box;
+}
+
+.CardsContainer::-webkit-scrollbar {
+  height: 6px;
+  width: 4px;
+}
+
+.CardsContainer::-webkit-scrollbar-thumb {
+  background: #3d1616aa;
+}
+
+.CardsContainer::-webkit-scrollbar-thumb:hover {
+  background: #3d1616;
 }
 
 .Card {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   background: white;
   padding: 15px 20px;
   border-radius: 6px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .cardCheckbox {
@@ -51,6 +74,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .cardHeader {
@@ -87,9 +111,10 @@
 
 .CardDetails {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
-  margin-top: 6px;
+  align-items: center;
+  margin-top: 8px;
 }
 
 .detailBadge {
@@ -98,6 +123,40 @@
   border-radius: 6px;
   font-size: 12px;
   color: #666;
+  display: inline-block;
+}
+
+.detailBadge.current-bg {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.detailBadge.future-bg {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.detailBadge.past-bg {
+  background: #f5f5f5;
+  color: #757575;
+}
+
+.detailBadge.active-semester {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: none;
+  cursor: pointer;
+}
+
+.detailBadge.inactive-semester {
+  background: #ffebee;
+  color: #c62828;
+  border: none;
+  cursor: pointer;
+}
+
+.detailBadge.inactive-semester:hover {
+  background: #ffcdd2;
 }
 
 .CardAction {
@@ -142,12 +201,63 @@
   align-items: center;
   gap: 16px;
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .CardExpandedPanel {
   margin-top: 15px;
   padding-top: 15px;
   border-top: 1px solid #e0e0e0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.CardExpandedControls {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+  margin-bottom: 1rem;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+}
+
+.CardExpandedSearchWrapper {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 8px 15px;
+  flex: 1 1 280px;
+  transition: border-color 0.3s ease;
+  position: relative;
+}
+
+.CardExpandedBtnGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.CardExpandedBtnContainer {
+  position: relative;
+}
+
+.TableContainer.NestedTable {
+  flex: none;
+  height: auto;
+  max-height: none;
+  overflow-y: visible;
+  overflow-x: auto;
+  width: 100%;
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+
+.TableContainer.NestedTable th {
+  position: static;
 }
 
 .tableActions {

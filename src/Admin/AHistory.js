@@ -215,7 +215,7 @@ function AHistory() {
                 </select>
               </div>
 
-              <div className="FilterBtnsContainer">
+              <div className="BtnsContainer">
                 <button className="ResetFilterBtn" onClick={resetFilters}>Reset</button>
                 <button className="ApplyFilterBtn" onClick={() => setIsFilterOpen(false)}>Apply</button>
               </div>

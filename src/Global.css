@@ -19,6 +19,15 @@
   --branding-pink: #d32f2f;
 }
 
+html, 
+body, 
+#root {
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 p, h1, h3, td, tr {
   margin: 0;
   padding: 0;
@@ -66,7 +75,9 @@ p, h1, h3, td, tr {
 .InnerContainer {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .TopSection {
@@ -161,6 +172,12 @@ p, h1, h3, td, tr {
   margin-right: 5px;
 }
 
+.BottomBuffer {
+  flex-shrink: 0;
+  height: 0.5rem;
+  width: 100%;
+}
+
 .FilterDropdown {
   position: absolute;
   top: 48px;
@@ -196,7 +213,7 @@ p, h1, h3, td, tr {
   outline: none;
 }
 
-.FilterBtnsContainer {
+.BtnsContainer {
   display: flex;
   gap: 10px;
   margin-top: 15px;

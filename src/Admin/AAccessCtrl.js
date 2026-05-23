@@ -7,14 +7,12 @@ function AGrades() {
   const accessCtrlTabs = [
     {label: 'Manage People', path: '/admin/access-control/manage-people' },
     {label: 'Academic Year', path: '/admin/access-control/academic-year' },
-    {label: 'Curricula', path: '/admin/access-control/curricula'},
+    {label: 'Curriculum', path: '/admin/access-control/curricula'},
   ];
   return (
     <div className="ContentContainer">
       <ASubheader tabs={accessCtrlTabs} />
-      <div className="Content">
-        <Outlet />
-      </div>
+      <Outlet />
     </div>
   );
 }

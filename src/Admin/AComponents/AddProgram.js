@@ -218,7 +218,7 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
               </div>
             </div>
 
-            <div className="FilterBtnsContainer">
+            <div className="BtnsContainer">
               <button className="ResetFilterBtn" onClick={onClose} disabled={isSubmitting}>CANCEL</button>
               <button className="ApplyFilterBtn" onClick={handleSubmit} disabled={isSubmitting}>
                 {isSubmitting ? (isEditMode ? "UPDATING..." : "CREATING...") : (isEditMode ? "UPDATE" : "CREATE")}

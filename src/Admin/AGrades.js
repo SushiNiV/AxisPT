@@ -12,9 +12,7 @@ function AGrades() {
   return (
     <div className="InnerContainer">
       <ASubheader tabs={gradesTabs} />
-      <div className="Content">
-        <Outlet />
-      </div>
+      <Outlet />
     </div>
   );
 }

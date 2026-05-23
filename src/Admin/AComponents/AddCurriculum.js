@@ -118,7 +118,7 @@ function AddCurricula({ onClose, onSuccess }) {
                 <option value="">Select Program</option>
                 {programs.map(program => (
                   <option key={program.program_id} value={program.program_id}>
-                    {program.program_name} ({program.program_code})
+                    {program.program_name} ({program.program_abbr})
                   </option>
                 ))}
               </select>
@@ -163,7 +163,7 @@ function AddCurricula({ onClose, onSuccess }) {
               </div>
             </div>
 
-            <div className="FilterBtnsContainer">
+            <div className="BtnsContainer">
               <button className="ResetFilterBtn" onClick={onClose} disabled={isSubmitting}>CANCEL</button>
               <button className="ApplyFilterBtn" onClick={handleSubmit} disabled={isSubmitting}>
                 {isSubmitting ? "CREATING..." : "CREATE"}

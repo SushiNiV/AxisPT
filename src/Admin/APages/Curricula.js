@@ -1,142 +1,205 @@
-  import React, { useState, useEffect, useCallback } from 'react';
-  import './Curricula.css';
-  import { BiSearch, BiPlusCircle, BiX, BiTrash } from 'react-icons/bi';
+import React, { useState, useEffect, useCallback } from 'react';
+import './Curricula.css';
+import { BiSearch, BiPlusCircle, BiX, BiBook, BiPencil, BiTrash } from 'react-icons/bi';
 
-  import '../../Global.css';
-  import AddCurriculum from '../AComponents/AddCurriculum';
+import '../../Global.css';
+import '../../GlobalCard.css';
+import '../../GlobalEmpty.css';
+import AddCurriculum from '../AComponents/AddCurriculum';
 
-  function ACurricula() {
-    const [curricula, setCurricula] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [showAdd, setShowAdd] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
-    const rowsPerPage = 10;
+function ACurricula() {
+  const [curricula, setCurricula] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingCurriculum, setEditingCurriculum] = useState(null);
 
-    const fetchCurricula = useCallback(async () => {
-      setLoading(true);
+  const fetchCurricula = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/admin/curricula`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) setCurricula(data.data);
+    } catch (err) {
+      console.error("Error fetching curricula:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchCurricula(); }, [fetchCurricula]);
+
+  const handleAddSuccess = () => {
+    setShowAdd(false);
+    setEditingCurriculum(null);
+    fetchCurricula();
+  };
+
+  const handleEdit = (curriculum) => {
+    setEditingCurriculum(curriculum);
+    setShowAdd(true);
+  };
+
+  const handleDelete = async (curriculumId, curriculumName) => {
+    if (window.confirm(`Are you sure you want to delete ${curriculumName}?`)) {
       try {
         const token = sessionStorage.getItem('token');
-        const res = await fetch(`${process.env.REACT_APP_API_URL}/admin/curricula`, {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/curricula/${curriculumId}`, {
+          method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const data = await res.json();
-        if (data.success) setCurricula(data.data);
-      } catch (err) {
-        console.error("Error fetching curricula:", err);
-      } finally {
-        setLoading(false);
+        const data = await response.json();
+        if (data.success) {
+          fetchCurricula();
+        } else {
+          alert(data.message || "Failed to delete curriculum.");
+        }
+      } catch (error) {
+        console.error("Error deleting curriculum:", error);
+        alert("An error occurred.");
       }
-    }, []);
+    }
+  };
 
-    useEffect(() => { fetchCurricula(); }, [fetchCurricula]);
+  const getCurriculumStatus = (isActive) => {
+    if (isActive) return 'current';
+    return 'inactive';
+  };
 
-    const goToPrevPage = () => {
-      if (currentPage > 1) setCurrentPage(currentPage - 1);
-    };
+  const getStatusLabel = (status) => {
+    switch(status) {
+      case 'current': return 'Active';
+      case 'inactive': return 'Inactive';
+      default: return '';
+    }
+  };
 
-    const goToNextPage = () => {
-      if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-    };
+  const getStatusClass = (status) => {
+    switch(status) {
+      case 'current': return 'active-bg';
+      case 'inactive': return 'inactive-bg';
+      default: return '';
+    }
+  };
 
-    const filtered = curricula.filter(c =>
-      c.program?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.curriculum_year?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const filteredCurricula = curricula.filter(c =>
+    c.program_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.start_year?.toString().includes(searchTerm.toLowerCase()) ||
+    c.version_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-    const totalPages = Math.ceil(filtered.length / rowsPerPage) || 1;
-    const paginated = filtered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+  const hasSearchResults = searchTerm && filteredCurricula.length === 0 && curricula.length > 0;
 
-    return (
-      <div className="InnerContainer">
-        {showAdd && (
-          <AddCurriculum
-            onClose={() => setShowAdd(false)}
-            onSuccess={() => { setShowAdd(false); fetchCurricula(); }}
+  return (
+    <div className="InnerContainer">
+      {showAdd && (
+        <AddCurriculum
+          onClose={() => {
+            setShowAdd(false);
+            setEditingCurriculum(null);
+          }}
+          onSuccess={handleAddSuccess}
+          curriculumToEdit={editingCurriculum}
+        />
+      )}
+
+      <div className="TopSection">
+        <div className="SearchWrapper">
+          <BiSearch className="SearchIcon" />
+          <input
+            type="text"
+            placeholder="Search curriculum..."
+            className="SearchInput"
+            value={searchTerm}
+            onChange={(e) => { setSearchTerm(e.target.value); }}
           />
-        )}
-
-        <div className="TopSection">
-          <div className="SearchWrapper">
-            <BiSearch className="SearchIcon" />
-            <input
-              type="text"
-              placeholder="Search program or year..."
-              className="SearchInput"
-              value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} />
-            {searchTerm &&
-              <BiX className="ClearSearchIcon"
-              onClick={() => { setSearchTerm(""); setCurrentPage(1); }}/>
-            }
-          </div>
-
-          <div className="TopbarBtnContainer">
-            <button className="TopbarBtn" onClick={() => setShowAdd(true)}>
-              <BiPlusCircle className="linkIcon" /> Curriculum
-            </button>
-          </div>
-        </div>
-        
-        <div className="curriculaTableContainer">
-          <table className="curriculaTable">
-            <thead>
-              <tr>
-                <th>Program</th>
-                <th>Year</th>
-                <th>Version</th>
-                <th>Courses</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan="5" className="curriculaEmpty">Loading...</td></tr>
-              ) : paginated.length > 0 ? (
-                paginated.map(c => (
-                  <tr key={c.id}>
-                    <td>{c.program} - {c.program_name}</td>
-                    <td>{c.curriculum_year}</td>
-                    <td>{c.version_name}</td>
-                    <td>{c.course_count}</td>
-                    <td>
-                      <span className={`curriculaStatusBadge ${c.is_active ? 'curriculaActive' : 'curriculaInactive'}`}>
-                        {c.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr><td colSpan="5" className="curriculaEmpty">No curricula found.</td></tr>
-              )}
-            </tbody>
-          </table>
+          {searchTerm && (
+            <BiX className="ClearSearchIcon" onClick={() => { setSearchTerm(""); }} />
+          )}
         </div>
 
-        <div className="PaginationContainer">
-          <div className="PaginationControls">
-            <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
-            <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
-            <div className="CurrentPageInputWrapper">
-              <input 
-                type="number" 
-                value={currentPage} 
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  if (val > 0 && val <= totalPages) setCurrentPage(val);
-                }} 
-                className="CurrentPageInput" 
-              />
-            </div>
-            <div className="PaginationInfo">
-              out of <span>{totalPages}</span>
-            </div>
-            <button className="PageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
-            <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
-          </div>
+        <div className="TopbarBtnContainer">
+          <button className="TopbarBtn" onClick={() => setShowAdd(true)}>
+            <BiPlusCircle className="linkIcon" /> Curriculum
+          </button>
         </div>
       </div>
-    );
-  }
 
-  export default ACurricula;
+      <div className="CardsContainer">
+        {loading ? (
+          <div className="emptyState">
+            <div className="emptyStateIcon">⏳</div>
+            <h3 className="emptyStateTitle">Loading Curricula</h3>
+            <p className="emptyStateText">Please wait while we fetch the data...</p>
+          </div>
+        ) : filteredCurricula.length > 0 ? (
+          filteredCurricula.map((curriculum) => {
+            const status = getCurriculumStatus(curriculum.is_active);
+            const statusLabel = getStatusLabel(status);
+            const statusClass = getStatusClass(status);
+            const academicYear = `${curriculum.start_year} - ${curriculum.start_year + 1}`;
+            
+            return (
+              <div className="Card" key={curriculum.curriculum_id}>
+                <div className="CardMain">
+                  <div className="cardCheckbox">
+                    <input type="checkbox" />
+                  </div>
+                  <div className={`cardIcon ${status === 'current' ? 'active' : 'inactive'}`}>
+                    <BiBook />
+                  </div>
+                  <div className="cardContent">
+                    <div className="cardHeader">
+                      <span className={`statusBadge ${statusClass}`}>
+                        {statusLabel}
+                      </span>
+                    </div>
+                    <h3 className="cardTitle">{curriculum.program_name}</h3>
+                    <div className="CardDetails">
+                      <span className="detailBadge">AY: {academicYear}</span>
+                      <span className="detailBadge">Version: {curriculum.version_name}</span>
+                      <span className="detailBadge">Courses: {curriculum.course_count || 0}</span>
+                    </div>
+                  </div>
+                  <div className="CardAction">
+                    <button className="actionBtn editBtn" onClick={() => handleEdit(curriculum)}>
+                      <BiPencil /> Edit
+                    </button>
+                    <button className="actionBtn deleteBtn" onClick={() => handleDelete(curriculum.curriculum_id, curriculum.program_name)}>
+                      <BiTrash /> Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        ) : hasSearchResults ? (
+          <div className="emptyState">
+            <div className="emptyStateIcon">🔍</div>
+            <h3 className="emptyStateTitle">No matching results</h3>
+            <p className="emptyStateText">No curricula found matching "{searchTerm}"</p>
+            <button className="emptyStateBtn" onClick={() => setSearchTerm("")}>
+              Clear Search
+            </button>
+          </div>
+        ) : (
+          <div className="emptyState">
+            <div className="emptyStateIcon">📚</div>
+            <h3 className="emptyStateTitle">No Curricula Yet</h3>
+            <p className="emptyStateText">Get started by creating your first curriculum.</p>
+            <button className="emptyStateBtn" onClick={() => setShowAdd(true)}>
+              <BiPlusCircle className="linkIcon"/> Create Curriculum
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="BottomBuffer"></div>
+    </div>
+  );
+}
+
+export default ACurricula;

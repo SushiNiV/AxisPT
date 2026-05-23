@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BiSearch, BiPlusCircle, BiX, BiTrash, BiBook, BiPencil, BiFilterAlt } from 'react-icons/bi';
-import './AProgSec.css';
+
 import '../../Global.css';
+import '../../GlobalCard.css';
 import '../../GlobalEmpty.css';
 import AddProgram from '../AComponents/AddProgram';
 
@@ -9,8 +10,6 @@ function AProgSec() {
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
   const [editingProgram, setEditingProgram] = useState(null);
   const [expandedPrograms, setExpandedPrograms] = useState({});
@@ -18,7 +17,6 @@ function AProgSec() {
   const [sections, setSections] = useState({});
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef(null);
-  const rowsPerPage = 10;
 
   const fetchPrograms = useCallback(async () => {
     setLoading(true);
@@ -30,7 +28,6 @@ function AProgSec() {
       const data = await response.json();
       if (data.success) {
         setPrograms(data.data);
-        setTotalPages(Math.ceil(data.data.length / rowsPerPage) || 1);
       }
     } catch (err) {
       console.error("Error fetching programs:", err);
@@ -52,14 +49,6 @@ function AProgSec() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const goToPrevPage = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
-
-  const goToNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-  };
 
   const handleAddSuccess = () => {
     setShowAdd(false);
@@ -117,17 +106,6 @@ function AProgSec() {
     prog.program_abbr?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const paginatedPrograms = filteredPrograms.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
-
-  useEffect(() => {
-    setTotalPages(Math.ceil(filteredPrograms.length / rowsPerPage) || 1);
-    setCurrentPage(1);
-  }, [searchTerm, programs]);
-
-  const hasNoData = !loading && filteredPrograms.length === 0;
   const hasSearchResults = searchTerm && filteredPrograms.length === 0 && programs.length > 0;
 
   return (
@@ -151,10 +129,10 @@ function AProgSec() {
             placeholder="Search program name or abbreviation..."
             className="SearchInput"
             value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+            onChange={(e) => { setSearchTerm(e.target.value); }}
           />
           {searchTerm && (
-            <BiX className="ClearSearchIcon" onClick={() => { setSearchTerm(""); setCurrentPage(1); }} />
+            <BiX className="ClearSearchIcon" onClick={() => { setSearchTerm(""); }} />
           )}
         </div>
 
@@ -172,8 +150,8 @@ function AProgSec() {
             <h3 className="emptyStateTitle">Loading Programs</h3>
             <p className="emptyStateText">Please wait while we fetch the data...</p>
           </div>
-        ) : paginatedPrograms.length > 0 ? (
-          paginatedPrograms.map((prog) => (
+        ) : filteredPrograms.length > 0 ? (
+          filteredPrograms.map((prog) => (
             <div key={prog.program_id} className="Card">
               <div className="CardMain">
                 <div className="cardCheckbox">
@@ -210,8 +188,8 @@ function AProgSec() {
 
               {expandedPrograms[prog.program_id] && (
                 <div className="CardExpandedPanel">
-                  <div className="TopSection">
-                    <div className="SearchWrapper">
+                  <div className="CardExpandedControls">
+                    <div className="CardExpandedSearchWrapper">
                       <BiSearch className="SearchIcon" />
                       <input
                         type="text"
@@ -228,47 +206,48 @@ function AProgSec() {
                       )}
                     </div>
                     
-                    <div className="TopbarBtnContainer" ref={filterRef}>
-                      <button className="TopbarBtn" onClick={() => setIsFilterOpen(!isFilterOpen)}>
-                        <BiFilterAlt className="linkIcon" />
-                        Filter
-                      </button>
-                      {isFilterOpen && (
-                        <div className="FilterDropdown">
-                          <div className="FilterGroup">
-                            <label>YEAR LEVEL</label>
-                            <select>
-                              <option value="">ALL YEARS</option>
-                              <option value="1">1st Year</option>
-                              <option value="2">2nd Year</option>
-                              <option value="3">3rd Year</option>
-                              <option value="4">4th Year</option>
-                            </select>
+                    <div className="CardExpandedBtnGroup">
+                      <div className="CardExpandedBtnContainer" ref={filterRef}>
+                        <button className="TopbarBtn" onClick={() => setIsFilterOpen(!isFilterOpen)}>
+                          <BiFilterAlt className="linkIcon" /> Filter
+                        </button>
+                        {isFilterOpen && (
+                          <div className="FilterDropdown">
+                            <div className="FilterGroup">
+                              <label>YEAR LEVEL</label>
+                              <select>
+                                <option value="">ALL YEARS</option>
+                                <option value="1">1st Year</option>
+                                <option value="2">2nd Year</option>
+                                <option value="3">3rd Year</option>
+                                <option value="4">4th Year</option>
+                              </select>
+                            </div>
+                            <div className="FilterGroup">
+                              <label>SEMESTER</label>
+                              <select>
+                                <option value="">ALL SEMESTERS</option>
+                                <option value="1">1st Semester</option>
+                                <option value="2">2nd Semester</option>
+                                <option value="3">Summer</option>
+                              </select>
+                            </div>
+                            <div className="BtnsContainer">
+                              <button className="ResetFilterBtn">Reset</button>
+                              <button className="ApplyFilterBtn">Apply</button>
+                            </div>
                           </div>
-                          <div className="FilterGroup">
-                            <label>SEMESTER</label>
-                            <select>
-                              <option value="">ALL SEMESTERS</option>
-                              <option value="1">1st Semester</option>
-                              <option value="2">2nd Semester</option>
-                              <option value="3">Summer</option>
-                            </select>
-                          </div>
-                          <div className="FilterBtnsContainer">
-                            <button className="ResetFilterBtn">Reset</button>
-                            <button className="ApplyFilterBtn">Apply</button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="TopbarBtnContainer">
-                      <button className="TopbarBtn" onClick={() => console.log("Add section for", prog.program_id)}>
-                        <BiPlusCircle className="linkIcon" /> Section
-                      </button>
+                        )}
+                      </div>
+                      <div className="CardExpandedBtnContainer">
+                        <button className="TopbarBtn" onClick={() => console.log("Add section for", prog.program_id)}>
+                          <BiPlusCircle className="linkIcon" /> Section
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="TableContainer">
+                  <div className="TableContainer NestedTable">
                     <table className="Table">
                       <thead>
                         <tr>
@@ -338,30 +317,7 @@ function AProgSec() {
         )}
       </div>
 
-      {!loading && paginatedPrograms.length > 0 && (
-        <div className="PaginationContainer">
-          <div className="PaginationControls">
-            <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
-            <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
-            <div className="CurrentPageInputWrapper">
-              <input 
-                type="number" 
-                value={currentPage} 
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  if (val > 0 && val <= totalPages) setCurrentPage(val);
-                }} 
-                className="CurrentPageInput" 
-              />
-            </div>
-            <div className="PaginationInfo">
-              out of <span>{totalPages}</span>
-            </div>
-            <button className="PageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
-            <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
-          </div>
-        </div>
-      )}
+      <div className="BottomBuffer"></div>
     </div>
   );
 }

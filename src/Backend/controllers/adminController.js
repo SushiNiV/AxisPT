@@ -2,6 +2,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const AdminModel = require('../models/adminModel');
 const ProgramModel = require('../models/programModel');
+const AcademicYearModel = require('../models/acadyearModel');
+const CurriculumModel = require('../models/curriculumModel');
 const HistoryModel = require('../models/historyModel');
 
 exports.login = async (req, res) => {
@@ -358,6 +360,560 @@ exports.changePassword = async (req, res) => {
   }
 };
 
+exports.getAcademicYears = async (req, res) => {
+  try {
+    const years = await AcademicYearModel.getAll();
+    res.json({ success: true, data: years });
+  } catch (error) {
+    console.error("Error fetching academic years:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.addAcademicYear = async (req, res) => {
+  const { year_label, is_active, current_sem } = req.body;
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    if (!year_label) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Year label is required." 
+      });
+    }
+
+    const existingYears = await AcademicYearModel.getAll();
+    const existing = existingYears.find(y => y.year_label === year_label);
+
+    if (existing) {
+      await HistoryModel.log({
+        userId: userId,
+        targetUserId: userId,
+        tableName: 'academic_year',
+        recordId: null,
+        action: 'ACADEMIC_YEAR_CREATE_FAILED',
+        oldValues: null,
+        newValues: { 
+          year_label, 
+          reason: 'Academic year already exists',
+          timestamp: new Date().toISOString()
+        },
+        ipAddress,
+        userAgent
+      });
+
+      return res.status(400).json({ 
+        success: false, 
+        message: "Academic year already exists." 
+      });
+    }
+
+    const newYear = await AcademicYearModel.create({
+      year_label,
+      is_active: is_active || false,
+      current_sem: current_sem || null
+    });
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'academic_year',
+      recordId: newYear.year_id,
+      action: 'ACADEMIC_YEAR_CREATED',
+      oldValues: null,
+      newValues: {
+        year_id: newYear.year_id,
+        year_label: newYear.year_label,
+        is_active: newYear.is_active,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Academic year created successfully.",
+      data: newYear
+    });
+
+  } catch (error) {
+    console.error("Error creating academic year:", error);
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'academic_year',
+      recordId: null,
+      action: 'ACADEMIC_YEAR_CREATE_ERROR',
+      oldValues: null,
+      newValues: {
+        year_label,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error." 
+    });
+  }
+};
+
+exports.updateAcademicYear = async (req, res) => {
+  const { year_id } = req.params;
+  const { year_label, is_active, current_sem } = req.body;
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    const existingYear = await AcademicYearModel.findById(year_id);
+    
+    if (!existingYear) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Academic year not found." 
+      });
+    }
+
+    const updatedYear = await AcademicYearModel.update(year_id, {
+      year_label: year_label || existingYear.year_label,
+      is_active: is_active !== undefined ? is_active : existingYear.is_active,
+      current_sem: current_sem !== undefined ? current_sem : existingYear.current_sem
+    });
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'academic_year',
+      recordId: updatedYear.year_id,
+      action: 'ACADEMIC_YEAR_UPDATED',
+      oldValues: {
+        year_label: existingYear.year_label,
+        is_active: existingYear.is_active,
+        current_sem: existingYear.current_sem
+      },
+      newValues: {
+        year_label: updatedYear.year_label,
+        is_active: updatedYear.is_active,
+        current_sem: updatedYear.current_sem,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Academic year updated successfully.",
+      data: updatedYear
+    });
+
+  } catch (error) {
+    console.error("Error updating academic year:", error);
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'academic_year',
+      recordId: year_id,
+      action: 'ACADEMIC_YEAR_UPDATE_ERROR',
+      oldValues: null,
+      newValues: {
+        error: error.message,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error." 
+    });
+  }
+};
+
+exports.deleteAcademicYear = async (req, res) => {
+  const { year_id } = req.params;
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    const existingYear = await AcademicYearModel.findById(year_id);
+    
+    if (!existingYear) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Academic year not found." 
+      });
+    }
+
+    if (existingYear.is_active) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Cannot delete the active academic year. Set another year as active first." 
+      });
+    }
+
+    await AcademicYearModel.delete(year_id);
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'academic_year',
+      recordId: year_id,
+      action: 'ACADEMIC_YEAR_DELETED',
+      oldValues: {
+        year_label: existingYear.year_label
+      },
+      newValues: {
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Academic year deleted successfully."
+    });
+
+  } catch (error) {
+    console.error("Error deleting academic year:", error);
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'academic_year',
+      recordId: year_id,
+      action: 'ACADEMIC_YEAR_DELETE_ERROR',
+      oldValues: null,
+      newValues: {
+        error: error.message,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error." 
+    });
+  }
+};
+
+exports.activateAcademicYear = async (req, res) => {
+  const { year_id } = req.params;
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    const existingYear = await AcademicYearModel.findById(year_id);
+    
+    if (!existingYear) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Academic year not found." 
+      });
+    }
+
+    const activatedYear = await AcademicYearModel.setActive(year_id);
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'academic_year',
+      recordId: year_id,
+      action: 'ACADEMIC_YEAR_ACTIVATED',
+      oldValues: {
+        is_active: existingYear.is_active
+      },
+      newValues: {
+        is_active: true,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Academic year activated successfully.",
+      data: activatedYear
+    });
+
+  } catch (error) {
+    console.error("Error activating academic year:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error." 
+    });
+  }
+};
+
+exports.updateAcademicYearSemester = async (req, res) => {
+  const { year_id } = req.params;
+  const { current_sem } = req.body;
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    const existingYear = await AcademicYearModel.findById(year_id);
+    
+    if (!existingYear) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Academic year not found." 
+      });
+    }
+
+    if (!existingYear.is_active) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Cannot set semester for an inactive academic year. Activate the academic year first." 
+      });
+    }
+
+    const oldSemester = existingYear.current_sem;
+    const updatedYear = await AcademicYearModel.updateSemester(year_id, current_sem);
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'academic_year',
+      recordId: year_id,
+      action: 'SEMESTER_CHANGED',
+      oldValues: { current_sem: oldSemester },
+      newValues: { 
+        current_sem: current_sem,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Semester updated successfully.",
+      data: updatedYear
+    });
+
+  } catch (error) {
+    console.error("Error updating semester:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error." 
+    });
+  }
+};
+
+exports.getCurricula = async (req, res) => {
+  try {
+    const curricula = await CurriculumModel.getAll();
+    res.json({ success: true, data: curricula });
+  } catch (error) {
+    console.error("Error fetching curricula:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.addCurriculum = async (req, res) => {
+  const { program_id, start_year, version_name, is_active } = req.body;
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    if (!program_id || !start_year || !version_name) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Program, start year, and version are required." 
+      });
+    }
+
+    const newCurriculum = await CurriculumModel.create({
+      program_id,
+      start_year,
+      version_name,
+      is_active: is_active || false
+    });
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'curricula',
+      recordId: newCurriculum.curriculum_id,
+      action: 'CURRICULUM_CREATED',
+      oldValues: null,
+      newValues: {
+        curriculum_id: newCurriculum.curriculum_id,
+        program_id: newCurriculum.program_id,
+        start_year: newCurriculum.start_year,
+        version_name: newCurriculum.version_name,
+        is_active: newCurriculum.is_active,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Curriculum created successfully.",
+      data: newCurriculum
+    });
+
+  } catch (error) {
+    console.error("Error creating curriculum:", error);
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'curricula',
+      recordId: null,
+      action: 'CURRICULUM_CREATE_ERROR',
+      oldValues: null,
+      newValues: {
+        program_id,
+        start_year,
+        version_name,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error." 
+    });
+  }
+};
+
+exports.updateCurriculum = async (req, res) => {
+  const { curriculum_id } = req.params;
+  const { program_id, start_year, version_name, is_active } = req.body;
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    const existing = await CurriculumModel.getById(curriculum_id);
+    
+    if (!existing) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Curriculum not found." 
+      });
+    }
+
+    const updatedCurriculum = await CurriculumModel.update(curriculum_id, {
+      program_id: program_id || existing.program_id,
+      start_year: start_year || existing.start_year,
+      version_name: version_name || existing.version_name,
+      is_active: is_active !== undefined ? is_active : existing.is_active
+    });
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'curricula',
+      recordId: curriculum_id,
+      action: 'CURRICULUM_UPDATED',
+      oldValues: {
+        program_id: existing.program_id,
+        start_year: existing.start_year,
+        version_name: existing.version_name,
+        is_active: existing.is_active
+      },
+      newValues: {
+        program_id: updatedCurriculum.program_id,
+        start_year: updatedCurriculum.start_year,
+        version_name: updatedCurriculum.version_name,
+        is_active: updatedCurriculum.is_active,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Curriculum updated successfully.",
+      data: updatedCurriculum
+    });
+
+  } catch (error) {
+    console.error("Error updating curriculum:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error." 
+    });
+  }
+};
+
+exports.deleteCurriculum = async (req, res) => {
+  const { curriculum_id } = req.params;
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    const existing = await CurriculumModel.getById(curriculum_id);
+    
+    if (!existing) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Curriculum not found." 
+      });
+    }
+
+    await CurriculumModel.delete(curriculum_id);
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'curricula',
+      recordId: curriculum_id,
+      action: 'CURRICULUM_DELETED',
+      oldValues: {
+        program_id: existing.program_id,
+        start_year: existing.start_year,
+        version_name: existing.version_name
+      },
+      newValues: {
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Curriculum deleted successfully."
+    });
+
+  } catch (error) {
+    console.error("Error deleting curriculum:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error." 
+    });
+  }
+};
+
 exports.addProgram = async (req, res) => {
   const { program_name, program_abbr, total_year, program_description, program_status } = req.body;
   const userId = req.user.id;
@@ -558,6 +1114,15 @@ exports.getHistory = async (req, res) => {
     });
     
     const formattedHistory = history.map(item => {
+      let displayName = '';
+      if (item.first_name && item.last_name) {
+        displayName = `${item.first_name} ${item.last_name}`;
+      } else if (item.user_name) {
+        displayName = item.user_name;
+      } else {
+        displayName = 'System';
+      }
+      
       let formattedAction = item.action;
       
       switch(item.action) {
@@ -594,18 +1159,42 @@ exports.getHistory = async (req, res) => {
         case 'PROGRAM_UPDATE_ERROR':
           formattedAction = 'Program Update Error';
           break;
+        case 'ACADEMIC_YEAR_CREATED':
+          formattedAction = 'Academic Year Created';
+          break;
+        case 'ACADEMIC_YEAR_CREATE_FAILED':
+          formattedAction = 'Academic Year Creation Failed';
+          break;
+        case 'ACADEMIC_YEAR_CREATE_ERROR':
+          formattedAction = 'Academic Year Creation Error';
+          break;
+        case 'ACADEMIC_YEAR_UPDATED':
+          formattedAction = 'Academic Year Updated';
+          break;
+        case 'ACADEMIC_YEAR_UPDATE_ERROR':
+          formattedAction = 'Academic Year Update Error';
+          break;
+        case 'ACADEMIC_YEAR_DELETED':
+          formattedAction = 'Academic Year Deleted';
+          break;
+        case 'ACADEMIC_YEAR_DELETE_ERROR':
+          formattedAction = 'Academic Year Delete Error';
+          break;
+        case 'ACADEMIC_YEAR_ACTIVATED':
+          formattedAction = 'Academic Year Activated';
+          break;
+        case 'CURRICULUM_CREATED':
+          formattedDetails = `${displayName} created curriculum for ${newValues.program_id} (${newValues.version_name}) for year ${newValues.start_year}`;
+          break;
+        case 'CURRICULUM_UPDATED':
+          formattedDetails = `${displayName} updated curriculum for ${newValues.program_id}`;
+          break;
+        case 'CURRICULUM_DELETED':
+          formattedDetails = `${displayName} deleted curriculum for ${oldValues.program_id} (${oldValues.version_name})`;
+          break;
         default:
           formattedAction = item.action.replace(/_/g, ' ').toLowerCase()
             .replace(/\b\w/g, char => char.toUpperCase());
-      }
-      
-      let displayName = '';
-      if (item.first_name && item.last_name) {
-        displayName = `${item.first_name} ${item.last_name}`;
-      } else if (item.user_name) {
-        displayName = item.user_name;
-      } else {
-        displayName = 'System';
       }
       
       let formattedDetails = '';
@@ -676,6 +1265,16 @@ exports.getHistory = async (req, res) => {
             
           case 'PROGRAM_UPDATE_ERROR':
             formattedDetails = `Error updating program: ${newValues.error}`;
+            break;
+            
+          case 'SEMESTER_CHANGED':
+            const getSemesterName = (semId) => {
+              if (semId === 1) return '1st Semester';
+              if (semId === 2) return '2nd Semester';
+              if (semId === 3) return 'Summer Term';
+              return 'None';
+            };
+            formattedDetails = `${displayName} changed semester from ${getSemesterName(item.old_values?.current_sem)} to ${getSemesterName(newValues.current_sem)}`;
             break;
             
           default:
