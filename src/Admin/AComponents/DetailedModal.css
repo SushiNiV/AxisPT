@@ -90,12 +90,28 @@
 }
 
 .gradeDetailRow label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: #555;
   flex: 1;
+  max-width: 55%;
 }
 
-.gradeDetailInput,
+.gradeDetailInputGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gradeDetailInput {
+  width: 55px;
+  padding: 6px 4px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  text-align: center;
+  outline: none;
+}
+
 .gradeDetailSelect {
   width: 80px;
   padding: 6px 8px;
@@ -109,6 +125,12 @@
 .gradeDetailInput:focus,
 .gradeDetailSelect:focus {
   border-color: #3D1616;
+}
+
+.gradeDetailSlash {
+  color: #999;
+  font-weight: 600;
+  font-size: 0.8rem;
 }
 
 .gradeDetailTotalRow {
@@ -164,4 +186,50 @@
 
 .gradeDetailSaveBtn:hover {
   background: #2d1010;
+}
+
+.gradeDetailTermTabs {
+  display: flex;
+  background: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.gradeDetailTermTab {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #888;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+}
+
+.gradeDetailTermTab.active {
+  color: #3D1616;
+  border-bottom-color: #3D1616;
+  background: #fff;
+}
+
+.gradeDetailTermTab:hover:not(.active) {
+  color: #555;
+}
+
+.gradeDetailTermGrade {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background: #f0f0f0;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.gradeDetailTermGradeValue {
+  color: #3D1616;
+  font-weight: 700;
 }

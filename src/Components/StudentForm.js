@@ -49,9 +49,8 @@ function StudentForm({ adminMode = false, studentId: propsId }) {
     const token = sessionStorage.getItem('token');
     
     const fetchUrl = adminMode && effectiveId 
-      ? `http://localhost:5000/api/admin/student-form/${effectiveId}` 
-      : `http://localhost:5000/api/student/form/me`;
-
+      ? `${process.env.REACT_APP_API_URL}/admin/student-form/${effectiveId}` 
+      : `${process.env.REACT_APP_API_URL}/student/form/me`;
     setLoading(true);
 
     fetch(fetchUrl, {

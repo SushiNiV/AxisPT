@@ -30,6 +30,8 @@
 
   import AAccessCtrl from './Admin/AAccessCtrl';
   import AAcadYear from './Admin/APages/AAcadYear';
+  import AManagePeople from './Admin/APages/AManagePeople';
+
 
   import AHistory from './Admin/AHistory';
 
@@ -82,6 +84,7 @@
 
               <Route path="/admin/access-control" element={<AAccessCtrl />} >
                 <Route index element={<Navigate to="" replace />} />
+                <Route path="manage-people" element={<AManagePeople/>}/>
                 <Route path="academic-year" element={<AAcadYear />} />
                 <Route path="curricula" element={<ACurricula />} />
               </Route>

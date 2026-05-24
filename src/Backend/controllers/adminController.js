@@ -484,3 +484,108 @@ exports.saveGrades = async (req, res) => {
     res.status(500).json({ success: false, message: "Error saving grades" });
   }
 };
+
+exports.saveGradeDetails = async (req, res) => {
+  try {
+    await Admin.saveGradeDetails(req.body);
+    res.json({ success: true, message: "Grades saved successfully" });
+  } catch (err) {
+    console.error("Save Grade Details Error:", err);
+    res.status(500).json({ success: false, message: "Error saving grades" });
+  }
+};
+
+exports.getGradeDetails = async (req, res) => {
+  try {
+    const { studentId, courseId } = req.params;
+    const details = await Admin.getGradeDetails(studentId, courseId);
+    res.json({ success: true, ...details });
+  } catch (err) {
+    console.error("Get Grade Details Error:", err);
+    res.status(500).json({ success: false, message: "Error fetching grade details" });
+  }
+};
+
+exports.getAnalytics = async (req, res) => {
+  try {
+    const analytics = await Admin.getAnalytics();
+    res.json({ success: true, data: analytics });
+  } catch (err) {
+    console.error("Get Analytics Error:", err);
+    res.status(500).json({ success: false, message: "Error fetching analytics" });
+  }
+};
+
+exports.getAIReport = async (req, res) => {
+  try {
+    const stats = await Admin.getDashboardStats();
+    const analytics = await Admin.getAnalytics();
+    
+    const programs = analytics.programs.map(p => `${p.program_abbr}: ${p.count} students`).join(', ');
+        
+    const prompt = `You are an academic advisor. Write a brief 150-200 word report on this data:
+
+    - ${stats.total_students} students enrolled across ${stats.active_programs} programs
+    - Average grade: ${stats.avg_grade}
+    - ${stats.passed} students passed, ${stats.failed} failed
+    - Programs: ${programs}
+
+    Structure your response as:
+    1. Overall academic standing (1-2 sentences)
+    2. Key observation about the pass/fail numbers
+    3. One practical recommendation for faculty
+
+    Write in plain paragraphs. Keep it concise and professional. Do not use markdown formatting.`;
+    const url = `${process.env.AZURE_OPENAI_ENDPOINT}/openai/deployments/${process.env.AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version=2024-02-15-preview`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'api-key': process.env.AZURE_OPENAI_KEY
+      },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 500
+      })
+    });
+
+    const data = await response.json();
+    const report = data.choices?.[0]?.message?.content || 'Unable to generate report.';
+    
+    res.json({ success: true, report });
+  } catch (err) {
+    console.error("AI Report Error:", err);
+    res.json({ success: true, report: "AI report generation failed." });
+  }
+};
+
+exports.getUsers = async (req, res) => {
+  try {
+    const users = await Admin.getAllUsers();
+    res.json({ success: true, users });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching users" });
+  }
+};
+
+exports.createUser = async (req, res) => {
+  try {
+    const { username, password, role } = req.body;
+    await Admin.createUser({ username, password, role });
+    res.json({ success: true, message: "User created" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error creating user" });
+  }
+};
+
+exports.toggleUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+    await Admin.toggleUserStatus(id, is_active);
+    res.json({ success: true, message: "Status updated" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error updating user" });
+  }
+};

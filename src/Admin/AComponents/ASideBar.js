@@ -64,7 +64,7 @@ function ASideBar() {
             <BiFile className="linkIcon" /> {!isCollapsed && <span>Documents</span>}
           </NavLink>
           
-          <NavLink to="/admin/access-control" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+          <NavLink to="/admin/access-control/manage-people" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiBell className="linkIcon" /> {!isCollapsed && <span>Access Control</span>}
           </NavLink>
           

@@ -1,0 +1,355 @@
+.amanageContainer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  margin-right: 0.5rem;
+}
+
+.searchBarSection {
+  display: flex;
+  margin-bottom: 0.5rem;
+  background-color: #efefef;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.searchWrapper {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 0 15px;
+  width: 100%;
+  position: relative;
+  height: 36px;
+}
+
+.searchWrapper:focus-within {
+  border-color: #3d1616;
+}
+
+.searchIcon {
+  color: #888;
+  font-size: 1.2rem;
+  margin-right: 10px;
+}
+
+.studentSearchInput {
+  border: none !important;
+  outline: none !important;
+  width: 100%;
+  font-size: 0.875rem;
+  background: #fff;
+}
+
+.studentSearchInput:focus {
+  outline: none;
+  border: none;
+  box-shadow: none;
+}
+
+.clearSearchIcon {
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #888;
+}
+
+.createBtnContainer {
+  margin-left: 0.5rem;
+}
+
+.createBtnManage {
+  display: flex;
+  align-items: center;
+  background-color: #3d1616;
+  border: 1px solid #ccc;
+  padding: 8px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: #fff;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.createBtn:hover {
+  background-color: #3d1616;
+  color: #fff;
+  border-color: #3d1616;
+}
+
+.linkIcon {
+  margin-right: 5px;
+  font-size: 1rem;
+}
+
+.tableContainer {
+  overflow-x: auto;
+  background-color: #fff;
+  border-radius: 5px;
+  margin-bottom: 0.55rem;
+}
+
+.studentTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+  table-layout: auto;
+}
+
+.studentTable th {
+  background-color: #f8f9fa;
+  padding: 10px 15px;
+  color: #3d1616;
+  font-weight: 700;
+  border-bottom: 2px solid #eee;
+  position: sticky;
+  top: 0;
+}
+
+.studentTable td {
+  padding: 10px 15px;
+  border-bottom: 1px solid #eee;
+  color: #444;
+}
+
+.studentTable tr:hover {
+  background-color: #fdfdfd;
+}
+
+.selected-row {
+  background-color: #f8f4f4;
+}
+
+.studentTable th:first-child,
+.studentTable td:first-child {
+  width: 50px;
+  min-width: 50px;
+  max-width: 50px;
+  padding: 10px 0;
+  text-align: center;
+}
+
+.statusBadge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.badge-green { background-color: #e6f4ea; color: #1e7e34; }
+.badge-red { background-color: #fce8e8; color: #c62828; }
+
+.actionBtn {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 4px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.actionBtn:hover {
+  background: #f5f5f5;
+  color: #3d1616;
+}
+
+.paginationContainer {
+  display: flex;
+  justify-content: center;
+  background-color: #fff;
+  padding: 10px 15px;
+  margin-bottom: 0.5rem;
+  border-top: 1px solid #eee;
+  border-radius: 5px;
+}
+
+.paginationInfo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.paginationInfo span {
+  font-weight: bold;
+  color: #3d1616;
+}
+
+.paginationControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pageBtn {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #333;
+}
+
+.pageBtn:hover:not(:disabled) {
+  background-color: #3d161625;
+  border-color: #3d1616;
+  color: #3d1616;
+}
+
+.pageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.currentPageInputWrapper {
+  display: flex;
+  align-items: center;
+  width: 40px;
+}
+
+.currentPageInput {
+  width: 25px;
+  height: 25px;
+  text-align: center;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  outline: none;
+}
+
+.currentPageInput::-webkit-outer-spin-button,
+.currentPageInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Modal styles */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.createContainer {
+  background: #F8FAFC;
+  width: 90%;
+  max-width: 450px;
+  padding: 0 1.25rem 1.25rem 1.75rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.createHeader {
+  height: 50px;
+  background-color: #3D1616;
+  margin: -0.5rem -1.25rem 0 -1.75rem;
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.createHeader h3 {
+  margin: 0;
+  color: white;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.closeBt {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.formScrollArea {
+  margin: 0.5rem 0 1rem 0;
+}
+
+.createFormContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formGroup label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #555;
+}
+
+.formGroup input,
+.formGroup select {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.formGroup input:focus,
+.formGroup select:focus {
+  border-color: #3D1616;
+}
+
+.filterBtnsContainer {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.resetFilterBtn,
+.applyFilterBtn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+}
+
+.resetFilterBtn {
+  background: #eee;
+  color: #333;
+}
+
+.applyFilterBtn {
+  background: #3D1616;
+  color: white;
+}

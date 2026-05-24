@@ -151,14 +151,12 @@ function GradeModal({ student, onClose }) {
               <p className="noDataNotice">Loading courses...</p>
             ) : filteredCourses.length > 0 ? (
               <table className="gradeMatrix">
-                <thead>
+                  <thead>
                   <tr>
                     <th>COURSE CODE</th>
                     <th>COURSE NAME</th>
                     <th>UNITS</th>
-                    <th>PRELIM</th>
-                    <th>MIDTERM</th>
-                    <th>FINALS</th>
+                    <th colSpan={3}>TERM SCORES</th>
                     <th>GWA</th>
                     <th>REMARKS</th>
                   </tr>
@@ -243,10 +241,12 @@ function GradeModal({ student, onClose }) {
                         </>
                       ) : (
                         <>
-                          <td>{course.prelim || '—'}</td>
-                          <td>{course.midterm || '—'}</td>
-                          <td>{course.finals || '—'}</td>
-                          <td className="finalGrade">{course.final_grade || '—'}</td>
+                          <td colSpan={3} style={{ textAlign: 'center', color: '#888', fontSize: '0.85rem' }}>
+                            Click row to view/edit term scores
+                          </td>
+                          <td className="finalGrade">
+                            {course.final_grade ? `${course.final_grade}%` : '—'}
+                          </td>
                           <td className={course.remarks === 'P' ? 'pass' : course.remarks === 'F' ? 'fail' : ''}>
                             {course.remarks === 'P' ? 'PASSED' : course.remarks === 'F' ? 'FAILED' : course.remarks === 'INC' ? 'INC' : '—'}
                           </td>

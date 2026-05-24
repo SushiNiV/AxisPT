@@ -96,19 +96,26 @@ findByUserId: async (userId) => {
   },
 
   logAction: async (userId, actionType, details) => {
-    return await pool.query(
-      `INSERT INTO history_logs 
-      (user_id, table_name, record_id, action, new_values) 
-      VALUES ($1, $2, $3, $4, $5)`,
-      [
-        userId, 
-        'users',     
-        userId,     
-        actionType,  
-        JSON.stringify({ details }) 
-      ]
-    );
-  },
+  // Get user's role
+  const roleResult = await pool.query(
+    `SELECT r.role_name FROM user_roles ur JOIN roles r ON ur.role_id = r.role_id WHERE ur.user_id = $1 LIMIT 1`,
+    [userId]
+  );
+  const userRole = roleResult.rows[0]?.role_name || 'Admin';
+  
+  return await pool.query(
+    `INSERT INTO history_logs 
+    (user_id, table_name, record_id, action, new_values) 
+    VALUES ($1, $2, $3, $4, $5)`,
+    [
+      userId, 
+      'users',     
+      userId,     
+      actionType,  
+      JSON.stringify({ details, user_role: userRole })
+    ]
+  );
+},
 
   acceptStudentsBulk: async (ids) => {
     return await pool.query(
@@ -220,6 +227,7 @@ findByUserId: async (userId) => {
         ach.acad_extracurr as acad_clubs_extracurr
         
       FROM students s
+      JOIN users u ON s.user_id = u.user_id
       JOIN student_pii pii ON s.student_id = pii.student_id
       LEFT JOIN student_addresses pa ON s.student_id = pa.student_id AND pa.address_type = 'Present'
       LEFT JOIN student_addresses pra ON s.student_id = pra.student_id AND pra.address_type = 'Provincial'
@@ -234,7 +242,7 @@ findByUserId: async (userId) => {
       LEFT JOIN student_family_members guardian ON s.student_id = guardian.student_id AND guardian.relation_type = 'Guardian'
       LEFT JOIN student_family fam ON s.student_id = fam.student_id
       LEFT JOIN student_achievements ach ON s.student_id = ach.student_id
-      WHERE s.student_id = $1
+      WHERE u.username = $1
     `, [studentId]);
 
     return result.rows[0] || null;
@@ -491,42 +499,41 @@ createCourse: async (data) => {
     return result.rows;
   },
 
-  // Get student courses with grades
-getStudentCourses: async (username, yearLevel, semesterId) => {
-  const result = await pool.query(`
-    SELECT 
-      c.course_id,
-      c.course_code,
-      c.course_name,
-      c.lec_units,
-      c.lab_units,
-      c.total_units,
-      cc.year_level,
-      cc.semester_id,
-      g.grade_id,
-      g.final_grade,
-      g.remarks,
-      gc_prelim.score as prelim,
-      gc_midterm.score as midterm,
-      gc_final.score as finals
-    FROM students s
-    JOIN users u ON s.user_id = u.user_id
-    JOIN student_education se ON s.student_id = se.student_id
-    JOIN curriculum_courses cc ON se.curriculum_id = cc.curriculum_id 
-      AND cc.year_level = $2 AND cc.semester_id = $3
-    JOIN courses c ON cc.course_id = c.course_id
-    LEFT JOIN grades g ON s.student_id = g.student_id 
-      AND c.course_id = g.course_id 
-      AND g.semester_id = $3
-    LEFT JOIN grade_components gc_prelim ON g.grade_id = gc_prelim.grade_id AND gc_prelim.term = 'Prelim'
-    LEFT JOIN grade_components gc_midterm ON g.grade_id = gc_midterm.grade_id AND gc_midterm.term = 'Midterm'
-    LEFT JOIN grade_components gc_final ON g.grade_id = gc_final.grade_id AND gc_final.term = 'Final'
-    WHERE u.username = $1
-    ORDER BY c.course_code
-  `, [username, yearLevel, semesterId]);
-  return result.rows;
-},
-
+  
+  getStudentCourses: async (username, yearLevel, semesterId) => {
+    const result = await pool.query(`
+      SELECT DISTINCT ON (c.course_id)
+        c.course_id,
+        c.course_code,
+        c.course_name,
+        c.lec_units,
+        c.lab_units,
+        c.total_units,
+        cc.year_level,
+        cc.semester_id,
+        g.grade_id,
+        g.final_grade,
+        g.remarks,
+        (SELECT ROUND(AVG(gc.score), 2) FROM grade_components gc 
+        WHERE gc.grade_id = g.grade_id AND gc.term = 'Prelim') as prelim_score,
+        (SELECT ROUND(AVG(gc.score), 2) FROM grade_components gc 
+        WHERE gc.grade_id = g.grade_id AND gc.term = 'Midterm') as midterm_score,
+        (SELECT ROUND(AVG(gc.score), 2) FROM grade_components gc 
+        WHERE gc.grade_id = g.grade_id AND gc.term = 'Final') as finals_score
+      FROM students s
+      JOIN users u ON s.user_id = u.user_id
+      JOIN student_education se ON s.student_id = se.student_id
+      JOIN curriculum_courses cc ON se.curriculum_id = cc.curriculum_id 
+        AND cc.year_level = $2 AND cc.semester_id = $3
+      JOIN courses c ON cc.course_id = c.course_id
+      LEFT JOIN grades g ON s.student_id = g.student_id 
+        AND c.course_id = g.course_id 
+        AND g.semester_id = $3
+      WHERE u.username = $1
+      ORDER BY c.course_id, g.grade_id DESC
+    `, [username, yearLevel, semesterId]);
+    return result.rows;
+  },
 // Save student grades
 saveGrades: async (data) => {
   const client = await pool.connect();
@@ -610,6 +617,241 @@ saveGrades: async (data) => {
   } finally {
     client.release();
   }
+},
+saveGradeDetails: async (data) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const studentRes = await client.query(
+      `SELECT s.student_id FROM students s JOIN users u ON s.user_id = u.user_id WHERE u.username = $1`,
+      [data.student_id]
+    );
+    if (studentRes.rows.length === 0) throw new Error('Student not found');
+    const studentId = studentRes.rows[0].student_id;
+
+    const yearRes = await client.query(`SELECT year_id FROM academic_year WHERE is_active = true LIMIT 1`);
+    const yearId = yearRes.rows[0]?.year_id;
+
+    // Fix remarks - empty string = null
+    const remarksValue = data.remarks && data.remarks.trim() !== '' ? data.remarks : null;
+
+    const existing = await client.query(
+      `SELECT grade_id FROM grades WHERE student_id = $1 AND course_id = $2`,
+      [studentId, data.course_id]
+    );
+
+    let gradeId;
+    if (existing.rows.length > 0) {
+      gradeId = existing.rows[0].grade_id;
+      await client.query(
+        `UPDATE grades SET final_grade = $1, remarks = $2, updated_at = NOW() WHERE grade_id = $3`,
+        [data.final_grade, remarksValue, gradeId]
+      );
+    } else {
+      const newGrade = await client.query(
+        `INSERT INTO grades (student_id, course_id, year_id, semester_id, final_grade, remarks)
+         VALUES ($1, $2, $3, 1, $4, $5)
+         RETURNING grade_id`,
+        [studentId, data.course_id, yearId, data.final_grade, remarksValue]
+      );
+      gradeId = newGrade.rows[0].grade_id;
+    }
+
+    // Delete only the components for terms that have incoming data,
+    // preserving all other terms untouched.
+    if (data.scores) {
+      for (const [term, components] of Object.entries(data.scores)) {
+        if (components && typeof components === 'object') {
+          // Wipe old rows for this specific term only
+          await client.query(
+            `DELETE FROM grade_components WHERE grade_id = $1 AND term = $2`,
+            [gradeId, term]
+          );
+
+          // Insert fresh rows for this term
+          for (const [key, value] of Object.entries(components)) {
+            if (value && value.score !== '' && value.total !== '') {
+              await client.query(
+                `INSERT INTO grade_components
+                   (grade_id, term, component_name, score, total, percentage)
+                 VALUES ($1, $2, $3, $4, $5, 0)`,
+                [gradeId, term, key, parseFloat(value.score), parseFloat(value.total)]
+              );
+            }
+          }
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+    return { success: true };
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+},
+
+
+getGradeDetails: async (username, courseId) => {
+  const result = await pool.query(`
+    SELECT 
+      gc.component_id,
+      gc.grade_id,
+      gc.term,
+      gc.component_name,
+      gc.score,
+      gc.total,
+      gc.percentage,
+      g.remarks
+    FROM students s
+    JOIN users u ON s.user_id = u.user_id
+    JOIN grades g ON s.student_id = g.student_id AND g.course_id = $2
+    JOIN grade_components gc ON g.grade_id = gc.grade_id
+    WHERE u.username = $1
+    ORDER BY gc.term, gc.component_name
+  `, [username, courseId]);
+  
+  return {
+    components: result.rows,
+    remarks: result.rows[0]?.remarks || ''
+  };
+},
+
+getAnalytics: async () => {
+  const result = await pool.query(`
+    WITH 
+    program_stats AS (
+      SELECT p.program_abbr, COUNT(*) as count
+      FROM student_education se
+      JOIN curricula c ON se.curriculum_id = c.curriculum_id
+      JOIN programs p ON c.program_id = p.program_id
+      WHERE se.enrollment_status = 'Enrolled'
+      GROUP BY p.program_abbr
+    ),
+    year_stats AS (
+      SELECT se.year_level::text, COUNT(*) as count
+      FROM student_education se
+      WHERE se.enrollment_status = 'Enrolled'
+      GROUP BY se.year_level
+      ORDER BY se.year_level
+    ),
+    grade_stats AS (
+      SELECT g.final_grade::text, COUNT(*) as count
+      FROM grades g
+      WHERE g.final_grade IS NOT NULL
+      GROUP BY g.final_grade
+      ORDER BY g.final_grade
+    ),
+    pass_fail AS (
+      SELECT 
+        CASE WHEN g.remarks = 'P' THEN 'Passed' ELSE 'Failed' END as status,
+        COUNT(*) as count
+      FROM grades g
+      WHERE g.remarks IS NOT NULL
+      GROUP BY g.remarks
+    )
+    SELECT 
+      (SELECT json_agg(row_to_json(program_stats)) FROM program_stats) as programs,
+      (SELECT json_agg(row_to_json(year_stats)) FROM year_stats) as year_levels,
+      (SELECT json_agg(row_to_json(grade_stats)) FROM grade_stats) as grades,
+      (SELECT json_agg(row_to_json(pass_fail)) FROM pass_fail) as pass_fail,
+      (SELECT year_label FROM academic_year WHERE is_active = true LIMIT 1) as active_year
+  `);
+  
+  const data = result.rows[0];
+  return {
+    programs: data.programs || [],
+    yearLevels: data.year_levels || [],
+    grades: data.grades || [],
+    passFail: data.pass_fail || [],
+    activeYear: data.active_year || '2025-2026'
+  };
+},
+
+getDashboardStats: async () => {
+  const result = await pool.query(`
+    SELECT 
+      (SELECT COUNT(*) FROM students WHERE account_status = true) as total_students,
+      (SELECT COUNT(*) FROM programs WHERE program_status = true) as active_programs,
+      (SELECT COUNT(*) FROM courses) as total_courses,
+      (SELECT COUNT(*) FROM sections) as total_sections,
+      (SELECT ROUND(AVG(final_grade::numeric), 2) FROM grades WHERE final_grade IS NOT NULL) as avg_grade,
+      (SELECT COUNT(*) FILTER (WHERE remarks = 'P') FROM grades) as passed,
+      (SELECT COUNT(*) FILTER (WHERE remarks = 'F') FROM grades) as failed,
+      (SELECT year_label FROM academic_year WHERE is_active = true LIMIT 1) as active_year
+  `);
+  return result.rows[0];
+},
+
+
+getAllUsers: async () => {
+  const result = await pool.query(`
+    SELECT 
+      u.user_id,
+      u.username,
+      u.is_active,
+      u.created_at,
+      STRING_AGG(r.role_name, ', ') as roles,
+      f.first_name,
+      f.last_name,
+      d.designation_name
+    FROM users u
+    LEFT JOIN user_roles ur ON u.user_id = ur.user_id
+    LEFT JOIN roles r ON ur.role_id = r.role_id
+    LEFT JOIN faculties f ON u.user_id = f.user_id
+    LEFT JOIN designations d ON f.designation = d.designation_id
+    WHERE r.role_name IN ('Admin', 'Faculty', 'Developer')
+       OR r.role_name IS NULL
+    GROUP BY u.user_id, f.faculty_id, d.designation_name
+    ORDER BY u.created_at DESC
+  `);
+  return result.rows;
+},
+
+createUser: async (data) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    const bcrypt = require('bcrypt');
+    const hash = await bcrypt.hash(data.password || 'faculty123', 10);
+    
+    const userResult = await client.query(
+      `INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING user_id`,
+      [data.username, hash]
+    );
+    const userId = userResult.rows[0].user_id;
+    
+    if (data.role) {
+      const roleResult = await client.query(
+        `SELECT role_id FROM roles WHERE role_name = $1`, [data.role]
+      );
+      if (roleResult.rows.length > 0) {
+        await client.query(
+          `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`,
+          [userId, roleResult.rows[0].role_id]
+        );
+      }
+    }
+    
+    await client.query('COMMIT');
+    return { userId };
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+},
+
+toggleUserStatus: async (userId, isActive) => {
+  await pool.query(
+    `UPDATE users SET is_active = $1, updated_at = NOW() WHERE user_id = $2`,
+    [isActive, userId]
+  );
 },
 
 };

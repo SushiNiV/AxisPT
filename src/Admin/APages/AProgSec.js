@@ -120,21 +120,6 @@ function AProgSec() {
     );
   };
 
-  const handleSelectAllSections = (programId, e) => {
-    e.stopPropagation();
-    const programSections = getSectionsForProgram(programId);
-    const sectionIds = programSections.map(s => s.id);
-    
-    setSelectedSectionIds(prev => {
-      const allSelected = sectionIds.every(id => prev.includes(id));
-      if (allSelected) {
-        return prev.filter(id => !sectionIds.includes(id));
-      } else {
-        return [...new Set([...prev, ...sectionIds])];
-      }
-    });
-  };
-
   const handleSelectSection = (id, e) => {
     e.stopPropagation();
     setSelectedSectionIds(prev =>
@@ -164,6 +149,8 @@ function AProgSec() {
           {searchProgram && <BiX className="progsecClearIcon" onClick={() => { setSearchProgram(""); setProgramPage(1); }} />}
         </div>
 
+        <FilterComponent filters={programFilters} onApply={handleProgramFilterApply} />
+
         <div className="progsecCreateBtnContainer">
           <button className="progsecCreateBtn" onClick={() => setShowAddProgram(true)}>
             <BiPlusCircle className="progsecBtnIcon" /> Program
@@ -171,122 +158,111 @@ function AProgSec() {
         </div>
       </div>
 
-      <div className="progsecTableContainer">
-        <table className="progsecTable">
-          <thead>
-            <tr>
-              <th style={{ width: '40px' }}>
-                <input type="checkbox" onChange={handleSelectAllPrograms}
-                  checked={paginatedPrograms.length > 0 && selectedProgramIds.length === paginatedPrograms.length} />
-              </th>
-              <th>Program Name</th>
-              <th>Abbreviation</th>
-              <th>Total Years</th>
-              <th>Sections</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan="7" className="progsecEmpty">Loading programs...</td></tr>
-            ) : paginatedPrograms.length > 0 ? (
-              paginatedPrograms.map((prog) => {
-                const programSections = getSectionsForProgram(prog.program_id);
-                const isExpanded = expandedProgram === prog.program_id;
-                
-                return (
-                  <React.Fragment key={prog.program_id}>
-                    <tr className={`progsecRow ${selectedProgramIds.includes(prog.program_id) ? 'progsecRowSelected' : ''} ${isExpanded ? 'progsecRowExpanded' : ''}`}>
-                      <td onClick={(e) => e.stopPropagation()}>
-                        <input type="checkbox" checked={selectedProgramIds.includes(prog.program_id)}
-                          onChange={() => handleSelectProgram(prog.program_id)} />
-                      </td>
-                      <td className="progsecClickable" onClick={() => toggleExpand(prog.program_id)}>{prog.program_name}</td>
-                      <td className="progsecClickable" onClick={() => toggleExpand(prog.program_id)}>{prog.program_abbr}</td>
-                      <td className="progsecClickable" onClick={() => toggleExpand(prog.program_id)}>{prog.total_year}</td>
-                      <td className="progsecClickable" onClick={() => toggleExpand(prog.program_id)}>{programSections.length} sections</td>
-                      <td className="progsecClickable" onClick={() => toggleExpand(prog.program_id)}>
-                        <span className={`progsecStatusBadge ${prog.program_status ? 'progsecActive' : 'progsecInactive'}`}>
-                          {prog.program_status ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                    </tr>
+      {/* Card-style Program List */}
+      <div className="progsecCardList">
+        {loading ? (
+          <p className="progsecEmpty">Loading programs...</p>
+        ) : paginatedPrograms.length > 0 ? (
+          paginatedPrograms.map((prog) => {
+            const programSections = getSectionsForProgram(prog.program_id);
+            const isExpanded = expandedProgram === prog.program_id;
+            
+            return (
+              <div key={prog.program_id} className={`progsecActivityCard ${isExpanded ? 'progsecCardExpanded' : ''}`}>
+                <div className="progsecCardRow" onClick={() => toggleExpand(prog.program_id)}>
+                  <div className="progsecCardCheck" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={selectedProgramIds.includes(prog.program_id)}
+                      onChange={() => handleSelectProgram(prog.program_id)} />
+                  </div>
+                  <div className="progsecCardIcon">
+                    <div className={`progsecIconCircle ${prog.program_status ? 'active' : 'inactive'}`}>
+                      {prog.program_abbr?.charAt(0) || 'P'}
+                    </div>
+                  </div>
+                  <div className="progsecCardContent">
+                    <div className="progsecCardHeader">
+                      <h3 className="progsecCardTitle">{prog.program_name}</h3>
+                      <span className={`progsecCardStatus ${prog.program_status ? 'active' : 'inactive'}`}>
+                        {prog.program_status ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <p className="progsecCardDetails">
+                      {prog.program_abbr} • {prog.total_year} {prog.total_year === 1 ? 'Year' : 'Years'} • {programSections.length} Sections
+                    </p>
+                  </div>
+                  <div className="progsecCardArrow">
+                    {isExpanded ? <BiChevronDown size={20} /> : <BiChevronRight size={20} />}
+                  </div>
+                </div>
 
-                    {isExpanded && (
-                    <tr className="progsecExpandedRow">
-                      <td colSpan="6" className="progsecExpandedCell">  
-                        <div className="progsecSectionDropdown">
-                          <div className="progsecSearchBar">
-                            <div className="progsecSearchWrapper">
-                              <BiSearch className="progsecSearchIcon" />
-                              <input 
-                                type="text" 
-                                placeholder="Search sections..." 
-                                className="progsecSearchInput"
-                                value={sectionSearch} 
-                                onChange={(e) => setSectionSearch(e.target.value)}
-                                onClick={(e) => e.stopPropagation()} 
-                              />
-                              {sectionSearch && (
-                                <BiX className="progsecClearIcon" onClick={(e) => { e.stopPropagation(); setSectionSearch(""); }} />
-                              )}
-                            </div>
-                            
-                            <FilterComponent filters={programFilters} onApply={handleProgramFilterApply} />
-                            
-                            <div className="progsecCreateBtnContainer">
-                              <button 
-                                className="progsecCreateBtn" 
-                                onClick={(e) => { e.stopPropagation(); setShowAddSection(true); }}
-                              >
-                                <BiPlusCircle className="progsecBtnIcon" /> Section
-                              </button>
-                            </div>
-                          </div>
+                {/* Expanded Section Dropdown */}
+                {isExpanded && (
+                  <div className="progsecSectionDropdown">
+                    <div className="progsecSearchBar">
+                      <div className="progsecSearchWrapper">
+                        <BiSearch className="progsecSearchIcon" />
+                        <input 
+                          type="text" 
+                          placeholder="Search sections..." 
+                          className="progsecSearchInput"
+                          value={sectionSearch} 
+                          onChange={(e) => setSectionSearch(e.target.value)}
+                          onClick={(e) => e.stopPropagation()} 
+                        />
+                        {sectionSearch && (
+                          <BiX className="progsecClearIcon" onClick={(e) => { e.stopPropagation(); setSectionSearch(""); }} />
+                        )}
+                      </div>
+                      
+                      <div className="progsecCreateBtnContainer">
+                        <button 
+                          className="progsecCreateBtn" 
+                          onClick={(e) => { e.stopPropagation(); setShowAddSection(true); }}
+                        >
+                          <BiPlusCircle className="progsecBtnIcon" /> Section
+                        </button>
+                      </div>
+                    </div>
 
-                            {programSections.length > 0 ? (
-                              <table className="progsecNestedTable">
-                                <thead className= "progsecNestedHeader">
-                                  <tr>
-                                    <th style={{ width: '40px' }}></th>
-                                    <th>Section Name</th>
-                                    <th>Year Level</th>
-                                    <th>Semester</th>
-                                    <th>Academic Year</th>
-                                    <th>Students</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {programSections.map(sect => (
-                                    <tr key={sect.id} className={`progsecNestedRow ${selectedSectionIds.includes(sect.id) ? 'progsecRowSelected' : ''}`}>
-                                      <td>
-                                        <input type="checkbox" checked={selectedSectionIds.includes(sect.id)}
-                                          onChange={(e) => handleSelectSection(sect.id, e)} />
-                                      </td>
-                                      <td>{sect.name}</td>
-                                      <td>{sect.year_level}</td>
-                                      <td>{sect.semester}</td>
-                                      <td>{sect.academic_year}</td>
-                                      <td>{sect.student_count}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            ) : (
-                              <p className="progsecNoSections">No sections found for this program</p>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
+                    {programSections.length > 0 ? (
+                      <table className="progsecNestedTable">
+                        <thead className="progsecNestedHeader">
+                          <tr>
+                            <th style={{ width: '40px' }}></th>
+                            <th>SECTION NAME</th>
+                            <th>YEAR LEVEL</th>
+                            <th>SEMESTER</th>
+                            <th>ACADEMIC YEAR</th>
+                            <th>STUDENTS</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {programSections.map(sect => (
+                            <tr key={sect.id} className={`progsecNestedRow ${selectedSectionIds.includes(sect.id) ? 'progsecRowSelected' : ''}`}>
+                              <td>
+                                <input type="checkbox" checked={selectedSectionIds.includes(sect.id)}
+                                  onChange={(e) => handleSelectSection(sect.id, e)} />
+                              </td>
+                              <td>{sect.name}</td>
+                              <td>{sect.year_level}</td>
+                              <td>{sect.semester}</td>
+                              <td>{sect.academic_year}</td>
+                              <td>{sect.student_count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p className="progsecNoSections">No sections found for this program</p>
                     )}
-                  </React.Fragment>
-                );
-              })
-            ) : (
-              <tr><td colSpan="7" className="progsecEmpty">No programs found.</td></tr>
-            )}
-          </tbody>
-        </table>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        ) : (
+          <p className="progsecEmpty">No programs found.</p>
+        )}
       </div>
 
       <div className="progsecPagination">
