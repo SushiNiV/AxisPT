@@ -1,5 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const db = require('../config/db');
+
 const AdminModel = require('../models/adminModel');
 const ProgramModel = require('../models/programModel');
 const AcademicYearModel = require('../models/acadyearModel');
@@ -7,6 +9,7 @@ const CurriculumModel = require('../models/curriculumModel');
 const FacultyModel = require('../models/facultyModel');
 const SectionModel = require('../models/sectionModel');
 const SectionAssignmentModel = require('../models/sectionassignModel');
+const CourseModel = require('../models/courseModel');
 
 const HistoryModel = require('../models/historyModel');
 
@@ -740,6 +743,107 @@ exports.getAllSectionsByProgram = async (req, res) => {
   }
 };
 
+exports.getSectionsByProgram = async (req, res) => {
+  const { program_id } = req.query;
+  
+  try {
+    const sections = await SectionModel.getAllByProgram(program_id);
+    console.log("Sections returned:", sections);
+    res.json({ success: true, data: sections });
+  } catch (error) {
+    console.error("Error fetching sections:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.addSectionAssignment = async (req, res) => {
+  const { 
+    section_option, 
+    section_name, 
+    section_number, 
+    section_id, 
+    program_id, 
+    year_level, 
+    semester_id, 
+    year_id, 
+    adviser_id, 
+    is_active 
+  } = req.body;
+  
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    let finalSectionId = section_id;
+    let finalYearLevel = year_level;
+    let finalSemesterId = semester_id;
+    let finalYearId = year_id;
+    
+    if (section_option === "new") {
+      finalSectionId = await SectionAssignmentModel.createOrGetSection(section_name, program_id);
+    } else if (section_option === "existing") {
+      const existingAssignment = await SectionAssignmentModel.getLatestAssignmentBySectionId(section_id);
+      if (existingAssignment) {
+        finalYearLevel = existingAssignment.year_level;
+        finalSemesterId = existingAssignment.semester_id;
+        if (!finalYearId) finalYearId = existingAssignment.year_id;
+      }
+    }
+    
+    const assignment = await SectionAssignmentModel.createAssignment({
+      section_id: finalSectionId,
+      year_id: finalYearId,
+      semester_id: finalSemesterId,
+      year_level: finalYearLevel,
+      adviser_id: adviser_id,
+      is_active: is_active
+    });
+    
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'section_assignments',
+      recordId: assignment.assignment_id,
+      action: 'SECTION_ASSIGNMENT_CREATED',
+      oldValues: null,
+      newValues: {
+        section_name: section_name || null,
+        year_level: finalYearLevel,
+        semester_id: finalSemesterId,
+        year_id: finalYearId,
+        adviser_id: adviser_id,
+        is_active: is_active,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+    
+    res.json({ success: true, message: "Section assignment added successfully!", data: assignment });
+    
+  } catch (error) {
+    console.error("Error adding section assignment:", error);
+    
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'section_assignments',
+      recordId: null,
+      action: 'SECTION_ASSIGNMENT_ERROR',
+      oldValues: null,
+      newValues: {
+        error: error.message,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+    
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
 exports.getCurricula = async (req, res) => {
   try {
     const curricula = await CurriculumModel.getAll();
@@ -1126,6 +1230,133 @@ exports.getPrograms = async (req, res) => {
   }
 };
 
+exports.getCourses = async (req, res) => {
+  try {
+    const courses = await CourseModel.getAll();
+    res.json({ success: true, data: courses });
+  } catch (error) {
+    console.error("Error fetching courses:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.addCourse = async (req, res) => {
+  const { course_code, course_name, lec_units, lab_units, course_desc, prerequisites, assignments } = req.body;
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  const lecUnits = parseInt(lec_units) || 0;
+  const labUnits = parseInt(lab_units) || 0;
+
+  try {
+    if (!course_code || !course_name || !lecUnits) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Course code, name, and lec units are required." 
+      });
+    }
+
+    if (!assignments || assignments.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Please add at least one curriculum assignment." 
+      });
+    }
+
+    const existingCourse = await CourseModel.getByCode(course_code);
+    if (existingCourse) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Course code already exists." 
+      });
+    }
+
+    await db.query('BEGIN');
+
+    const newCourse = await CourseModel.create({
+      course_code: course_code.toUpperCase(),
+      course_name: course_name.toUpperCase(),
+      lec_units: lecUnits,
+      lab_units: labUnits,
+      course_desc: course_desc || null,
+      is_active: true
+    });
+
+    for (const assignment of assignments) {
+      await CourseModel.addToCurriculum(
+        assignment.curriculum_id,
+        newCourse.course_id,
+        assignment.year_level,
+        assignment.semester_id
+      );
+    }
+
+    console.log("prerequisites:", prerequisites);
+    console.log("assignments:", assignments);
+    console.log("newCourse.course_id:", newCourse.course_id);
+
+    if (prerequisites && prerequisites.length > 0) {
+      for (const assignment of assignments) {
+        const curriculumCourseResult = await db.query(`
+          SELECT id FROM curriculum_courses 
+          WHERE curriculum_id = $1 AND course_id = $2
+        `, [assignment.curriculum_id, newCourse.course_id]);
+        
+        const curriculumCourseId = curriculumCourseResult.rows[0]?.id;
+        
+        if (!curriculumCourseId) {
+          throw new Error(`No curriculum_course found for assignment: ${assignment.curriculum_id}`);
+        }
+        
+        for (const prereqCourseId of prerequisites) {
+          await db.query(`
+            INSERT INTO curriculum_course_prerequisites (curriculum_course_id, prerequisite_course_id)
+            VALUES ($1, $2)
+          `, [curriculumCourseId, prereqCourseId]);
+        }
+      }
+    }
+
+    await db.query('COMMIT');
+
+    await HistoryModel.log({
+      userId: userId,
+      targetUserId: userId,
+      tableName: 'courses',
+      recordId: newCourse.course_id,
+      action: 'COURSE_CREATED',
+      oldValues: null,
+      newValues: {
+        course_id: newCourse.course_id,
+        course_code: newCourse.course_code,
+        course_name: newCourse.course_name,
+        lec_units: newCourse.lec_units,
+        lab_units: newCourse.lab_units,
+        prerequisites_count: prerequisites?.length || 0,
+        assignments_count: assignments.length,
+        timestamp: new Date().toISOString()
+      },
+      ipAddress,
+      userAgent
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Course created successfully.",
+      data: newCourse
+    });
+
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error("Error creating course:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error." 
+    });
+  }
+};
+
 exports.getFaculties = async (req, res) => {
   try {
     const faculties = await FacultyModel.getAll();
@@ -1136,106 +1367,7 @@ exports.getFaculties = async (req, res) => {
   }
 };
 
-exports.getSectionsByProgram = async (req, res) => {
-  const { program_id } = req.query;
-  
-  try {
-    const sections = await SectionModel.getAllByProgram(program_id);
-    console.log("Sections returned:", sections); // Debug
-    res.json({ success: true, data: sections });
-  } catch (error) {
-    console.error("Error fetching sections:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  }
-};
 
-exports.addSectionAssignment = async (req, res) => {
-  const { 
-    section_option, 
-    section_name, 
-    section_number, 
-    section_id, 
-    program_id, 
-    year_level, 
-    semester_id, 
-    year_id, 
-    adviser_id, 
-    is_active 
-  } = req.body;
-  
-  const userId = req.user.id;
-  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
-  const userAgent = req.headers['user-agent'];
-
-  try {
-    let finalSectionId = section_id;
-    let finalYearLevel = year_level;
-    let finalSemesterId = semester_id;
-    let finalYearId = year_id;
-    
-    if (section_option === "new") {
-      finalSectionId = await SectionAssignmentModel.createOrGetSection(section_name, program_id);
-    } else if (section_option === "existing") {
-      const existingAssignment = await SectionAssignmentModel.getLatestAssignmentBySectionId(section_id);
-      if (existingAssignment) {
-        finalYearLevel = existingAssignment.year_level;
-        finalSemesterId = existingAssignment.semester_id;
-        if (!finalYearId) finalYearId = existingAssignment.year_id;
-      }
-    }
-    
-    const assignment = await SectionAssignmentModel.createAssignment({
-      section_id: finalSectionId,
-      year_id: finalYearId,
-      semester_id: finalSemesterId,
-      year_level: finalYearLevel,
-      adviser_id: adviser_id,
-      is_active: is_active
-    });
-    
-    await HistoryModel.log({
-      userId: userId,
-      targetUserId: userId,
-      tableName: 'section_assignments',
-      recordId: assignment.assignment_id,
-      action: 'SECTION_ASSIGNMENT_CREATED',
-      oldValues: null,
-      newValues: {
-        section_name: section_name || null,
-        year_level: finalYearLevel,
-        semester_id: finalSemesterId,
-        year_id: finalYearId,
-        adviser_id: adviser_id,
-        is_active: is_active,
-        timestamp: new Date().toISOString()
-      },
-      ipAddress,
-      userAgent
-    });
-    
-    res.json({ success: true, message: "Section assignment added successfully!", data: assignment });
-    
-  } catch (error) {
-    console.error("Error adding section assignment:", error);
-    
-    await HistoryModel.log({
-      userId: userId,
-      targetUserId: userId,
-      tableName: 'section_assignments',
-      recordId: null,
-      action: 'SECTION_ASSIGNMENT_ERROR',
-      oldValues: null,
-      newValues: {
-        error: error.message,
-        timestamp: new Date().toISOString()
-      },
-      ipAddress,
-      userAgent
-    });
-    
-    res.status(500).json({ success: false, message: "Internal server error." });
-  }
-};
 
 exports.getHistory = async (req, res) => {
   const { limit = 100, offset = 0 } = req.query;

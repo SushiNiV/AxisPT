@@ -23,7 +23,6 @@
   color: #2e7d32;
 }
 
-/* Failed/Error - Red */
 .StatusTag.login-failed,
 .StatusTag.password-change-failed,
 .StatusTag.bulk-reject {
@@ -31,20 +30,17 @@
   color: #c62828;
 }
 
-/* System Error - Orange */
 .StatusTag.login-error,
 .StatusTag.password-change-error {
   background-color: #fff3e0;
   color: #e65100;
 }
 
-/* Info - Blue */
 .StatusTag.bulk-accept {
   background-color: #e3f2fd;
   color: #1976d2;
 }
 
-/* Warning - Yellow/Orange */
 .StatusTag.password-expiring {
   background-color: #fff9c4;
   color: #f57f17;

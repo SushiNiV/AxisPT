@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { BiSearch, BiFilterAlt, BiChevronDown, BiX } from 'react-icons/bi';
+import React, { useState, useEffect } from 'react';
+import { BiSearch, BiX } from 'react-icons/bi';
+import Filter from '../Components/Filter';
 import './../GlobalHistory.css';
-import './../Global.css'
+import './../Global.css';
+import './../GlobalEmpty.css';
 
 function AHistory() {
   const [historyData, setHistoryData] = useState([]);
@@ -13,8 +15,8 @@ function AHistory() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedDesignation, setSelectedDesignation] = useState("");
   const [selectedAction, setSelectedAction] = useState("");
-  
-  const filterRef = useRef(null);
+  const [tempDesignation, setTempDesignation] = useState("");
+  const [tempAction, setTempAction] = useState("");
   
   const [designationOptions, setDesignationOptions] = useState([]);
   const [actionOptions, setActionOptions] = useState([]);
@@ -22,17 +24,11 @@ function AHistory() {
   const hasActiveFilters = selectedDesignation !== "" || selectedAction !== "";
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (filterRef.current && !filterRef.current.contains(event.target)) {
-        setIsFilterOpen(false);
-      }
-    };
-    
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+    if (isFilterOpen) {
+      setTempDesignation(selectedDesignation);
+      setTempAction(selectedAction);
+    }
+  }, [isFilterOpen, selectedDesignation, selectedAction]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -83,6 +79,47 @@ function AHistory() {
     fetchHistory();
   }, []);
 
+  const filters = [
+    { 
+      name: "designation", 
+      label: "DESIGNATION", 
+      value: tempDesignation,
+      options: designationOptions,
+      placeholder: "ALL DESIGNATIONS"
+    },
+    { 
+      name: "action", 
+      label: "ACTION", 
+      value: tempAction,
+      options: actionOptions,
+      placeholder: "ALL ACTIONS"
+    }
+  ];
+
+  const handleFilterChange = (name, value) => {
+    if (name === "designation") {
+      setTempDesignation(value);
+    } else if (name === "action") {
+      setTempAction(value);
+    }
+  };
+
+  const resetFilters = () => {
+    setTempDesignation("");
+    setTempAction("");
+    setSelectedDesignation("");
+    setSelectedAction("");
+    setIsFilterOpen(false);
+    setCurrentPage(1);
+  };
+
+  const applyFilters = () => {
+    setSelectedDesignation(tempDesignation);
+    setSelectedAction(tempAction);
+    setIsFilterOpen(false);
+    setCurrentPage(1);
+  };
+
   const safeString = (value) => {
     if (value === null || value === undefined) return "";
     return String(value);
@@ -117,12 +154,6 @@ function AHistory() {
     setCurrentPage(1);
   };
 
-  const resetFilters = () => {
-    setSelectedDesignation("");
-    setSelectedAction("");
-    setCurrentPage(1);
-  };
-
   const goToNextPage = () => { 
     if (currentPage < totalPages) setCurrentPage(p => p + 1); 
   };
@@ -131,11 +162,15 @@ function AHistory() {
     if (currentPage > 1) setCurrentPage(p => p - 1); 
   };
 
+  const hasNoData = filteredHistory.length === 0;
+
   if (loading) {
     return (
-      <div className="HistoryContainer">
-        <div style={{ textAlign: 'center', padding: '3rem' }}>
-          Loading history...
+      <div className="InnerContainer">
+        <div className="emptyState">
+          <div className="emptyStateIcon">⏳</div>
+          <h3 className="emptyStateTitle">Loading History</h3>
+          <p className="emptyStateText">Please wait while we fetch the data...</p>
         </div>
       </div>
     );
@@ -143,9 +178,11 @@ function AHistory() {
 
   if (error) {
     return (
-      <div className="HistoryContainer">
-        <div style={{ textAlign: 'center', padding: '3rem', color: 'red' }}>
-          Error: {error}
+      <div className="InnerContainer">
+        <div className="emptyState">
+          <div className="emptyStateIcon">⚠️</div>
+          <h3 className="emptyStateTitle">Error Loading History</h3>
+          <p className="emptyStateText">{error}</p>
         </div>
       </div>
     );
@@ -172,121 +209,93 @@ function AHistory() {
           )}
         </div>
         
-        <div className="TopbarBtnContainer" ref={filterRef}>
-          <button 
-            className={`TopbarBtn ${isFilterOpen ? 'Active' : ''} ${hasActiveFilters ? 'FilterActive' : ''}`}
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-          >
-            <BiFilterAlt className="linkIcon" />
-            Filter
-          </button>
-
-          {isFilterOpen && (
-            <div className="FilterDropdown">
-              <div className="FilterGroup">
-                <label>DESIGNATION</label>
-                <select 
-                  value={selectedDesignation} 
-                  onChange={(e) => {
-                    setSelectedDesignation(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="">ALL DESIGNATIONS</option>
-                  {designationOptions.map(designation => (
-                    <option key={designation} value={designation}>{designation}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="FilterGroup">
-                <label>ACTION</label>
-                <select 
-                  value={selectedAction} 
-                  onChange={(e) => {
-                    setSelectedAction(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="">ALL ACTIONS</option>
-                  {actionOptions.map(action => (
-                    <option key={action} value={action}>{action}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="BtnsContainer">
-                <button className="ResetFilterBtn" onClick={resetFilters}>Reset</button>
-                <button className="ApplyFilterBtn" onClick={() => setIsFilterOpen(false)}>Apply</button>
-              </div>
-            </div>
-          )}
-        </div>
+        <Filter
+          isOpen={isFilterOpen}
+          setIsOpen={setIsFilterOpen}
+          hasActiveFilters={hasActiveFilters}
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onReset={resetFilters}
+          onApply={applyFilters}
+        />
       </div>
 
-      <div className="TableContainer History">
-        <table className="Table">
-          <thead>
-            <tr>
-              <th>No.</th>
-              <th>User ID</th>
-              <th>Designation</th>
-              <th>Action</th>
-              <th>Target ID</th>
-              <th>Details</th>
-              <th>Timestamp</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentItems.length > 0 ? (
-              currentItems.map((item, index) => (
-                <tr key={item.id}>
-                  <td>{indexOfFirstItem + index + 1}</td>
-                  <td>{item.userId}</td>
-                  <td>{item.designation}</td>
-                  <td>
-                    <span className={`StatusTag ${safeString(item.action).toLowerCase().replace(/ /g, '-')}`}>
-                      {item.action}
-                    </span>
-                  </td>
-                  <td>{item.targetId || "—"}</td>
-                  <td>{item.details}</td>
-                  <td>{item.timestamp}</td>
+      {hasNoData ? (
+        searchTerm ? (
+          <div className="emptyState">
+            <div className="emptyStateIcon">🔍</div>
+            <h3 className="emptyStateTitle">No matching results</h3>
+            <p className="emptyStateText">No history records found matching "{searchTerm}"</p>
+            <button className="emptyStateBtn" onClick={clearSearch}>
+              Clear Search
+            </button>
+          </div>
+        ) : (
+          <div className="emptyState">
+            <div className="emptyStateIcon">📜</div>
+            <h3 className="emptyStateTitle">No History Records</h3>
+            <p className="emptyStateText">No history records available.</p>
+          </div>
+        )
+      ) : (
+        <>
+          <div className="TableContainer History">
+            <table className="Table">
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th>User ID</th>
+                  <th>Designation</th>
+                  <th>Action</th>
+                  <th>Target ID</th>
+                  <th>Details</th>
+                  <th>Timestamp</th>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="7" style={{textAlign: 'center', padding: '2rem'}}>
-                  No records found matching your criteria.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {currentItems.map((item, index) => (
+                  <tr key={item.id}>
+                    <td>{indexOfFirstItem + index + 1}</td>
+                    <td>{item.userId}</td>
+                    <td>{item.designation}</td>
+                    <td>
+                      <span className={`StatusTag ${safeString(item.action).toLowerCase().replace(/ /g, '-')}`}>
+                        {item.action}
+                      </span>
+                    </td>
+                    <td>{item.targetId || "—"}</td>
+                    <td>{item.details}</td>
+                    <td>{item.timestamp}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-      <div className="PaginationContainer">
-        <div className="PaginationControls">
-          <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
-          <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
-          <div className="CurrentPageInputWrapper">
-            <input 
-              type="number" 
-              value={currentPage} 
-              onChange={(e) => {
-                const val = parseInt(e.target.value);
-                if (val > 0 && val <= totalPages) setCurrentPage(val);
-              }} 
-              className="CurrentPageInput" 
-            />
+          <div className="PaginationContainer">
+            <div className="PaginationControls">
+              <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
+              <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
+              <div className="CurrentPageInputWrapper">
+                <input 
+                  type="number" 
+                  value={currentPage} 
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    if (val > 0 && val <= totalPages) setCurrentPage(val);
+                  }} 
+                  className="CurrentPageInput" 
+                />
+              </div>
+              <div className="PaginationInfo">
+                out of <span>{totalPages}</span>
+              </div>
+              <button className="PageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
+              <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
+            </div>
           </div>
-          <div className="PaginationInfo">
-            out of <span>{totalPages}</span>
-          </div>
-          <button className="PageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
-          <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

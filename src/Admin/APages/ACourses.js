@@ -1,12 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { BiSearch, BiFilterAlt, BiPlusCircle, BiX, BiTrash, BiExport } from 'react-icons/bi';
+import React, { useState, useEffect, useCallback } from 'react';
+import { BiSearch, BiPlusCircle, BiX } from 'react-icons/bi';
+import Filter from '../../Components/Filter';
 import '../../GlobalHistory.css';
 import '../../Global.css';
+import '../../GlobalEmpty.css';
 import AddCourse from '../AComponents/AddCourse';
 
 function ACourses() {
   const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -16,96 +18,115 @@ function ACourses() {
   const [selectedProgram, setSelectedProgram] = useState("");
   const [selectedYearLevel, setSelectedYearLevel] = useState("");
   const [selectedSemester, setSelectedSemester] = useState("");
+  const [tempProgram, setTempProgram] = useState("");
+  const [tempYearLevel, setTempYearLevel] = useState("");
+  const [tempSemester, setTempSemester] = useState("");
   
-  const filterRef = useRef(null);
-  
-  const [programOptions, setProgramOptions] = useState(["BSIT", "BSCS", "BSIS"]);
+  const [programOptions, setProgramOptions] = useState([]);
   const [yearLevelOptions] = useState(["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"]);
   const [semesterOptions] = useState(["1st Semester", "2nd Semester", "Summer"]);
 
   const hasActiveFilters = selectedProgram !== "" || selectedYearLevel !== "" || selectedSemester !== "";
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (filterRef.current && !filterRef.current.contains(event.target)) {
-        setIsFilterOpen(false);
+    if (isFilterOpen) {
+      setTempProgram(selectedProgram);
+      setTempYearLevel(selectedYearLevel);
+      setTempSemester(selectedSemester);
+    }
+  }, [isFilterOpen, selectedProgram, selectedYearLevel, selectedSemester]);
+
+  const fetchPrograms = useCallback(async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        const programs = data.data.map(p => p.program_name);
+        setProgramOptions(programs);
       }
-    };
-    
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    } catch (err) {
+      console.error("Error fetching programs:", err);
+    }
   }, []);
 
-  // Mock data for testing
-  const mockCourses = [
-    {
-      course_id: 1,
-      course_code: "CC101",
-      course_name: "Introduction to Computing",
-      program_name: "BSIT",
-      year_level: 1,
-      semester_label: "1st Semester",
-      lec_units: 3,
-      lab_units: 0,
-      total_units: 3,
-      prerequisites: "None"
+  const fetchCourses = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/courses`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCourses(data.data);
+      } else {
+        setError(data.message || "Failed to fetch courses");
+      }
+    } catch (err) {
+      console.error("Error fetching courses:", err);
+      setError("Failed to connect to the server");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPrograms();
+    fetchCourses();
+  }, [fetchPrograms, fetchCourses]);
+
+  const filters = [
+    { 
+      name: "program", 
+      label: "PROGRAM", 
+      value: tempProgram,
+      options: programOptions,
+      placeholder: "ALL PROGRAMS"
     },
-    {
-      course_id: 2,
-      course_code: "PROG101",
-      course_name: "Programming Fundamentals",
-      program_name: "BSIT",
-      year_level: 1,
-      semester_label: "2nd Semester",
-      lec_units: 2,
-      lab_units: 1,
-      total_units: 3,
-      prerequisites: "CC101"
+    { 
+      name: "yearLevel", 
+      label: "YEAR LEVEL", 
+      value: tempYearLevel,
+      options: yearLevelOptions,
+      placeholder: "ALL YEARS"
     },
-    {
-      course_id: 3,
-      course_code: "MATH101",
-      course_name: "Discrete Mathematics",
-      program_name: "BSCS",
-      year_level: 1,
-      semester_label: "1st Semester",
-      lec_units: 3,
-      lab_units: 0,
-      total_units: 3,
-      prerequisites: "None"
-    },
-    {
-      course_id: 4,
-      course_code: "DB101",
-      course_name: "Database Management System",
-      program_name: "BSIT",
-      year_level: 2,
-      semester_label: "1st Semester",
-      lec_units: 2,
-      lab_units: 1,
-      total_units: 3,
-      prerequisites: "PROG101"
-    },
-    {
-      course_id: 5,
-      course_code: "NET101",
-      course_name: "Networking Fundamentals",
-      program_name: "BSIT",
-      year_level: 2,
-      semester_label: "2nd Semester",
-      lec_units: 2,
-      lab_units: 1,
-      total_units: 3,
-      prerequisites: "CC101"
+    { 
+      name: "semester", 
+      label: "SEMESTER", 
+      value: tempSemester,
+      options: semesterOptions,
+      placeholder: "ALL SEMESTERS"
     }
   ];
 
-  useEffect(() => {
-    setCourses(mockCourses);
-    setLoading(false);
-  }, []);
+  const handleFilterChange = (name, value) => {
+    if (name === "program") setTempProgram(value);
+    else if (name === "yearLevel") setTempYearLevel(value);
+    else if (name === "semester") setTempSemester(value);
+  };
+
+  const resetFilters = () => {
+    setTempProgram("");
+    setTempYearLevel("");
+    setTempSemester("");
+    setSelectedProgram("");
+    setSelectedYearLevel("");
+    setSelectedSemester("");
+    setIsFilterOpen(false);
+    setCurrentPage(1);
+  };
+
+  const applyFilters = () => {
+    setSelectedProgram(tempProgram);
+    setSelectedYearLevel(tempYearLevel);
+    setSelectedSemester(tempSemester);
+    setIsFilterOpen(false);
+    setCurrentPage(1);
+  };
 
   const filteredCourses = courses.filter((course) => {
     const matchesSearch = 
@@ -134,13 +155,6 @@ function ACourses() {
     setCurrentPage(1);
   };
 
-  const resetFilters = () => {
-    setSelectedProgram("");
-    setSelectedYearLevel("");
-    setSelectedSemester("");
-    setCurrentPage(1);
-  };
-
   const goToNextPage = () => { 
     if (currentPage < totalPages) setCurrentPage(p => p + 1); 
   };
@@ -151,13 +165,16 @@ function ACourses() {
 
   const handleAddSuccess = () => {
     setShowAddCourse(false);
+    fetchCourses();
   };
 
   if (loading) {
     return (
       <div className="InnerContainer">
-        <div style={{ textAlign: 'center', padding: '3rem' }}>
-          Loading courses...
+        <div className="emptyState">
+          <div className="emptyStateIcon">⏳</div>
+          <h3 className="emptyStateTitle">Loading Courses</h3>
+          <p className="emptyStateText">Please wait while we fetch the data...</p>
         </div>
       </div>
     );
@@ -166,12 +183,16 @@ function ACourses() {
   if (error) {
     return (
       <div className="InnerContainer">
-        <div style={{ textAlign: 'center', padding: '3rem', color: 'red' }}>
-          Error: {error}
+        <div className="emptyState">
+          <div className="emptyStateIcon">⚠️</div>
+          <h3 className="emptyStateTitle">Error Loading Courses</h3>
+          <p className="emptyStateText">{error}</p>
         </div>
       </div>
     );
   }
+
+  const hasNoData = filteredCourses.length === 0;
 
   return (
     <div className="InnerContainer">
@@ -200,72 +221,15 @@ function ACourses() {
           )}
         </div>
         
-        <div className="TopbarBtnContainer" ref={filterRef}>
-          <button 
-            className={`TopbarBtn ${isFilterOpen ? 'Active' : ''} ${hasActiveFilters ? 'FilterActive' : ''}`}
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-          >
-            <BiFilterAlt className="linkIcon" />
-            Filter
-          </button>
-
-          {isFilterOpen && (
-            <div className="FilterDropdown">
-              <div className="FilterGroup">
-                <label>PROGRAM</label>
-                <select 
-                  value={selectedProgram} 
-                  onChange={(e) => {
-                    setSelectedProgram(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="">ALL PROGRAMS</option>
-                  {programOptions.map(program => (
-                    <option key={program} value={program}>{program}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="FilterGroup">
-                <label>YEAR LEVEL</label>
-                <select 
-                  value={selectedYearLevel} 
-                  onChange={(e) => {
-                    setSelectedYearLevel(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="">ALL YEARS</option>
-                  {yearLevelOptions.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="FilterGroup">
-                <label>SEMESTER</label>
-                <select 
-                  value={selectedSemester} 
-                  onChange={(e) => {
-                    setSelectedSemester(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="">ALL SEMESTERS</option>
-                  {semesterOptions.map(sem => (
-                    <option key={sem} value={sem}>{sem}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="BtnsContainer">
-                <button className="ResetFilterBtn" onClick={resetFilters}>Reset</button>
-                <button className="ApplyFilterBtn" onClick={() => setIsFilterOpen(false)}>Apply</button>
-              </div>
-            </div>
-          )}
-        </div>
+        <Filter
+          isOpen={isFilterOpen}
+          setIsOpen={setIsFilterOpen}
+          hasActiveFilters={hasActiveFilters}
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onReset={resetFilters}
+          onApply={applyFilters}
+        />
 
         <div className="TopbarBtnContainer">
           <button className="TopbarBtn" onClick={() => setShowAddCourse(true)}>
@@ -275,67 +239,83 @@ function ACourses() {
         </div>
       </div>
 
-      <div className="TableContainer">
-        <table className="Table">
-          <thead>
-            <tr>
-              <th style={{ width: '40px' }}>
-                <input type="checkbox" />
-              </th>
-              <th>Code</th>
-              <th>Course Name</th>
-              <th>Program</th>
-              <th>Year & Semester</th>
-              <th>Units</th>
-              <th>Prerequisites</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentItems.length > 0 ? (
-              currentItems.map((course) => (
-                <tr key={course.course_id}>
-                  <td><input type="checkbox" /></td>
-                  <td>{course.course_code}</td>
-                  <td>{course.course_name}</td>
-                  <td>{course.program_name}</td>
-                  <td>{`${course.year_level} Year - ${course.semester_label}`}</td>
-                  <td>{course.total_units}</td>
-                  <td>{course.prerequisites}</td>
+      {hasNoData ? (
+        searchTerm ? (
+          <div className="emptyState">
+            <div className="emptyStateIcon">🔍</div>
+            <h3 className="emptyStateTitle">No matching results</h3>
+            <p className="emptyStateText">No courses found matching "{searchTerm}"</p>
+            <button className="emptyStateBtn" onClick={clearSearch}>
+              Clear Search
+            </button>
+          </div>
+        ) : (
+          <div className="emptyState">
+            <div className="emptyStateIcon">📚</div>
+            <h3 className="emptyStateTitle">No Courses Yet</h3>
+            <p className="emptyStateText">Get started by creating your first course.</p>
+            <button className="emptyStateBtn" onClick={() => setShowAddCourse(true)}>
+              <BiPlusCircle className="linkIcon"/> Create Course
+            </button>
+          </div>
+        )
+      ) : (
+        <>
+          <div className="TableContainer">
+            <table className="Table">
+              <thead>
+                <tr>
+                  <th style={{ width: '40px' }}>
+                    <input type="checkbox" />
+                  </th>
+                  <th>Code</th>
+                  <th>Course Name</th>
+                  <th>Program</th>
+                  <th>Year & Semester</th>
+                  <th>Units</th>
+                  <th>Prerequisites</th>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="7" style={{textAlign: 'center', padding: '2rem'}}>
-                  No courses found matching your criteria.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {currentItems.map((course) => (
+                  <tr key={course.course_id}>
+                    <td><input type="checkbox" /></td>
+                    <td>{course.course_code}</td>
+                    <td>{course.course_name}</td>
+                    <td>{course.program_name}</td>
+                    <td>{`${course.year_level} Year - ${course.semester_label}`}</td>
+                    <td>{course.total_units || course.lec_units + course.lab_units}</td>
+                    <td>{course.prerequisites || 'None'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-      <div className="PaginationContainer">
-        <div className="PaginationControls">
-          <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
-          <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
-          <div className="CurrentPageInputWrapper">
-            <input 
-              type="number" 
-              value={currentPage} 
-              onChange={(e) => {
-                const val = parseInt(e.target.value);
-                if (val > 0 && val <= totalPages) setCurrentPage(val);
-              }} 
-              className="CurrentPageInput" 
-            />
+          <div className="PaginationContainer">
+            <div className="PaginationControls">
+              <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
+              <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
+              <div className="CurrentPageInputWrapper">
+                <input 
+                  type="number" 
+                  value={currentPage} 
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    if (val > 0 && val <= totalPages) setCurrentPage(val);
+                  }} 
+                  className="CurrentPageInput" 
+                />
+              </div>
+              <div className="PaginationInfo">
+                out of <span>{totalPages}</span>
+              </div>
+              <button className="PageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
+              <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
+            </div>
           </div>
-          <div className="PaginationInfo">
-            out of <span>{totalPages}</span>
-          </div>
-          <button className="PageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
-          <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

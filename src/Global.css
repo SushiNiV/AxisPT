@@ -379,6 +379,51 @@ p, h1, h3, td, tr {
   background-color: #fdfdfd;
 }
 
+.tableStatusBtn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  border: none;
+  margin-left: 8px;
+}
+
+.tableStatusBtn.activate {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.tableStatusBtn.activate:hover {
+  background: #c8e6c9;
+}
+
+.tableStatusBtn.deactivate {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.tableStatusBtn.deactivate:hover {
+  background: #ffcdd2;
+}
+
+.statusBadge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.statusBadge.active-bg {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.statusBadge.inactive-bg {
+  background: #ffebee;
+  color: #c62828;
+}
+
 .PopUpCard {
   display: flex;
   flex-direction: column;

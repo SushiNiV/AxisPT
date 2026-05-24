@@ -6,21 +6,21 @@ import '../../GlobalForm.css'
 import '../../GlobalOverlay.css';
 import '../../Global.css';
 
-function AddCurricula({ onClose, onSuccess }) {
+function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
+  const isEditMode = !!curriculumToEdit;
+  const currentYear = new Date().getFullYear();
+  
   const [formData, setFormData] = useState({
     program: "",
-    start_year: new Date().getFullYear(),
+    start_year: currentYear,
     version: "",
     is_active: true
   });
-
-  const [checkedItems, setCheckedItems] = useState({});
   const [programs, setPrograms] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [portalRoot, setPortalRoot] = useState(null);
 
-  const currentYear = new Date().getFullYear();
   const yearOptions = [];
   for (let year = currentYear - 10; year <= currentYear + 10; year++) {
     yearOptions.push(year);
@@ -44,6 +44,18 @@ function AddCurricula({ onClose, onSuccess }) {
     setPortalRoot(document.getElementById('portal-root') || document.body);
   }, []);
 
+  useEffect(() => {
+    if (isEditMode && curriculumToEdit) {
+      setFormData({
+        program: curriculumToEdit.program_id || "",
+        start_year: curriculumToEdit.start_year || currentYear,
+        version: curriculumToEdit.version_name || "",
+        is_active: curriculumToEdit.is_active || false
+      });
+      setIsActive(curriculumToEdit.is_active || false);
+    }
+  }, [isEditMode, curriculumToEdit, currentYear]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -65,8 +77,14 @@ function AddCurricula({ onClose, onSuccess }) {
 
     try {
       const token = sessionStorage.getItem('token');
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/curricula`, {
-        method: 'POST',
+      const url = isEditMode 
+        ? `${process.env.REACT_APP_API_URL}/admin/curricula/${curriculumToEdit.curriculum_id}`
+        : `${process.env.REACT_APP_API_URL}/admin/curricula`;
+      
+      const method = isEditMode ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -82,13 +100,13 @@ function AddCurricula({ onClose, onSuccess }) {
       const data = await response.json();
 
       if (data.success) {
-        alert("Curriculum created successfully!");
+        alert(isEditMode ? "Curriculum updated successfully!" : "Curriculum created successfully!");
         onSuccess();
       } else {
-        alert(data.message || "Failed to create curriculum.");
+        alert(data.message || (isEditMode ? "Failed to update curriculum." : "Failed to create curriculum."));
       }
     } catch (error) {
-      console.error("Error creating curriculum:", error);
+      console.error("Error submitting curriculum:", error);
       alert("An error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -102,7 +120,7 @@ function AddCurricula({ onClose, onSuccess }) {
           <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
         </div>
         <div className="modalHeader">
-          <h3 className="modalTitle">ADD NEW CURRICULUM</h3>
+          <h3 className="modalTitle">{isEditMode ? "UPDATE CURRICULUM" : "ADD NEW CURRICULUM"}</h3>
         </div>
 
         <div className="modalScrollArea">
@@ -145,7 +163,7 @@ function AddCurricula({ onClose, onSuccess }) {
               <input 
                 type="text" 
                 name="version" 
-                placeholder="Version 1" 
+                placeholder="Version 1.0" 
                 value={formData.version}
                 onChange={handleChange}
               />
@@ -166,7 +184,7 @@ function AddCurricula({ onClose, onSuccess }) {
             <div className="BtnsContainer">
               <button className="ResetFilterBtn" onClick={onClose} disabled={isSubmitting}>CANCEL</button>
               <button className="ApplyFilterBtn" onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? "CREATING..." : "CREATE"}
+                {isSubmitting ? (isEditMode ? "UPDATING..." : "CREATING...") : (isEditMode ? "UPDATE" : "CREATE")}
               </button>
             </div>
           </div>

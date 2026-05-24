@@ -42,6 +42,7 @@
   background-color: white;
   font-family: inherit;
   cursor: pointer;
+  resize: none;
 }
 
 .formGroup input,
@@ -158,6 +159,102 @@ select[size] {
 .custom-multiselect .select-display.disabled {
   background-color: #f5f5f5;
   cursor: not-allowed;
+}
+
+.nestedItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.assignmentLabel {
+  cursor: pointer;
+  font-weight: normal !important;
+  margin: 0 !important;
+  display: inline-block;
+  user-select: none;
+  color: #555;
+  font-size: 0.85rem;
+}
+
+.rowItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.rowItem:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.rowItem span {
+  color: #555;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.rowItem input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #000;
+  cursor: pointer;
+}
+
+.subTier {
+  margin-left: 2rem;
+}
+
+.AddBtn {
+  padding: 0 20px;
+  background-color: #3D1616;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  white-space: nowrap;
+  height: 38px;
+  align-self: flex-end;
+}
+
+.AddBtn:hover {
+  background-color: #5a2020;
+}
+
+.assignmentList {
+  margin-top: 0.5rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.assignmentItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 0.75rem;
+}
+
+.assignmentItem:last-child {
+  border-bottom: none;
+}
+
+.RemoveBtn {
+  background-color: #ffebee;
+  color: #c62828;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+
+.RemoveBtn:hover {
+  background-color: #ffcdd2;
 }
 
 .formGroup select::-webkit-scrollbar,
