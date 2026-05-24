@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import './utils/api';
 import SessionExpired from './Components/SessionExpire';
 
 import ASignIn from './Admin/ASignIn';

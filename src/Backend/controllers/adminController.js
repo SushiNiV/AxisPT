@@ -11,6 +11,7 @@ const SectionModel = require('../models/sectionModel');
 const SectionAssignmentModel = require('../models/sectionassignModel');
 const CourseModel = require('../models/courseModel');
 
+const UserModel = require('../models/userModel');
 const HistoryModel = require('../models/historyModel');
 
 exports.login = async (req, res) => {
@@ -364,6 +365,102 @@ exports.changePassword = async (req, res) => {
       success: false, 
       message: "Internal Server Error" 
     });
+  }
+};
+
+exports.getUsers = async (req, res) => {
+  try {
+    const users = await UserModel.getAllUsers();
+    res.json({ success: true, data: users });
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.getRoles = async (req, res) => {
+  try {
+    const roles = await UserModel.getAllRoles();
+    const filteredRoles = roles.filter(role => role.role_name !== 'STUDENT');
+    res.json({ success: true, data: filteredRoles });
+  } catch (error) {
+    console.error("Error fetching roles:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.getDesignations = async (req, res) => {
+  try {
+    const designations = await UserModel.getAllDesignations();
+    res.json({ success: true, data: designations });
+  } catch (error) {
+    console.error("Error fetching designations:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.addUser = async (req, res) => {
+  const { last_name, first_name, middle_name, suffix, username, email, role_id, designation_id, new_designation_name, is_active } = req.body;
+  const userId = req.user.id;
+  const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    await db.query('BEGIN');
+
+    let finalDesignationId = designation_id;
+
+    if (new_designation_name) {
+      const newDesignation = await db.query(`
+        INSERT INTO designations (designation_name)
+        VALUES ($1)
+        ON CONFLICT (designation_name) DO NOTHING
+        RETURNING designation_id
+      `, [new_designation_name]);
+      
+      if (newDesignation.rows.length > 0) {
+        finalDesignationId = newDesignation.rows[0].designation_id;
+      } else {
+        const existingDesignation = await db.query(`
+          SELECT designation_id FROM designations WHERE designation_name = $1
+        `, [new_designation_name]);
+        finalDesignationId = existingDesignation.rows[0].designation_id;
+      }
+    }
+
+    const plainPassword = `axis-cpt-${last_name.toLowerCase()}`;
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+    const userResult = await db.query(`
+      INSERT INTO users (username, password_hash, school_email, is_active, changed_pass)
+      VALUES ($1, $2, $3, $4, false)
+      RETURNING user_id
+    `, [username, hashedPassword, email, is_active]);
+
+    const newUserId = userResult.rows[0].user_id;
+
+    await db.query(`
+      INSERT INTO user_roles (user_id, role_id)
+      VALUES ($1, $2)
+    `, [newUserId, role_id]);
+
+    await db.query(`
+      INSERT INTO faculties (user_id, last_name, first_name, middle_name, suffix, designation, account_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [newUserId, last_name, first_name, middle_name, suffix, finalDesignationId, is_active]);
+
+    await db.query('COMMIT');
+
+    res.json({ 
+      success: true, 
+      message: "User created successfully",
+      password: plainPassword
+    });
+
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error("Error creating user:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
   }
 };
 

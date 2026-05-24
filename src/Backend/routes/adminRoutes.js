@@ -4,6 +4,11 @@ const adminController = require('../controllers/adminController');
 const { verifyToken } = require('../middleware/auth');
 
 //auth
+router.post('/users', verifyToken, adminController.addUser);
+router.get('/users', verifyToken, adminController.getUsers);
+router.get('/roles', verifyToken, adminController.getRoles);
+router.get('/designations', verifyToken, adminController.getDesignations);
+
 router.post('/login', adminController.login);
 router.post('/change-password', verifyToken, adminController.changePassword);
 

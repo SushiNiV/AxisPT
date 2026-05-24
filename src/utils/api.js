@@ -1,4 +1,6 @@
-const apiFetch = async (url, options = {}) => {
+const originalFetch = window.fetch;
+
+window.fetch = async function(url, options = {}) {
   const token = sessionStorage.getItem('token');
   
   const defaultHeaders = {
@@ -9,15 +11,20 @@ const apiFetch = async (url, options = {}) => {
     defaultHeaders['Authorization'] = `Bearer ${token}`;
   }
   
-  const response = await fetch(url, {
+  const modifiedOptions = {
     ...options,
     headers: {
       ...defaultHeaders,
       ...options.headers,
     },
-  });
+  };
+  
+  const response = await originalFetch(url, modifiedOptions);
+  
+  console.log(`API Call: ${url} - Status: ${response.status}`);
   
   if (response.status === 401 || response.status === 403) {
+    console.log('Token expired! Clearing session.');
     sessionStorage.clear();
     window.dispatchEvent(new CustomEvent('sessionExpired'));
     throw new Error('Session expired');
@@ -26,4 +33,4 @@ const apiFetch = async (url, options = {}) => {
   return response;
 };
 
-export default apiFetch;
+export default window.fetch;

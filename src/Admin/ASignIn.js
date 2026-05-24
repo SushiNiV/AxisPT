@@ -38,7 +38,7 @@ function ASignIn() {
       });
 
       const data = await response.json();
-      console.log("Server Response:", data);
+      console.log("Login success:", data.success);
 
       if (data.success) {
         sessionStorage.setItem('token', data.token);
