@@ -14,7 +14,7 @@ function SessionExpired({ onConfirm }) {
       icon={<BiInfoCircle />}
     >
       <div>
-        <p>Your session has expired. Please log in again to continue.</p>
+        <p>Your session has expired. Please log in again.</p>
         <div className="overlayActionButtons">
           <button 
             className="confirmBtn" 
