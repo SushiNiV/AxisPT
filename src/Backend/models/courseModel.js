@@ -14,22 +14,15 @@ class CourseModel {
         c.is_active,
         c.created_at,
         c.updated_at,
+        c.prerequisites,
         p.program_name,
         cc.year_level,
-        s.semester_label,
-        STRING_AGG(DISTINCT prereq.course_code, ', ') as prerequisites
+        s.semester_label
       FROM courses c
       LEFT JOIN curriculum_courses cc ON c.course_id = cc.course_id
       LEFT JOIN curricula cur ON cc.curriculum_id = cur.curriculum_id
       LEFT JOIN programs p ON cur.program_id = p.program_id
       LEFT JOIN semester s ON cc.semester_id = s.semester_id
-      LEFT JOIN curriculum_course_prerequisites ccp ON cc.id = ccp.curriculum_course_id
-      LEFT JOIN courses prereq ON ccp.prerequisite_course_id = prereq.course_id
-      GROUP BY 
-        c.course_id, c.course_code, c.course_name, 
-        c.lec_units, c.lab_units, c.total_units, 
-        c.course_desc, c.is_active, c.created_at, c.updated_at,
-        p.program_name, cc.year_level, s.semester_label, cc.created_at
       ORDER BY c.course_id, cc.created_at DESC
     `);
     return result.rows;
@@ -46,24 +39,17 @@ class CourseModel {
         c.total_units,
         c.course_desc,
         c.is_active,
+        c.prerequisites,
         p.program_name,
         cc.year_level,
         s.semester_label,
-        cc.curriculum_id,
-        STRING_AGG(DISTINCT prereq.course_code, ', ') as prerequisites
+        cc.curriculum_id
       FROM courses c
       LEFT JOIN curriculum_courses cc ON c.course_id = cc.course_id
       LEFT JOIN curricula cur ON cc.curriculum_id = cur.curriculum_id
       LEFT JOIN programs p ON cur.program_id = p.program_id
       LEFT JOIN semester s ON cc.semester_id = s.semester_id
-      LEFT JOIN curriculum_course_prerequisites ccp ON cc.id = ccp.curriculum_course_id
-      LEFT JOIN courses prereq ON ccp.prerequisite_course_id = prereq.course_id
       WHERE c.course_id = $1
-      GROUP BY 
-        c.course_id, c.course_code, c.course_name, 
-        c.lec_units, c.lab_units, c.total_units, 
-        c.course_desc, c.is_active,
-        p.program_name, cc.year_level, s.semester_label, cc.curriculum_id
     `, [courseId]);
     return result.rows[0];
   }
@@ -76,12 +62,12 @@ class CourseModel {
   }
 
   static async create(courseData) {
-    const { course_code, course_name, lec_units, lab_units, course_desc, is_active } = courseData;
+    const { course_code, course_name, lec_units, lab_units, course_desc, is_active, prerequisites } = courseData;
     const result = await db.query(`
-      INSERT INTO courses (course_code, course_name, lec_units, lab_units, course_desc, is_active)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO courses (course_code, course_name, lec_units, lab_units, course_desc, is_active, prerequisites)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
-    `, [course_code, course_name, lec_units, lab_units, course_desc, is_active]);
+    `, [course_code, course_name, lec_units, lab_units, course_desc, is_active, prerequisites || null]);
     return result.rows[0];
   }
 

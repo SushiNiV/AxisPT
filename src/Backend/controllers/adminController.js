@@ -15,6 +15,9 @@ const UserModel = require('../models/userModel');
 const HistoryModel = require('../models/historyModel');
 
 exports.login = async (req, res) => {
+
+  // Gets the username, password, and rememberMe flag from the request body
+
   const { username, password, rememberMe } = req.body;
   const ipAddress = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
   const userAgent = req.headers['user-agent'];
@@ -45,7 +48,14 @@ exports.login = async (req, res) => {
       });
     }
 
-    const hasAdminRole = admin.roles && (admin.roles.includes('SUPERADMIN') || admin.roles.includes('ADMIN'));
+    // Convert admin.roles to string or array check safely
+    const rolesArray = Array.isArray(admin.roles) 
+      ? admin.roles 
+      : (typeof admin.roles === 'string' ? admin.roles.split(',') : []);
+
+    const hasAdminRole = rolesArray.some(role => 
+      ['SUPERADMIN', 'ADMIN'].includes(role.trim().toUpperCase())
+    );
     
     if (!admin.is_active) {
       await HistoryModel.log({
@@ -92,7 +102,7 @@ exports.login = async (req, res) => {
         message: "Access denied. Faculty account not active." 
       });
     }
-
+    
     const isBcrypt = admin.password_hash && 
                      (admin.password_hash.startsWith('$2b$') || 
                       admin.password_hash.startsWith('$2a$'));

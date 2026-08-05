@@ -27,5 +27,5 @@ const logRoutes = (prefix, router) => {
 app.use('/api/admin', adminRoutes);
 logRoutes('/api/admin', adminRoutes);
 
-const PORT = process.env.BACK_PORT || 8080;
+const PORT = process.env.BACK_PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
