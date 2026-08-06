@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import ASubheader from './AComponents/ASubheader';
-import './../Global.css'
+import ASubheader from '../AComponents/ASubheader';
+import '../../Global.css';
 
 function AGrades() {
   const gradesTabs = [

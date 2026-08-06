@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BiSearch, BiX } from 'react-icons/bi';
-import Filter from '../Components/Filter';
-import './../GlobalHistory.css';
-import './../Global.css';
-import './../GlobalEmpty.css';
+import Filter from '../../Components/Filter';
+import '../../GlobalHistory.css';
+import '../../Global.css';
+import '../../GlobalEmpty.css';
 
 function AHistory() {
   const [historyData, setHistoryData] = useState([]);

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import './AStudentManage.css';
-import ASubheader from './AComponents/ASubheader';
+import ASubheader from '../AComponents/ASubheader';
 
 function AStudentManage() {
   const studentTabs = [
@@ -11,9 +11,8 @@ function AStudentManage() {
   ];
   return (
     <div className="astudentManageContainer">
-      <ASubheader tabs={studentTabs} />
       <div className="pageContent">
-        <Outlet />
+                 <ASubheader tabs={studentTabs} />
       </div>
     </div>
   );

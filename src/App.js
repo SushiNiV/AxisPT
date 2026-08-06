@@ -6,20 +6,21 @@ import SessionExpired from './Components/SessionExpire';
 import ASignIn from './Admin/ASignIn';
 import AChangePass from './Admin/AChangePass';
 
-import ADashboard from './Admin/ADashboard';
+import ADashboard from './Admin/APages/ADashboard';
 
-import AStudentManage from './Admin/AStudentManage';
+import AStudentManage from './Admin/APages/AStudentManage';
+import Masterlist from './Admin/APages/Masterlist';
 
-import AAcademics from './Admin/AGrades';
+import AAcademics from './Admin/APages/AGrades';
 import AProgSec from './Admin/APages/AProgSec';
 import ACourses from './Admin/APages/ACourses';
 
-import AAccessCtrl from './Admin/AAccessCtrl';
+import AAccessCtrl from './Admin/APages/AAccessCtrl';
 import Manage from './Admin/APages/Manage';
 import AcadYear from './Admin/APages/AcadYear';
 import Curricula from './Admin/APages/Curricula';
 
-import AHistory from './Admin/AHistory';
+import AHistory from './Admin/APages/AHistory';
 
 import ProtectedRoute from './Components/ProtectedRoute';
 import ALayout from './Admin/AComponents/ALayout';
@@ -64,7 +65,10 @@ function AppContent() {
           <Route element={<ALayout />}>
             <Route path="/admin/dashboard" element={<ADashboard />} />
             <Route path="/admin/student-management" element={<AStudentManage />}>
-              <Route index element={<Navigate to="" replace />} />
+              <Route index element={<Navigate to="masterlist" replace />} />
+              <Route path="masterlist" element={<Masterlist />} />
+              <Route path="pending-students" element={<AStudentManage />} />
+              <Route path="student-grades" element={<AStudentManage />} />
             </Route>
             <Route path="/admin/academics" element={<AAcademics />}>
               <Route index element={<Navigate to="programs&sections" replace />} />

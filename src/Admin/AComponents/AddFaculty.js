@@ -161,36 +161,38 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
   const modalContent = (
     <div className="modalOverlay">
       <div className="modalContainer">
-        <div className="CloseBtnArea">
-          <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
-        </div>
         <div className="modalHeader">
           <h3 className="modalTitle">{isEditMode ? "UPDATE USER" : "ADD NEW USER"}</h3>
+          <div className="CloseBtnArea">
+            <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
+          </div>
         </div>
 
         <div className="modalScrollArea">
           <div className="FormContent">
-            <div className="formGroup">
-              <label className="formLabel">LAST NAME <span style={{color: 'red'}}>*</span></label>
-              <input 
-                type="text"
-                name="last_name"
-                placeholder="Dela Cruz"
-                value={formData.last_name}
-                onChange={handleChange}
-              />
-            </div>
+            <div className="formRow">
+              <div className="formGroup">
+                <label className="formLabel">LAST NAME <span style={{color: 'red'}}>*</span></label>
+                <input 
+                  type="text"
+                  name="last_name"
+                  placeholder="Dela Cruz"
+                  value={formData.last_name}
+                  onChange={handleChange}
+                />
+              </div>
 
-            <div className="formGroup">
-              <label className="formLabel">FIRST NAME <span style={{color: 'red'}}>*</span></label>
-              <input 
-                type="text"
-                name="first_name"
-                placeholder="Juan"
-                value={formData.first_name}
-                onChange={handleChange}
-              />
-            </div>
+              <div className="formGroup">
+                <label className="formLabel">FIRST NAME <span style={{color: 'red'}}>*</span></label>
+                <input 
+                  type="text"
+                  name="first_name"
+                  placeholder="Juan"
+                  value={formData.first_name}
+                  onChange={handleChange}
+                />
+              </div>
+            </div> 
 
             <div className="formRow">
               <div className="formGroup">
@@ -220,28 +222,30 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
               </div>
             </div>
 
-            <div className="formGroup">
-              <label className="formLabel">USERNAME <span style={{color: 'red'}}>*</span></label>
-              <input 
-                type="text"
-                name="username"
-                placeholder="01230001231"
-                value={formData.username}
-                onChange={handleChange}
-              />
-            </div>
+            <div className="formRow">
+              <div className="formGroup">
+                <label className="formLabel">USERNAME <span style={{color: 'red'}}>*</span></label>
+                <input 
+                  type="text"
+                  name="username"
+                  placeholder="01230001231"
+                  value={formData.username}
+                  onChange={handleChange}
+                />
+              </div>
 
-            <div className="formGroup">
-              <label className="formLabel"> SCHOOL EMAIL <span style={{color: 'red'}}>*</span></label>
-              <input 
-                type="email"
-                name="email"
-                placeholder="juan.delacruz@school.edu"
-                value={formData.email}
-                onChange={handleChange}
-              />
+              <div className="formGroup">
+                <label className="formLabel"> SCHOOL EMAIL <span style={{color: 'red'}}>*</span></label>
+                <input 
+                  type="email"
+                  name="email"
+                  placeholder="juan.delacruz@school.edu"
+                  value={formData.email}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
-
+            
             <div className="formRow">
               <div className="formGroup">
                 <label className="formLabel">ROLE <span style={{color: 'red'}}>*</span></label>

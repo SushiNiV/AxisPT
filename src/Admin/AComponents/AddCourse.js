@@ -220,11 +220,11 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
   const modalContent = (
     <div className="modalOverlay">
       <div className="modalContainer">
-        <div className="CloseBtnArea">
-          <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
-        </div>
         <div className="modalHeader">
           <h3 className="modalTitle">{isEditMode ? "UPDATE COURSE" : "ADD NEW COURSE"}</h3>
+           <div className="CloseBtnArea">
+              <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
+           </div>
         </div>
 
         <div className="modalScrollArea">
