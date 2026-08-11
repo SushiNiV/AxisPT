@@ -27,7 +27,6 @@
   overflow: hidden; 
 }
 
-/* Header Section */
 .modalHeader {
   background-color: #3d1616;
   padding: 0.85rem 1.5rem;
@@ -99,7 +98,6 @@
   background: #3d1616;
 }
 
-/* Status Toggle Switch */
 .statusToggleContainer {
   cursor: pointer;
   display: flex;
@@ -149,3 +147,156 @@
 
 .text-active { color: #4caf50; }
 .text-inactive { color: #f44336; }
+
+/* ==========================================================================
+   STUDENT MODAL FORM & ACCORDION STYLES
+   ========================================================================== */
+
+/* Form Structure & Row Layouts */
+.formSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.sectionHeading {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: #3d1616;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin: 0.5rem 0;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.3rem;
+}
+
+.formRow {
+  display: grid;
+  gap: 1rem;
+}
+
+.split2 { grid-template-columns: 1fr 1fr; }
+.split3 { grid-template-columns: 1fr 1fr 1fr; }
+.span2 { grid-column: span 2; }
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.formGroup input, 
+.formGroup select {
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background-color: #ffffff;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.formGroup input:focus, 
+.formGroup select:focus {
+  border-color: #3d1616;
+  box-shadow: 0 0 0 2px rgba(61, 22, 22, 0.1);
+}
+
+/* Accordion Dropdown Trigger Button */
+.accordionToggleArea {
+  margin: 1.25rem 0;
+  display: flex;
+  justify-content: center;
+}
+
+.accordionBtn {
+  background: #edf2f7;
+  border: 1px solid #cbd5e1;
+  color: #3d1616;
+  padding: 0.75rem 1.25rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  justify-content: space-between;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.accordionBtn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.arrow {
+  transition: transform 0.3s ease;
+  font-size: 0.75rem;
+}
+
+.arrow.open {
+  transform: rotate(180deg);
+}
+
+/* Collapsible Section Container */
+.detailedInfoContainer {
+  background-color: #ffffff;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Modal Footer Action Buttons */
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.cancelBtn {
+  background: #e2e8f0;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: #475569;
+  transition: background-color 0.2s;
+}
+
+.cancelBtn:hover {
+  background: #cbd5e1;
+}
+
+.submitBtn {
+  background: #3d1616;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: #ffffff;
+  transition: opacity 0.2s;
+}
+
+.submitBtn:hover {
+  opacity: 0.9;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}

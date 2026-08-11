@@ -12,6 +12,13 @@ router.get('/designations', verifyToken, adminController.getDesignations);
 router.post('/login', adminController.login);
 router.post('/change-password', verifyToken, adminController.changePassword);
 
+//student management
+router.get('/students', verifyToken, adminController.getStudentMasterlist);
+router.get('/students/:id', verifyToken, adminController.getStudentById);
+router.post('/students', verifyToken, adminController.createStudent);
+router.put('/students/:id', verifyToken, adminController.updateStudent);
+router.delete('/students/:id', verifyToken, adminController.deleteStudent);
+
 //academic year
 router.get('/academic-years', verifyToken, adminController.getAcademicYears);
 router.post('/academic-years', verifyToken, adminController.addAcademicYear);

@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { BiSearch, BiFilterAlt, BiPlusCircle, BiX, BiTrash, BiExport } from 'react-icons/bi';
+import React, { useState, useEffect, useCallback } from 'react';
+import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash } from 'react-icons/bi';
+import Filter from '../../Components/Filter';
 import '../../GlobalHistory.css';
 import '../../Global.css';
 import '../../GlobalEmpty.css';
-// Ensure to create or adjust this modal component path as needed
 import AddStudent from '../AComponents/AddStudent';
 
 function Masterlist() {
@@ -12,46 +12,54 @@ function Masterlist() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(50);
+  const [rowsPerPage] = useState(30);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  
+  // Overlay & Editing states
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
 
-  // Student Filter States
+  // Filter States
   const [selectedProgram, setSelectedProgram] = useState("");
   const [selectedYearLevel, setSelectedYearLevel] = useState("");
-  const [selectedSection, setSelectedSection] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
+  const [tempProgram, setTempProgram] = useState("");
+  const [tempYearLevel, setTempYearLevel] = useState("");
+  const [tempStatus, setTempStatus] = useState("");
 
-  const filterRef = useRef(null);
-
-  // Dynamic Options derived from data
   const [programOptions, setProgramOptions] = useState([]);
-  const [yearLevelOptions, setYearLevelOptions] = useState([]);
-  const [sectionOptions, setSectionOptions] = useState([]);
+  const [yearLevelOptions] = useState(["1st Year", "2nd Year", "3rd Year", "4th Year"]);
   const [statusOptions] = useState(["Active", "Inactive"]);
 
-  const hasActiveFilters = 
-    selectedProgram !== "" || 
-    selectedYearLevel !== "" || 
-    selectedSection !== "" || 
-    selectedStatus !== "";
+  const hasActiveFilters = selectedProgram !== "" || selectedYearLevel !== "" || selectedStatus !== "";
 
-  // Handle outside click for filter menu dropdown
+  // Sync temp filter state when opening filter popup
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (filterRef.current && !filterRef.current.contains(event.target)) {
-        setIsFilterOpen(false);
-      }
-    };
+    if (isFilterOpen) {
+      setTempProgram(selectedProgram);
+      setTempYearLevel(selectedYearLevel);
+      setTempStatus(selectedStatus);
+    }
+  }, [isFilterOpen, selectedProgram, selectedYearLevel, selectedStatus]);
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+  // Fetch Programs for Filter
+  const fetchPrograms = useCallback(async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        const programs = data.data.map(p => p.program_name);
+        setProgramOptions(programs);
+      }
+    } catch (err) {
+      console.error("Error fetching programs:", err);
+    }
   }, []);
 
-  // Fetch Student Masterlist
+  // Fetch Students Data
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -61,81 +69,88 @@ function Masterlist() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-
       if (data.success) {
         setStudents(data.data);
-
-        // Extract unique options dynamically for filter dropdowns
-        const uniquePrograms = [...new Set(data.data.map(s => s.program_abbr || s.program_name).filter(Boolean))];
-        const uniqueYears = [...new Set(data.data.map(s => s.year_level).filter(Boolean))].sort();
-        const uniqueSections = [...new Set(data.data.map(s => s.section_name).filter(Boolean))].sort();
-
-        setProgramOptions(uniquePrograms);
-        setYearLevelOptions(uniqueYears);
-        setSectionOptions(uniqueSections);
       } else {
-        setError(data.message || "Failed to fetch student masterlist.");
+        setError(data.message || "Failed to fetch student masterlist");
       }
     } catch (err) {
       console.error("Error fetching students:", err);
-      setError("Failed to connect to the server.");
+      setError("Failed to connect to the server");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    fetchPrograms();
     fetchStudents();
-  }, [fetchStudents]);
+  }, [fetchPrograms, fetchStudents]);
 
-  const handleAddSuccess = () => {
-    setShowAddStudent(false);
-    setEditingStudent(null);
-    fetchStudents();
-  };
-
-  const handleEdit = (student) => {
-    setEditingStudent(student);
-    setShowAddStudent(true);
-  };
-
-  const handleDelete = async (studentId, studentNo) => {
-    if (window.confirm(`Are you sure you want to delete student "${studentNo}"?`)) {
-      try {
-        const token = sessionStorage.getItem('token');
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/students/${studentId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (data.success) {
-          fetchStudents();
-        } else {
-          alert(data.message || "Failed to delete student record.");
-        }
-      } catch (error) {
-        console.error("Error deleting student:", error);
-        alert("An error occurred while attempting to delete.");
-      }
+  // Filter Configuration
+  const filters = [
+    { 
+      name: "program", 
+      label: "PROGRAM", 
+      value: tempProgram,
+      options: programOptions,
+      placeholder: "ALL PROGRAMS"
+    },
+    { 
+      name: "yearLevel", 
+      label: "YEAR LEVEL", 
+      value: tempYearLevel,
+      options: yearLevelOptions,
+      placeholder: "ALL YEARS"
+    },
+    { 
+      name: "status", 
+      label: "STATUS", 
+      value: tempStatus,
+      options: statusOptions,
+      placeholder: "ALL STATUS"
     }
+  ];
+
+  const handleFilterChange = (name, value) => {
+    if (name === "program") setTempProgram(value);
+    else if (name === "yearLevel") setTempYearLevel(value);
+    else if (name === "status") setTempStatus(value);
   };
 
-  // Filter & Search Logic
-  const filteredStudents = students.filter((student) => {
+  const resetFilters = () => {
+    setTempProgram("");
+    setTempYearLevel("");
+    setTempStatus("");
+    setSelectedProgram("");
+    setSelectedYearLevel("");
+    setSelectedStatus("");
+    setIsFilterOpen(false);
+    setCurrentPage(1);
+  };
+
+  const applyFilters = () => {
+    setSelectedProgram(tempProgram);
+    setSelectedYearLevel(tempYearLevel);
+    setSelectedStatus(tempStatus);
+    setIsFilterOpen(false);
+    setCurrentPage(1);
+  };
+
+  // Search & Filter Logic
+  const filteredStudents = students.filter((std) => {
+    const fullName = `${std.first_name} ${std.last_name}`.toLowerCase();
     const matchesSearch = 
-      student.student_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.program_abbr?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.section_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      fullName.includes(searchTerm.toLowerCase()) ||
+      std.student_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      std.personal_email?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesProgram = !selectedProgram || (student.program_abbr === selectedProgram || student.program_name === selectedProgram);
-    const matchesYear = !selectedYearLevel || String(student.year_level) === String(selectedYearLevel);
-    const matchesSection = !selectedSection || student.section_name === selectedSection;
-    const matchesStatus = !selectedStatus || (selectedStatus === "Active" ? student.is_active : !student.is_active);
+    const matchesProgram = !selectedProgram || std.program_name === selectedProgram;
+    const matchesYearLevel = !selectedYearLevel || std.year_level?.toString() === selectedYearLevel.charAt(0);
+    const matchesStatus = !selectedStatus || 
+      (selectedStatus === "Active" ? std.account_status : !std.account_status);
 
-    return matchesSearch && matchesProgram && matchesYear && matchesSection && matchesStatus;
+    return matchesSearch && matchesProgram && matchesYearLevel && matchesStatus;
   });
 
   // Pagination Math
@@ -154,14 +169,6 @@ function Masterlist() {
     setCurrentPage(1);
   };
 
-  const resetFilters = () => {
-    setSelectedProgram("");
-    setSelectedYearLevel("");
-    setSelectedSection("");
-    setSelectedStatus("");
-    setCurrentPage(1);
-  };
-
   const goToNextPage = () => { 
     if (currentPage < totalPages) setCurrentPage(p => p + 1); 
   };
@@ -170,18 +177,52 @@ function Masterlist() {
     if (currentPage > 1) setCurrentPage(p => p - 1); 
   };
 
+  const handleAddSuccess = () => {
+    setShowAddStudent(false);
+    setEditingStudent(null);
+    fetchStudents();
+  };
+
+  const handleEdit = (student) => {
+    setEditingStudent(student);
+    setShowAddStudent(true);
+  };
+
+  const handleDelete = async (studentId) => {
+    if (window.confirm("Are you sure you want to delete this student record?")) {
+      try {
+        const token = sessionStorage.getItem('token');
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/students/${studentId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+          fetchStudents();
+        } else {
+          alert(data.message || "Failed to delete student.");
+        }
+      } catch (err) {
+        console.error("Error deleting student:", err);
+        alert("An error occurred.");
+      }
+    }
+  };
+
+  // Loading State UI
   if (loading) {
     return (
       <div className="InnerContainer">
         <div className="emptyState">
           <div className="emptyStateIcon">⏳</div>
           <h3 className="emptyStateTitle">Loading Masterlist</h3>
-          <p className="emptyStateText">Please wait while we fetch student records...</p>
+          <p className="emptyStateText">Please wait while we fetch the data...</p>
         </div>
       </div>
     );
   }
 
+  // Error State UI
   if (error) {
     return (
       <div className="InnerContainer">
@@ -200,12 +241,14 @@ function Masterlist() {
     <div className="InnerContainer">
       {showAddStudent && (
         <AddStudent
+          isOpen={showAddStudent}
           onClose={() => {
             setShowAddStudent(false);
             setEditingStudent(null);
           }}
           onSuccess={handleAddSuccess}
-          studentToEdit={editingStudent}
+          initialData={editingStudent}
+          isEditMode={!!editingStudent}
         />
       )}
 
@@ -214,7 +257,7 @@ function Masterlist() {
           <BiSearch className="SearchIcon" />
           <input 
             type="text" 
-            placeholder="Search student no., name, email..." 
+            placeholder="Search student number, name, or email..." 
             className="SearchInput"
             value={searchTerm}
             onChange={handleSearch}
@@ -227,91 +270,18 @@ function Masterlist() {
           )}
         </div>
         
-        <div className="TopbarBtnContainer" ref={filterRef}>
-          <button 
-            className={`TopbarBtn ${isFilterOpen ? 'Active' : ''} ${hasActiveFilters ? 'FilterActive' : ''}`}
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-          >
-            <BiFilterAlt className="linkIcon" />
-            Filter
-          </button>
-
-          {isFilterOpen && (
-            <div className="FilterDropdown">
-              <div className="FilterGroup">
-                <label>PROGRAM</label>
-                <select 
-                  value={selectedProgram} 
-                  onChange={(e) => {
-                    setSelectedProgram(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="">ALL PROGRAMS</option>
-                  {programOptions.map(prog => (
-                    <option key={prog} value={prog}>{prog}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="FilterGroup">
-                <label>YEAR LEVEL</label>
-                <select 
-                  value={selectedYearLevel} 
-                  onChange={(e) => {
-                    setSelectedYearLevel(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="">ALL YEARS</option>
-                  {yearLevelOptions.map(yr => (
-                    <option key={yr} value={yr}>Year {yr}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="FilterGroup">
-                <label>SECTION</label>
-                <select 
-                  value={selectedSection} 
-                  onChange={(e) => {
-                    setSelectedSection(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="">ALL SECTIONS</option>
-                  {sectionOptions.map(sec => (
-                    <option key={sec} value={sec}>{sec}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="FilterGroup">
-                <label>STATUS</label>
-                <select 
-                  value={selectedStatus} 
-                  onChange={(e) => {
-                    setSelectedStatus(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="">ALL STATUS</option>
-                  {statusOptions.map(status => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="BtnsContainer">
-                <button className="ResetFilterBtn" onClick={resetFilters}>Reset</button>
-                <button className="ApplyFilterBtn" onClick={() => setIsFilterOpen(false)}>Apply</button>
-              </div>
-            </div>
-          )}
-        </div>
+        <Filter
+          isOpen={isFilterOpen}
+          setIsOpen={setIsFilterOpen}
+          hasActiveFilters={hasActiveFilters}
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onReset={resetFilters}
+          onApply={applyFilters}
+        />
 
         <div className="TopbarBtnContainer">
-          <button className="TopbarBtn" onClick={() => setShowAddStudent(true)}>
+          <button className="TopbarBtn" onClick={() => { setEditingStudent(null); setShowAddStudent(true); }}>
             <BiPlusCircle className="linkIcon" />
             Student
           </button>
@@ -331,9 +301,9 @@ function Masterlist() {
         ) : (
           <div className="emptyState">
             <div className="emptyStateIcon">🎓</div>
-            <h3 className="emptyStateTitle">No Students Found</h3>
-            <p className="emptyStateText">Get started by enrolling or adding your first student.</p>
-            <button className="emptyStateBtn" onClick={() => setShowAddStudent(true)}>
+            <h3 className="emptyStateTitle">No Students Yet</h3>
+            <p className="emptyStateText">Get started by creating your first student record.</p>
+            <button className="emptyStateBtn" onClick={() => { setEditingStudent(null); setShowAddStudent(true); }}>
               <BiPlusCircle className="linkIcon"/> Add Student
             </button>
           </div>
@@ -347,34 +317,38 @@ function Masterlist() {
                   <th style={{ width: '40px' }}>
                     <input type="checkbox" />
                   </th>
-                  <th>Student ID</th>
+                  <th>Student No.</th>
                   <th>Full Name</th>
                   <th>Program</th>
                   <th>Year Level</th>
                   <th>Section</th>
-                  <th>School Email</th>
+                  <th>Email</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {currentItems.map((student) => (
-                  <tr key={student.student_id}>
+                {currentItems.map((std) => (
+                  <tr key={std.student_id}>
                     <td><input type="checkbox" /></td>
-                    <td>{student.student_number || '—'}</td>
-                    <td>{student.last_name}, {student.first_name} {student.middle_name ? `${student.middle_name[0]}.` : ''}</td>
-                    <td>{student.program_abbr || student.program_name || '—'}</td>
-                    <td>{student.year_level ? `Year ${student.year_level}` : '—'}</td>
-                    <td>{student.section_name || '—'}</td>
-                    <td>{student.email || '—'}</td>
+                    <td>{std.student_number}</td>
+                    <td>{`${std.last_name}, ${std.first_name}`}</td>
+                    <td>{std.program_abbr || std.program_name || '-'}</td>
+                    <td>{std.year_level ? `${std.year_level}` : '-'}</td>
+                    <td>{std.section_name || '-'}</td>
+                    <td>{std.personal_email}</td>
                     <td>
-                      <span className={`statusBadge ${student.is_active ? 'active-bg' : 'inactive-bg'}`}>
-                        {student.is_active ? 'Active' : 'Inactive'}
+                      <span className={`statusBadge ${std.account_status ? 'active-bg' : 'inactive-bg'}`}>
+                        {std.account_status ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="tableActions">
-                      <button className="tableEditBtn" onClick={() => handleEdit(student)}>Edit</button>
-                      <button className="tableDeleteBtn" onClick={() => handleDelete(student.student_id, student.student_number)}>Delete</button>
+                      <button className="tableEditBtn" onClick={() => handleEdit(std)}>
+                        <BiPencil /> Edit
+                      </button>
+                      <button className="tableDeleteBtn" onClick={() => handleDelete(std.student_id)}>
+                        <BiTrash /> Delete
+                      </button>
                     </td>
                   </tr>
                 ))}

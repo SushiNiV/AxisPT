@@ -10,6 +10,7 @@ const FacultyModel = require('../models/facultyModel');
 const SectionModel = require('../models/sectionModel');
 const SectionAssignmentModel = require('../models/sectionassignModel');
 const CourseModel = require('../models/courseModel');
+const StudentManageModel = require('../models/studentmanageModel');
 
 const UserModel = require('../models/userModel');
 const HistoryModel = require('../models/historyModel');
@@ -470,6 +471,107 @@ exports.addUser = async (req, res) => {
   } catch (error) {
     await db.query('ROLLBACK');
     console.error("Error creating user:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.getStudentMasterlist = async (req, res) => {
+  try {
+    const { search, programId, limit, offset } = req.query;
+    const masterlist = await StudentManageModel.getMasterlist({ search, programId, limit, offset });
+    res.json({ success: true, data: masterlist });
+  } catch (error) {
+    console.error("Error fetching student masterlist:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.getStudentById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const student = await StudentManageModel.getById(id);
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: "Student record not found." });
+    }
+
+    res.status(200).json({ success: true, data: student });
+  } catch (error) {
+    console.error("Error fetching student details:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.createStudent = async (req, res) => {
+  try {
+    const studentData = req.body;
+
+    // Basic Validation
+    if (!studentData.studentNumber || !studentData.firstName || !studentData.lastName || !studentData.email) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Student number, first name, last name, and email are required." 
+      });
+    }
+
+    const newStudent = await StudentManageModel.create(studentData);
+
+    res.status(201).json({ 
+      success: true, 
+      message: "Student created successfully.", 
+      data: newStudent 
+    });
+  } catch (error) {
+    console.error("Error creating student:", error);
+    
+    // Handle Postgres Unique Constraint Violation (e.g. duplicate student_number / username)
+    if (error.code === '23505') {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Student number or email already exists." 
+      });
+    }
+
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.updateStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: "Student ID parameter is required." });
+    }
+
+    await StudentManageModel.update(id, updateData);
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Student record updated successfully." 
+    });
+  } catch (error) {
+    console.error("Error updating student:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.deleteStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await StudentManageModel.delete(id);
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Student record not found or already deleted." });
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Student record deleted successfully." 
+    });
+  } catch (error) {
+    console.error("Error deleting student:", error);
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 };

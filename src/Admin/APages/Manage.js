@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { BiSearch, BiFilterAlt, BiPlusCircle, BiX, BiTrash, BiExport } from 'react-icons/bi';
+import { BiSearch, BiFilterAlt, BiPlusCircle, BiX,BiPencil, BiTrash, BiExport } from 'react-icons/bi';
 import '../../GlobalHistory.css';
 import '../../Global.css';
 import '../../GlobalEmpty.css';
@@ -319,8 +319,8 @@ function AManage() {
                       </span>
                     </td>
                     <td className="tableActions">
-                      <button className="tableEditBtn" onClick={() => handleEdit(user)}>Edit</button>
-                      <button className="tableDeleteBtn" onClick={() => handleDelete(user.user_id, user.username)}>Delete</button>
+                      <button className="tableEditBtn" onClick={() => handleEdit(user)}> <BiPencil /> Edit</button>
+                      <button className="tableDeleteBtn" onClick={() => handleDelete(user.user_id, user.username)}> <BiTrash /> Delete</button>
                     </td>
                   </tr>
                 ))}
