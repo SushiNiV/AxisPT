@@ -75,7 +75,9 @@ p, h1, h3, td, tr {
 .InnerContainer {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
+  flex: 1;
+  min-height: 0; 
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -246,10 +248,11 @@ p, h1, h3, td, tr {
   justify-content: center;
   align-items: center;
   background-color: #fff;
-  padding: 15px;
+  padding: 12px 15px;
   border-top: 1px solid #eee;
   border-radius: 0 0 5px 5px;
-  margin: 0.5rem 0;
+  margin: 0;           
+  flex-shrink: 0;    
 }
 
 .PaginationControls {
@@ -325,8 +328,8 @@ p, h1, h3, td, tr {
 }
 
 .TableContainer {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 0; 
   overflow-y: auto;
   background-color: #fff;
   border-radius: 5px 5px 0 0;

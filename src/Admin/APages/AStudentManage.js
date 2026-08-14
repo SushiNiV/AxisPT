@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import ASubheader from '../AComponents/ASubheader';
+import '../../Global.css';
 
 function AStudentManage() {
   const studentTabs = [
@@ -9,11 +10,9 @@ function AStudentManage() {
     { label: 'Student Grades', path: '/admin/student-management/student-grades' },
   ];
   return (
-    <div className="astudentManageContainer">
-      <div className="pageContent">
-                 <ASubheader tabs={studentTabs} />
-                 <Outlet />
-      </div>
+    <div className="InnerContainer">
+            <ASubheader tabs={studentTabs} />
+            <Outlet />
     </div>
   );
 }
