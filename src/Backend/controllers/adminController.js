@@ -12,6 +12,7 @@ const SectionModel = require('../models/sectionModel');
 const SectionAssignmentModel = require('../models/sectionassignModel');
 const CourseModel = require('../models/courseModel');
 const StudentManageModel = require('../models/studentmanageModel');
+const GradeManageModel = require('../models/gradeManageModel');
 const UserModel = require('../models/userModel');
 const HistoryModel = require('../models/historyModel');
 
@@ -336,7 +337,21 @@ exports.getStudentMasterlist = async (req, res) => {
   try {
     const { search, programId, limit, offset } = req.query;
     const masterlist = await StudentManageModel.getMasterlist({ search, programId, limit, offset });
-    res.json({ success: true, data: masterlist });
+
+    // Merge in each student's academic standing (Regular / Warning /
+    // Probationary 1 / Probationary 2), auto-computed from their grade
+    // history unless a Program Head has recorded a verified override.
+    const standingMap = await GradeManageModel.getAcademicStandingMap();
+    const enriched = masterlist.map((student) => {
+      const standing = standingMap.get(student.student_id);
+      return {
+        ...student,
+        academic_status: standing?.status || 'Regular',
+        academic_status_overridden: standing?.isOverridden || false
+      };
+    });
+
+    res.json({ success: true, data: enriched });
   } catch (error) {
     console.error("Error fetching student masterlist:", error);
     res.status(500).json({ success: false, message: "Internal server error." });
@@ -430,6 +445,43 @@ exports.deleteStudent = async (req, res) => {
     });
   } catch (error) {
     console.error("Error deleting student:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+// ==========================================
+// DOCUMENT GENERATION
+// ==========================================
+
+exports.getStudentFormById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const student = await StudentManageModel.getById(id);
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: "Student record not found." });
+    }
+
+    res.status(200).json({ success: true, data: student });
+  } catch (error) {
+    console.error("Error fetching student form data:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.getStudentFormMe = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const studentRes = await db.query(`SELECT student_id FROM students WHERE user_id = $1`, [userId]);
+
+    if (studentRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Student record not found." });
+    }
+
+    const student = await StudentManageModel.getById(studentRes.rows[0].student_id);
+    res.status(200).json({ success: true, data: student });
+  } catch (error) {
+    console.error("Error fetching student self record:", error);
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 };
@@ -1156,5 +1208,57 @@ exports.getHistory = async (req, res) => {
   } catch (err) {
     console.error("Get history error:", err);
     res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+//grade management
+
+/**
+ * GET /admin/students/:id/grades
+ * Returns the student's full curriculum-based grade sheet, grouped by
+ * year level and semester, merged with any grades already on file.
+ */
+exports.getStudentGrades = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const gradeSheet = await GradeManageModel.getGradeSheet(id);
+
+    if (!gradeSheet) {
+      return res.status(404).json({
+        success: false,
+        message: 'No curriculum/enrollment record found for this student, so a grade sheet could not be built.'
+      });
+    }
+
+    res.status(200).json({ success: true, data: gradeSheet });
+  } catch (error) {
+    console.error('Error fetching student grade sheet:', error);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
+};
+
+/**
+ * PUT /admin/students/:id/grades
+ * Persists a batch of grade entries for a student.
+ * Expected body: { grades: Array<{ courseId, yearLevel, semesterId, prelim, midterm, final }> }
+ */
+exports.updateStudentGrades = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { grades } = req.body;
+
+    if (!Array.isArray(grades) || grades.length === 0) {
+      return res.status(400).json({ success: false, message: 'At least one grade entry is required.' });
+    }
+
+    // Recorder is sourced from the auth middleware, not trusted from the body.
+    const facultyId = req.user?.faculty_id || req.user?.id || null;
+
+    await GradeManageModel.saveGrades(id, facultyId, grades);
+
+    res.status(200).json({ success: true, message: 'Student grades updated successfully.' });
+  } catch (error) {
+    console.error('Error updating student grades:', error);
+    res.status(500).json({ success: false, message: error.message || 'Internal server error.' });
   }
 };

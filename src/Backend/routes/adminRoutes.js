@@ -19,6 +19,10 @@ router.post('/students', verifyToken, adminController.createStudent);
 router.put('/students/:id', verifyToken, adminController.updateStudent);
 router.delete('/students/:id', verifyToken, adminController.deleteStudent);
 
+//grade management
+router.get('/students/:id/grades', verifyToken, adminController.getStudentGrades);
+router.put('/students/:id/grades', verifyToken, adminController.updateStudentGrades);
+
 //academic year
 router.get('/academic-years', verifyToken, adminController.getAcademicYears);
 router.post('/academic-years', verifyToken, adminController.addAcademicYear);

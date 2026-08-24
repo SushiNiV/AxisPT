@@ -8,7 +8,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
   const [showDetailedInfo, setShowDetailedInfo] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [programs, setPrograms] = useState([]);
-  const [portalRoot] = useState(document.getElementById('portal-root') || document.body);
 
   // Accept either prop name to prevent breakage
   const studentData = studentToEdit || initialData;
@@ -97,61 +96,68 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
   useEffect(() => {
     if (studentData) {
       setFormData({
-        studentNumber: studentData.student_number || '',
+        studentNumber: studentData.student_number || studentData.studentNumber || '',
         email: studentData.email || studentData.school_email || studentData.personal_email || '',
         accountStatus: typeof studentData.account_status === 'boolean' 
           ? studentData.account_status 
           : studentData.account_status === 'Active' || studentData.account_status === 1 || studentData.account_status === true,
         
-        firstName: studentData.first_name || '',
-        middleName: studentData.middle_name || '',
-        lastName: studentData.last_name || '',
+        firstName: studentData.first_name || studentData.firstname || studentData.firstName || '',
+        middleName: studentData.middle_name || studentData.middlename || studentData.middleName || '',
+        lastName: studentData.last_name || studentData.lastname || studentData.lastName || '',
         suffix: studentData.suffix || '',
         sex: studentData.sex || 'Male',
-        birthDate: studentData.birth_date ? studentData.birth_date.split('T')[0] : '',
-        placeOfBirth: studentData.place_of_birth || '',
-        phoneNumber: studentData.mobile_no || studentData.phone_number || '',
-        landline: studentData.landline || '',
+        birthDate: studentData.birth_date ? studentData.birth_date.split('T')[0] : (studentData.birthDate || ''),
+        placeOfBirth: studentData.place_of_birth || studentData.placeOfBirth || '',
+        phoneNumber: studentData.mobile_no || studentData.phoneNumber || studentData.phone_number || '',
+        landline: studentData.landline || studentData.landline_no || '',
         religion: studentData.religion || '',
         nationality: studentData.nationality || 'Filipino',
-        civilStatus: studentData.civil_status || 'Single',
+        civilStatus: studentData.civil_status || studentData.civilStatus || 'Single',
         height: studentData.height || '',
         weight: studentData.weight || '',
-        language: studentData.language_dialect || studentData.language || '',
-        visualProblems: studentData.visual_problems || '',
+        language: studentData.language_dialect || studentData.language_dialects || studentData.language || '',
+        visualProblems: studentData.visual_problems || studentData.visualProblems || '',
 
-        permHouseNo: studentData.perm_house_no || '',
-        permStreet: studentData.perm_street || studentData.street || '',
-        permSubdivision: studentData.perm_subdivision || '',
-        permBarangay: studentData.perm_barangay || studentData.barangay || '',
-        permCity: studentData.perm_city || studentData.city_municipality || '',
-        permProvince: studentData.perm_province || studentData.province || '',
+        // Permanent / Present Address
+        permHouseNo: studentData.perm_house_no || studentData.present_houseno || studentData.permHouseNo || '',
+        permStreet: studentData.perm_street || studentData.present_street || studentData.street || studentData.permStreet || '',
+        permSubdivision: studentData.perm_subdivision || studentData.permSubdivision || '',
+        permBarangay: studentData.perm_barangay || studentData.present_sbdvsn_brgy || studentData.barangay || studentData.permBarangay || '',
+        permCity: studentData.perm_city || studentData.present_city_mncplty || studentData.city_municipality || studentData.permCity || '',
+        permProvince: studentData.perm_province || studentData.province || studentData.permProvince || '',
 
+        // Provincial Address
         sameAsPermanent: !!studentData.same_as_permanent,
-        provHouseNo: studentData.prov_house_no || '',
-        provStreet: studentData.prov_street || '',
-        provSubdivision: studentData.prov_subdivision || '',
-        provBarangay: studentData.prov_barangay || '',
-        provCity: studentData.prov_city || '',
-        provProvince: studentData.prov_province || '',
+        provHouseNo: studentData.prov_house_no || studentData.provincial_houseno || studentData.provHouseNo || '',
+        provStreet: studentData.prov_street || studentData.provincial_street || studentData.provStreet || '',
+        provSubdivision: studentData.prov_subdivision || studentData.provSubdivision || '',
+        provBarangay: studentData.prov_barangay || studentData.provincial_sbdvsn_brgy || studentData.provBarangay || '',
+        provCity: studentData.prov_city || studentData.provincial_city_mncplty || studentData.provCity || '',
+        provProvince: studentData.prov_province || studentData.provProvince || '',
 
-        programId: studentData.program_id || '',
-        yearLevel: studentData.year_level?.toString() || '1',
+        // Program and Education
+        programId: studentData.program_id || studentData.curriculum_id || studentData.programId || '',
+        yearLevel: studentData.year_level?.toString() || studentData.yearLevel?.toString() || '1',
         classification: studentData.classification || 'Regular',
-        highschoolGraduated: studentData.highschool_graduated || '',
-        pubprivHS: studentData.pub_priv_hs || 'Public',
-        schoolAddress: studentData.hs_school_address || '',
-        hsFinalGWA: studentData.hs_final_gwa || '',
+        highschoolGraduated: studentData.highschool_graduated || studentData.highschoolGraduated || '',
+        pubprivHS: studentData.pub_priv_hs || studentData.pubprivHS || 'Public',
+        schoolAddress: studentData.hs_school_address || studentData.schoolAddress || '',
+        hsFinalGWA: studentData.hs_final_gwa || studentData.hsFinalGWA || '',
 
-        fatherName: studentData.father_name || '',
-        fatherStatus: studentData.father_status || 'Living',
-        fatherOccupation: studentData.father_occupation || '',
-        fatherContact: studentData.father_contact || '',
-        motherName: studentData.mother_name || '',
-        motherStatus: studentData.mother_status || 'Living',
-        motherOccupation: studentData.mother_occupation || '',
-        motherContact: studentData.mother_contact || ''
+        // Family Details
+        fatherName: studentData.father_name || studentData.father_firstname || studentData.fatherName || '',
+        fatherStatus: studentData.father_status || studentData.fatherStatus || 'Living',
+        fatherOccupation: studentData.father_occupation || studentData.fatherOccupation || '',
+        fatherContact: studentData.father_contact || studentData.father_contact_no || studentData.fatherContact || '',
+        motherName: studentData.mother_name || studentData.mother_firstname || studentData.motherName || '',
+        motherStatus: studentData.mother_status || studentData.motherStatus || 'Living',
+        motherOccupation: studentData.mother_occupation || studentData.motherOccupation || '',
+        motherContact: studentData.mother_contact || studentData.mother_contact_no || studentData.motherContact || ''
       });
+
+      // Expand accordion automatically in Edit mode
+      setShowDetailedInfo(true);
     }
   }, [studentData]);
 
@@ -192,7 +198,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
 
     try {
       const token = sessionStorage.getItem('token');
-      const studentId = studentData?.student_id;
+      const studentId = studentData?.student_id || studentData?.studentId;
       const url = isEditMode && studentId
         ? `${process.env.REACT_APP_API_URL}/admin/students/${studentId}`
         : `${process.env.REACT_APP_API_URL}/admin/students`;
@@ -200,64 +206,103 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
       const method = isEditMode && studentId ? 'PUT' : 'POST';
 
       const payload = {
-        // Primary
+        // Primary / User
         student_number: formData.studentNumber,
+        studentNumber: formData.studentNumber,
+        school_email: formData.email,
         email: formData.email,
         account_status: Boolean(formData.accountStatus),
+        accountStatus: Boolean(formData.accountStatus),
 
-        // Personal Information
+        // Personal Information (PII)
         first_name: formData.firstName,
-        middle_name: formData.middleName,
+        firstName: formData.firstName,
+        middle_name: formData.middleName || null,
+        middleName: formData.middleName || null,
         last_name: formData.lastName,
-        suffix: formData.suffix,
+        lastName: formData.lastName,
+        suffix: formData.suffix || null,
         sex: formData.sex,
         birth_date: formData.birthDate || null,
-        place_of_birth: formData.placeOfBirth,
-        mobile_no: formData.phoneNumber,
-        landline: formData.landline,
-        religion: formData.religion,
-        nationality: formData.nationality,
-        civil_status: formData.civilStatus,
-        height: formData.height,
-        weight: formData.weight,
-        language_dialect: formData.language,
-        visual_problems: formData.visualProblems,
+        birthDate: formData.birthDate || null,
+        place_of_birth: formData.placeOfBirth || null,
+        placeOfBirth: formData.placeOfBirth || null,
+        mobile_no: formData.phoneNumber || null,
+        phoneNumber: formData.phoneNumber || null,
+        landline: formData.landline || null,
+        religion: formData.religion || null,
+        nationality: formData.nationality || 'Filipino',
+        civil_status: formData.civilStatus || 'Single',
+        civilStatus: formData.civilStatus || 'Single',
+        height: formData.height || null,
+        weight: formData.weight || null,
+        language_dialects: formData.language || null,
+        language_dialect: formData.language || null,
+        language: formData.language || null,
+        visual_problems: formData.visualProblems || null,
+        visualProblems: formData.visualProblems || null,
 
-        // Permanent Address
-        perm_house_no: formData.permHouseNo,
-        perm_street: formData.permStreet,
-        perm_subdivision: formData.permSubdivision,
-        perm_barangay: formData.permBarangay,
-        perm_city: formData.permCity,
-        perm_province: formData.permProvince,
+        // Permanent / Present Address
+        present_houseno: formData.permHouseNo || null,
+        present_street: formData.permStreet || null,
+        present_sbdvsn_brgy: formData.permBarangay || null,
+        present_city_mncplty: formData.permCity || null,
+        perm_house_no: formData.permHouseNo || null,
+        perm_street: formData.permStreet || null,
+        perm_barangay: formData.permBarangay || null,
+        perm_city: formData.permCity || null,
+        perm_province: formData.permProvince || null,
 
         // Provincial Address
         same_as_permanent: formData.sameAsPermanent,
-        prov_house_no: formData.sameAsPermanent ? formData.permHouseNo : formData.provHouseNo,
-        prov_street: formData.sameAsPermanent ? formData.permStreet : formData.provStreet,
-        prov_subdivision: formData.sameAsPermanent ? formData.permSubdivision : formData.provSubdivision,
-        prov_barangay: formData.sameAsPermanent ? formData.permBarangay : formData.provBarangay,
-        prov_city: formData.sameAsPermanent ? formData.permCity : formData.provCity,
-        prov_province: formData.sameAsPermanent ? formData.permProvince : formData.provProvince,
+        provincial_houseno: formData.sameAsPermanent ? formData.permHouseNo : formData.provHouseNo || null,
+        provincial_street: formData.sameAsPermanent ? formData.permStreet : formData.provStreet || null,
+        provincial_sbdvsn_brgy: formData.sameAsPermanent ? formData.permBarangay : formData.provBarangay || null,
+        provincial_city_mncplty: formData.sameAsPermanent ? formData.permCity : formData.provCity || null,
+        prov_house_no: formData.sameAsPermanent ? formData.permHouseNo : formData.provHouseNo || null,
+        prov_street: formData.sameAsPermanent ? formData.permStreet : formData.provStreet || null,
+        prov_barangay: formData.sameAsPermanent ? formData.permBarangay : formData.provBarangay || null,
+        prov_city: formData.sameAsPermanent ? formData.permCity : formData.provCity || null,
+        prov_province: formData.sameAsPermanent ? formData.permProvince : formData.provProvince || null,
 
         // Program and Education
-        program_id: formData.programId ? parseInt(formData.programId) : null,
-        year_level: formData.yearLevel ? parseInt(formData.yearLevel) : null,
-        classification: formData.classification,
-        highschool_graduated: formData.highschoolGraduated,
-        pub_priv_hs: formData.pubprivHS,
-        hs_school_address: formData.schoolAddress,
-        hs_final_gwa: formData.hsFinalGWA ? parseFloat(formData.hsFinalGWA) : null,
+        program_id: formData.programId ? parseInt(formData.programId, 10) : null,
+        curriculum_id: formData.programId ? parseInt(formData.programId, 10) : null,
+        programId: formData.programId ? parseInt(formData.programId, 10) : null,
+        year_level: formData.yearLevel ? String(formData.yearLevel) : '1',
+        yearLevel: formData.yearLevel ? String(formData.yearLevel) : '1',
+        classification: formData.classification || 'Regular',
+        highschool_graduated: formData.highschoolGraduated || null,
+        highschoolGraduated: formData.highschoolGraduated || null,
+        pub_priv_hs: formData.pubprivHS || 'Public',
+        pubprivHS: formData.pubprivHS || 'Public',
+        hs_school_address: formData.schoolAddress || null,
+        schoolAddress: formData.schoolAddress || null,
+        hs_final_gwa: formData.hsFinalGWA && !isNaN(formData.hsFinalGWA) ? parseFloat(formData.hsFinalGWA) : null,
+        hsFinalGWA: formData.hsFinalGWA && !isNaN(formData.hsFinalGWA) ? parseFloat(formData.hsFinalGWA) : null,
 
-        // Family
-        father_name: formData.fatherName,
-        father_status: formData.fatherStatus,
-        father_occupation: formData.fatherOccupation,
-        father_contact: formData.fatherContact,
-        mother_name: formData.motherName,
-        mother_status: formData.motherStatus,
-        mother_occupation: formData.motherOccupation,
-        mother_contact: formData.motherContact
+        // Family Information
+        father_firstname: formData.fatherName || null,
+        father_name: formData.fatherName || null,
+        fatherName: formData.fatherName || null,
+        father_status: formData.fatherStatus || 'Living',
+        fatherStatus: formData.fatherStatus || 'Living',
+        father_occupation: formData.fatherOccupation || null,
+        fatherOccupation: formData.fatherOccupation || null,
+        father_contact: formData.fatherContact || null,
+        father_contact_no: formData.fatherContact || null,
+        fatherContact: formData.fatherContact || null,
+
+        mother_firstname: formData.motherName || null,
+        mother_name: formData.motherName || null,
+        motherName: formData.motherName || null,
+        mother_status: formData.motherStatus || 'Living',
+        motherStatus: formData.motherStatus || 'Living',
+        mother_occupation: formData.motherOccupation || null,
+        motherOccupation: formData.motherOccupation || null,
+        mother_contact: formData.motherContact || null,
+        mother_contact_no: formData.motherContact || null,
+        motherContact: formData.motherContact || null
       };
 
       const response = await fetch(url, {
@@ -271,7 +316,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
 
       const data = await response.json();
 
-      if (data.success) {
+      if (data.success || response.ok) {
         alert(isEditMode ? "Student record updated successfully!" : "Student record created successfully!");
         onSuccess();
       } else {
@@ -287,7 +332,8 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
 
   const modalContent = (
     <div className="modalOverlay">
-      <div className="modalContainer">
+      {/* Form now correctly wraps the container with full-height flex rendering */}
+      <form onSubmit={handleSubmit} className="modalContainer" style={{ display: 'flex', flexDirection: 'column' }}>
         
         {/* Global Modal Header */}
         <div className="modalHeader">
@@ -295,13 +341,14 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
             {isEditMode ? "EDIT STUDENT RECORD" : "ADD NEW STUDENT"}
           </h3>
           <div className="CloseBtnArea">
-            <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>
+            <button type="button" className="CloseBtn" onClick={onClose} disabled={isSubmitting}>
               &times;
             </button>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="modalScrollArea">
+        {/* Scrollable Modal Area */}
+        <div className="modalScrollArea">
           
           {/* SECTION 1: PRIMARY DETAILS */}
           <div className="formSection">
@@ -344,7 +391,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                   <option value="">Select Program</option>
                   {programs.map(prog => (
                     <option key={prog.program_id} value={prog.program_id}>
-                      {prog.program_abbr || prog.program_name}
+                      {prog.program_abbr || prog.program_code || prog.program_name}
                     </option>
                   ))}
                 </select>
@@ -377,7 +424,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
             <button 
               type="button" 
               className="accordionBtn"
-              onClick={() => setShowDetailedInfo(!showDetailedInfo)}
+              onClick={() => setShowDetailedInfo(prev => !prev)}
             >
               <span>{showDetailedInfo ? "Hide Detailed Information" : "View / Edit Detailed Student Information"}</span>
               <span className={`arrow ${showDetailedInfo ? 'open' : ''}`}>&#9660;</span>
@@ -633,13 +680,14 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
             </button>
           </div>
 
-        </form>
+        </div>
 
-      </div>
+      </form>
     </div>
   );
 
-  return ReactDOM.createPortal(modalContent, portalRoot);
+  const portalTarget = document.getElementById('portal-root') || document.body;
+  return ReactDOM.createPortal(modalContent, portalTarget);
 };
 
 export default AddStudent;

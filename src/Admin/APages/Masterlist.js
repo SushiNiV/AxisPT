@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash } from 'react-icons/bi';
+import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash, BiListCheck } from 'react-icons/bi';
 import Filter from '../../Components/Filter';
 import '../../GlobalHistory.css';
 import '../../Global.css';
 import '../../GlobalEmpty.css';
 import AddStudent from '../AComponents/AddStudent';
+import AddGrade from '../AComponents/AddGrade';
 
 function Masterlist() {
   const [students, setStudents] = useState([]);
@@ -19,6 +20,9 @@ function Masterlist() {
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
 
+  // Grade Modal state
+  const [viewingGradesFor, setViewingGradesFor] = useState(null);
+
   // Filter States
   const [selectedProgram, setSelectedProgram] = useState("");
   const [selectedYearLevel, setSelectedYearLevel] = useState("");
@@ -29,7 +33,7 @@ function Masterlist() {
 
   const [programOptions, setProgramOptions] = useState([]);
   const [yearLevelOptions] = useState(["1st Year", "2nd Year", "3rd Year", "4th Year"]);
-  const [statusOptions] = useState(["Active", "Inactive"]);
+  const [statusOptions] = useState(["Regular", "Warning", "Probationary 1", "Probationary 2"]);
 
   const hasActiveFilters = selectedProgram !== "" || selectedYearLevel !== "" || selectedStatus !== "";
 
@@ -105,10 +109,10 @@ function Masterlist() {
     },
     { 
       name: "status", 
-      label: "STATUS", 
+      label: "ACADEMIC STANDING", 
       value: tempStatus,
       options: statusOptions,
-      placeholder: "ALL STATUS"
+      placeholder: "ALL STANDINGS"
     }
   ];
 
@@ -147,8 +151,7 @@ function Masterlist() {
 
     const matchesProgram = !selectedProgram || std.program_name === selectedProgram;
     const matchesYearLevel = !selectedYearLevel || std.year_level?.toString() === selectedYearLevel.charAt(0);
-    const matchesStatus = !selectedStatus || 
-      (selectedStatus === "Active" ? std.account_status : !std.account_status);
+    const matchesStatus = !selectedStatus || std.academic_status === selectedStatus;
 
     return matchesSearch && matchesProgram && matchesYearLevel && matchesStatus;
   });
@@ -186,6 +189,28 @@ function Masterlist() {
   const handleEdit = (student) => {
     setEditingStudent(student);
     setShowAddStudent(true);
+  };
+
+  const handleViewGrades = (student) => {
+    setViewingGradesFor(student);
+  };
+
+  // Academic standing badge styling. Regular/Probationary 2 reuse the
+  // existing green/red badge classes; Warning and Probationary 1 sit in
+  // between and use inline colors since no global class exists for them yet.
+  const getStandingBadgeProps = (status) => {
+    switch (status) {
+      case "Regular":
+        return { className: "statusBadge active-bg" };
+      case "Warning":
+        return { className: "statusBadge", style: { backgroundColor: "#fff3cd", color: "#8a6512" } };
+      case "Probationary 1":
+        return { className: "statusBadge", style: { backgroundColor: "#ffe0b2", color: "#e65100" } };
+      case "Probationary 2":
+        return { className: "statusBadge inactive-bg" };
+      default:
+        return { className: "statusBadge" };
+    }
   };
 
   const handleDelete = async (studentId) => {
@@ -249,6 +274,14 @@ function Masterlist() {
           onSuccess={handleAddSuccess}
           initialData={editingStudent}
           isEditMode={!!editingStudent}
+        />
+      )}
+
+      {viewingGradesFor && (
+        <AddGrade
+          student={viewingGradesFor}
+          onClose={() => setViewingGradesFor(null)}
+          onSuccess={() => setViewingGradesFor(null)}
         />
       )}
 
@@ -323,7 +356,7 @@ function Masterlist() {
                   <th>Year Level</th>
                   <th>Section</th>
                   <th>Email</th>
-                  <th>Status</th>
+                  <th>Standing</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -338,11 +371,14 @@ function Masterlist() {
                     <td>{std.section_name || '-'}</td>
                     <td>{std.personal_email}</td>
                     <td>
-                      <span className={`statusBadge ${std.account_status ? 'active-bg' : 'inactive-bg'}`}>
-                        {std.account_status ? 'Active' : 'Inactive'}
+                      <span {...getStandingBadgeProps(std.academic_status)}>
+                        {std.academic_status || 'Regular'}
                       </span>
                     </td>
                     <td className="tableActions">
+                      <button className="tableEditBtn" onClick={() => handleViewGrades(std)}>
+                        <BiListCheck /> Grades
+                      </button>
                       <button className="tableEditBtn" onClick={() => handleEdit(std)}>
                         <BiPencil /> Edit
                       </button>

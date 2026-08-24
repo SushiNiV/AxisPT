@@ -362,9 +362,9 @@ p, h1, h3, td, tr {
 }
 
 .Table th {
-  background-color: #ffffff;
-  padding: 10px 15px;
-  color: #3d1616;
+  background-color: #3d1616;
+  padding: 7.5px;
+  color: #ffffff;
   font-weight: 700;
   border-bottom: 2px solid #eee;
   position: sticky;
@@ -373,7 +373,7 @@ p, h1, h3, td, tr {
 }
 
 .Table td {
-  padding: 10px 15px;
+  padding: 7.5px;
   border-bottom: 1px solid #eee;
   color: #444;
 }
