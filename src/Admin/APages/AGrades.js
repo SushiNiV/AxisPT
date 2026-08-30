@@ -6,8 +6,7 @@ import '../../Global.css';
 function AGrades() {
   const gradesTabs = [
     { label: 'Programs & Sections', path: '/admin/academics/programs&sections' },
-    { label: 'Courses', path: '/admin/academics/courses' },
-    { label: 'Academic Grades', path: '/admin/academics/grades' },
+    { label: 'Courses', path: '/admin/academics/courses' }
   ];
   return (
     <div className="InnerContainer">

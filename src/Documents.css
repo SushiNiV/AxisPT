@@ -1,0 +1,305 @@
+/* ============================================================================
+   DocumentsSplitView.css
+   Shared by DocumentsStudentForm.js, DocumentsTermGrade.js, and
+   DocumentsCourseCurriculum.js. Uses the CSS variables already defined in
+   Global.css (--branding-maroon, --border-light, --text-secondary, etc.)
+   so these pages stay visually consistent with the rest of the admin
+   portal without redefining the palette.
+   ============================================================================ */
+
+/* ---- Top action row (Print / Download) - tabs now live in ASubheader,
+   so each page just needs its own actions, right-aligned. ---- */
+
+.DocPageActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  flex-shrink: 0;
+}
+
+.DocPageActions .TopbarBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.DocPageActions .TopbarBtn:disabled:hover {
+  background-color: #fff;
+  color: var(--branding-maroon);
+  border-color: #ccc;
+}
+
+/* ---- Split view shell ---- */
+
+.DocSplitView {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  background-color: #fff;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+}
+
+/* ---- Left panel: list (students, or curricula/programs) ---- */
+
+.DocListPanel {
+  width: 30%;
+  min-width: 360px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-light);
+  min-height: 0;
+}
+
+.DocListTop .SearchWrapper {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+}
+
+.DocListTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 10px;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+
+.DocListTop .TopbarBtn {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.DocListTop .TopbarBtnContainer {
+  position: relative;
+  margin-left: 0;
+}
+
+.DocListTop .FilterDropdown {
+  right: 0 !important;
+  left: auto !important;
+  width: 220px !important;
+  max-width: calc(30vw - 20px);
+}
+
+.DocStudentCheckbox {
+  accent-color: var(--branding-maroon);
+}
+
+.DocListSelectionInfo {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+.DocStudentList {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.DocStudentList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.DocStudentList::-webkit-scrollbar-thumb {
+  background: #3d1616aa;
+}
+
+.DocListMessage {
+  padding: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.DocStudentRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.DocStudentRow.Selected {
+  background-color: rgba(61, 22, 22, 0.04);
+}
+
+.DocStudentCheckbox {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.DocStudentRowContent {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.DocStudentList .DocStudentRow:first-child {
+  border-top: none;
+}
+
+.DocStudentRow:hover {
+  background-color: #f8f9fa;
+}
+
+.DocStudentRow.Active {
+  background-color: rgba(61, 22, 22, 0.08);
+}
+
+.DocStudentName {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.DocStudentMeta {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.DocListPagination {
+  border-radius: 0;
+}
+
+.DocPrintError {
+  margin: 0 0 0.5rem;
+  color: #c62828;
+  font-size: 0.85rem;
+}
+
+/* ---- Right panel: preview canvas ---- */
+
+.DocPreviewPanel {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background-color: var(--bg-tertiary);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  padding: 2rem 1rem;
+}
+
+.DocPreviewActions {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1;
+  text-align: right;
+}
+
+/* Floating zoom widget - its own corner overlay, distinct from
+   DocPreviewActions (Print button), matching a map-style zoom control. */
+.DocPreviewZoomControls {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.DocPreviewZoomButton {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: none;
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--branding-maroon);
+  padding: 0;
+}
+
+.DocPreviewZoomControls > button:last-child {
+  border-bottom: none;
+}
+
+.DocPreviewZoomButton:hover:not(:disabled) {
+  background-color: #f8f9fa;
+}
+
+.DocPreviewZoomButton:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.DocEmptyState {
+  margin: auto;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+
+.DocPreviewOuter {
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid var(--border-medium);
+}
+
+/* The inner element stays at true physical size and is scaled down;
+   the actual document component renders inside this at full size. */
+.DocPreviewScaler {
+  transform-origin: top left;
+}
+
+.DocBatchPrintArea {
+  display: none;
+}
+
+/* ---- Print handling ----
+   Only selected forms reach paper/PDF; each form starts on a new page. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .DocBatchPrintArea,
+  .DocBatchPrintArea * {
+    visibility: visible;
+  }
+
+  .DocBatchPrintArea {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    border: none !important;
+  }
+
+  .DocBatchPrintForm {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .DocBatchPrintForm:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}

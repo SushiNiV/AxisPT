@@ -161,6 +161,20 @@ function Masterlist() {
   const indexOfLastItem = currentPage * rowsPerPage;
   const indexOfFirstItem = indexOfLastItem - rowsPerPage;
   const currentItems = filteredStudents.slice(indexOfFirstItem, indexOfLastItem);
+  const visibleStart = filteredStudents.length ? indexOfFirstItem + 1 : 0;
+  const visibleEnd = Math.min(indexOfLastItem, filteredStudents.length);
+  const standingCounts = filteredStudents.reduce(
+    (counts, student) => {
+      const status = student.academic_status || 'Regular';
+
+      if (status === 'Regular') counts.regular += 1;
+      else if (status === 'Warning') counts.warning += 1;
+      else if (status.startsWith('Probationary')) counts.probationary += 1;
+
+      return counts;
+    },
+    { regular: 0, warning: 0, probationary: 0 }
+  );
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -186,9 +200,21 @@ function Masterlist() {
     fetchStudents();
   };
 
-  const handleEdit = (student) => {
-    setEditingStudent(student);
-    setShowAddStudent(true);
+  const handleEdit = async (student) => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/admin/students/${student.student_id}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      const data = await response.json();
+      if (data.success) {
+        setEditingStudent(data.data);
+        setShowAddStudent(true);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleViewGrades = (student) => {
@@ -281,7 +307,10 @@ function Masterlist() {
         <AddGrade
           student={viewingGradesFor}
           onClose={() => setViewingGradesFor(null)}
-          onSuccess={() => setViewingGradesFor(null)}
+          onSuccess={() => {
+            setViewingGradesFor(null)
+            fetchStudents();
+          }}
         />
       )}
 
@@ -343,13 +372,22 @@ function Masterlist() {
         )
       ) : (
         <>
+          <div className="MasterlistSummary" aria-live="polite">
+            <span className="MasterlistResultCount">
+              Showing {visibleStart}–{visibleEnd} of {filteredStudents.length} students
+            </span>
+            <div className="MasterlistStandingCounts" aria-label="Academic standing summary">
+              <span className="MasterlistStanding regular">Regular {standingCounts.regular}</span>
+              <span className="MasterlistStanding warning">Warning {standingCounts.warning}</span>
+              <span className="MasterlistStanding probationary">Probationary {standingCounts.probationary}</span>
+            </div>
+          </div>
+
           <div className="TableContainer">
             <table className="Table">
               <thead>
                 <tr>
-                  <th style={{ width: '40px' }}>
-                    <input type="checkbox" />
-                  </th>
+                  
                   <th>Student No.</th>
                   <th>Full Name</th>
                   <th>Program</th>
@@ -363,7 +401,7 @@ function Masterlist() {
               <tbody>
                 {currentItems.map((std) => (
                   <tr key={std.student_id}>
-                    <td><input type="checkbox" /></td>
+                    
                     <td>{std.student_number}</td>
                     <td>{`${std.last_name}, ${std.first_name}`}</td>
                     <td>{std.program_abbr || std.program_name || '-'}</td>

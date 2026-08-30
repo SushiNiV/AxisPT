@@ -15,6 +15,10 @@ import AAcademics from './Admin/APages/AGrades';
 import AProgSec from './Admin/APages/AProgSec';
 import ACourses from './Admin/APages/ACourses';
 
+import ADocuments from './Admin/APages/ADocuments';
+import DocumentsStudentForm from './Admin/APages/DocumentsStudentForm';
+import DocumentsTermGrade from './Admin/APages/DocumentsTermGrade';
+
 import AAccessCtrl from './Admin/APages/AAccessCtrl';
 import Manage from './Admin/APages/Manage';
 import AcadYear from './Admin/APages/AcadYear';
@@ -64,23 +68,32 @@ function AppContent() {
           <Route path="/change-password" element={<AChangePass />} />
           <Route element={<ALayout />}>
             <Route path="/admin/dashboard" element={<ADashboard />} />
+            
             <Route path="/admin/student-management" element={<AStudentManage />}>
               <Route index element={<Navigate to="masterlist" replace />} />
               <Route path="masterlist" element={<Masterlist />} />
               <Route path="pending-students" element={<AStudentManage />} />
               <Route path="student-grades" element={<AStudentManage />} />
             </Route>
+
             <Route path="/admin/academics" element={<AAcademics />}>
               <Route index element={<Navigate to="programs&sections" replace />} />
               <Route path="programs&sections" element={<AProgSec />} />
               <Route path="courses" element={<ACourses />} />
             </Route>
+
+            <Route path="/admin/documents" element={<ADocuments />}>
+              <Route path="student-form" element={<DocumentsStudentForm />} />
+              <Route path="term-grade" element={<DocumentsTermGrade />} />  
+            </Route>
+
             <Route path="/admin/access-control" element={<AAccessCtrl />}>
               <Route index element={<Navigate to="manage-people" replace />} />
               <Route path="manage-people" element={<Manage />} />
               <Route path="academic-year" element={<AcadYear />} />
               <Route path="curricula" element={<Curricula />} />
             </Route>
+
             <Route path="/admin/history" element={<AHistory />} />
           </Route>
         </Route>

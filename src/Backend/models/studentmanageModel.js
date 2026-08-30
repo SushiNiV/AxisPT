@@ -210,6 +210,15 @@ class StudentManageModel {
         studentData.mother_contact_no = m.contact_no;
         studentData.mother_contact = m.contact_no;
         studentData.mother_status = m.is_alive ? 'Living' : 'Deceased';
+      } else if (rel === 'guardian') {
+        studentData.guardian_firstname = m.first_name;
+        studentData.guardian_middlename = m.middle_name;
+        studentData.guardian_lastname = m.last_name;
+        studentData.guardian_suffix = m.suffix;
+        studentData.guardian_name = [m.first_name, m.middle_name, m.last_name, m.suffix].filter(Boolean).join(' ');
+        studentData.guardian_occupation = m.occupation;
+        studentData.guardian_contact_no = m.contact_no;
+        studentData.guardian_contact = m.contact_no;
       }
     });
 
@@ -356,6 +365,61 @@ class StudentManageModel {
           data.mother_occupation || null,
           data.mother_contact || data.mother_contact_no || null,
           data.mother_status === 'Living'
+        ]);
+      }
+
+      if (data.guardian_name || data.guardian_firstname) {
+        await client.query(`
+          INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
+          VALUES ($1, 'Guardian', $2, $3, $4, true, true)
+        `, [
+          studentId,
+          data.guardian_firstname || data.guardian_name || null,
+          data.guardian_occupation || null,
+          data.guardian_contact || data.guardian_contact_no || null
+        ]);
+      }
+
+      // 6b. Family Background (who supports college, household income, living
+      // arrangement, daily transportation cost, siblings, birth order).
+      const support = data.support || data.supportSource;
+      const parentsIncome = data.parents_income || data.parentsIncome;
+      const livingIn = data.living_in || data.livingIn;
+      const dailyTranspo = data.daily_transpo_expense || data.dailyTranspoExpense;
+      const noSiblings = data.no_siblings ?? data.noSiblings;
+      const ordinalPosition = data.ordinal_position || data.ordinalPosition;
+
+      if (support || parentsIncome || livingIn || dailyTranspo || noSiblings || ordinalPosition) {
+        await client.query(`
+          INSERT INTO student_family (student_id, support, parents_income, living_in, daily_transpo_expense, no_siblings, ordinal_position)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [
+          studentId,
+          support || null,
+          parentsIncome || null,
+          livingIn || null,
+          dailyTranspo || null,
+          (noSiblings !== undefined && noSiblings !== '') ? parseInt(noSiblings, 10) : null,
+          ordinalPosition || null
+        ]);
+      }
+
+      // 6c. Achievements, Hobbies, Interests
+      const awardsHonors = data.awards_honors || data.awardsHonors;
+      const hobbiesInterests = data.hobbies_interests || data.hobbiesInterests;
+      const futureCareer = data.future_career || data.futureCareer;
+      const acadExtracurr = data.acad_extracurr || data.acad_clubs_extracurr || data.academicClubsExtracurr;
+
+      if (awardsHonors || hobbiesInterests || futureCareer || acadExtracurr) {
+        await client.query(`
+          INSERT INTO student_achievements (student_id, awards_honors, hobbies_interests, future_career, acad_extracurr)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [
+          studentId,
+          awardsHonors || null,
+          hobbiesInterests || null,
+          futureCareer || null,
+          acadExtracurr || null
         ]);
       }
 
@@ -576,6 +640,75 @@ class StudentManageModel {
           data.mother_occupation || null,
           data.mother_contact || data.mother_contact_no || null,
           data.mother_status === 'Living'
+        ]);
+      }
+
+      if (data.guardian_name || data.guardian_firstname) {
+        await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND LOWER(relation_type) = 'guardian'`, [studentId]);
+        await client.query(`
+          INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
+          VALUES ($1, 'Guardian', $2, $3, $4, true, true)
+        `, [
+          studentId,
+          data.guardian_firstname || data.guardian_name || null,
+          data.guardian_occupation || null,
+          data.guardian_contact || data.guardian_contact_no || null
+        ]);
+      }
+
+      // 7b. Upsert Family Background
+      const support = data.support || data.supportSource;
+      const parentsIncome = data.parents_income || data.parentsIncome;
+      const livingIn = data.living_in || data.livingIn;
+      const dailyTranspo = data.daily_transpo_expense || data.dailyTranspoExpense;
+      const noSiblings = data.no_siblings ?? data.noSiblings;
+      const ordinalPosition = data.ordinal_position || data.ordinalPosition;
+
+      if (support || parentsIncome || livingIn || dailyTranspo || noSiblings || ordinalPosition) {
+        await client.query(`
+          INSERT INTO student_family (student_id, support, parents_income, living_in, daily_transpo_expense, no_siblings, ordinal_position, updated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+          ON CONFLICT (student_id) DO UPDATE SET
+            support = EXCLUDED.support,
+            parents_income = EXCLUDED.parents_income,
+            living_in = EXCLUDED.living_in,
+            daily_transpo_expense = EXCLUDED.daily_transpo_expense,
+            no_siblings = EXCLUDED.no_siblings,
+            ordinal_position = EXCLUDED.ordinal_position,
+            updated_at = NOW()
+        `, [
+          studentId,
+          support || null,
+          parentsIncome || null,
+          livingIn || null,
+          dailyTranspo || null,
+          (noSiblings !== undefined && noSiblings !== '') ? parseInt(noSiblings, 10) : null,
+          ordinalPosition || null
+        ]);
+      }
+
+      // 7c. Upsert Achievements, Hobbies, Interests
+      const awardsHonors = data.awards_honors || data.awardsHonors;
+      const hobbiesInterests = data.hobbies_interests || data.hobbiesInterests;
+      const futureCareer = data.future_career || data.futureCareer;
+      const acadExtracurr = data.acad_extracurr || data.acad_clubs_extracurr || data.academicClubsExtracurr;
+
+      if (awardsHonors || hobbiesInterests || futureCareer || acadExtracurr) {
+        await client.query(`
+          INSERT INTO student_achievements (student_id, awards_honors, hobbies_interests, future_career, acad_extracurr, updated_at)
+          VALUES ($1, $2, $3, $4, $5, NOW())
+          ON CONFLICT (student_id) DO UPDATE SET
+            awards_honors = EXCLUDED.awards_honors,
+            hobbies_interests = EXCLUDED.hobbies_interests,
+            future_career = EXCLUDED.future_career,
+            acad_extracurr = EXCLUDED.acad_extracurr,
+            updated_at = NOW()
+        `, [
+          studentId,
+          awardsHonors || null,
+          hobbiesInterests || null,
+          futureCareer || null,
+          acadExtracurr || null
         ]);
       }
 

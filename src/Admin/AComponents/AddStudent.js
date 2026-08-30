@@ -71,7 +71,26 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     motherName: '',
     motherStatus: 'Living',
     motherOccupation: '',
-    motherContact: ''
+    motherContact: '',
+
+    // Guardian's Details (optional)
+    guardianName: '',
+    guardianOccupation: '',
+    guardianContact: '',
+
+    // Family Background
+    support: '',
+    parentsIncome: '',
+    livingIn: '',
+    dailyTranspoExpense: '',
+    noSiblings: '',
+    ordinalPosition: '',
+
+    // Achievements, Hobbies, Interests
+    awardsHonors: '',
+    hobbiesInterests: '',
+    futureCareer: '',
+    academicClubsExtracurr: ''
   });
 
   // Fetch Programs on Mount
@@ -153,7 +172,26 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         motherName: studentData.mother_name || studentData.mother_firstname || studentData.motherName || '',
         motherStatus: studentData.mother_status || studentData.motherStatus || 'Living',
         motherOccupation: studentData.mother_occupation || studentData.motherOccupation || '',
-        motherContact: studentData.mother_contact || studentData.mother_contact_no || studentData.motherContact || ''
+        motherContact: studentData.mother_contact || studentData.mother_contact_no || studentData.motherContact || '',
+
+        // Guardian's Details
+        guardianName: studentData.guardian_name || studentData.guardian_firstname || studentData.guardianName || '',
+        guardianOccupation: studentData.guardian_occupation || studentData.guardianOccupation || '',
+        guardianContact: studentData.guardian_contact || studentData.guardian_contact_no || studentData.guardianContact || '',
+
+        // Family Background
+        support: studentData.support || '',
+        parentsIncome: studentData.parents_income || studentData.parentsIncome || '',
+        livingIn: studentData.living_in || studentData.livingIn || '',
+        dailyTranspoExpense: studentData.daily_transpo_expense || studentData.dailyTranspoExpense || '',
+        noSiblings: studentData.no_siblings ?? studentData.noSiblings ?? '',
+        ordinalPosition: studentData.ordinal_position || studentData.ordinalPosition || '',
+
+        // Achievements, Hobbies, Interests
+        awardsHonors: studentData.awards_honors || studentData.awardsHonors || '',
+        hobbiesInterests: studentData.hobbies_interests || studentData.hobbiesInterests || '',
+        futureCareer: studentData.future_career || studentData.futureCareer || '',
+        academicClubsExtracurr: studentData.acad_extracurr || studentData.acad_clubs_extracurr || studentData.academicClubsExtracurr || ''
       });
 
       // Expand accordion automatically in Edit mode
@@ -302,7 +340,41 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         motherOccupation: formData.motherOccupation || null,
         mother_contact: formData.motherContact || null,
         mother_contact_no: formData.motherContact || null,
-        motherContact: formData.motherContact || null
+        motherContact: formData.motherContact || null,
+
+        // Guardian's Details
+        guardian_firstname: formData.guardianName || null,
+        guardian_name: formData.guardianName || null,
+        guardianName: formData.guardianName || null,
+        guardian_occupation: formData.guardianOccupation || null,
+        guardianOccupation: formData.guardianOccupation || null,
+        guardian_contact: formData.guardianContact || null,
+        guardian_contact_no: formData.guardianContact || null,
+        guardianContact: formData.guardianContact || null,
+
+        // Family Background
+        support: formData.support || null,
+        supportSource: formData.support || null,
+        parents_income: formData.parentsIncome || null,
+        parentsIncome: formData.parentsIncome || null,
+        living_in: formData.livingIn || null,
+        livingIn: formData.livingIn || null,
+        daily_transpo_expense: formData.dailyTranspoExpense || null,
+        dailyTranspoExpense: formData.dailyTranspoExpense || null,
+        no_siblings: formData.noSiblings !== '' ? parseInt(formData.noSiblings, 10) : null,
+        noSiblings: formData.noSiblings !== '' ? parseInt(formData.noSiblings, 10) : null,
+        ordinal_position: formData.ordinalPosition || null,
+        ordinalPosition: formData.ordinalPosition || null,
+
+        // Achievements, Hobbies, Interests
+        awards_honors: formData.awardsHonors || null,
+        awardsHonors: formData.awardsHonors || null,
+        hobbies_interests: formData.hobbiesInterests || null,
+        hobbiesInterests: formData.hobbiesInterests || null,
+        future_career: formData.futureCareer || null,
+        futureCareer: formData.futureCareer || null,
+        acad_extracurr: formData.academicClubsExtracurr || null,
+        academicClubsExtracurr: formData.academicClubsExtracurr || null
       };
 
       const response = await fetch(url, {
@@ -664,6 +736,108 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 <div className="formGroup">
                   <label className="formLabel">CONTACT NUMBER</label>
                   <input type="text" name="motherContact" value={formData.motherContact} onChange={handleChange} />
+                </div>
+              </div>
+
+              <h5 className="subSectionHeading" style={{ marginTop: '10px', marginBottom: '8px', color: '#555' }}>Guardian's Details (if any)</h5>
+              <div className="formRow split2">
+                <div className="formGroup">
+                  <label className="formLabel">GUARDIAN FULL NAME</label>
+                  <input type="text" name="guardianName" value={formData.guardianName} onChange={handleChange} />
+                </div>
+                <div className="formGroup">
+                  <label className="formLabel">CONTACT NUMBER</label>
+                  <input type="text" name="guardianContact" value={formData.guardianContact} onChange={handleChange} />
+                </div>
+              </div>
+              <div className="formRow split2">
+                <div className="formGroup">
+                  <label className="formLabel">OCCUPATION</label>
+                  <input type="text" name="guardianOccupation" value={formData.guardianOccupation} onChange={handleChange} />
+                </div>
+              </div>
+
+              {/* GROUP 4: FAMILY BACKGROUND */}
+              <h4 className="sectionHeading" style={{ marginTop: '20px' }}>Family Background</h4>
+              <div className="formRow split3">
+                <div className="formGroup">
+                  <label className="formLabel">WHO SUPPORTS YOUR EDUCATION?</label>
+                  <select name="support" value={formData.support} onChange={handleChange}>
+                    <option value="">-- Select --</option>
+                    <option value="Parents">Parents</option>
+                    <option value="Relatives">Relatives</option>
+                    <option value="Brother or Sister">Brother or Sister</option>
+                    <option value="Benefactors">Benefactors</option>
+                    <option value="Scholarship">Scholarship</option>
+                  </select>
+                </div>
+                <div className="formGroup">
+                  <label className="formLabel">PARENTS' JOINT MONTHLY INCOME</label>
+                  <select name="parentsIncome" value={formData.parentsIncome} onChange={handleChange}>
+                    <option value="">-- Select --</option>
+                    <option value="Below P20K">Below P20K</option>
+                    <option value="P21K to P40K">P21K to P40K</option>
+                    <option value="P41K to P60K">P41K to P60K</option>
+                    <option value="Above P80K">Above P80K</option>
+                  </select>
+                </div>
+                <div className="formGroup">
+                  <label className="formLabel">WHILE STUDYING, WILL YOU LIVE IN</label>
+                  <select name="livingIn" value={formData.livingIn} onChange={handleChange}>
+                    <option value="">-- Select --</option>
+                    <option value="Dorm/Boarding House">Dorm/Boarding House</option>
+                    <option value="Parent's House">Parent's House</option>
+                    <option value="Relative's House">Relative's House</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div className="formRow split3">
+                <div className="formGroup">
+                  <label className="formLabel">DAILY TRANSPORTATION EXPENSE</label>
+                  <select name="dailyTranspoExpense" value={formData.dailyTranspoExpense} onChange={handleChange}>
+                    <option value="">-- Select --</option>
+                    <option value="< P50">Less than P50</option>
+                    <option value="P51-P100">P51 to P100</option>
+                    <option value="> P100">More than P100</option>
+                  </select>
+                </div>
+                <div className="formGroup">
+                  <label className="formLabel">NUMBER OF SIBLINGS</label>
+                  <input type="number" min="0" name="noSiblings" value={formData.noSiblings} onChange={handleChange} />
+                </div>
+                <div className="formGroup">
+                  <label className="formLabel">ORDINAL POSITION</label>
+                  <select name="ordinalPosition" value={formData.ordinalPosition} onChange={handleChange}>
+                    <option value="">-- Select --</option>
+                    <option value="Only Child">Only Child</option>
+                    <option value="Eldest Child">Eldest Child</option>
+                    <option value="Middle Child">Middle Child</option>
+                    <option value="Youngest Child">Youngest Child</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* GROUP 5: ACHIEVEMENTS, HOBBIES, INTERESTS */}
+              <h4 className="sectionHeading" style={{ marginTop: '20px' }}>Achievements, Hobbies &amp; Interests</h4>
+              <div className="formRow split2">
+                <div className="formGroup">
+                  <label className="formLabel">AWARDS / HONORS RECEIVED</label>
+                  <textarea rows="2" name="awardsHonors" value={formData.awardsHonors} onChange={handleChange} />
+                </div>
+                <div className="formGroup">
+                  <label className="formLabel">CAREER / WORK YOU WANT TO PURSUE</label>
+                  <textarea rows="2" name="futureCareer" value={formData.futureCareer} onChange={handleChange} />
+                </div>
+              </div>
+              <div className="formRow split2">
+                <div className="formGroup">
+                  <label className="formLabel">HOBBIES / SPORTS / INTERESTS</label>
+                  <textarea rows="2" name="hobbiesInterests" value={formData.hobbiesInterests} onChange={handleChange} />
+                </div>
+                <div className="formGroup">
+                  <label className="formLabel">ACADEMIC CLUBS / EXTRACURRICULARS</label>
+                  <textarea rows="2" name="academicClubsExtracurr" value={formData.academicClubsExtracurr} onChange={handleChange} />
                 </div>
               </div>
 

@@ -7,7 +7,6 @@ function AStudentManage() {
   const studentTabs = [
     { label: 'Masterlist', path: '/admin/student-management/masterlist' },
     { label: 'Pending Students', path: '/admin/student-management/pending-students' },
-    { label: 'Student Grades', path: '/admin/student-management/student-grades' },
   ];
   return (
     <div className="InnerContainer">

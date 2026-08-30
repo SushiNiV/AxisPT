@@ -197,6 +197,7 @@ label {
   display: flex;
   align-items: center;
   gap: 4px;
+  accent-color: black;
 }
 
 input.tiny-check {
@@ -255,6 +256,18 @@ input.tiny-check:checked::before {
 
 
 @media print {
+  /* Keep the section-header fill when the browser generates the print view. */
+  .form-container,
+  .section-title {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .section-title {
+    background-color: #000 !important;
+    color: #fff !important;
+  }
+
   @page {
     size: 215.9mm 330.2mm;
     margin: 0;
@@ -281,4 +294,3 @@ input.tiny-check:checked::before {
 .closer{
   margin-top: -5px !important;
 }
-

@@ -149,10 +149,10 @@
 .text-inactive { color: #f44336; }
 
 /* ==========================================================================
-   STUDENT MODAL FORM & ACCORDION STYLES
+   ADDITIONAL INFORMATION PORTION
    ========================================================================== */
 
-/* Form Structure & Row Layouts */
+
 .formSection {
   display: flex;
   flex-direction: column;
@@ -198,6 +198,7 @@
 }
 
 .formGroup input:focus, 
+.formGroup textarea:focus,
 .formGroup select:focus {
   border-color: #3d1616;
   box-shadow: 0 0 0 2px rgba(61, 22, 22, 0.1);
@@ -241,7 +242,7 @@
   transform: rotate(180deg);
 }
 
-/* Collapsible Section Container */
+
 .detailedInfoContainer {
   background-color: #ffffff;
   padding: 1.25rem;

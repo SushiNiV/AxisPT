@@ -4,15 +4,28 @@
  * ============================================================================
  * Data access layer for viewing and recording student grades.
  *
- * A student's "grade sheet" is assembled from three tables:
+ * A student's "grade sheet" is assembled from four tables:
  *
  *   1. curriculum_courses  -> the fixed list of courses a curriculum requires,
  *                             organized by year_level + semester_id (term type,
  *                             e.g. 1st Sem / 2nd Sem / Summer).
- *   2. grades               -> the recorded outcome for a specific
- *                             (student, course, academic_year, term) combo.
- *   3. grade_components     -> the Prelim / Midterm / Final breakdown that
- *                             produced a grades.final_grade value.
+ *   2. courses               -> lec_units/lab_units/grading_scheme, which
+ *                             determine a course's grading category
+ *                             (see GradingEngine.getCourseCategory).
+ *   3. grades               -> the recorded outcome for a specific
+ *                             (student, course, academic_year, term) combo -
+ *                             final_grade here is the CUMULATIVE course
+ *                             grade (GradingEngine.computeCumulativeGrade),
+ *                             not any single term's score.
+ *   4. grade_components     -> named sub-scores per term (Quizzes/AT,
+ *                             Prelim/Midterm/Final Exam, Unit Practical
+ *                             Exam, OSCE/OSPE, etc. - see gradingEngine.js
+ *                             for the full weight tables per category).
+ *
+ * All grading math (category detection, period-local term grades, the
+ * cumulative course grade, and the percentage->grade-point conversion)
+ * lives in GradingEngine - this model's job is purely data access: fetch
+ * the right rows, hand them to GradingEngine, persist what comes back.
  *
  * IMPORTANT DESIGN NOTE:
  * curriculum_courses does not know *which* academic year a term belongs to —
@@ -28,35 +41,7 @@
  */
 
 const db = require('../config/db');
-
-/** Percentage threshold below which a student fails outright (grade point 5.00). */
-const PASSING_SCORE = 75;
-
-/**
- * The Philippine-style 1.00–5.00 grade point scale, derived from a
- * composite percentage score. Every 3 percentage points below 100 steps
- * the grade point down by 0.25, until it bottoms out at 3.00 (the lowest
- * passing point, corresponding to the 75 floor). Anything below 75 is a
- * flat 5.00 (failed) — it does not continue stepping past 3.00.
- *
- * e.g. 98-100 -> 1.00, 95-97 -> 1.25, 92-94 -> 1.50 ... 75-76 -> 3.00, <75 -> 5.00
- */
-const HIGHEST_GRADE_POINT = 1.0;
-const LOWEST_PASSING_GRADE_POINT = 3.0;
-const FAILING_GRADE_POINT = 5.0;
-const GRADE_POINT_STEP = 0.25;
-const PERCENTAGE_STEP = 3;
-
-/**
- * Standard term weighting used to compute a course's final grade from its
- * Prelim / Midterm / Final scores. Centralized here so the institution's
- * weighting policy only needs to change in one place.
- */
-const TERM_WEIGHTS = {
-  Prelim: 30,
-  Midterm: 30,
-  Final: 40
-};
+const GradingEngine = require('./gradingEngine');
 
 /**
  * Academic standing tiers, derived from a student's failed-grade history.
@@ -140,7 +125,8 @@ class GradeManageModel {
 
     const { curriculum_id, current_year_level, program_name, program_abbr, total_year } = context;
 
-    // 1. Every course required by this curriculum.
+    // 1. Every course required by this curriculum, plus what determines its
+    //    grading category (see GradingEngine.getCourseCategory).
     const coursesRes = await db.query(`
       SELECT 
         cc.year_level,
@@ -149,7 +135,9 @@ class GradeManageModel {
         co.course_id,
         co.course_code,
         co.course_name,
-        co.total_units
+        co.total_units,
+        co.lab_units,
+        co.grading_scheme
       FROM curriculum_courses cc
       JOIN courses co ON co.course_id = cc.course_id
       JOIN semester sem ON sem.semester_id = cc.semester_id
@@ -157,7 +145,8 @@ class GradeManageModel {
       ORDER BY cc.year_level ASC, cc.semester_id ASC, co.course_code ASC
     `, [curriculum_id]);
 
-    // 2. Every grade (and its term components) already recorded for this student.
+    // 2. Every grade (and its named term components) already recorded for
+    //    this student.
     const gradesRes = await db.query(`
       SELECT 
         g.grade_id,
@@ -167,6 +156,7 @@ class GradeManageModel {
         g.final_grade,
         g.remarks,
         gc.term,
+        gc.component_name,
         gc.score
       FROM grades g
       LEFT JOIN grade_components gc ON gc.grade_id = g.grade_id
@@ -174,6 +164,8 @@ class GradeManageModel {
     `, [studentId]);
 
     // Index existing grades by course_id for O(1) lookup while merging below.
+    // scoresByTerm nests component scores as { Prelim: { 'Quizzes/AT': 88 }, ... }
+    // matching the shape GradingEngine expects.
     const gradesByCourse = new Map();
     for (const row of gradesRes.rows) {
       if (!gradesByCourse.has(row.course_id)) {
@@ -183,11 +175,11 @@ class GradeManageModel {
           semesterId: row.semester_id,
           finalGrade: row.final_grade,
           remarks: row.remarks,
-          components: {}
+          scoresByTerm: { Prelim: {}, Midterm: {}, Final: {} }
         });
       }
-      if (row.term) {
-        gradesByCourse.get(row.course_id).components[row.term] = row.score;
+      if (row.term && row.component_name) {
+        gradesByCourse.get(row.course_id).scoresByTerm[row.term][row.component_name] = row.score;
       }
     }
 
@@ -206,17 +198,32 @@ class GradeManageModel {
       }
 
       const existing = gradesByCourse.get(c.course_id) || null;
+      const scoresByTerm = existing?.scoresByTerm || { Prelim: {}, Midterm: {}, Final: {} };
+      const category = GradingEngine.getCourseCategory(c);
+
+      const cumulative = existing
+        ? GradingEngine.computeCumulativeGrade(c, scoresByTerm)
+        : { finalGrade: null, remarks: null };
+
       semMap.get(c.semester_id).courses.push({
         courseId: c.course_id,
         courseCode: c.course_code,
         courseName: c.course_name,
         units: c.total_units,
+        category,
+        // Which component inputs this specific course needs - resolved
+        // per-course (not per-category) since comprehensive/revalida
+        // courses recurse into their own lab_units-dependent table.
+        enterableFields: GradingEngine.getEnterableFields(c),
         gradeId: existing?.gradeId || null,
-        finalGrade: existing?.finalGrade ?? null,
-        remarks: existing?.remarks || null,
-        prelim: existing?.components?.Prelim ?? '',
-        midterm: existing?.components?.Midterm ?? '',
-        final: existing?.components?.Final ?? ''
+        finalGrade: existing?.finalGrade ?? cumulative.finalGrade,
+        remarks: existing?.remarks || cumulative.remarks,
+        scoresByTerm,
+        termGrades: {
+          Prelim: GradingEngine.computeTermGrade(category, 'Prelim', scoresByTerm),
+          Midterm: GradingEngine.computeTermGrade(category, 'Midterm', scoresByTerm),
+          Final: GradingEngine.computeTermGrade(category, 'Final', scoresByTerm)
+        }
       });
     }
 
@@ -233,17 +240,37 @@ class GradeManageModel {
       programAbbr: program_abbr,
       totalYears: total_year,
       currentYearLevel: current_year_level,
-      termWeights: TERM_WEIGHTS,
-      gradeScale: {
-        passingPercentage: PASSING_SCORE,
-        highestPoint: HIGHEST_GRADE_POINT,
-        lowestPassingPoint: LOWEST_PASSING_GRADE_POINT,
-        failingPoint: FAILING_GRADE_POINT,
-        pointStep: GRADE_POINT_STEP,
-        percentageStep: PERCENTAGE_STEP
-      },
+      gradeScale: GradingEngine.getGradeScale(),
       years
     };
+  }
+
+  /**
+   * Every active course, with its grading category + enterableFields
+   * already resolved via GradingEngine. Powers AddGrade.js's "add course"
+   * picker for manually adding a row beyond the curriculum's defaults
+   * (e.g. a retake, an elective, or a shifting student's carried-over
+   * course) - resolved server-side so the frontend never needs its own
+   * copy of GradingEngine's category/weight logic.
+   *
+   * @returns {Promise<Array<object>>}
+   */
+  static async getGradableCourses() {
+    const res = await db.query(`
+      SELECT course_id, course_code, course_name, total_units, lab_units, grading_scheme
+      FROM courses
+      WHERE is_active = true
+      ORDER BY course_code ASC
+    `);
+
+    return res.rows.map((course) => ({
+      courseId: course.course_id,
+      courseCode: course.course_code,
+      courseName: course.course_name,
+      units: course.total_units,
+      category: GradingEngine.getCourseCategory(course),
+      enterableFields: GradingEngine.getEnterableFields(course)
+    }));
   }
 
   /**
@@ -270,57 +297,15 @@ class GradeManageModel {
   }
 
   /**
-   * Converts a composite percentage score (0-100) into its 1.00-5.00
-   * grade point equivalent. Below the passing percentage, the result is
-   * always the flat failing point — it does not keep stepping past 3.00.
-   *
-   * @returns {number} a value between HIGHEST_GRADE_POINT and FAILING_GRADE_POINT.
-   */
-  static percentageToGradePoint(percentage) {
-    if (percentage < PASSING_SCORE) return FAILING_GRADE_POINT;
-
-    const steps = Math.floor((100 - percentage) / PERCENTAGE_STEP);
-    const gradePoint = HIGHEST_GRADE_POINT + GRADE_POINT_STEP * steps;
-
-    // Safety clamp: composite percentages can't fall below PASSING_SCORE
-    // here (that branch is handled above), so this never actually exceeds
-    // LOWEST_PASSING_GRADE_POINT in practice — kept for defensiveness.
-    return Math.min(gradePoint, LOWEST_PASSING_GRADE_POINT);
-  }
-
-  /**
-   * Computes a course's final grade point and pass/fail remark from its
-   * three term scores. A term only counts as "provided" if it is a finite
-   * number. Incomplete sets of scores yield an 'INC' remark and a null
-   * final grade; complete sets are weighted into a composite percentage,
-   * then converted to the 1.00-5.00 grade point scale.
-   *
-   * @returns {{ finalGrade: number|null, remarks: 'P'|'F'|'INC' }}
-   */
-  static computeFinalGrade({ prelim, midterm, final }) {
-    const scores = { Prelim: prelim, Midterm: midterm, Final: final };
-    const provided = Object.entries(scores).filter(
-      ([, v]) => v !== null && v !== '' && v !== undefined && Number.isFinite(Number(v))
-    );
-
-    if (provided.length < 3) {
-      return { finalGrade: null, remarks: 'INC' };
-    }
-
-    let weightedSum = 0;
-    for (const [term, value] of provided) {
-      weightedSum += (Number(value) * TERM_WEIGHTS[term]) / 100;
-    }
-
-    const percentage = Math.round(weightedSum * 100) / 100;
-    const finalGrade = this.percentageToGradePoint(percentage);
-    const remarks = finalGrade === FAILING_GRADE_POINT ? 'F' : 'P';
-    return { finalGrade, remarks };
-  }
-
-  /**
    * Persists a batch of grade entries for a student inside a single
    * transaction — either the whole batch succeeds or none of it does.
+   *
+   * Each entry carries a course's FULL set of per-term component scores
+   * (not just one term's worth) - GradingEngine.computeCumulativeGrade
+   * needs all three terms' data together to produce the official grade,
+   * so partial per-term saves aren't supported at this layer; the
+   * frontend is expected to submit whatever it currently has for a course
+   * across all terms whenever any of it changes.
    *
    * @param {number} studentId
    * @param {number|null} facultyId - id of the recorder, if applicable.
@@ -328,9 +313,11 @@ class GradeManageModel {
    *   courseId: number,
    *   yearLevel: number,
    *   semesterId: number,
-   *   prelim: number|string,
-   *   midterm: number|string,
-   *   final: number|string
+   *   scoresByTerm: {
+   *     Prelim: Object<string, number|string>,
+   *     Midterm: Object<string, number|string>,
+   *     Final: Object<string, number|string>
+   *   }
    * }>} entries
    * @returns {Promise<boolean>}
    */
@@ -346,11 +333,24 @@ class GradeManageModel {
       if (isDedicatedClient) await client.query('BEGIN');
 
       for (const entry of entries) {
-        const { courseId, yearLevel, semesterId, prelim, midterm, final } = entry;
+        const { courseId, yearLevel, semesterId, scoresByTerm } = entry;
 
-        if (!courseId || !yearLevel || !semesterId) {
-          throw new Error(`Incomplete grade entry: course, year level, and semester are required.`);
+        if (!courseId || !yearLevel || !semesterId || !scoresByTerm) {
+          throw new Error('Incomplete grade entry: course, year level, semester, and scores are required.');
         }
+
+        // Category is derived server-side from the course's own record -
+        // never trusted from the client, since it determines the weight
+        // table used to compute the official grade.
+        const courseRes = await client.query(`
+          SELECT course_id, lab_units, grading_scheme FROM courses WHERE course_id = $1
+        `, [courseId]);
+
+        if (courseRes.rows.length === 0) {
+          throw new Error(`Course ${courseId} not found.`);
+        }
+        const course = courseRes.rows[0];
+        const category = GradingEngine.getCourseCategory(course);
 
         const { year_id, semester_id } = await this.resolveAcademicPeriod(
           client, studentId, yearLevel, semesterId
@@ -363,7 +363,7 @@ class GradeManageModel {
           );
         }
 
-        const { finalGrade, remarks } = this.computeFinalGrade({ prelim, midterm, final });
+        const { finalGrade, remarks } = GradingEngine.computeCumulativeGrade(course, scoresByTerm);
 
         // Upsert the grade header row for this (student, course, year, term).
         const gradeRes = await client.query(`
@@ -379,17 +379,21 @@ class GradeManageModel {
 
         const gradeId = gradeRes.rows[0].grade_id;
 
-        // Replace the term components wholesale — simpler and safer than
-        // diffing three rows per course on every save.
+        // Replace all components wholesale — simpler and safer than
+        // diffing a variable-length set of named components on every save.
         await client.query(`DELETE FROM grade_components WHERE grade_id = $1`, [gradeId]);
 
-        const termValues = { Prelim: prelim, Midterm: midterm, Final: final };
-        for (const [term, score] of Object.entries(termValues)) {
-          if (score === '' || score === null || score === undefined) continue;
-          await client.query(`
-            INSERT INTO grade_components (grade_id, term, component_name, score, percentage)
-            VALUES ($1, $2, $3, $4, $5)
-          `, [gradeId, term, term, Number(score), TERM_WEIGHTS[term]]);
+        for (const term of ['Prelim', 'Midterm', 'Final']) {
+          const termScores = scoresByTerm[term] || {};
+          for (const [component, score] of Object.entries(termScores)) {
+            if (score === '' || score === null || score === undefined) continue;
+
+            const weight = GradingEngine.getComponentWeight(category, term, component);
+            await client.query(`
+              INSERT INTO grade_components (grade_id, term, component_name, score, percentage)
+              VALUES ($1, $2, $3, $4, $5)
+            `, [gradeId, term, component, Number(score), weight]);
+          }
         }
       }
 

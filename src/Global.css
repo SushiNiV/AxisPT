@@ -90,6 +90,58 @@ p, h1, h3, td, tr {
   box-sizing: border-box;
 }
 
+/* Masterlist result and academic-standing summary */
+.MasterlistSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.25rem 0;
+  color: #555;
+  font-size: 0.82rem;
+}
+
+.MasterlistResultCount {
+  font-weight: 600;
+  color: #3d1616;
+}
+
+.MasterlistStandingCounts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.MasterlistStanding {
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.MasterlistStanding.regular {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.MasterlistStanding.warning {
+  background: #fff3cd;
+  color: #8a6512;
+}
+
+.MasterlistStanding.probationary {
+  background: #ffebee;
+  color: #c62828;
+}
+
+@media (max-width: 720px) {
+  .MasterlistSummary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .SearchWrapper {
   display: flex;
   align-items: center;

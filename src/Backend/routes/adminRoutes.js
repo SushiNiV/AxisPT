@@ -23,6 +23,10 @@ router.delete('/students/:id', verifyToken, adminController.deleteStudent);
 router.get('/students/:id/grades', verifyToken, adminController.getStudentGrades);
 router.put('/students/:id/grades', verifyToken, adminController.updateStudentGrades);
 
+//documents
+router.get('/student-form/:id', verifyToken, adminController.getStudentFormById);
+router.get('/term-grade/:id', verifyToken, adminController.getTermGradeById);
+
 //academic year
 router.get('/academic-years', verifyToken, adminController.getAcademicYears);
 router.post('/academic-years', verifyToken, adminController.addAcademicYear);
@@ -34,6 +38,7 @@ router.put('/academic-years/:year_id', verifyToken, adminController.updateAcadem
 router.get('/curricula', verifyToken, adminController.getCurricula);
 router.post('/curricula', verifyToken, adminController.addCurriculum);
 router.put('/curricula/:curriculum_id', verifyToken, adminController.updateCurriculum);
+router.get('/courses/gradable', verifyToken, adminController.getGradableCourses);
 
 //program
 router.post('/programs', verifyToken, adminController.addProgram);
@@ -45,6 +50,7 @@ router.post('/courses', verifyToken, adminController.addCourse);
 
 //faculty
 router.get('/faculties', verifyToken, adminController.getFaculties);
+
 
 //section
 router.get('/sections', verifyToken, adminController.getSectionsByProgram);

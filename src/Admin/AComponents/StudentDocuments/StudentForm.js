@@ -3,14 +3,29 @@ import { useParams } from 'react-router-dom';
 import './StudentForm.css';
 
 
-function StudentForm({ adminMode = false, studentId: propsId }) {
+function normalizeStudentData(studentData) {
+  if (!Array.isArray(studentData?.support) || studentData.support.length === 0) {
+    return studentData;
+  }
+
+  const rawString = studentData.support[0];
+  return {
+    ...studentData,
+    support: rawString
+      .replace(/{|}/g, '')
+      .split(',')
+      .map(item => item.replace(/"/g, '').trim())
+  };
+}
+
+function StudentForm({ adminMode = false, studentId: propsId, studentData = null }) {
   const { studentId: paramId } = useParams();  
   
 
   const effectiveId = propsId || paramId;
 
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(studentData);
+  const [loading, setLoading] = useState(!studentData);
 
   const formatToPHT = (dateString) => {
     if (!dateString) return "";
@@ -44,6 +59,12 @@ function StudentForm({ adminMode = false, studentId: propsId }) {
   };
 
   useEffect(() => {
+    if (studentData) {
+      setData(normalizeStudentData(studentData));
+      setLoading(false);
+      return;
+    }
+
     if (adminMode && !effectiveId) return;
 
     const token = sessionStorage.getItem('token');
@@ -59,17 +80,7 @@ function StudentForm({ adminMode = false, studentId: propsId }) {
       .then((res) => res.json())
       .then((json) => {
         if (json.success) {
-          let studentData = json.data;
-
-          if (Array.isArray(studentData.support) && studentData.support.length > 0) {
-            const rawString = studentData.support[0]; 
-            studentData.support = rawString
-              .replace(/{|}/g, '')
-              .split(',')
-              .map(item => item.replace(/"/g, '').trim());
-          }
-          
-          setData(studentData);
+          setData(normalizeStudentData(json.data));
         }
         setLoading(false);
       })
@@ -77,7 +88,7 @@ function StudentForm({ adminMode = false, studentId: propsId }) {
         console.error("Fetch error:", err);
         setLoading(false);
       });
-  }, [effectiveId, adminMode]); // 5. Added effectiveId as dependency
+  }, [effectiveId, adminMode, studentData]);
 
   const formatFullName = (f, m, l, s) => `${f || ''} ${m || ''} ${l || ''} ${s || ''}`.trim();
 
@@ -358,7 +369,7 @@ function StudentForm({ adminMode = false, studentId: propsId }) {
               <span className="sub-label">P21K to P40K</span>
             </div>
             <div className="checkbox-item">
-              <input type="checkbox" checked={data?.parents_income === 'P41K TO P80K'} readOnly />
+              <input type="checkbox" checked={data?.parents_income === 'P41K TO P60K'} readOnly />
               <span className="sub-label">P41K to P60K</span>
             </div>
             <div className="checkbox-item">

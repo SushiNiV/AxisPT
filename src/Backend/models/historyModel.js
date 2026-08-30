@@ -78,7 +78,7 @@ const HistoryModel = {
     query += ` 
       GROUP BY 
         h.id, h.user_id, h.target_user_id, h.table_name, h.record_id, 
-        h.action, h.old_values, h.new_values, h.ip_address, h.user_agent, h.created_at,
+        h.action, h.ip_address, h.user_agent, h.created_at,
         u.username, tu.username, f.first_name, f.last_name, d.designation_name
       ORDER BY h.created_at DESC 
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}

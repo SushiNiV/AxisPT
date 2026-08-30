@@ -9,19 +9,27 @@ import '../../Global.css';
  * AddGrade
  * ============================================================================
  * Modal for viewing and updating a student's grades, organized the same way
- * their curriculum is: Year Level -> Semester -> Course.
+ * their curriculum is: Year Level -> Semester -> [Prelim / Midterm / Final
+ * tables]. This mirrors TermGrade.js's own layout on purpose - the editor
+ * should visually match the document it produces.
  *
- * Each year level renders as a collapsible accordion (same visual language
- * as the "Detailed Information" accordion in AddStudent.js). The accordion
- * matching the student's current year level opens automatically once the
- * grade sheet loads; every other year can still be expanded and edited,
- * since grades are editable regardless of term.
+ * Each semester renders three term tables. Columns are fixed (Quizzes/AT,
+ * Exam, Lab Practical, OSCE/OSPE, Grade, Remarks) matching TermGrade.js's
+ * structure - a cell simply has no input when a course's category doesn't
+ * need that component (e.g. a lecture-only course has no Lab Practical
+ * cell), rather than varying the column set per course.
  *
- * Every course row exposes three inputs - Prelim, Midterm, Final - matching
- * grade_components. The Final Grade and Remarks (P / F / INC) shown per row
- * are a live client-side preview computed with the same weights the backend
- * uses (returned alongside the grade sheet so the two can't drift apart);
- * the authoritative value is always recomputed server-side on save.
+ * Courses can be added beyond the curriculum's default list (retakes,
+ * electives, carried-over courses for shifting/irregular students) via a
+ * course picker fetched from GET /admin/courses/gradable, and removed via
+ * a delete button on each row - both act at the semester level, since a
+ * course's row spans all three term tables at once.
+ *
+ * Every field a course needs (which components, at what weight, in which
+ * term) comes from the backend as `enterableFields` - nothing about
+ * GradingEngine's weight tables is duplicated here; the preview functions
+ * below only replicate the ALGORITHM shape (local re-weighting, cumulative
+ * re-weighting), never the actual weight numbers themselves.
  *
  * Props:
  *   - onClose:   () => void         called when the modal is dismissed
@@ -30,6 +38,9 @@ import '../../Global.css';
  *                the row selected from the masterlist table
  * ============================================================================
  */
+
+const TERMS = ['Prelim', 'Midterm', 'Final'];
+
 const AddGrade = ({ onClose, onSuccess, student }) => {
   const studentId = student?.student_id;
 
@@ -37,73 +48,99 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // Grade-sheet metadata: program info, current year level, and the
-  // grading rules (term weights / passing score) mirrored from the backend.
   const [meta, setMeta] = useState(null);
 
   // Curriculum structure: [{ yearLevel, semesters: [{ semesterId, semesterLabel, courses: [...] }] }]
   const [years, setYears] = useState([]);
 
-  // Which year-level accordions are currently expanded.
   const [openYears, setOpenYears] = useState(new Set());
 
   // Editable grade state, keyed by courseId:
-  // { [courseId]: { yearLevel, semesterId, prelim, midterm, final } }
+  // { [courseId]: { yearLevel, semesterId, category, enterableFields, scoresByTerm } }
   const [gradesMap, setGradesMap] = useState({});
 
+  // Which course IDs are currently displayed per semester (curriculum
+  // defaults + manually added), keyed by `${yearLevel}-${semesterId}`.
+  const [courseIdsBySemester, setCourseIdsBySemester] = useState({});
+
+  // Full catalog of addable courses (with category/enterableFields
+  // pre-resolved server-side), fetched once for the "add course" pickers.
+  const [gradableCourses, setGradableCourses] = useState([]);
+
+  // Which semester's "add course" picker is currently open, if any.
+  const [addingToSemesterKey, setAddingToSemesterKey] = useState(null);
+  const [courseToAdd, setCourseToAdd] = useState('');
+
   // ---------------------------------------------------------------------
-  // Load the grade sheet whenever the target student changes.
+  // Load the grade sheet + gradable course catalog on open.
   // ---------------------------------------------------------------------
   useEffect(() => {
     if (!studentId) return;
 
-    const fetchGradeSheet = async () => {
+    const fetchAll = async () => {
       setLoading(true);
       setError(null);
 
       try {
         const token = sessionStorage.getItem('token');
-        const response = await fetch(
-          `${process.env.REACT_APP_API_URL}/admin/students/${studentId}/grades`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const data = await response.json();
 
-        if (!data.success) {
-          setError(data.message || 'Failed to load grade sheet.');
+        const [sheetRes, coursesRes] = await Promise.all([
+          fetch(`${process.env.REACT_APP_API_URL}/admin/students/${studentId}/grades`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          fetch(`${process.env.REACT_APP_API_URL}/admin/courses/gradable`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        ]);
+
+        const sheetJson = await sheetRes.json();
+        const coursesJson = await coursesRes.json();
+
+        if (!sheetJson.success) {
+          setError(sheetJson.message || 'Failed to load grade sheet.');
           return;
         }
 
-        const sheet = data.data;
+        const sheet = sheetJson.data;
         setMeta({
           programName: sheet.programName,
           programAbbr: sheet.programAbbr,
           totalYears: sheet.totalYears,
           currentYearLevel: sheet.currentYearLevel,
-          termWeights: sheet.termWeights,
           gradeScale: sheet.gradeScale
         });
         setYears(sheet.years);
 
-        // Flatten the nested structure into a flat, editable lookup map.
         const map = {};
+        const idsBySemester = {};
         sheet.years.forEach((yearBlock) => {
           yearBlock.semesters.forEach((sem) => {
+            const semKey = `${yearBlock.yearLevel}-${sem.semesterId}`;
+            idsBySemester[semKey] = sem.courses.map((c) => c.courseId);
+
             sem.courses.forEach((course) => {
               map[course.courseId] = {
                 yearLevel: yearBlock.yearLevel,
                 semesterId: sem.semesterId,
-                prelim: course.prelim ?? '',
-                midterm: course.midterm ?? '',
-                final: course.final ?? ''
+                courseCode: course.courseCode,
+                courseName: course.courseName,
+                units: course.units,
+                category: course.category,
+                enterableFields: course.enterableFields,
+                scoresByTerm: {
+                  Prelim: { ...course.scoresByTerm?.Prelim },
+                  Midterm: { ...course.scoresByTerm?.Midterm },
+                  Final: { ...course.scoresByTerm?.Final }
+                }
               };
             });
           });
         });
         setGradesMap(map);
-
-        // Auto-open the accordion matching the student's current year level.
+        setCourseIdsBySemester(idsBySemester);
         setOpenYears(new Set([sheet.currentYearLevel]));
+
+        if (coursesJson.success) setGradableCourses(coursesJson.data);
       } catch (err) {
         console.error('Error fetching grade sheet:', err);
         setError('Failed to connect to the server.');
@@ -112,20 +149,18 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
       }
     };
 
-    fetchGradeSheet();
+    fetchAll();
   }, [studentId]);
 
   // ---------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------
 
-  /** Converts a numeric year level into its display label. */
   const ordinalYear = (n) => {
     const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year' };
     return labels[n] || `Year ${n}`;
   };
 
-  /** Expands/collapses a single year-level accordion. */
   const toggleYear = (yearLevel) => {
     setOpenYears((prev) => {
       const next = new Set(prev);
@@ -135,80 +170,150 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     });
   };
 
-  /** Updates one term score for one course, clamped to a 0-100 scale. */
-  const handleScoreChange = (courseId, yearLevel, semesterId, term, rawValue) => {
+  /** Finds a course's applicable field for a given term (its own term, or a spans-all-terms field). */
+  const getFieldForTerm = (enterableFields, component, term) => (
+    (enterableFields || []).find((f) => f.component === component && (f.term === null || f.term === term)) || null
+  );
+
+  /** Updates one component score for one course/term, clamped to 0-100. */
+  const handleScoreChange = (courseId, term, component, rawValue) => {
     if (rawValue !== '' && (Number(rawValue) < 0 || Number(rawValue) > 100)) return;
 
     setGradesMap((prev) => ({
       ...prev,
       [courseId]: {
-        ...(prev[courseId] || { prelim: '', midterm: '', final: '' }),
-        yearLevel,
-        semesterId,
-        [term]: rawValue
+        ...prev[courseId],
+        scoresByTerm: {
+          ...prev[courseId].scoresByTerm,
+          [term]: { ...prev[courseId].scoresByTerm[term], [component]: rawValue }
+        }
       }
     }));
   };
 
   /**
-   * Mirrors GradeManageModel.percentageToGradePoint() so the live preview
-   * can never drift from what the backend will actually compute and save.
+   * Mirrors GradingEngine.percentageToGradePoint() so the live preview
+   * can never drift from what the backend actually computes and saves.
    */
   const percentageToGradePoint = (percentage, scale) => {
     if (percentage < scale.passingPercentage) return scale.failingPoint;
-
     const steps = Math.floor((100 - percentage) / scale.percentageStep);
     const gradePoint = scale.highestPoint + scale.pointStep * steps;
     return Math.min(gradePoint, scale.lowestPassingPoint);
   };
 
   /**
-   * Client-side preview of a course's final grade point + remarks, using
-   * the exact same term weights and grade scale the backend applies on
-   * save (both come straight from the API response — no local duplication
-   * of the actual numbers, just the conversion steps).
-   * Untouched courses (no scores entered at all) show no badge, so
-   * future-year courses the student hasn't taken yet don't look "failed".
+   * Period-local term preview - mirrors GradingEngine.computeTermGrade():
+   * only this term's applicable fields, re-weighted to sum to 100% among
+   * themselves, using only whatever's been entered for THIS term.
    */
-  const previewGrade = (entry) => {
-    if (!meta) return { finalGrade: null, remarks: null };
+  const previewTermGrade = (enterableFields, term, scoresByTerm) => {
+    if (!meta) return { pointGrade: null };
 
-    const termKeyMap = { prelim: 'Prelim', midterm: 'Midterm', final: 'Final' };
-    const anyEntered = ['prelim', 'midterm', 'final'].some((k) => entry[k] !== '' && entry[k] !== undefined);
-    if (!anyEntered) return { finalGrade: null, remarks: null };
+    const termScores = scoresByTerm[term] || {};
+    const applicable = (enterableFields || []).filter((f) => f.term === null || f.term === term);
+    const provided = applicable.filter((f) => termScores[f.component] !== undefined && termScores[f.component] !== '');
 
-    const provided = Object.keys(termKeyMap).filter(
-      (k) => entry[k] !== '' && entry[k] !== null && entry[k] !== undefined && !Number.isNaN(Number(entry[k]))
+    if (provided.length === 0) return { pointGrade: null };
+
+    const localWeightSum = provided.reduce((sum, f) => sum + f.weight, 0);
+    const weightedSum = provided.reduce(
+      (sum, f) => sum + (Number(termScores[f.component]) * f.weight) / localWeightSum, 0
     );
+    const average = Math.round(weightedSum * 100) / 100;
+    return { pointGrade: percentageToGradePoint(average, meta.gradeScale) };
+  };
 
-    if (provided.length < 3) return { finalGrade: null, remarks: 'INC' };
+  /**
+   * Cumulative preview - mirrors GradingEngine.computeCumulativeGrade():
+   * spans-all-terms fields average whichever terms have an entry; single-
+   * term fields use that term directly. Incomplete -> 'INC', not a guess.
+   */
+  const previewCumulativeGrade = (enterableFields, scoresByTerm) => {
+    if (!meta || !enterableFields) return { finalGrade: null, remarks: null };
 
-    let weightedSum = 0;
-    provided.forEach((k) => {
-      weightedSum += (Number(entry[k]) * meta.termWeights[termKeyMap[k]]) / 100;
+    const resolved = enterableFields.map((f) => {
+      if (f.term === null) {
+        const values = TERMS
+          .map((t) => scoresByTerm[t]?.[f.component])
+          .filter((v) => v !== undefined && v !== '')
+          .map(Number);
+        return { weight: f.weight, score: values.length ? values.reduce((s, v) => s + v, 0) / values.length : null };
+      }
+      const v = scoresByTerm[f.term]?.[f.component];
+      return { weight: f.weight, score: (v === undefined || v === '') ? null : Number(v) };
     });
 
+    const provided = resolved.filter((r) => r.score !== null);
+    if (provided.length === 0) return { finalGrade: null, remarks: null };
+
+    const isComplete = provided.length === resolved.length;
+    const weightSum = provided.reduce((sum, r) => sum + r.weight, 0);
+    const weightedSum = provided.reduce((sum, r) => sum + (r.score * r.weight) / weightSum, 0);
     const percentage = Math.round(weightedSum * 100) / 100;
     const finalGrade = percentageToGradePoint(percentage, meta.gradeScale);
-    const remarks = finalGrade === meta.gradeScale.failingPoint ? 'F' : 'P';
+    const remarks = !isComplete ? 'INC' : (finalGrade === meta.gradeScale.failingPoint ? 'F' : 'P');
+
     return { finalGrade, remarks };
   };
 
-  /** Renders the small P / F / INC badge, reusing the existing badge classes. */
   const renderRemarksBadge = (remarks) => {
     if (!remarks) return <span style={{ color: '#aaa' }}>—</span>;
     if (remarks === 'INC') {
-      return (
-        <span className="statusBadge" style={{ backgroundColor: '#fff3cd', color: '#8a6512' }}>
-          INC
-        </span>
-      );
+      return <span className="statusBadge" style={{ backgroundColor: '#fff3cd', color: '#8a6512' }}>INC</span>;
     }
     return (
       <span className={`statusBadge ${remarks === 'P' ? 'active-bg' : 'inactive-bg'}`}>
         {remarks === 'P' ? 'Passed' : 'Failed'}
       </span>
     );
+  };
+
+  // ---------------------------------------------------------------------
+  // Add / delete rows
+  // ---------------------------------------------------------------------
+
+  const handleAddCourse = (yearLevel, semesterId) => {
+    const semKey = `${yearLevel}-${semesterId}`;
+    if (!courseToAdd) return;
+
+    const course = gradableCourses.find((c) => c.courseId === Number(courseToAdd));
+    if (!course) return;
+
+    setGradesMap((prev) => ({
+      ...prev,
+      [course.courseId]: {
+        yearLevel,
+        semesterId,
+        courseCode: course.courseCode,
+        courseName: course.courseName,
+        units: course.units,
+        category: course.category,
+        enterableFields: course.enterableFields,
+        scoresByTerm: { Prelim: {}, Midterm: {}, Final: {} }
+      }
+    }));
+
+    setCourseIdsBySemester((prev) => ({
+      ...prev,
+      [semKey]: [...(prev[semKey] || []), course.courseId]
+    }));
+
+    setCourseToAdd('');
+    setAddingToSemesterKey(null);
+  };
+
+  const handleRemoveCourse = (yearLevel, semesterId, courseId) => {
+    const semKey = `${yearLevel}-${semesterId}`;
+    setCourseIdsBySemester((prev) => ({
+      ...prev,
+      [semKey]: (prev[semKey] || []).filter((id) => id !== courseId)
+    }));
+    setGradesMap((prev) => {
+      const next = { ...prev };
+      delete next[courseId];
+      return next;
+    });
   };
 
   // ---------------------------------------------------------------------
@@ -219,17 +324,13 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     setIsSubmitting(true);
 
     try {
-      // Only send rows that actually have at least one score entered -
-      // untouched courses shouldn't create empty grade rows.
       const entries = Object.entries(gradesMap)
-        .filter(([, v]) => v.prelim !== '' || v.midterm !== '' || v.final !== '')
+        .filter(([, v]) => TERMS.some((t) => Object.values(v.scoresByTerm[t] || {}).some((val) => val !== '' && val !== undefined)))
         .map(([courseId, v]) => ({
           courseId: Number(courseId),
           yearLevel: v.yearLevel,
           semesterId: v.semesterId,
-          prelim: v.prelim,
-          midterm: v.midterm,
-          final: v.final
+          scoresByTerm: v.scoresByTerm
         }));
 
       if (entries.length === 0) {
@@ -243,10 +344,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
         `${process.env.REACT_APP_API_URL}/admin/students/${studentId}/grades`,
         {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ grades: entries })
         }
       );
@@ -268,36 +366,124 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
 
   if (!studentId) return null;
 
-  const studentLabel = student.full_name
-    || `${student.last_name || ''}, ${student.first_name || ''}`.trim();
+  const studentLabel = student.full_name || `${student.last_name || ''}, ${student.first_name || ''}`.trim();
 
   // ---------------------------------------------------------------------
-  // Render
+  // Render: one table per term for a given semester's current course list.
   // ---------------------------------------------------------------------
+  const renderTermTable = (yearLevel, semesterId, term, courseIds) => {
+    // Only show the Lab / Special Exam columns if something in this
+    // semester actually needs them - avoids permanently-empty columns
+    // for programs with no lab courses.
+    const semesterCourses = courseIds.map((id) => gradesMap[id]).filter(Boolean);
+    const needsLab = semesterCourses.some((c) => (c.enterableFields || []).some((f) => f.component === 'Unit Practical Exam'));
+    const specialExamField = term === 'Final'
+      ? semesterCourses.map((c) => getFieldForTerm(c.enterableFields, 'Comprehensive Examination', 'Final') || getFieldForTerm(c.enterableFields, 'Revalida Examination', 'Final')).find(Boolean)
+      : null;
+
+    return (
+      <div key={term} style={{ marginBottom: '1rem' }}>
+        <h6 style={{ margin: '0 0 6px', fontSize: '0.8rem', fontWeight: 700, color: '#3d1616', textTransform: 'uppercase' }}>
+          {term} Term
+        </h6>
+        <table className="Table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Course</th>
+              <th>Quizzes/AT</th>
+              <th>{term} Exam</th>
+              {needsLab && <th>Lab Practical</th>}
+              {needsLab && <th>OSCE/OSPE</th>}
+              {specialExamField && <th>{specialExamField.component}</th>}
+              <th>Grade</th>
+              <th>Remarks</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {courseIds.map((courseId) => {
+              const entry = gradesMap[courseId];
+              if (!entry) return null;
+
+              const termScores = entry.scoresByTerm[term] || {};
+              const quizField = getFieldForTerm(entry.enterableFields, 'Quizzes/AT', term);
+              const examField = getFieldForTerm(entry.enterableFields, `${term} Exam`, term);
+              const labField = needsLab ? getFieldForTerm(entry.enterableFields, 'Unit Practical Exam', term) : null;
+              const osceField = needsLab ? getFieldForTerm(entry.enterableFields, `${term} OSCE/OSPE`, term) : null;
+              const ownSpecialField = specialExamField
+                ? getFieldForTerm(entry.enterableFields, specialExamField.component, term)
+                : null;
+
+              const { pointGrade } = previewTermGrade(entry.enterableFields, term, entry.scoresByTerm);
+              const cumulative = term === 'Final' ? previewCumulativeGrade(entry.enterableFields, entry.scoresByTerm) : null;
+
+              const renderInput = (field, component) => {
+                if (!field) return <span style={{ color: '#ccc' }}>—</span>;
+                return (
+                  <input
+                    type="number" min="0" max="100" step="0.01"
+                    value={termScores[component] ?? ''}
+                    onChange={(e) => handleScoreChange(courseId, term, component, e.target.value)}
+                    style={{ width: '65px', padding: '4px 6px' }}
+                  />
+                );
+              };
+
+              return (
+                <tr key={courseId}>
+                  <td>{entry.courseCode}</td>
+                  <td>{entry.courseName}</td>
+                  <td>{renderInput(quizField, 'Quizzes/AT')}</td>
+                  <td>{renderInput(examField, `${term} Exam`)}</td>
+                  {needsLab && <td>{renderInput(labField, 'Unit Practical Exam')}</td>}
+                  {needsLab && <td>{renderInput(osceField, `${term} OSCE/OSPE`)}</td>}
+                  {specialExamField && (
+                    <td>{ownSpecialField ? renderInput(ownSpecialField, specialExamField.component) : <span style={{ color: '#ccc' }}>—</span>}</td>
+                  )}
+                  <td>
+                    {term === 'Final'
+                      ? (cumulative.finalGrade !== null ? cumulative.finalGrade.toFixed(2) : '—')
+                      : (pointGrade !== null ? pointGrade.toFixed(2) : '—')}
+                  </td>
+                  <td>{term === 'Final' ? renderRemarksBadge(cumulative.remarks) : '—'}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="RemoveBtn"
+                      onClick={() => handleRemoveCourse(yearLevel, semesterId, courseId)}
+                      title="Remove this course from the sheet"
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   const modalContent = (
     <div className="modalOverlay">
-      <form onSubmit={handleSubmit} className="modalContainer" style={{ display: 'flex', flexDirection: 'column', maxWidth: '1100px' }}>
+      <form onSubmit={handleSubmit} className="modalContainer" style={{ display: 'flex', flexDirection: 'column', maxWidth: '1200px' }}>
 
-        {/* Header */}
         <div className="modalHeader">
           <h3 className="modalTitle">STUDENT GRADES</h3>
           <div className="CloseBtnArea">
-            <button type="button" className="CloseBtn" onClick={onClose} disabled={isSubmitting}>
-              &times;
-            </button>
+            <button type="button" className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
           </div>
         </div>
 
-        {/* Scrollable Body */}
         <div className="modalScrollArea">
-
           {loading ? (
             <p>Loading grade sheet...</p>
           ) : error ? (
             <p style={{ color: '#c62828' }}>{error}</p>
           ) : (
             <>
-              {/* Student / Program Summary */}
               <div className="formSection" style={{ marginBottom: '0.5rem' }}>
                 <h4 className="sectionHeading" style={{ marginBottom: '0.25rem' }}>
                   {studentLabel} {student.student_number ? `(${student.student_number})` : ''}
@@ -310,7 +496,6 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                 )}
               </div>
 
-              {/* Per-Year Accordions */}
               {years.map((yearBlock) => {
                 const isYearOpen = openYears.has(yearBlock.yearLevel);
                 const isCurrentYear = meta && yearBlock.yearLevel === meta.currentYearLevel;
@@ -323,72 +508,66 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                       onClick={() => toggleYear(yearBlock.yearLevel)}
                       style={isCurrentYear ? { borderColor: '#3d1616', borderWidth: '2px' } : undefined}
                     >
-                      <span>
-                        {ordinalYear(yearBlock.yearLevel)}
-                        {isCurrentYear ? ' (Current Year Level)' : ''}
-                      </span>
+                      <span>{ordinalYear(yearBlock.yearLevel)}{isCurrentYear ? ' (Current Year Level)' : ''}</span>
                       <span className={`arrow ${isYearOpen ? 'open' : ''}`}>&#9660;</span>
                     </button>
 
                     {isYearOpen && (
                       <div className="detailedInfoContainer">
-                        {yearBlock.semesters.map((sem) => (
-                          <div key={sem.semesterId}>
-                            <h5 className="subSectionHeading" style={{ marginBottom: '8px', color: '#555' }}>
-                              {sem.semesterLabel}
-                            </h5>
+                        {yearBlock.semesters.map((sem) => {
+                          const semKey = `${yearBlock.yearLevel}-${sem.semesterId}`;
+                          const courseIds = courseIdsBySemester[semKey] || [];
+                          const usedIds = new Set(courseIds);
+                          const addableCourses = gradableCourses.filter((c) => !usedIds.has(c.courseId));
 
-                            <table className="Table">
-                              <thead>
-                                <tr>
-                                  <th>Code</th>
-                                  <th>Course</th>
-                                  <th>Units</th>
-                                  <th>Prelim</th>
-                                  <th>Midterm</th>
-                                  <th>Final</th>
-                                  <th>Grade</th>
-                                  <th>Remarks</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {sem.courses.map((course) => {
-                                  const entry = gradesMap[course.courseId] || { prelim: '', midterm: '', final: '' };
-                                  const { finalGrade, remarks } = previewGrade(entry);
+                          return (
+                            <div key={sem.semesterId} style={{ marginBottom: '1.5rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <h5 className="subSectionHeading" style={{ margin: 0, color: '#555' }}>{sem.semesterLabel}</h5>
+                                <button
+                                  type="button"
+                                  className="AddBtn"
+                                  style={{ height: '30px', fontSize: '0.75rem' }}
+                                  onClick={() => setAddingToSemesterKey(addingToSemesterKey === semKey ? null : semKey)}
+                                >
+                                  + Add Course
+                                </button>
+                              </div>
 
-                                  return (
-                                    <tr key={course.courseId}>
-                                      <td>{course.courseCode}</td>
-                                      <td>{course.courseName}</td>
-                                      <td>{course.units}</td>
-                                      {['prelim', 'midterm', 'final'].map((term) => (
-                                        <td key={term}>
-                                          <input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            step="0.01"
-                                            value={entry[term]}
-                                            onChange={(e) => handleScoreChange(
-                                              course.courseId,
-                                              yearBlock.yearLevel,
-                                              sem.semesterId,
-                                              term,
-                                              e.target.value
-                                            )}
-                                            style={{ width: '70px', padding: '4px 6px' }}
-                                          />
-                                        </td>
-                                      ))}
-                                      <td>{finalGrade !== null ? finalGrade.toFixed(2) : '—'}</td>
-                                      <td>{renderRemarksBadge(remarks)}</td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        ))}
+                              {addingToSemesterKey === semKey && (
+                                <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                                  <select
+                                    value={courseToAdd}
+                                    onChange={(e) => setCourseToAdd(e.target.value)}
+                                    style={{ flex: 1 }}
+                                  >
+                                    <option value="">-- Select a course to add --</option>
+                                    {addableCourses.map((c) => (
+                                      <option key={c.courseId} value={c.courseId}>
+                                        {c.courseCode} — {c.courseName}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    type="button"
+                                    className="submitBtn"
+                                    style={{ padding: '0 1rem' }}
+                                    onClick={() => handleAddCourse(yearBlock.yearLevel, sem.semesterId)}
+                                    disabled={!courseToAdd}
+                                  >
+                                    Add
+                                  </button>
+                                </div>
+                              )}
+
+                              {courseIds.length === 0 ? (
+                                <p style={{ fontSize: '0.85rem', color: '#999' }}>No courses in this semester yet.</p>
+                              ) : (
+                                TERMS.map((term) => renderTermTable(yearBlock.yearLevel, sem.semesterId, term, courseIds))
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -397,16 +576,12 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
             </>
           )}
 
-          {/* Footer Actions */}
           <div className="modalFooter">
-            <button type="button" className="cancelBtn" onClick={onClose} disabled={isSubmitting}>
-              CANCEL
-            </button>
+            <button type="button" className="cancelBtn" onClick={onClose} disabled={isSubmitting}>CANCEL</button>
             <button type="submit" className="submitBtn" disabled={isSubmitting || loading || !!error}>
               {isSubmitting ? 'SAVING...' : 'SAVE GRADES'}
             </button>
           </div>
-
         </div>
       </form>
     </div>

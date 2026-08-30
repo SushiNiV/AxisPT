@@ -13,6 +13,7 @@ const SectionAssignmentModel = require('../models/sectionassignModel');
 const CourseModel = require('../models/courseModel');
 const StudentManageModel = require('../models/studentmanageModel');
 const GradeManageModel = require('../models/gradeManageModel');
+const DocumentModel = require('../models/documentModel');
 const UserModel = require('../models/userModel');
 const HistoryModel = require('../models/historyModel');
 
@@ -456,7 +457,7 @@ exports.deleteStudent = async (req, res) => {
 exports.getStudentFormById = async (req, res) => {
   try {
     const { id } = req.params;
-    const student = await StudentManageModel.getById(id);
+    const student = await DocumentModel.getStudentFormData(id);
 
     if (!student) {
       return res.status(404).json({ success: false, message: "Student record not found." });
@@ -465,6 +466,22 @@ exports.getStudentFormById = async (req, res) => {
     res.status(200).json({ success: true, data: student });
   } catch (error) {
     console.error("Error fetching student form data:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.getTermGradeById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const termGrade = await DocumentModel.getTermGradeData(id);
+
+    if (!termGrade) {
+      return res.status(404).json({ success: false, message: "No current enrollment record found for this student, so a term grade document could not be built." });
+    }
+
+    res.status(200).json({ success: true, data: termGrade });
+  } catch (error) {
+    console.error("Error fetching term grade document:", error);
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 };
@@ -478,7 +495,7 @@ exports.getStudentFormMe = async (req, res) => {
       return res.status(404).json({ success: false, message: "Student record not found." });
     }
 
-    const student = await StudentManageModel.getById(studentRes.rows[0].student_id);
+    const student = await DocumentModel.getStudentFormData(studentRes.rows[0].student_id);
     res.status(200).json({ success: true, data: student });
   } catch (error) {
     console.error("Error fetching student self record:", error);
@@ -1212,6 +1229,21 @@ exports.getHistory = async (req, res) => {
 };
 
 //grade management
+
+/**
+ * GET /admin/courses/gradable
+ * Returns every active course with its grading category + enterableFields
+ * pre-resolved, for AddGrade.js's "add course" row picker.
+ */
+exports.getGradableCourses = async (req, res) => {
+  try {
+    const courses = await GradeManageModel.getGradableCourses();
+    res.status(200).json({ success: true, data: courses });
+  } catch (error) {
+    console.error('Error fetching gradable courses:', error);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
+};
 
 /**
  * GET /admin/students/:id/grades
