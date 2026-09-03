@@ -473,10 +473,16 @@ exports.getStudentFormById = async (req, res) => {
 exports.getTermGradeById = async (req, res) => {
   try {
     const { id } = req.params;
-    const termGrade = await DocumentModel.getTermGradeData(id);
+    const { yearLevel, semesterId } = req.query;
+
+    const period = {};
+    if (yearLevel) period.yearLevel = parseInt(yearLevel, 10);
+    if (semesterId) period.semesterId = parseInt(semesterId, 10);
+
+    const termGrade = await DocumentModel.getTermGradeData(id, period);
 
     if (!termGrade) {
-      return res.status(404).json({ success: false, message: "No current enrollment record found for this student, so a term grade document could not be built." });
+      return res.status(404).json({ success: false, message: "No enrollment record found for this student/period, so a term grade document could not be built." });
     }
 
     res.status(200).json({ success: true, data: termGrade });
