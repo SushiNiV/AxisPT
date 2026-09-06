@@ -19,6 +19,13 @@
   text-transform: titlecase;
 }
 
+.term-container,
+.term-container * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  color-adjust: exact;
+}
+
 .part-title {
   background-color: black;
   color: white;
@@ -26,8 +33,6 @@
   font-weight: bold;
   text-transform: uppercase;
   font-size: 13px;
-
-  
 }
 .border {
   border: 1px solid black;
@@ -321,3 +326,52 @@ input.tiny-check:checked::before {
     height: auto;
   }
 }
+
+/* ============================================================================
+   Density tiers - shrink font size/padding/spacing as course count grows,
+   so the whole document (header + 3 term tables + signature blocks) fits
+   one physical page rather than clipping or spilling a few rows onto a
+   near-empty second page. Applied via a class on .term-container computed
+   from the actual course count in TermGrade.js.
+   ============================================================================ */
+
+/* density-cozy (<=6 courses) uses the base sizes already defined above -
+   no override needed. */
+
+.density-compact { padding: 7mm 15mm; }
+.density-compact .grade-table { font-size: 9.5px; }
+.density-compact .grade-table th, .density-compact .grade-table td { padding: 1.5px; }
+.density-compact .grade-table thead th { font-size: 8px; }
+.density-compact .legend-cell { font-size: 8px !important; }
+.density-compact .body-text { font-size: 9px; }
+.density-compact .field-label { font-size: 9px; }
+.density-compact .value-field { font-size: 12px; }
+.density-compact .note { font-size: 8.5px; }
+.density-compact .spacer { margin-top: 6px; }
+.density-compact .small-spacer { margin-top: 3px; }
+
+.density-tight { padding: 5mm 12mm; }
+.density-tight .grade-table { font-size: 8.5px; }
+.density-tight .grade-table th, .density-tight .grade-table td { padding: 1px; }
+.density-tight .grade-table thead th { font-size: 7px; }
+.density-tight .legend-cell { font-size: 7px !important; }
+.density-tight .body-text { font-size: 8px; }
+.density-tight .field-label { font-size: 8px; }
+.density-tight .value-field { font-size: 11px; }
+.density-tight .note { font-size: 7.5px; }
+.density-tight .spacer { margin-top: 4px; }
+.density-tight .small-spacer { margin-top: 2px; }
+.density-tight .term-title { padding: 2px; }
+
+.density-tiny { padding: 4mm 10mm; }
+.density-tiny .grade-table { font-size: 7.5px; }
+.density-tiny .grade-table th, .density-tiny .grade-table td { padding: 0.5px; }
+.density-tiny .grade-table thead th { font-size: 6.5px; }
+.density-tiny .legend-cell { font-size: 6.5px !important; }
+.density-tiny .body-text { font-size: 7px; }
+.density-tiny .field-label { font-size: 7px; }
+.density-tiny .value-field { font-size: 10px; }
+.density-tiny .note { font-size: 7px; }
+.density-tiny .spacer { margin-top: 2px; }
+.density-tiny .small-spacer { margin-top: 1px; }
+.density-tiny .term-title { padding: 1px; }

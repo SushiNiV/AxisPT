@@ -9,7 +9,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [programs, setPrograms] = useState([]);
 
-  // Accept either prop name to prevent breakage
   const studentData = studentToEdit || initialData;
   const isEditMode = !!studentData;
 
@@ -18,7 +17,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     studentNumber: '',
     email: '',
     accountStatus: true,
-    
+
     // Personal Information
     firstName: '',
     middleName: '',
@@ -63,18 +62,29 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     schoolAddress: '',
     hsFinalGWA: '',
 
-    // Family Information
-    fatherName: '',
+    // Father (split, 3+1)
+    fatherFirstName: '',
+    fatherMiddleName: '',
+    fatherLastName: '',
+    fatherSuffix: '',
     fatherStatus: 'Living',
     fatherOccupation: '',
     fatherContact: '',
-    motherName: '',
+
+    // Mother (split, 3+1)
+    motherFirstName: '',
+    motherMiddleName: '',
+    motherLastName: '',
+    motherSuffix: '',
     motherStatus: 'Living',
     motherOccupation: '',
     motherContact: '',
 
-    // Guardian's Details (optional)
-    guardianName: '',
+    // Guardian (split, 3+1)
+    guardianFirstName: '',
+    guardianMiddleName: '',
+    guardianLastName: '',
+    guardianSuffix: '',
     guardianOccupation: '',
     guardianContact: '',
 
@@ -117,10 +127,10 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
       setFormData({
         studentNumber: studentData.student_number || studentData.studentNumber || '',
         email: studentData.email || studentData.school_email || studentData.personal_email || '',
-        accountStatus: typeof studentData.account_status === 'boolean' 
-          ? studentData.account_status 
+        accountStatus: typeof studentData.account_status === 'boolean'
+          ? studentData.account_status
           : studentData.account_status === 'Active' || studentData.account_status === 1 || studentData.account_status === true,
-        
+
         firstName: studentData.first_name || studentData.firstname || studentData.firstName || '',
         middleName: studentData.middle_name || studentData.middlename || studentData.middleName || '',
         lastName: studentData.last_name || studentData.lastname || studentData.lastName || '',
@@ -164,18 +174,29 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         schoolAddress: studentData.hs_school_address || studentData.schoolAddress || '',
         hsFinalGWA: studentData.hs_final_gwa || studentData.hsFinalGWA || '',
 
-        // Family Details
-        fatherName: studentData.father_name || studentData.father_firstname || studentData.fatherName || '',
+        // Father
+        fatherFirstName: studentData.father_firstname || studentData.father_first_name || studentData.fatherFirstName || '',
+        fatherMiddleName: studentData.father_middlename || studentData.father_middle_name || studentData.fatherMiddleName || '',
+        fatherLastName: studentData.father_lastname || studentData.father_last_name || studentData.fatherLastName || '',
+        fatherSuffix: studentData.father_suffix || studentData.fatherSuffix || '',
         fatherStatus: studentData.father_status || studentData.fatherStatus || 'Living',
         fatherOccupation: studentData.father_occupation || studentData.fatherOccupation || '',
         fatherContact: studentData.father_contact || studentData.father_contact_no || studentData.fatherContact || '',
-        motherName: studentData.mother_name || studentData.mother_firstname || studentData.motherName || '',
+
+        // Mother
+        motherFirstName: studentData.mother_firstname || studentData.mother_first_name || studentData.motherFirstName || '',
+        motherMiddleName: studentData.mother_middlename || studentData.mother_middle_name || studentData.motherMiddleName || '',
+        motherLastName: studentData.mother_lastname || studentData.mother_last_name || studentData.motherLastName || '',
+        motherSuffix: studentData.mother_suffix || studentData.motherSuffix || '',
         motherStatus: studentData.mother_status || studentData.motherStatus || 'Living',
         motherOccupation: studentData.mother_occupation || studentData.motherOccupation || '',
         motherContact: studentData.mother_contact || studentData.mother_contact_no || studentData.motherContact || '',
 
-        // Guardian's Details
-        guardianName: studentData.guardian_name || studentData.guardian_firstname || studentData.guardianName || '',
+        // Guardian
+        guardianFirstName: studentData.guardian_firstname || studentData.guardian_first_name || studentData.guardianFirstName || '',
+        guardianMiddleName: studentData.guardian_middlename || studentData.guardian_middle_name || studentData.guardianMiddleName || '',
+        guardianLastName: studentData.guardian_lastname || studentData.guardian_last_name || studentData.guardianLastName || '',
+        guardianSuffix: studentData.guardian_suffix || studentData.guardianSuffix || '',
         guardianOccupation: studentData.guardian_occupation || studentData.guardianOccupation || '',
         guardianContact: studentData.guardian_contact || studentData.guardian_contact_no || studentData.guardianContact || '',
 
@@ -194,14 +215,13 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         academicClubsExtracurr: studentData.acad_extracurr || studentData.acad_clubs_extracurr || studentData.academicClubsExtracurr || ''
       });
 
-      // Expand accordion automatically in Edit mode
       setShowDetailedInfo(true);
     }
   }, [studentData]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     if (name === 'sameAsPermanent') {
       setFormData(prev => ({
         ...prev,
@@ -240,7 +260,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
       const url = isEditMode && studentId
         ? `${process.env.REACT_APP_API_URL}/admin/students/${studentId}`
         : `${process.env.REACT_APP_API_URL}/admin/students`;
-      
+
       const method = isEditMode && studentId ? 'PUT' : 'POST';
 
       const payload = {
@@ -319,38 +339,31 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         hs_final_gwa: formData.hsFinalGWA && !isNaN(formData.hsFinalGWA) ? parseFloat(formData.hsFinalGWA) : null,
         hsFinalGWA: formData.hsFinalGWA && !isNaN(formData.hsFinalGWA) ? parseFloat(formData.hsFinalGWA) : null,
 
-        // Family Information
-        father_firstname: formData.fatherName || null,
-        father_name: formData.fatherName || null,
-        fatherName: formData.fatherName || null,
+        // Father (split)
+        father_firstname: formData.fatherFirstName || null,
+        father_middlename: formData.fatherMiddleName || null,
+        father_lastname: formData.fatherLastName || null,
+        father_suffix: formData.fatherSuffix || null,
         father_status: formData.fatherStatus || 'Living',
-        fatherStatus: formData.fatherStatus || 'Living',
         father_occupation: formData.fatherOccupation || null,
-        fatherOccupation: formData.fatherOccupation || null,
         father_contact: formData.fatherContact || null,
-        father_contact_no: formData.fatherContact || null,
-        fatherContact: formData.fatherContact || null,
 
-        mother_firstname: formData.motherName || null,
-        mother_name: formData.motherName || null,
-        motherName: formData.motherName || null,
+        // Mother (split)
+        mother_firstname: formData.motherFirstName || null,
+        mother_middlename: formData.motherMiddleName || null,
+        mother_lastname: formData.motherLastName || null,
+        mother_suffix: formData.motherSuffix || null,
         mother_status: formData.motherStatus || 'Living',
-        motherStatus: formData.motherStatus || 'Living',
         mother_occupation: formData.motherOccupation || null,
-        motherOccupation: formData.motherOccupation || null,
         mother_contact: formData.motherContact || null,
-        mother_contact_no: formData.motherContact || null,
-        motherContact: formData.motherContact || null,
 
-        // Guardian's Details
-        guardian_firstname: formData.guardianName || null,
-        guardian_name: formData.guardianName || null,
-        guardianName: formData.guardianName || null,
+        // Guardian (split)
+        guardian_firstname: formData.guardianFirstName || null,
+        guardian_middlename: formData.guardianMiddleName || null,
+        guardian_lastname: formData.guardianLastName || null,
+        guardian_suffix: formData.guardianSuffix || null,
         guardian_occupation: formData.guardianOccupation || null,
-        guardianOccupation: formData.guardianOccupation || null,
         guardian_contact: formData.guardianContact || null,
-        guardian_contact_no: formData.guardianContact || null,
-        guardianContact: formData.guardianContact || null,
 
         // Family Background
         support: formData.support || null,
@@ -404,10 +417,8 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
 
   const modalContent = (
     <div className="modalOverlay">
-      {/* Form now correctly wraps the container with full-height flex rendering */}
       <form onSubmit={handleSubmit} className="modalContainer" style={{ display: 'flex', flexDirection: 'column' }}>
-        
-        {/* Global Modal Header */}
+
         <div className="modalHeader">
           <h3 className="modalTitle">
             {isEditMode ? "EDIT STUDENT RECORD" : "ADD NEW STUDENT"}
@@ -419,13 +430,12 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
           </div>
         </div>
 
-        {/* Scrollable Modal Area */}
         <div className="modalScrollArea">
-          
+
           {/* SECTION 1: PRIMARY DETAILS */}
           <div className="formSection">
             <h4 className="sectionHeading">Primary Details</h4>
-            
+
             <div className="formRow split3">
               <div className="formGroup">
                 <label className="formLabel">FIRST NAME *</label>
@@ -493,8 +503,8 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
 
           {/* SECTION 2: ACCORDION TOGGLE BUTTON */}
           <div className="accordionToggleArea">
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="accordionBtn"
               onClick={() => setShowDetailedInfo(prev => !prev)}
             >
@@ -506,7 +516,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
           {/* SECTION 3: COLLAPSIBLE DETAILED INFORMATION */}
           {showDetailedInfo && (
             <div className="detailedInfoContainer">
-              
+
               {/* GROUP 1: PERSONAL INFORMATION */}
               <h4 className="sectionHeading">Personal Information</h4>
               <div className="formRow split3">
@@ -608,11 +618,11 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '15px', marginBottom: '8px' }}>
                 <h5 className="subSectionHeading" style={{ margin: 0, color: '#555' }}>Provincial Address</h5>
                 <label style={{ fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <input 
-                    type="checkbox" 
-                    name="sameAsPermanent" 
-                    checked={formData.sameAsPermanent} 
-                    onChange={handleChange} 
+                  <input
+                    type="checkbox"
+                    name="sameAsPermanent"
+                    checked={formData.sameAsPermanent}
+                    onChange={handleChange}
                   />
                   Same as Permanent Address
                 </label>
@@ -686,17 +696,32 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </div>
               </div>
 
-              {/* GROUP 3: FAMILY INFORMATION */}
+              {/* GROUP 3: FAMILY INFORMATION - now split into 3+1 layout */}
               <h4 className="sectionHeading" style={{ marginTop: '20px' }}>Family Information</h4>
-              
+
+              {/* Father */}
               <h5 className="subSectionHeading" style={{ marginBottom: '8px', color: '#555' }}>Father's Details</h5>
-              <div className="formRow split2">
+              <div className="formRow split3">
                 <div className="formGroup">
-                  <label className="formLabel">FATHER FULL NAME</label>
-                  <input type="text" name="fatherName" value={formData.fatherName} onChange={handleChange} />
+                  <label className="formLabel">First Name</label>
+                  <input type="text" name="fatherFirstName" value={formData.fatherFirstName} onChange={handleChange} />
                 </div>
                 <div className="formGroup">
-                  <label className="formLabel">STATUS</label>
+                  <label className="formLabel">Middle Name</label>
+                  <input type="text" name="fatherMiddleName" value={formData.fatherMiddleName} onChange={handleChange} />
+                </div>
+                <div className="formGroup">
+                  <label className="formLabel">Last Name</label>
+                  <input type="text" name="fatherLastName" value={formData.fatherLastName} onChange={handleChange} />
+                </div>
+              </div>
+              <div className="formRow split2">
+                <div className="formGroup">
+                  <label className="formLabel">Suffix</label>
+                  <input type="text" name="fatherSuffix" value={formData.fatherSuffix} onChange={handleChange} placeholder="Jr., III" />
+                </div>
+                <div className="formGroup">
+                  <label className="formLabel">Status</label>
                   <select name="fatherStatus" value={formData.fatherStatus} onChange={handleChange}>
                     <option value="Living">Living</option>
                     <option value="Deceased">Deceased</option>
@@ -705,23 +730,38 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
               </div>
               <div className="formRow split2">
                 <div className="formGroup">
-                  <label className="formLabel">OCCUPATION</label>
+                  <label className="formLabel">Occupation</label>
                   <input type="text" name="fatherOccupation" value={formData.fatherOccupation} onChange={handleChange} />
                 </div>
                 <div className="formGroup">
-                  <label className="formLabel">CONTACT NUMBER</label>
+                  <label className="formLabel">Contact Number</label>
                   <input type="text" name="fatherContact" value={formData.fatherContact} onChange={handleChange} />
                 </div>
               </div>
 
+              {/* Mother */}
               <h5 className="subSectionHeading" style={{ marginTop: '10px', marginBottom: '8px', color: '#555' }}>Mother's Details</h5>
-              <div className="formRow split2">
+              <div className="formRow split3">
                 <div className="formGroup">
-                  <label className="formLabel">MOTHER FULL NAME</label>
-                  <input type="text" name="motherName" value={formData.motherName} onChange={handleChange} />
+                  <label className="formLabel">First Name</label>
+                  <input type="text" name="motherFirstName" value={formData.motherFirstName} onChange={handleChange} />
                 </div>
                 <div className="formGroup">
-                  <label className="formLabel">STATUS</label>
+                  <label className="formLabel">Middle Name</label>
+                  <input type="text" name="motherMiddleName" value={formData.motherMiddleName} onChange={handleChange} />
+                </div>
+                <div className="formGroup">
+                  <label className="formLabel">Last Name</label>
+                  <input type="text" name="motherLastName" value={formData.motherLastName} onChange={handleChange} />
+                </div>
+              </div>
+              <div className="formRow split2">
+                <div className="formGroup">
+                  <label className="formLabel">Suffix</label>
+                  <input type="text" name="motherSuffix" value={formData.motherSuffix} onChange={handleChange} placeholder="Jr., III" />
+                </div>
+                <div className="formGroup">
+                  <label className="formLabel">Status</label>
                   <select name="motherStatus" value={formData.motherStatus} onChange={handleChange}>
                     <option value="Living">Living</option>
                     <option value="Deceased">Deceased</option>
@@ -730,30 +770,45 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
               </div>
               <div className="formRow split2">
                 <div className="formGroup">
-                  <label className="formLabel">OCCUPATION</label>
+                  <label className="formLabel">Occupation</label>
                   <input type="text" name="motherOccupation" value={formData.motherOccupation} onChange={handleChange} />
                 </div>
                 <div className="formGroup">
-                  <label className="formLabel">CONTACT NUMBER</label>
+                  <label className="formLabel">Contact Number</label>
                   <input type="text" name="motherContact" value={formData.motherContact} onChange={handleChange} />
                 </div>
               </div>
 
+              {/* Guardian */}
               <h5 className="subSectionHeading" style={{ marginTop: '10px', marginBottom: '8px', color: '#555' }}>Guardian's Details (if any)</h5>
-              <div className="formRow split2">
+              <div className="formRow split3">
                 <div className="formGroup">
-                  <label className="formLabel">GUARDIAN FULL NAME</label>
-                  <input type="text" name="guardianName" value={formData.guardianName} onChange={handleChange} />
+                  <label className="formLabel">First Name</label>
+                  <input type="text" name="guardianFirstName" value={formData.guardianFirstName} onChange={handleChange} />
                 </div>
                 <div className="formGroup">
-                  <label className="formLabel">CONTACT NUMBER</label>
-                  <input type="text" name="guardianContact" value={formData.guardianContact} onChange={handleChange} />
+                  <label className="formLabel">Middle Name</label>
+                  <input type="text" name="guardianMiddleName" value={formData.guardianMiddleName} onChange={handleChange} />
+                </div>
+                <div className="formGroup">
+                  <label className="formLabel">Last Name</label>
+                  <input type="text" name="guardianLastName" value={formData.guardianLastName} onChange={handleChange} />
                 </div>
               </div>
               <div className="formRow split2">
                 <div className="formGroup">
-                  <label className="formLabel">OCCUPATION</label>
+                  <label className="formLabel">Suffix</label>
+                  <input type="text" name="guardianSuffix" value={formData.guardianSuffix} onChange={handleChange} placeholder="Jr., III" />
+                </div>
+                <div className="formGroup">
+                  <label className="formLabel">Occupation</label>
                   <input type="text" name="guardianOccupation" value={formData.guardianOccupation} onChange={handleChange} />
+                </div>
+              </div>
+              <div className="formRow">
+                <div className="formGroup">
+                  <label className="formLabel">Contact Number</label>
+                  <input type="text" name="guardianContact" value={formData.guardianContact} onChange={handleChange} />
                 </div>
               </div>
 

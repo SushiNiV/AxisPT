@@ -6,6 +6,26 @@ const TermGrade = ({ data }) => {
     return <div className="term-container">No data available</div>;
   }
 
+  /**
+   * The document must fit one physical page (215.9mm x 330.2mm) regardless
+   * of how many courses a semester has - rather than letting print either
+   * clip overflow or spill a couple of rows onto an otherwise-empty second
+   * page, font size/padding/spacing scale down in tiers as the row count
+   * grows. Thresholds are a starting point tuned by eye against an 8-course
+   * semester (the density-cozy default) - adjust in TermGrade.css if a
+   * tier still doesn't fit once you see real printed output.
+   */
+  const courseCount = Math.max(
+    data.prelimCourses?.length || 0,
+    data.midtermCourses?.length || 0,
+    data.finalCourses?.length || 0
+  );
+  const densityClass =
+    courseCount <= 6 ? 'density-cozy' :
+    courseCount <= 9 ? 'density-compact' :
+    courseCount <= 13 ? 'density-tight' :
+    'density-tiny';
+
   const renderCourseRows = (courses) => {
     if (!courses || courses.length === 0) {
       return (
@@ -47,7 +67,7 @@ const TermGrade = ({ data }) => {
   const residencyYear = data.residencyYear || '';
 
   return (
-    <div className="term-container">
+    <div className={`term-container ${densityClass}`}>
 
       <div className="term-title">STUDENT TERM GRADE RECORDS</div>
 

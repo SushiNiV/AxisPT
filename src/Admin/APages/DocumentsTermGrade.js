@@ -116,7 +116,13 @@ function DocumentsTermGrade() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const data = await response.json();
-        if (data.success) setAcademicPeriods(data.data.years || []);
+        if (data.success) {
+          const years = data.data.years || [];
+          const totalYears = data.data.totalYears || 5;
+          // Only show valid year levels (1 to totalYears)
+          const filtered = years.filter(y => y.yearLevel >= 1 && y.yearLevel <= totalYears);
+          setAcademicPeriods(filtered);
+        }
       } catch (err) {
         console.error('Error fetching academic periods:', err);
       }
@@ -252,9 +258,16 @@ function DocumentsTermGrade() {
 
     try {
       const token = sessionStorage.getItem('token');
+
+      // Build query string with the current period selection
+      const params = new URLSearchParams();
+      if (selectedYearLevel) params.set('yearLevel', selectedYearLevel);
+      if (selectedSemesterId) params.set('semesterId', selectedSemesterId);
+      const query = params.toString() ? `?${params.toString()}` : '';
+
       const forms = await Promise.all(selectedStudentIds.map(async (studentId) => {
         const response = await fetch(
-          `${process.env.REACT_APP_API_URL}/admin/term-grade/${studentId}`,
+          `${process.env.REACT_APP_API_URL}/admin/term-grade/${studentId}${query}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const result = await response.json();
@@ -267,6 +280,9 @@ function DocumentsTermGrade() {
       }));
 
       setPrintForms(forms);
+      console.log('Batch print forms:', forms);
+      console.log('First student data:', forms[0]?.data);
+      console.log('prelimCourses:', forms[0]?.data?.prelimCourses);
       setIsPrintPending(true);
     } catch (err) {
       console.error('Batch print error:', err);

@@ -615,8 +615,9 @@ class StudentManageModel {
       }
 
       // 7. Safe Family Member Updates (Delete-then-Insert Strategy)
+      // ✅ FIXED: Removed LOWER(relation_type) – compare directly with enum values.
       if (data.father_name || data.father_firstname) {
-        await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND LOWER(relation_type) = 'father'`, [studentId]);
+        await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND relation_type = 'Father'`, [studentId]);
         await client.query(`
           INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
           VALUES ($1, 'Father', $2, $3, $4, $5, false)
@@ -630,7 +631,7 @@ class StudentManageModel {
       }
 
       if (data.mother_name || data.mother_firstname) {
-        await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND LOWER(relation_type) = 'mother'`, [studentId]);
+        await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND relation_type = 'Mother'`, [studentId]);
         await client.query(`
           INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
           VALUES ($1, 'Mother', $2, $3, $4, $5, false)
@@ -644,7 +645,7 @@ class StudentManageModel {
       }
 
       if (data.guardian_name || data.guardian_firstname) {
-        await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND LOWER(relation_type) = 'guardian'`, [studentId]);
+        await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND relation_type = 'Guardian'`, [studentId]);
         await client.query(`
           INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
           VALUES ($1, 'Guardian', $2, $3, $4, true, true)
