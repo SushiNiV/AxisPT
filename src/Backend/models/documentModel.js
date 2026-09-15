@@ -256,6 +256,133 @@ class DocumentModel {
     // Build the document using the context
     return await this._buildFromContext(studentId, context);
   }
+
+
+
+  // ---------- Public: CourseOutline Grade document ----------
+  static async getCourseOutlineData(curriculumId) {
+  // 1. Get the curriculum + program header
+  const headRes = await db.query(`
+    SELECT 
+      c.curriculum_id,
+      c.version_name,
+      c.start_year,
+      p.program_id,
+      p.program_name,
+      p.program_abbr,
+      p.total_year
+    FROM curricula c
+    JOIN programs p ON p.program_id = c.program_id
+    WHERE c.curriculum_id = $1
+  `, [curriculumId]);
+
+  const head = headRes.rows[0];
+  if (!head) return null;
+
+  // 2. Get all courses in this curriculum with prerequisites as a
+  //    comma-separated string of course codes.
+    const coursesRes = await db.query(`
+    SELECT 
+      cc.year_level,
+      cc.semester_id,
+      s.semester_label,
+      co.course_id,
+      co.course_code,
+      co.course_name,
+      co.lec_units,
+      co.lab_units,
+      co.total_units,
+      co.prerequisites
+    FROM curriculum_courses cc
+    JOIN courses co ON co.course_id = cc.course_id
+    JOIN semester s ON s.semester_id = cc.semester_id
+    WHERE cc.curriculum_id = $1
+    ORDER BY cc.year_level ASC, cc.semester_id ASC, co.course_code ASC
+  `, [curriculumId]);
+  // 3. Group by year, then by semester
+  const yearMap = new Map();
+
+  for (const row of coursesRes.rows) {
+    const yl = Number(row.year_level);
+    const semId = Number(row.semester_id);
+
+    if (!yearMap.has(yl)) {
+      yearMap.set(yl, {
+        yearLevel: yl,
+        semesters: new Map(),
+      });
+    }
+
+    const yearBlock = yearMap.get(yl);
+    if (!yearBlock.semesters.has(semId)) {
+      yearBlock.semesters.set(semId, {
+        semesterId: semId,
+        semesterLabel: row.semester_label,
+        courses: [],
+      });
+    }
+
+    yearBlock.semesters.get(semId).courses.push({
+      courseId: row.course_id,
+      courseCode: row.course_code,
+      courseName: row.course_name,
+      lecUnits: row.lec_units || 0,
+      labUnits: row.lab_units || 0,
+      totalUnits: row.total_units || (row.lec_units || 0) + (row.lab_units || 0),
+      prerequisites: (row.prerequisites || '').trim() || 'None',
+    });
+  }
+
+  // 4. Calculate totals for each semester
+  const computeTotals = (courses) =>
+    courses.reduce(
+      (acc, c) => ({
+        lec: acc.lec + (c.lecUnits || 0),
+        lab: acc.lab + (c.labUnits || 0),
+        total: acc.total + (c.totalUnits || 0),
+      }),
+      { lec: 0, lab: 0, total: 0 }
+    );
+
+  const years = Array.from(yearMap.values())
+    .sort((a, b) => a.yearLevel - b.yearLevel)
+    .map((yb) => {
+      const sems = Array.from(yb.semesters.values())
+        .sort((a, b) => a.semesterId - b.semesterId)
+        .map((s) => ({
+          ...s,
+          totals: computeTotals(s.courses),
+        }));
+      return {
+        yearLevel: yb.yearLevel,
+        semesters: sems,
+      };
+    });
+
+  // 5. Grand totals across the whole curriculum
+  const allCourses = coursesRes.rows.map((r) => ({
+    lecUnits: r.lec_units || 0,
+    labUnits: r.lab_units || 0,
+    totalUnits: r.total_units || (r.lec_units || 0) + (r.lab_units || 0),
+  }));
+  const grandTotals = {
+    totalUnits: allCourses.reduce((s, c) => s + c.totalUnits, 0),
+    totalCourses: allCourses.length,
+  };
+
+  const currentYear = new Date().getFullYear();
+
+  return {
+    curriculumId: head.curriculum_id,
+    programName: head.program_name,
+    programAbbr: head.program_abbr,
+    versionName: head.version_name,
+    startYear: head.start_year,
+    effectiveYear: `${currentYear} - ${currentYear + 1}`,
+    years,
+    grandTotals,
+  };
+}
 }
 
 module.exports = DocumentModel;

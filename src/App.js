@@ -18,6 +18,7 @@ import ACourses from './Admin/APages/ACourses';
 import ADocuments from './Admin/APages/ADocuments';
 import DocumentsStudentForm from './Admin/APages/DocumentsStudentForm';
 import DocumentsTermGrade from './Admin/APages/DocumentsTermGrade';
+import DocumentsCourseOutline from './Admin/APages/DocumentsCourseOutline';
 
 import AAccessCtrl from './Admin/APages/AAccessCtrl';
 import Manage from './Admin/APages/Manage';
@@ -85,6 +86,7 @@ function AppContent() {
             <Route path="/admin/documents" element={<ADocuments />}>
               <Route path="student-form" element={<DocumentsStudentForm />} />
               <Route path="term-grade" element={<DocumentsTermGrade />} />  
+              <Route path="course-curriculum" element={<DocumentsCourseOutline />} />
             </Route>
 
             <Route path="/admin/access-control" element={<AAccessCtrl />}>

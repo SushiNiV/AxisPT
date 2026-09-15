@@ -753,10 +753,62 @@ class StudentManageModel {
     }
   }
 
-  static async delete(studentId) {
-    const res = await db.query(`DELETE FROM students WHERE student_id = $1 RETURNING student_id`, [studentId]);
-    return res.rows.length > 0;
+ static async delete(studentId) {
+  const client = db.getClient ? await db.getClient() : db;
+  const isDedicatedClient = Boolean(db.getClient);
+
+  try {
+    if (isDedicatedClient) await client.query('BEGIN');
+
+    // 1. Get user_id (needed to clean up users table later)
+    const studentRes = await client.query(
+      `SELECT user_id FROM students WHERE student_id = $1`,
+      [studentId]
+    );
+
+    if (studentRes.rows.length === 0) {
+      if (isDedicatedClient) await client.query('ROLLBACK');
+      return false;
+    }
+
+    const userId = studentRes.rows[0].user_id;
+
+    // 2. Delete child records in correct order (children first)
+    //    grade_components → grades → everything else referencing students
+    await client.query(`
+      DELETE FROM grade_components 
+      WHERE grade_id IN (SELECT grade_id FROM grades WHERE student_id = $1)
+    `, [studentId]);
+
+    await client.query(`DELETE FROM grades WHERE student_id = $1`, [studentId]);
+    await client.query(`DELETE FROM student_status WHERE student_id = $1`, [studentId]);
+    await client.query(`DELETE FROM student_achievements WHERE student_id = $1`, [studentId]);
+    await client.query(`DELETE FROM student_family_members WHERE student_id = $1`, [studentId]);
+    await client.query(`DELETE FROM student_family WHERE student_id = $1`, [studentId]);
+    await client.query(`DELETE FROM student_highschool WHERE student_id = $1`, [studentId]);
+    await client.query(`DELETE FROM student_addresses WHERE student_id = $1`, [studentId]);
+    await client.query(`DELETE FROM student_education WHERE student_id = $1`, [studentId]);
+    await client.query(`DELETE FROM student_pii WHERE student_id = $1`, [studentId]);
+
+    // 3. Delete the student row
+    await client.query(`DELETE FROM students WHERE student_id = $1`, [studentId]);
+
+    // 4. Clean up the associated user + roles
+    if (userId) {
+      await client.query(`DELETE FROM user_roles WHERE user_id = $1`, [userId]);
+      await client.query(`DELETE FROM users WHERE user_id = $1`, [userId]);
+    }
+
+    if (isDedicatedClient) await client.query('COMMIT');
+    return true;
+  } catch (error) {
+    if (isDedicatedClient) await client.query('ROLLBACK');
+    console.error('Error deleting student:', error);
+    throw error;
+  } finally {
+    if (isDedicatedClient && client.release) client.release();
   }
+}
 }
 
 module.exports = StudentManageModel;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BiSearch, BiPlusCircle, BiX } from 'react-icons/bi';
+import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash } from 'react-icons/bi';
 import Filter from '../../Components/Filter';
 import '../../GlobalHistory.css';
 import '../../Global.css';
@@ -21,6 +21,7 @@ function ACourses() {
   const [tempProgram, setTempProgram] = useState("");
   const [tempYearLevel, setTempYearLevel] = useState("");
   const [tempSemester, setTempSemester] = useState("");
+  const [editingCourse, setEditingCourse] = useState(null);
   
   const [programOptions, setProgramOptions] = useState([]);
   const [yearLevelOptions] = useState(["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"]);
@@ -44,7 +45,7 @@ function ACourses() {
       });
       const data = await response.json();
       if (data.success) {
-        const programs = data.data.map(p => p.program_name);
+        const programs = data.data.map(p => p.program_abbr || p.program_name);
         setProgramOptions(programs);
       }
     } catch (err) {
@@ -128,17 +129,23 @@ function ACourses() {
     setCurrentPage(1);
   };
 
-  const filteredCourses = courses.filter((course) => {
-    const matchesSearch = 
-      course.course_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      course.course_name?.toLowerCase().includes(searchTerm.toLowerCase());
+const filteredCourses = courses.filter((course) => {
+  const matchesSearch = 
+    course.course_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    course.course_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesProgram = !selectedProgram || course.program_name === selectedProgram;
-    const matchesYearLevel = !selectedYearLevel || course.year_level?.toString() === selectedYearLevel.charAt(0);
-    const matchesSemester = !selectedSemester || course.semester_label === selectedSemester;
+  const matchesProgram = !selectedProgram || 
+    (course.program_abbrs || []).some(abbr => abbr === selectedProgram) ||
+    (course.program_names || []).some(name => name === selectedProgram);
 
-    return matchesSearch && matchesProgram && matchesYearLevel && matchesSemester;
-  });
+  const matchesYearLevel = !selectedYearLevel || 
+    (course.year_levels || []).some(yl => yl?.toString() === selectedYearLevel.charAt(0));
+
+  const matchesSemester = !selectedSemester || 
+    (course.semester_labels || []).some(sem => sem === selectedSemester);
+
+  return matchesSearch && matchesProgram && matchesYearLevel && matchesSemester;
+});
 
   const totalPages = Math.ceil(filteredCourses.length / rowsPerPage) || 1;
   const indexOfLastItem = currentPage * rowsPerPage;
@@ -165,8 +172,35 @@ function ACourses() {
 
   const handleAddSuccess = () => {
     setShowAddCourse(false);
+    setEditingCourse(null);
     fetchCourses();
   };
+
+  const handleEdit = (course) => {
+  setEditingCourse(course);
+  setShowAddCourse(true);
+};
+
+const handleDelete = async (courseId) => {
+  if (window.confirm("Are you sure you want to delete this course?")) {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/courses/${courseId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        fetchCourses();
+      } else {
+        alert(data.message || "Failed to delete course.");
+      }
+    } catch (err) {
+      console.error("Error deleting course:", err);
+      alert("An error occurred.");
+    }
+  }
+};
 
   if (loading) {
     return (
@@ -196,10 +230,14 @@ function ACourses() {
 
   return (
     <div className="InnerContainer">
-      {showAddCourse && (
+            {showAddCourse && (
         <AddCourse
-          onClose={() => setShowAddCourse(false)}
+          onClose={() => {
+            setShowAddCourse(false);
+            setEditingCourse(null);
+          }}
           onSuccess={handleAddSuccess}
+          courseToEdit={editingCourse}
         />
       )}
 
@@ -265,27 +303,38 @@ function ACourses() {
             <table className="Table">
               <thead>
                 <tr>
-                  <th style={{ width: '40px' }}>
-                    <input type="checkbox" />
-                  </th>
                   <th>Code</th>
                   <th>Course Name</th>
                   <th>Program</th>
                   <th>Year & Semester</th>
                   <th>Units</th>
                   <th>Prerequisites</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {currentItems.map((course) => (
                   <tr key={course.course_id}>
-                    <td><input type="checkbox" /></td>
                     <td>{course.course_code}</td>
                     <td>{course.course_name}</td>
-                    <td>{course.program_name}</td>
-                    <td>{`${course.year_level} Year - ${course.semester_label}`}</td>
+                    <td>{course.program_abbrs?.length ? course.program_abbrs.join(', ') : course.program_names?.[0] || '-'}</td>
+                    <td>
+                      {course.year_levels?.length > 1 
+                        ? 'Multiple' 
+                        : `${course.year_level || ''} Year - ${course.semester_label || ''}`}
+                    </td>
                     <td>{course.total_units || course.lec_units + course.lab_units}</td>
                     <td>{course.prerequisites || 'None'}</td>
+
+                    <td className="tableActions">
+                      <button className="tableEditBtn" onClick={() => handleEdit(course)}>
+                        <BiPencil /> Edit
+                      </button>
+                      <button className="tableDeleteBtn" onClick={() => handleDelete(course.course_id)}>
+                        <BiTrash /> Delete
+                      </button>
+                    </td>
+                    
                   </tr>
                 ))}
               </tbody>

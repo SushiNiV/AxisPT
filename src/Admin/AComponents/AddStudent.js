@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import ConfirmationModal from '../AComponents/ConfirmationModal';
 import '../../GlobalForm.css';
 import '../../GlobalOverlay.css';
 import '../../Global.css';
@@ -8,6 +9,9 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
   const [showDetailedInfo, setShowDetailedInfo] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [programs, setPrograms] = useState([]);
+
+  // ✅ Success modal state
+  const [successState, setSuccessState] = useState({ isOpen: false });
 
   const studentData = studentToEdit || initialData;
   const isEditMode = !!studentData;
@@ -62,7 +66,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     schoolAddress: '',
     hsFinalGWA: '',
 
-    // Father (split, 3+1)
+    // Father
     fatherFirstName: '',
     fatherMiddleName: '',
     fatherLastName: '',
@@ -71,7 +75,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     fatherOccupation: '',
     fatherContact: '',
 
-    // Mother (split, 3+1)
+    // Mother
     motherFirstName: '',
     motherMiddleName: '',
     motherLastName: '',
@@ -80,7 +84,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     motherOccupation: '',
     motherContact: '',
 
-    // Guardian (split, 3+1)
+    // Guardian
     guardianFirstName: '',
     guardianMiddleName: '',
     guardianLastName: '',
@@ -96,7 +100,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     noSiblings: '',
     ordinalPosition: '',
 
-    // Achievements, Hobbies, Interests
+    // Achievements
     awardsHonors: '',
     hobbiesInterests: '',
     futureCareer: '',
@@ -148,7 +152,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         language: studentData.language_dialect || studentData.language_dialects || studentData.language || '',
         visualProblems: studentData.visual_problems || studentData.visualProblems || '',
 
-        // Permanent / Present Address
         permHouseNo: studentData.perm_house_no || studentData.present_houseno || studentData.permHouseNo || '',
         permStreet: studentData.perm_street || studentData.present_street || studentData.street || studentData.permStreet || '',
         permSubdivision: studentData.perm_subdivision || studentData.permSubdivision || '',
@@ -156,7 +159,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         permCity: studentData.perm_city || studentData.present_city_mncplty || studentData.city_municipality || studentData.permCity || '',
         permProvince: studentData.perm_province || studentData.province || studentData.permProvince || '',
 
-        // Provincial Address
         sameAsPermanent: !!studentData.same_as_permanent,
         provHouseNo: studentData.prov_house_no || studentData.provincial_houseno || studentData.provHouseNo || '',
         provStreet: studentData.prov_street || studentData.provincial_street || studentData.provStreet || '',
@@ -165,7 +167,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         provCity: studentData.prov_city || studentData.provincial_city_mncplty || studentData.provCity || '',
         provProvince: studentData.prov_province || studentData.provProvince || '',
 
-        // Program and Education
         programId: studentData.program_id || studentData.curriculum_id || studentData.programId || '',
         yearLevel: studentData.year_level?.toString() || studentData.yearLevel?.toString() || '1',
         classification: studentData.classification || 'Regular',
@@ -174,7 +175,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         schoolAddress: studentData.hs_school_address || studentData.schoolAddress || '',
         hsFinalGWA: studentData.hs_final_gwa || studentData.hsFinalGWA || '',
 
-        // Father
         fatherFirstName: studentData.father_firstname || studentData.father_first_name || studentData.fatherFirstName || '',
         fatherMiddleName: studentData.father_middlename || studentData.father_middle_name || studentData.fatherMiddleName || '',
         fatherLastName: studentData.father_lastname || studentData.father_last_name || studentData.fatherLastName || '',
@@ -183,7 +183,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         fatherOccupation: studentData.father_occupation || studentData.fatherOccupation || '',
         fatherContact: studentData.father_contact || studentData.father_contact_no || studentData.fatherContact || '',
 
-        // Mother
         motherFirstName: studentData.mother_firstname || studentData.mother_first_name || studentData.motherFirstName || '',
         motherMiddleName: studentData.mother_middlename || studentData.mother_middle_name || studentData.motherMiddleName || '',
         motherLastName: studentData.mother_lastname || studentData.mother_last_name || studentData.motherLastName || '',
@@ -192,7 +191,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         motherOccupation: studentData.mother_occupation || studentData.motherOccupation || '',
         motherContact: studentData.mother_contact || studentData.mother_contact_no || studentData.motherContact || '',
 
-        // Guardian
         guardianFirstName: studentData.guardian_firstname || studentData.guardian_first_name || studentData.guardianFirstName || '',
         guardianMiddleName: studentData.guardian_middlename || studentData.guardian_middle_name || studentData.guardianMiddleName || '',
         guardianLastName: studentData.guardian_lastname || studentData.guardian_last_name || studentData.guardianLastName || '',
@@ -200,7 +198,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         guardianOccupation: studentData.guardian_occupation || studentData.guardianOccupation || '',
         guardianContact: studentData.guardian_contact || studentData.guardian_contact_no || studentData.guardianContact || '',
 
-        // Family Background
         support: studentData.support || '',
         parentsIncome: studentData.parents_income || studentData.parentsIncome || '',
         livingIn: studentData.living_in || studentData.livingIn || '',
@@ -208,7 +205,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         noSiblings: studentData.no_siblings ?? studentData.noSiblings ?? '',
         ordinalPosition: studentData.ordinal_position || studentData.ordinalPosition || '',
 
-        // Achievements, Hobbies, Interests
         awardsHonors: studentData.awards_honors || studentData.awardsHonors || '',
         hobbiesInterests: studentData.hobbies_interests || studentData.hobbiesInterests || '',
         futureCareer: studentData.future_career || studentData.futureCareer || '',
@@ -264,7 +260,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
       const method = isEditMode && studentId ? 'PUT' : 'POST';
 
       const payload = {
-        // Primary / User
         student_number: formData.studentNumber,
         studentNumber: formData.studentNumber,
         school_email: formData.email,
@@ -272,7 +267,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         account_status: Boolean(formData.accountStatus),
         accountStatus: Boolean(formData.accountStatus),
 
-        // Personal Information (PII)
         first_name: formData.firstName,
         firstName: formData.firstName,
         middle_name: formData.middleName || null,
@@ -300,7 +294,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         visual_problems: formData.visualProblems || null,
         visualProblems: formData.visualProblems || null,
 
-        // Permanent / Present Address
         present_houseno: formData.permHouseNo || null,
         present_street: formData.permStreet || null,
         present_sbdvsn_brgy: formData.permBarangay || null,
@@ -311,7 +304,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         perm_city: formData.permCity || null,
         perm_province: formData.permProvince || null,
 
-        // Provincial Address
         same_as_permanent: formData.sameAsPermanent,
         provincial_houseno: formData.sameAsPermanent ? formData.permHouseNo : formData.provHouseNo || null,
         provincial_street: formData.sameAsPermanent ? formData.permStreet : formData.provStreet || null,
@@ -323,7 +315,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         prov_city: formData.sameAsPermanent ? formData.permCity : formData.provCity || null,
         prov_province: formData.sameAsPermanent ? formData.permProvince : formData.provProvince || null,
 
-        // Program and Education
         program_id: formData.programId ? parseInt(formData.programId, 10) : null,
         curriculum_id: formData.programId ? parseInt(formData.programId, 10) : null,
         programId: formData.programId ? parseInt(formData.programId, 10) : null,
@@ -339,7 +330,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         hs_final_gwa: formData.hsFinalGWA && !isNaN(formData.hsFinalGWA) ? parseFloat(formData.hsFinalGWA) : null,
         hsFinalGWA: formData.hsFinalGWA && !isNaN(formData.hsFinalGWA) ? parseFloat(formData.hsFinalGWA) : null,
 
-        // Father (split)
         father_firstname: formData.fatherFirstName || null,
         father_middlename: formData.fatherMiddleName || null,
         father_lastname: formData.fatherLastName || null,
@@ -348,7 +338,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         father_occupation: formData.fatherOccupation || null,
         father_contact: formData.fatherContact || null,
 
-        // Mother (split)
         mother_firstname: formData.motherFirstName || null,
         mother_middlename: formData.motherMiddleName || null,
         mother_lastname: formData.motherLastName || null,
@@ -357,7 +346,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         mother_occupation: formData.motherOccupation || null,
         mother_contact: formData.motherContact || null,
 
-        // Guardian (split)
         guardian_firstname: formData.guardianFirstName || null,
         guardian_middlename: formData.guardianMiddleName || null,
         guardian_lastname: formData.guardianLastName || null,
@@ -365,7 +353,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         guardian_occupation: formData.guardianOccupation || null,
         guardian_contact: formData.guardianContact || null,
 
-        // Family Background
         support: formData.support || null,
         supportSource: formData.support || null,
         parents_income: formData.parentsIncome || null,
@@ -379,7 +366,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         ordinal_position: formData.ordinalPosition || null,
         ordinalPosition: formData.ordinalPosition || null,
 
-        // Achievements, Hobbies, Interests
         awards_honors: formData.awardsHonors || null,
         awardsHonors: formData.awardsHonors || null,
         hobbies_interests: formData.hobbiesInterests || null,
@@ -402,8 +388,15 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
       const data = await response.json();
 
       if (data.success || response.ok) {
-        alert(isEditMode ? "Student record updated successfully!" : "Student record created successfully!");
-        onSuccess();
+        // ✅ Show success modal instead of alert
+        setSuccessState({
+          isOpen: true,
+          title: isEditMode ? 'Student Updated' : 'Student Created',
+          message: isEditMode
+            ? 'The student record has been updated successfully.'
+            : 'The student record has been created successfully.',
+          variant: 'success',
+        });
       } else {
         alert(data.message || (isEditMode ? "Failed to update student." : "Failed to create student."));
       }
@@ -438,7 +431,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
 
             <div className="formRow split3">
               <div className="formGroup">
-                <label className="formLabel">FIRST NAME *</label>
+                <label className="formLabel">FIRST NAME <span style={{color: 'red'}}>*</span></label>
                 <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} required />
               </div>
               <div className="formGroup">
@@ -446,7 +439,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 <input type="text" name="middleName" value={formData.middleName} onChange={handleChange} />
               </div>
               <div className="formGroup">
-                <label className="formLabel">LAST NAME *</label>
+                <label className="formLabel">LAST NAME <span style={{color: 'red'}}>*</span></label>
                 <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} required />
               </div>
             </div>
@@ -457,18 +450,18 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 <input type="text" name="suffix" value={formData.suffix} onChange={handleChange} placeholder="e.g. Jr., III" />
               </div>
               <div className="formGroup">
-                <label className="formLabel">STUDENT NUMBER *</label>
+                <label className="formLabel">STUDENT NUMBER <span style={{color: 'red'}}>*</span></label>
                 <input type="text" name="studentNumber" value={formData.studentNumber} onChange={handleChange} required />
               </div>
               <div className="formGroup">
-                <label className="formLabel">EMAIL ADDRESS *</label>
+                <label className="formLabel">EMAIL ADDRESS <span style={{color: 'red'}}>*</span></label>
                 <input type="email" name="email" value={formData.email} onChange={handleChange} required />
               </div>
             </div>
 
             <div className="formRow split3">
               <div className="formGroup">
-                <label className="formLabel">PROGRAM *</label>
+                <label className="formLabel">PROGRAM <span style={{color: 'red'}}>*</span></label>
                 <select name="programId" value={formData.programId} onChange={handleChange} required>
                   <option value="">Select Program</option>
                   {programs.map(prog => (
@@ -479,7 +472,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </select>
               </div>
               <div className="formGroup">
-                <label className="formLabel">YEAR LEVEL *</label>
+                <label className="formLabel">YEAR LEVEL <span style={{color: 'red'}}>*</span></label>
                 <select name="yearLevel" value={formData.yearLevel} onChange={handleChange} required>
                   <option value="1">1st Year</option>
                   <option value="2">2nd Year</option>
@@ -517,7 +510,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
           {showDetailedInfo && (
             <div className="detailedInfoContainer">
 
-              {/* GROUP 1: PERSONAL INFORMATION */}
               <h4 className="sectionHeading">Personal Information</h4>
               <div className="formRow split3">
                 <div className="formGroup">
@@ -587,8 +579,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </div>
               </div>
 
-              {/* PERMANENT ADDRESS */}
-              <h5 className="subSectionHeading" style={{ marginTop: '10px', marginBottom: '8px', color: '#555' }}>Permanent Address</h5>
+              <h5 className="subSectionHeading">Permanent Address</h5>
               <div className="formRow split3">
                 <div className="formGroup">
                   <label className="formLabel">HOUSE NO. / STREET</label>
@@ -614,7 +605,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </div>
               </div>
 
-              {/* PROVINCIAL ADDRESS */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '15px', marginBottom: '8px' }}>
                 <h5 className="subSectionHeading" style={{ margin: 0, color: '#555' }}>Provincial Address</h5>
                 <label style={{ fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -657,7 +647,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </>
               )}
 
-              {/* GROUP 2: PROGRAM AND EDUCATION */}
               <h4 className="sectionHeading" style={{ marginTop: '20px' }}>Program and Education</h4>
               <div className="formRow split2">
                 <div className="formGroup">
@@ -696,10 +685,8 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </div>
               </div>
 
-              {/* GROUP 3: FAMILY INFORMATION - now split into 3+1 layout */}
               <h4 className="sectionHeading" style={{ marginTop: '20px' }}>Family Information</h4>
 
-              {/* Father */}
               <h5 className="subSectionHeading" style={{ marginBottom: '8px', color: '#555' }}>Father's Details</h5>
               <div className="formRow split3">
                 <div className="formGroup">
@@ -739,7 +726,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </div>
               </div>
 
-              {/* Mother */}
               <h5 className="subSectionHeading" style={{ marginTop: '10px', marginBottom: '8px', color: '#555' }}>Mother's Details</h5>
               <div className="formRow split3">
                 <div className="formGroup">
@@ -779,7 +765,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </div>
               </div>
 
-              {/* Guardian */}
               <h5 className="subSectionHeading" style={{ marginTop: '10px', marginBottom: '8px', color: '#555' }}>Guardian's Details (if any)</h5>
               <div className="formRow split3">
                 <div className="formGroup">
@@ -812,7 +797,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </div>
               </div>
 
-              {/* GROUP 4: FAMILY BACKGROUND */}
               <h4 className="sectionHeading" style={{ marginTop: '20px' }}>Family Background</h4>
               <div className="formRow split3">
                 <div className="formGroup">
@@ -873,7 +857,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </div>
               </div>
 
-              {/* GROUP 5: ACHIEVEMENTS, HOBBIES, INTERESTS */}
               <h4 className="sectionHeading" style={{ marginTop: '20px' }}>Achievements, Hobbies &amp; Interests</h4>
               <div className="formRow split2">
                 <div className="formGroup">
@@ -899,7 +882,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
             </div>
           )}
 
-          {/* Modal Actions */}
           <div className="modalFooter">
             <button type="button" className="cancelBtn" onClick={onClose} disabled={isSubmitting}>
               CANCEL
@@ -912,6 +894,23 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         </div>
 
       </form>
+
+      {/* ✅ Success modal rendered on top of the form modal */}
+      <ConfirmationModal
+        isOpen={successState.isOpen}
+        title={successState.title}
+        message={successState.message}
+        variant={successState.variant}
+        isAlert={true}
+        onConfirm={() => {
+          setSuccessState({ isOpen: false });
+          onSuccess();
+        }}
+        onCancel={() => {
+          setSuccessState({ isOpen: false });
+          onSuccess();
+        }}
+      />
     </div>
   );
 

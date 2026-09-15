@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash, BiListCheck } from 'react-icons/bi';
 import Filter from '../../Components/Filter';
+import ConfirmationModal from '../AComponents/ConfirmationModal';
 import '../../GlobalHistory.css';
 import '../../Global.css';
 import '../../GlobalEmpty.css';
@@ -15,13 +16,17 @@ function Masterlist() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage] = useState(30);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  
+
   // Overlay & Editing states
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
 
   // Grade Modal state
   const [viewingGradesFor, setViewingGradesFor] = useState(null);
+
+  // Confirmation / Alert modal state
+  //   confirmState: { isOpen, title, message, variant, confirmLabel, onConfirm, isAlert, loading }
+  const [confirmState, setConfirmState] = useState({ isOpen: false });
 
   // Filter States
   const [selectedProgram, setSelectedProgram] = useState("");
@@ -37,7 +42,6 @@ function Masterlist() {
 
   const hasActiveFilters = selectedProgram !== "" || selectedYearLevel !== "" || selectedStatus !== "";
 
-  // Sync temp filter state when opening filter popup
   useEffect(() => {
     if (isFilterOpen) {
       setTempProgram(selectedProgram);
@@ -46,7 +50,6 @@ function Masterlist() {
     }
   }, [isFilterOpen, selectedProgram, selectedYearLevel, selectedStatus]);
 
-  // Fetch Programs for Filter
   const fetchPrograms = useCallback(async () => {
     try {
       const token = sessionStorage.getItem('token');
@@ -63,7 +66,6 @@ function Masterlist() {
     }
   }, []);
 
-  // Fetch Students Data
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -91,29 +93,38 @@ function Masterlist() {
     fetchStudents();
   }, [fetchPrograms, fetchStudents]);
 
+  // ---------- Helper: open confirm / alert ----------
+  const closeConfirm = () => setConfirmState({ isOpen: false });
+
+  const openConfirm = (config) => {
+    setConfirmState({
+      isOpen: true,
+      variant: 'info',
+      confirmLabel: 'CONFIRM',
+      cancelLabel: 'CANCEL',
+      isAlert: false,
+      loading: false,
+      ...config,
+    });
+  };
+
+  const openAlert = (title, message, variant = 'info') => {
+    setConfirmState({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      isAlert: true,
+      onConfirm: () => setConfirmState({ isOpen: false }),
+      onCancel: () => setConfirmState({ isOpen: false }),
+    });
+  };
+
   // Filter Configuration
   const filters = [
-    { 
-      name: "program", 
-      label: "PROGRAM", 
-      value: tempProgram,
-      options: programOptions,
-      placeholder: "ALL PROGRAMS"
-    },
-    { 
-      name: "yearLevel", 
-      label: "YEAR LEVEL", 
-      value: tempYearLevel,
-      options: yearLevelOptions,
-      placeholder: "ALL YEARS"
-    },
-    { 
-      name: "status", 
-      label: "ACADEMIC STANDING", 
-      value: tempStatus,
-      options: statusOptions,
-      placeholder: "ALL STANDINGS"
-    }
+    { name: "program", label: "PROGRAM", value: tempProgram, options: programOptions, placeholder: "ALL PROGRAMS" },
+    { name: "yearLevel", label: "YEAR LEVEL", value: tempYearLevel, options: yearLevelOptions, placeholder: "ALL YEARS" },
+    { name: "status", label: "ACADEMIC STANDING", value: tempStatus, options: statusOptions, placeholder: "ALL STANDINGS" },
   ];
 
   const handleFilterChange = (name, value) => {
@@ -141,10 +152,9 @@ function Masterlist() {
     setCurrentPage(1);
   };
 
-  // Search & Filter Logic
   const filteredStudents = students.filter((std) => {
     const fullName = `${std.first_name} ${std.last_name}`.toLowerCase();
-    const matchesSearch = 
+    const matchesSearch =
       fullName.includes(searchTerm.toLowerCase()) ||
       std.student_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       std.personal_email?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -156,7 +166,6 @@ function Masterlist() {
     return matchesSearch && matchesProgram && matchesYearLevel && matchesStatus;
   });
 
-  // Pagination Math
   const totalPages = Math.ceil(filteredStudents.length / rowsPerPage) || 1;
   const indexOfLastItem = currentPage * rowsPerPage;
   const indexOfFirstItem = indexOfLastItem - rowsPerPage;
@@ -166,11 +175,9 @@ function Masterlist() {
   const standingCounts = filteredStudents.reduce(
     (counts, student) => {
       const status = student.academic_status || 'Regular';
-
       if (status === 'Regular') counts.regular += 1;
       else if (status === 'Warning') counts.warning += 1;
       else if (status.startsWith('Probationary')) counts.probationary += 1;
-
       return counts;
     },
     { regular: 0, warning: 0, probationary: 0 }
@@ -186,13 +193,8 @@ function Masterlist() {
     setCurrentPage(1);
   };
 
-  const goToNextPage = () => { 
-    if (currentPage < totalPages) setCurrentPage(p => p + 1); 
-  };
-  
-  const goToPrevPage = () => { 
-    if (currentPage > 1) setCurrentPage(p => p - 1); 
-  };
+  const goToNextPage = () => { if (currentPage < totalPages) setCurrentPage(p => p + 1); };
+  const goToPrevPage = () => { if (currentPage > 1) setCurrentPage(p => p - 1); };
 
   const handleAddSuccess = () => {
     setShowAddStudent(false);
@@ -221,9 +223,6 @@ function Masterlist() {
     setViewingGradesFor(student);
   };
 
-  // Academic standing badge styling. Regular/Probationary 2 reuse the
-  // existing green/red badge classes; Warning and Probationary 1 sit in
-  // between and use inline colors since no global class exists for them yet.
   const getStandingBadgeProps = (status) => {
     switch (status) {
       case "Regular":
@@ -239,28 +238,52 @@ function Masterlist() {
     }
   };
 
-  const handleDelete = async (studentId) => {
-    if (window.confirm("Are you sure you want to delete this student record?")) {
-      try {
-        const token = sessionStorage.getItem('token');
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/students/${studentId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (data.success) {
-          fetchStudents();
-        } else {
-          alert(data.message || "Failed to delete student.");
+  // ---------- Delete via ConfirmationModal ----------
+  const handleDelete = (student) => {
+    const studentName = `${student.last_name}, ${student.first_name}`;
+    openConfirm({
+      title: 'Delete Student Record',
+      message: (
+        <>
+          Are you sure you want to permanently delete the record of{' '}
+          <strong>{studentName}</strong> ({student.student_number})?
+          <br /><br />
+          <span style={{ color: '#c62828', fontSize: '0.75rem' }}>
+            This action cannot be undone. All associated grades, family information,
+            and enrollment records will be permanently removed.
+          </span>
+        </>
+      ),
+      variant: 'danger',
+      confirmLabel: 'DELETE',
+      onConfirm: async () => {
+        setConfirmState((s) => ({ ...s, loading: true }));
+        try {
+          const token = sessionStorage.getItem('token');
+          const response = await fetch(
+            `${process.env.REACT_APP_API_URL}/admin/students/${student.student_id}`,
+            {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` },
+            }
+          );
+          const data = await response.json();
+          setConfirmState({ isOpen: false });
+          if (data.success) {
+            fetchStudents();
+          } else {
+            openAlert('Delete Failed', data.message || 'Failed to delete student.', 'danger');
+          }
+        } catch (err) {
+          console.error("Error deleting student:", err);
+          setConfirmState({ isOpen: false });
+          openAlert('Error', 'An unexpected error occurred.', 'danger');
         }
-      } catch (err) {
-        console.error("Error deleting student:", err);
-        alert("An error occurred.");
-      }
-    }
+      },
+      onCancel: () => setConfirmState({ isOpen: false }),
+    });
   };
 
-  // Loading State UI
   if (loading) {
     return (
       <div className="InnerContainer">
@@ -273,7 +296,6 @@ function Masterlist() {
     );
   }
 
-  // Error State UI
   if (error) {
     return (
       <div className="InnerContainer">
@@ -308,30 +330,41 @@ function Masterlist() {
           student={viewingGradesFor}
           onClose={() => setViewingGradesFor(null)}
           onSuccess={() => {
-            setViewingGradesFor(null)
+            setViewingGradesFor(null);
             fetchStudents();
           }}
         />
       )}
 
+      {/* Reusable Confirmation / Alert Modal */}
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        confirmLabel={confirmState.confirmLabel}
+        cancelLabel={confirmState.cancelLabel}
+        isAlert={confirmState.isAlert}
+        loading={confirmState.loading}
+        onConfirm={confirmState.onConfirm}
+        onCancel={confirmState.onCancel}
+      />
+
       <div className="TopSection">
         <div className="SearchWrapper">
           <BiSearch className="SearchIcon" />
-          <input 
-            type="text" 
-            placeholder="Search student number, name, or email..." 
+          <input
+            type="text"
+            placeholder="Search student number, name, or email..."
             className="SearchInput"
             value={searchTerm}
             onChange={handleSearch}
           />
           {searchTerm && (
-            <BiX 
-              className="ClearSearchIcon" 
-              onClick={clearSearch}
-            />
+            <BiX className="ClearSearchIcon" onClick={clearSearch} />
           )}
         </div>
-        
+
         <Filter
           isOpen={isFilterOpen}
           setIsOpen={setIsFilterOpen}
@@ -356,9 +389,7 @@ function Masterlist() {
             <div className="emptyStateIcon">🔍</div>
             <h3 className="emptyStateTitle">No matching results</h3>
             <p className="emptyStateText">No students found matching "{searchTerm}"</p>
-            <button className="emptyStateBtn" onClick={clearSearch}>
-              Clear Search
-            </button>
+            <button className="emptyStateBtn" onClick={clearSearch}>Clear Search</button>
           </div>
         ) : (
           <div className="emptyState">
@@ -387,7 +418,6 @@ function Masterlist() {
             <table className="Table">
               <thead>
                 <tr>
-                  
                   <th>Student No.</th>
                   <th>Full Name</th>
                   <th>Program</th>
@@ -401,7 +431,6 @@ function Masterlist() {
               <tbody>
                 {currentItems.map((std) => (
                   <tr key={std.student_id}>
-                    
                     <td>{std.student_number}</td>
                     <td>{`${std.last_name}, ${std.first_name}`}</td>
                     <td>{std.program_abbr || std.program_name || '-'}</td>
@@ -420,7 +449,7 @@ function Masterlist() {
                       <button className="tableEditBtn" onClick={() => handleEdit(std)}>
                         <BiPencil /> Edit
                       </button>
-                      <button className="tableDeleteBtn" onClick={() => handleDelete(std.student_id)}>
+                      <button className="tableDeleteBtn" onClick={() => handleDelete(std)}>
                         <BiTrash /> Delete
                       </button>
                     </td>
@@ -435,14 +464,14 @@ function Masterlist() {
               <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
               <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
               <div className="CurrentPageInputWrapper">
-                <input 
-                  type="number" 
-                  value={currentPage} 
+                <input
+                  type="number"
+                  value={currentPage}
                   onChange={(e) => {
                     const val = parseInt(e.target.value);
                     if (val > 0 && val <= totalPages) setCurrentPage(val);
-                  }} 
-                  className="CurrentPageInput" 
+                  }}
+                  className="CurrentPageInput"
                 />
               </div>
               <div className="PaginationInfo">

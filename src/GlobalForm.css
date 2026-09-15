@@ -18,7 +18,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 8px; 
 }
 
 .formLabel {
@@ -255,6 +255,61 @@ select[size] {
 
 .RemoveBtn:hover {
   background-color: #ffcdd2;
+}
+
+/* ===== Prerequisite Tags ===== */
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.tags {
+  background: #3D1616;
+  color: white;
+  border-radius: 4px;
+  padding: 2px 12px;
+  font-size: 0.8rem;
+  border: 1px solid #ccc;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tags .remove-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: white;
+  font-size: 0.9rem;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.tags .remove-btn:hover {
+  color: #b71c1c;
+  transform: scale(1.2);
+}
+
+/* ===== Confirmation Modal ===== */
+.confirmBody {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.confirmIcon {
+  font-size: 1.8rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.confirmMessage {
+  font-size: 0.9rem;
+  color: #333;
+  line-height: 1.5;
+  padding-top: 4px;
 }
 
 .formGroup select::-webkit-scrollbar,

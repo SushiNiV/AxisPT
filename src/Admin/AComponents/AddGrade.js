@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import '../../GlobalForm.css';
 import '../../GlobalOverlay.css';
 import '../../Global.css';
+import ConfirmationModal from '../AComponents/ConfirmationModal';
 
 /**
  * ============================================================================
@@ -41,6 +42,17 @@ import '../../Global.css';
 
 const TERMS = ['Prelim', 'Midterm', 'Final'];
 
+// Scoped override: .Table th is sticky globally (Global.css), which isn't
+// wanted here since each semester renders three back-to-back tables inside
+// one scrollable modal. Scoped to .gradeTermTable so nothing else using
+// .Table elsewhere in the app is affected.
+const GRADE_TABLE_STYLE_OVERRIDES = `
+  .gradeTermTable th {
+    position: static;
+    top: auto;
+  }
+`;
+
 const AddGrade = ({ onClose, onSuccess, student }) => {
   const studentId = student?.student_id;
 
@@ -70,6 +82,43 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   // Which semester's "add course" picker is currently open, if any.
   const [addingToSemesterKey, setAddingToSemesterKey] = useState(null);
   const [courseToAdd, setCourseToAdd] = useState('');
+
+  // Confirmation / Success modal states
+  const [confirmState, setConfirmState] = useState({ isOpen: false });
+  const [successState, setSuccessState] = useState({ isOpen: false });
+
+  // ---------------------------------------------------------------------
+  // Confirmation / Alert helpers (top-level, accessible everywhere)
+  // ---------------------------------------------------------------------
+  const closeConfirm = () => setConfirmState({ isOpen: false });
+
+  const openConfirm = (config) => {
+    setConfirmState({
+      isOpen: true,
+      variant: 'info',
+      confirmLabel: 'CONFIRM',
+      cancelLabel: 'CANCEL',
+      isAlert: false,
+      loading: false,
+      ...config,
+    });
+  };
+
+  const openAlert = (title, message, variant = 'info') => {
+    setConfirmState({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      isAlert: true,
+      onConfirm: closeConfirm,
+      onCancel: closeConfirm,
+    });
+  };
+
+  const showSuccess = (title, message) => {
+    setSuccessState({ isOpen: true, title, message, variant: 'success' });
+  };
 
   // ---------------------------------------------------------------------
   // Load the grade sheet + gradable course catalog on open.
@@ -258,7 +307,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   };
 
   const renderRemarksBadge = (remarks) => {
-    if (!remarks) return <span style={{ color: '#aaa' }}>—</span>;
+    if (!remarks) return renderPending('Grade not yet computed');
     if (remarks === 'INC') {
       return <span className="statusBadge" style={{ backgroundColor: '#fff3cd', color: '#8a6512' }}>INC</span>;
     }
@@ -268,6 +317,14 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
       </span>
     );
   };
+
+  /** True N/A - this field genuinely doesn't exist for this course. */
+  const renderNA = () => <span style={{ color: '#d5d5d5' }}>—</span>;
+
+  /** Pending - the field applies, but there's no score/grade yet. */
+  const renderPending = (label = 'Awaiting scores') => (
+    <span style={{ color: '#999', fontStyle: 'italic' }} title={label}>—</span>
+  );
 
   // ---------------------------------------------------------------------
   // Add / delete rows
@@ -304,15 +361,25 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   };
 
   const handleRemoveCourse = (yearLevel, semesterId, courseId) => {
-    const semKey = `${yearLevel}-${semesterId}`;
-    setCourseIdsBySemester((prev) => ({
-      ...prev,
-      [semKey]: (prev[semKey] || []).filter((id) => id !== courseId)
-    }));
-    setGradesMap((prev) => {
-      const next = { ...prev };
-      delete next[courseId];
-      return next;
+    openConfirm({
+      title: 'Remove Course',
+      message: 'Are you sure you want to remove this course from the grade sheet? Any unsaved entries for this course will be lost.',
+      variant: 'warning',
+      confirmLabel: 'REMOVE',
+      onConfirm: () => {
+        const semKey = `${yearLevel}-${semesterId}`;
+        setCourseIdsBySemester((prev) => ({
+          ...prev,
+          [semKey]: (prev[semKey] || []).filter((id) => id !== courseId)
+        }));
+        setGradesMap((prev) => {
+          const next = { ...prev };
+          delete next[courseId];
+          return next;
+        });
+        closeConfirm();
+      },
+      onCancel: closeConfirm,
     });
   };
 
@@ -334,8 +401,8 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
         }));
 
       if (entries.length === 0) {
-        alert('Enter at least one grade before saving.');
         setIsSubmitting(false);
+        openAlert('No Grades Entered', 'Please enter at least one grade before saving.', 'warning');
         return;
       }
 
@@ -351,14 +418,13 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
       const data = await response.json();
 
       if (data.success) {
-        alert('Student grades updated successfully!');
-        onSuccess();
+        showSuccess('Grades Saved', "The student's grades have been updated successfully.");
       } else {
-        alert(data.message || 'Failed to save grades.');
+        openAlert('Save Failed', data.message || 'Failed to save grades.', 'danger');
       }
     } catch (err) {
       console.error('Error saving grades:', err);
-      alert('An error occurred. Please try again.');
+      openAlert('Connection Error', 'An unexpected error occurred. Please try again.', 'danger');
     } finally {
       setIsSubmitting(false);
     }
@@ -372,9 +438,6 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   // Render: one table per term for a given semester's current course list.
   // ---------------------------------------------------------------------
   const renderTermTable = (yearLevel, semesterId, term, courseIds) => {
-    // Only show the Lab / Special Exam columns if something in this
-    // semester actually needs them - avoids permanently-empty columns
-    // for programs with no lab courses.
     const semesterCourses = courseIds.map((id) => gradesMap[id]).filter(Boolean);
     const needsLab = semesterCourses.some((c) => (c.enterableFields || []).some((f) => f.component === 'Unit Practical Exam'));
     const specialExamField = term === 'Final'
@@ -382,11 +445,11 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
       : null;
 
     return (
-      <div key={term} style={{ marginBottom: '1rem' }}>
+      <div key={term} id={`term-${yearLevel}-${semesterId}-${term}`} style={{ marginBottom: '1rem', scrollMarginTop: '12px' }}>
         <h6 style={{ margin: '0 0 6px', fontSize: '0.8rem', fontWeight: 700, color: '#3d1616', textTransform: 'uppercase' }}>
-          {term} Term
+          {term}
         </h6>
-        <table className="Table">
+        <table className="Table gradeTermTable">
           <thead>
             <tr>
               <th>Code</th>
@@ -419,7 +482,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
               const cumulative = term === 'Final' ? previewCumulativeGrade(entry.enterableFields, entry.scoresByTerm) : null;
 
               const renderInput = (field, component) => {
-                if (!field) return <span style={{ color: '#ccc' }}>—</span>;
+                if (!field) return renderNA();
                 return (
                   <input
                     type="number" min="0" max="100" step="0.01"
@@ -439,20 +502,31 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                   {needsLab && <td>{renderInput(labField, 'Unit Practical Exam')}</td>}
                   {needsLab && <td>{renderInput(osceField, `${term} OSCE/OSPE`)}</td>}
                   {specialExamField && (
-                    <td>{ownSpecialField ? renderInput(ownSpecialField, specialExamField.component) : <span style={{ color: '#ccc' }}>—</span>}</td>
+                    <td>{ownSpecialField ? renderInput(ownSpecialField, specialExamField.component) : renderNA()}</td>
                   )}
                   <td>
                     {term === 'Final'
-                      ? (cumulative.finalGrade !== null ? cumulative.finalGrade.toFixed(2) : '—')
-                      : (pointGrade !== null ? pointGrade.toFixed(2) : '—')}
+                      ? (cumulative.finalGrade !== null ? cumulative.finalGrade.toFixed(2) : renderPending('Final grade not yet computed - some scores are still missing'))
+                      : (pointGrade !== null ? pointGrade.toFixed(2) : renderPending('No scores entered for this term yet'))}
                   </td>
-                  <td>{term === 'Final' ? renderRemarksBadge(cumulative.remarks) : '—'}</td>
+                  <td>{term === 'Final' ? renderRemarksBadge(cumulative.remarks) : renderPending('Only shown on the Final table')}</td>
                   <td>
                     <button
                       type="button"
-                      className="RemoveBtn"
                       onClick={() => handleRemoveCourse(yearLevel, semesterId, courseId)}
                       title="Remove this course from the sheet"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#aaa',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        transition: 'color 0.15s ease, background-color 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = '#c62828'; e.currentTarget.style.backgroundColor = '#ffebee'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = '#aaa'; e.currentTarget.style.backgroundColor = 'transparent'; }}
                     >
                       ✕
                     </button>
@@ -469,6 +543,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   const modalContent = (
     <div className="modalOverlay">
       <form onSubmit={handleSubmit} className="modalContainer" style={{ display: 'flex', flexDirection: 'column', maxWidth: '1200px' }}>
+        <style>{GRADE_TABLE_STYLE_OVERRIDES}</style>
 
         <div className="modalHeader">
           <h3 className="modalTitle">STUDENT GRADES</h3>
@@ -489,7 +564,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                   {studentLabel} {student.student_number ? `(${student.student_number})` : ''}
                 </h4>
                 {meta && (
-                  <p style={{ fontSize: '0.8rem', color: '#666', margin: 0 }}>
+                  <p style={{ fontSize: '1rem', color: '#666', margin: 0 }}>
                     {meta.programName} {meta.programAbbr ? `(${meta.programAbbr})` : ''}
                     {' — '}Currently {ordinalYear(meta.currentYearLevel)}
                   </p>
@@ -522,17 +597,34 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
 
                           return (
                             <div key={sem.semesterId} style={{ marginBottom: '1.5rem' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                <h5 className="subSectionHeading" style={{ margin: 0, color: '#555' }}>{sem.semesterLabel}</h5>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                <h5 className="subSectionHeading">{sem.semesterLabel}</h5>
                                 <button
                                   type="button"
                                   className="AddBtn"
                                   style={{ height: '30px', fontSize: '0.75rem' }}
                                   onClick={() => setAddingToSemesterKey(addingToSemesterKey === semKey ? null : semKey)}
+                                  title="Adds this course to the Prelim, Midterm, and Final tables below"
                                 >
                                   + Add Course
                                 </button>
                               </div>
+
+                              {courseIds.length > 0 && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                                  <span style={{ fontSize: '0.7rem', color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Jump to:</span>
+                                  {TERMS.map((t) => (
+                                    <a
+                                      key={t}
+                                      href={`#term-${yearBlock.yearLevel}-${sem.semesterId}-${t}`}
+                                      style={{ fontSize: '0.75rem', color: '#3d1616', fontWeight: 600, textDecoration: 'none' }}
+                                    >
+                                      {t}
+                                    </a>
+                                  ))}
+                                  <span style={{ fontSize: '0.7rem', color: '#bbb' }}>· Adding a course applies it to all three terms</span>
+                                </div>
+                              )}
 
                               {addingToSemesterKey === semKey && (
                                 <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
@@ -584,6 +676,37 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
           </div>
         </div>
       </form>
+
+      {/* Success modal (green) */}
+      <ConfirmationModal
+        isOpen={successState.isOpen}
+        title={successState.title}
+        message={successState.message}
+        variant={successState.variant}
+        isAlert={true}
+        onConfirm={() => {
+          setSuccessState({ isOpen: false });
+          onSuccess();
+        }}
+        onCancel={() => {
+          setSuccessState({ isOpen: false });
+          onSuccess();
+        }}
+      />
+
+      {/* Confirmation / alert modal (warning/danger/info) */}
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        confirmLabel={confirmState.confirmLabel}
+        cancelLabel={confirmState.cancelLabel}
+        isAlert={confirmState.isAlert}
+        loading={confirmState.loading}
+        onConfirm={confirmState.onConfirm}
+        onCancel={confirmState.onCancel}
+      />
     </div>
   );
 

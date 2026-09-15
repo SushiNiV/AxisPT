@@ -20,7 +20,7 @@ class SectionModel {
         AND ay.is_active = true
         AND sa.semester_id = ay.current_sem
       GROUP BY 
-        s.section_id, s.section_name, s.program_id,
+        s.section_id, s.section_name, s.program_id,d
         sa.year_level, sa.semester_id, sem.semester_label
       ORDER BY s.section_name ASC
     `, [programId]);

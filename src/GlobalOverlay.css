@@ -75,7 +75,6 @@
   opacity: 0.75;
 }
 
-
 .modalScrollArea {
   flex: 1;
   padding: 1.5rem 1.75rem; 
@@ -161,7 +160,7 @@
 }
 
 .sectionHeading {
-  font-size: 0.85rem;
+  font-size: 1.5rem;
   text-transform: uppercase;
   color: #3d1616;
   font-weight: 700;
@@ -169,6 +168,13 @@
   margin: 0.5rem 0;
   border-bottom: 2px solid #e2e8f0;
   padding-bottom: 0.3rem;
+}
+
+.subSectionHeading {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #3D1616;
+  margin: 0 0 0.25rem;
 }
 
 .formRow {
@@ -212,13 +218,13 @@
 }
 
 .accordionBtn {
-  background: #edf2f7;
+  background: #3d1616;
   border: 1px solid #cbd5e1;
-  color: #3d1616;
+  color: white;
   padding: 0.75rem 1.25rem;
   border-radius: 6px;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 1rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -229,8 +235,7 @@
 }
 
 .accordionBtn:hover {
-  background: #e2e8f0;
-  border-color: #94a3b8;
+  opacity: 0.9;
 }
 
 .arrow {
