@@ -45,6 +45,8 @@ router.get('/courses/gradable', verifyToken, adminController.getGradableCourses)
 router.post('/programs', verifyToken, adminController.addProgram);
 router.get('/programs', verifyToken, adminController.getPrograms);
 
+
+
 //course
 router.get('/courses', verifyToken, adminController.getCourses);
 router.get('/courses/:id', verifyToken, adminController.getCourseById);
@@ -61,7 +63,7 @@ router.get('/sections', verifyToken, adminController.getSectionsByProgram);
 router.get('/sections/active', verifyToken, adminController.getActiveSectionsByProgram);
 router.get('/sections/all', verifyToken, adminController.getAllSectionsByProgram);
 router.post('/section-assignments', verifyToken, adminController.addSectionAssignment);
-
+router.get('/sections/by-program/:programId', verifyToken, adminController.getSectionsByProgramId);
 router.get('/history', verifyToken, adminController.getHistory); 
 
 module.exports = router;

@@ -292,3 +292,38 @@
 .tableDeleteBtn:hover {
   background: #ffcdd2;
 }
+
+/* ===== Expand/collapse chevron ===== */
+.expandToggle {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #555;
+  font-size: 1.2rem;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.expandToggle:hover {
+  color: #3d1616;
+}
+
+.expandToggle:focus-visible {
+  outline: none;
+  color: #3d1616;
+}
+
+/* Rotate the same chevron when expanded */
+.expandToggle svg {
+  transition: transform 0.2s ease;
+}
+
+.expandToggle[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}

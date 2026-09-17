@@ -780,8 +780,23 @@ exports.getAllSectionsByProgram = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 };
+exports.getSectionsByProgram = exports.getAllSectionsByProgram; 
 
-exports.getSectionsByProgram = exports.getAllSectionsByProgram;
+exports.getSectionsByProgramId = async (req, res) => {
+  try {
+    const { programId } = req.params;
+    const { yearId, semesterId } = req.query;
+    const sections = await SectionModel.getByProgramAndTerm(
+      programId,
+      yearId ? parseInt(yearId, 10) : null,
+      semesterId ? parseInt(semesterId, 10) : null
+    );
+    res.json({ success: true, data: sections });
+  } catch (error) {
+    console.error('Error fetching sections by program:', error);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
+};
 
 exports.addSectionAssignment = async (req, res) => {
   const { section_option, section_name, section_id, program_id, year_level, semester_id, year_id, adviser_id, is_active } = req.body;
