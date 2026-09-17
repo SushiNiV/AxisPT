@@ -4,7 +4,7 @@ import Filter from '../../Components/Filter';
 import '../../GlobalHistory.css';
 import '../../Global.css';
 import '../../GlobalEmpty.css';
-import AddCourse from '../AComponents/AddCourse';
+import AddCourse from '../AComponents/AddModals/AddCourse';
 
 function ACourses() {
   const [courses, setCourses] = useState([]);

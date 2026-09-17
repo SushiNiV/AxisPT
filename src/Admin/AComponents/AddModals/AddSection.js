@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import ReactDOM from 'react-dom';
-import '../../GlobalForm.css'
-import '../../GlobalOverlay.css';
-import '../../Global.css';
+import '../../../GlobalForm.css'
+import '../../../GlobalOverlay.css';
+import '../../../Global.css';
 
 function AddSection({ onClose, onSuccess, programId, programName, programAbbr }) {
   const [sectionOption, setSectionOption] = useState("new");
@@ -138,11 +138,12 @@ function AddSection({ onClose, onSuccess, programId, programName, programAbbr })
   const modalContent = (
     <div className="modalOverlay">
       <div className="modalContainer">
-        <div className="CloseBtnArea">
-          <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
-        </div>
+        
         <div className="modalHeader">
           <h3 className="modalTitle">ADD SECTION ASSIGNMENT</h3>
+          <div className="CloseBtnArea">
+            <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
+          </div>
         </div>
 
         <div className="modalScrollArea">

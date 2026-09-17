@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import ReactDOM from 'react-dom';
-import '../../GlobalForm.css'
-import '../../GlobalOverlay.css';
-import '../../Global.css';
+import '../../../GlobalForm.css';
+import '../../../GlobalOverlay.css';
+import '../../../Global.css';
+
 
 function AddYear({ onClose, onSuccess, yearToEdit = null }) {
   const currentYear = new Date().getFullYear();

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import AddYear from './../AComponents/AddYear';
+import AddYear from './../AComponents/AddModals/AddYear';
 import { BiSearch, BiPlusCircle, BiCalendar, BiX, BiPencil, BiTrash } from 'react-icons/bi';
 
 import '../../Global.css';

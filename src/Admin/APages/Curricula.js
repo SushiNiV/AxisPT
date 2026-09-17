@@ -5,7 +5,7 @@ import { BiSearch, BiPlusCircle, BiX, BiBook, BiPencil, BiTrash } from 'react-ic
 import '../../Global.css';
 import '../../GlobalCard.css';
 import '../../GlobalEmpty.css';
-import AddCurriculum from '../AComponents/AddCurriculum';
+import AddCurriculum from '../AComponents/AddModals/AddCurriculum';
 
 function ACurricula() {
   const [curricula, setCurricula] = useState([]);

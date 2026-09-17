@@ -8,8 +8,8 @@ import '../../Global.css';
 import '../../GlobalCard.css';
 import '../../GlobalEmpty.css';
 import ConfirmationModal from '../AComponents/ConfirmationModal';
-import AddProgram from '../AComponents/AddProgram';
-import AddSection from '../AComponents/AddSection';
+import AddProgram from '../AComponents/AddModals/AddProgram';
+import AddSection from '../AComponents/AddModals/AddSection';
 
 function AProgSec() {
   const [programs, setPrograms] = useState([]);

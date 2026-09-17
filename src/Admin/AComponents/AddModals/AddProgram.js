@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from 'react-dom';
 import { BiChevronDown } from "react-icons/bi";
-import '../../GlobalForm.css'
-import '../../GlobalOverlay.css';
-import '../../Global.css';
+import '../../../GlobalForm.css';
+import '../../../GlobalOverlay.css';
+import '../../../Global.css';
+
 
 function AddProgram({ onClose, onSuccess, programToEdit = null }) {
   const [programName, setProgramName] = useState("");

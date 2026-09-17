@@ -1,3 +1,5 @@
+  const db = require('../config/db');
+
 class SectionModel {
   /**
    * Fetches sections for a program, optionally scoped to a specific

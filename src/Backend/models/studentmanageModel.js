@@ -131,6 +131,7 @@ class StudentManageModel {
         p.program_name AS program,
         p.program_abbr,
         p.program_code,
+        sa.section_id,
         sec.section_name AS section
 
       FROM students s
@@ -424,10 +425,10 @@ class StudentManageModel {
       }
 
       // 7. Education Record
+      // 7. Education Record
       const termInfo = await this.getActiveAcademicTerm(client);
       const programOrCurriculumId = data.curriculum_id || data.program_id;
-      
-      // Resolve Curriculum ID if program_id was passed
+
       let curriculumId = programOrCurriculumId;
       if (programOrCurriculumId) {
         const curRes = await client.query(
@@ -439,6 +440,17 @@ class StudentManageModel {
 
       const yearLevel = String(data.year_level || data.yearLevel || '1');
 
+      // Resolve assignment_id from chosen section_id
+      let assignmentId = data.assignment_id || null;
+      if (!assignmentId && data.section_id) {
+        const assignRes = await client.query(`
+          SELECT assignment_id FROM section_assignments
+          WHERE section_id = $1 AND year_id = $2 AND semester_id = $3
+          LIMIT 1
+        `, [data.section_id, data.year_id || termInfo.year_id, data.semester_id || termInfo.current_sem]);
+        assignmentId = assignRes.rows[0]?.assignment_id || null;
+      }
+
       await client.query(`
         INSERT INTO student_education (
           student_id, curriculum_id, assignment_id, year_id, semester_id, year_level, classification, enrollment_status, is_current
@@ -446,14 +458,14 @@ class StudentManageModel {
       `, [
         studentId,
         curriculumId || null,
-        data.assignment_id || null,
+        assignmentId,                                
         data.year_id || termInfo.year_id,
         data.semester_id || termInfo.current_sem,
         yearLevel,
-        data.classification || 'Regular',
+        data.classification || 'New',                
         data.enrollment_status || 'Enrolled'
       ]);
-
+      
       if (isDedicatedClient) await client.query('COMMIT');
       return { student_id: studentId, user_id: userId };
     } catch (error) {
@@ -465,293 +477,360 @@ class StudentManageModel {
   }
 
   static async update(studentId, data) {
-    const client = db.getClient ? await db.getClient() : db;
-    const isDedicatedClient = Boolean(db.getClient);
+  const client = db.getClient ? await db.getClient() : db;
+  const isDedicatedClient = Boolean(db.getClient);
 
-    try {
-      if (isDedicatedClient) await client.query('BEGIN');
+  try {
+    if (isDedicatedClient) await client.query('BEGIN');
 
-      const studentNumber = data.student_number || data.studentNumber;
-      const accountStatus = data.account_status !== undefined ? data.account_status : data.accountStatus;
-      const schoolEmail = data.school_email || data.email || data.personal_email;
+    const studentNumber = data.student_number || data.studentNumber;
+    const accountStatus = data.account_status !== undefined ? data.account_status : data.accountStatus;
+    const schoolEmail = data.school_email || data.email || data.personal_email;
 
-      // 1. Update user record
-      if (studentNumber || accountStatus !== undefined || schoolEmail) {
-        await client.query(`
-          UPDATE users 
-          SET 
-            username = COALESCE($1, username),
-            school_email = COALESCE($2, school_email),
-            is_active = COALESCE($3, is_active),
-            updated_at = NOW()
-          WHERE user_id = (SELECT user_id FROM students WHERE student_id = $4)
-        `, [
-          studentNumber || null,
-          schoolEmail || null,
-          accountStatus !== undefined ? Boolean(accountStatus) : null,
-          studentId
-        ]);
-      }
-
-      // 2. Update core student record
-      const birthDate = data.birth_date || data.birthDate;
+    // 1. Update user record
+    if (studentNumber || accountStatus !== undefined || schoolEmail) {
       await client.query(`
-        UPDATE students 
-        SET 
-          birth_date = COALESCE($1, birth_date),
-          account_status = COALESCE($2, account_status),
+        UPDATE users
+        SET
+          username = COALESCE($1, username),
+          school_email = COALESCE($2, school_email),
+          is_active = COALESCE($3, is_active),
           updated_at = NOW()
-        WHERE student_id = $3
+        WHERE user_id = (SELECT user_id FROM students WHERE student_id = $4)
       `, [
-        birthDate || null,
+        studentNumber || null,
+        schoolEmail || null,
         accountStatus !== undefined ? Boolean(accountStatus) : null,
         studentId
       ]);
+    }
 
-      // 3. Upsert PII
+    // 2. Update core student record
+    const birthDate = data.birth_date || data.birthDate;
+    await client.query(`
+      UPDATE students
+      SET
+        birth_date = COALESCE($1, birth_date),
+        account_status = COALESCE($2, account_status),
+        updated_at = NOW()
+      WHERE student_id = $3
+    `, [
+      birthDate || null,
+      accountStatus !== undefined ? Boolean(accountStatus) : null,
+      studentId
+    ]);
+
+    // 3. Upsert PII
+    await client.query(`
+      INSERT INTO student_pii (
+        student_id, first_name, last_name, middle_name, suffix, sex,
+        birth_place, personal_email, mobile_no, landline, religion,
+        nationality, civil_status, height, weight, language_dialects, visual_problems, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
+      ON CONFLICT (student_id) DO UPDATE SET
+        first_name = COALESCE(EXCLUDED.first_name, student_pii.first_name),
+        last_name = COALESCE(EXCLUDED.last_name, student_pii.last_name),
+        middle_name = EXCLUDED.middle_name,
+        suffix = EXCLUDED.suffix,
+        sex = EXCLUDED.sex,
+        birth_place = EXCLUDED.birth_place,
+        personal_email = EXCLUDED.personal_email,
+        mobile_no = EXCLUDED.mobile_no,
+        landline = EXCLUDED.landline,
+        religion = EXCLUDED.religion,
+        nationality = EXCLUDED.nationality,
+        civil_status = EXCLUDED.civil_status,
+        height = EXCLUDED.height,
+        weight = EXCLUDED.weight,
+        language_dialects = EXCLUDED.language_dialects,
+        visual_problems = EXCLUDED.visual_problems,
+        updated_at = NOW()
+    `, [
+      studentId,
+      data.first_name || data.firstName || null,
+      data.last_name || data.lastName || null,
+      data.middle_name || data.middleName || null,
+      data.suffix || null,
+      data.sex || null,
+      data.birth_place || data.place_of_birth || data.placeOfBirth || null,
+      data.personal_email || data.email || null,
+      data.mobile_no || data.phoneNumber || null,
+      data.landline || null,
+      data.religion || null,
+      data.nationality || null,
+      data.civil_status || data.civilStatus || null,
+      data.height ? parseFloat(data.height) : null,
+      data.weight ? parseFloat(data.weight) : null,
+      data.language_dialect || data.language_dialects || data.language || null,
+      data.visual_problems || data.visualProblems || null
+    ]);
+
+    // 4. Upsert Present Address
+    const presHouse = data.present_houseno || data.perm_house_no || data.house_no;
+    const presStreet = data.present_street || data.perm_street || data.street;
+    const presBrgy = data.present_sbdvsn_brgy || data.perm_barangay || data.barangay;
+    const presCity = data.present_city_mncplty || data.perm_city || data.city_municipality;
+    const presProvince = data.perm_province || data.province;
+
+    if (presHouse || presStreet || presBrgy || presCity || presProvince) {
       await client.query(`
-        INSERT INTO student_pii (
-          student_id, first_name, last_name, middle_name, suffix, sex,
-          birth_place, personal_email, mobile_no, landline, religion,
-          nationality, civil_status, height, weight, language_dialects, visual_problems, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
+        INSERT INTO student_addresses (student_id, address_type, house_no, street, barangay, city_municipality, province, updated_at)
+        VALUES ($1, 'Present', $2, $3, $4, $5, $6, NOW())
+        ON CONFLICT (student_id, address_type) DO UPDATE SET
+          house_no = EXCLUDED.house_no,
+          street = EXCLUDED.street,
+          barangay = EXCLUDED.barangay,
+          city_municipality = EXCLUDED.city_municipality,
+          province = EXCLUDED.province,
+          updated_at = NOW()
+      `, [studentId, presHouse || null, presStreet || null, presBrgy || null, presCity || null, presProvince || null]);
+    }
+
+    // 5. Upsert Provincial Address
+    const provHouse = data.provincial_houseno || data.prov_house_no;
+    const provStreet = data.provincial_street || data.prov_street;
+    const provBrgy = data.provincial_sbdvsn_brgy || data.prov_barangay;
+    const provCity = data.provincial_city_mncplty || data.prov_city;
+    const provProvince = data.prov_province;
+
+    if (provHouse || provStreet || provBrgy || provCity || provProvince) {
+      await client.query(`
+        INSERT INTO student_addresses (student_id, address_type, house_no, street, barangay, city_municipality, province, updated_at)
+        VALUES ($1, 'Provincial', $2, $3, $4, $5, $6, NOW())
+        ON CONFLICT (student_id, address_type) DO UPDATE SET
+          house_no = EXCLUDED.house_no,
+          street = EXCLUDED.street,
+          barangay = EXCLUDED.barangay,
+          city_municipality = EXCLUDED.city_municipality,
+          province = EXCLUDED.province,
+          updated_at = NOW()
+      `, [studentId, provHouse || null, provStreet || null, provBrgy || null, provCity || null, provProvince || null]);
+    }
+
+    // 6. Upsert Highschool
+    const hsGrad = data.highschool_graduated || data.highschoolGraduated;
+    const hsGwa = data.hs_final_gwa || data.hsFinalGWA;
+    const hsAddress = data.hs_school_address || data.schoolAddress;
+    const pubpriv = data.pub_priv_hs || data.pubprivHS;
+
+    if (hsGrad || hsGwa || hsAddress) {
+      await client.query(`
+        INSERT INTO student_highschool (student_id, highschool_graduated, pubpriv_hs, highschool_address, hs_final_gwa, updated_at)
+        VALUES ($1, $2, $3, $4, $5, NOW())
         ON CONFLICT (student_id) DO UPDATE SET
-          first_name = COALESCE(EXCLUDED.first_name, student_pii.first_name),
-          last_name = COALESCE(EXCLUDED.last_name, student_pii.last_name),
-          middle_name = EXCLUDED.middle_name,
-          suffix = EXCLUDED.suffix,
-          sex = EXCLUDED.sex,
-          birth_place = EXCLUDED.birth_place,
-          personal_email = EXCLUDED.personal_email,
-          mobile_no = EXCLUDED.mobile_no,
-          landline = EXCLUDED.landline,
-          religion = EXCLUDED.religion,
-          nationality = EXCLUDED.nationality,
-          civil_status = EXCLUDED.civil_status,
-          height = EXCLUDED.height,
-          weight = EXCLUDED.weight,
-          language_dialects = EXCLUDED.language_dialects,
-          visual_problems = EXCLUDED.visual_problems,
+          highschool_graduated = EXCLUDED.highschool_graduated,
+          pubpriv_hs = EXCLUDED.pubpriv_hs,
+          highschool_address = EXCLUDED.highschool_address,
+          hs_final_gwa = EXCLUDED.hs_final_gwa,
+          updated_at = NOW()
+      `, [studentId, hsGrad || null, pubpriv || null, hsAddress || null, hsGwa ? parseFloat(hsGwa) : null]);
+    }
+
+    // 7. Family Members (delete-then-insert)
+    if (data.father_name || data.father_firstname) {
+      await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND relation_type = 'Father'`, [studentId]);
+      await client.query(`
+        INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
+        VALUES ($1, 'Father', $2, $3, $4, $5, false)
+      `, [
+        studentId,
+        data.father_firstname || data.father_name || null,
+        data.father_occupation || null,
+        data.father_contact || data.father_contact_no || null,
+        data.father_status === 'Living'
+      ]);
+    }
+
+    if (data.mother_name || data.mother_firstname) {
+      await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND relation_type = 'Mother'`, [studentId]);
+      await client.query(`
+        INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
+        VALUES ($1, 'Mother', $2, $3, $4, $5, false)
+      `, [
+        studentId,
+        data.mother_firstname || data.mother_name || null,
+        data.mother_occupation || null,
+        data.mother_contact || data.mother_contact_no || null,
+        data.mother_status === 'Living'
+      ]);
+    }
+
+    if (data.guardian_name || data.guardian_firstname) {
+      await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND relation_type = 'Guardian'`, [studentId]);
+      await client.query(`
+        INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
+        VALUES ($1, 'Guardian', $2, $3, $4, true, true)
+      `, [
+        studentId,
+        data.guardian_firstname || data.guardian_name || null,
+        data.guardian_occupation || null,
+        data.guardian_contact || data.guardian_contact_no || null
+      ]);
+    }
+
+    // 7b. Family Background
+    const support = data.support || data.supportSource;
+    const parentsIncome = data.parents_income || data.parentsIncome;
+    const livingIn = data.living_in || data.livingIn;
+    const dailyTranspo = data.daily_transpo_expense || data.dailyTranspoExpense;
+    const noSiblings = data.no_siblings ?? data.noSiblings;
+    const ordinalPosition = data.ordinal_position || data.ordinalPosition;
+
+    if (support || parentsIncome || livingIn || dailyTranspo || noSiblings || ordinalPosition) {
+      await client.query(`
+        INSERT INTO student_family (student_id, support, parents_income, living_in, daily_transpo_expense, no_siblings, ordinal_position, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        ON CONFLICT (student_id) DO UPDATE SET
+          support = EXCLUDED.support,
+          parents_income = EXCLUDED.parents_income,
+          living_in = EXCLUDED.living_in,
+          daily_transpo_expense = EXCLUDED.daily_transpo_expense,
+          no_siblings = EXCLUDED.no_siblings,
+          ordinal_position = EXCLUDED.ordinal_position,
           updated_at = NOW()
       `, [
         studentId,
-        data.first_name || data.firstName || null,
-        data.last_name || data.lastName || null,
-        data.middle_name || data.middleName || null,
-        data.suffix || null,
-        data.sex || null,
-        data.birth_place || data.place_of_birth || data.placeOfBirth || null,
-        data.personal_email || data.email || null,
-        data.mobile_no || data.phoneNumber || null,
-        data.landline || null,
-        data.religion || null,
-        data.nationality || null,
-        data.civil_status || data.civilStatus || null,
-        data.height ? parseFloat(data.height) : null,
-        data.weight ? parseFloat(data.weight) : null,
-        data.language_dialect || data.language_dialects || data.language || null,
-        data.visual_problems || data.visualProblems || null
+        support || null,
+        parentsIncome || null,
+        livingIn || null,
+        dailyTranspo || null,
+        (noSiblings !== undefined && noSiblings !== '') ? parseInt(noSiblings, 10) : null,
+        ordinalPosition || null
+      ]);
+    }
+
+    // 7c. Achievements
+    const awardsHonors = data.awards_honors || data.awardsHonors;
+    const hobbiesInterests = data.hobbies_interests || data.hobbiesInterests;
+    const futureCareer = data.future_career || data.futureCareer;
+    const acadExtracurr = data.acad_extracurr || data.acad_clubs_extracurr || data.academicClubsExtracurr;
+
+    if (awardsHonors || hobbiesInterests || futureCareer || acadExtracurr) {
+      await client.query(`
+        INSERT INTO student_achievements (student_id, awards_honors, hobbies_interests, future_career, acad_extracurr, updated_at)
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        ON CONFLICT (student_id) DO UPDATE SET
+          awards_honors = EXCLUDED.awards_honors,
+          hobbies_interests = EXCLUDED.hobbies_interests,
+          future_career = EXCLUDED.future_career,
+          acad_extracurr = EXCLUDED.acad_extracurr,
+          updated_at = NOW()
+      `, [studentId, awardsHonors || null, hobbiesInterests || null, futureCareer || null, acadExtracurr || null]);
+    }
+
+    // 8. Update Active Education
+    const programOrCurriculumId = data.curriculum_id || data.program_id;
+    let curriculumId = programOrCurriculumId;
+
+    if (programOrCurriculumId) {
+      const curRes = await client.query(
+        `SELECT curriculum_id FROM curricula WHERE program_id = $1 ORDER BY curriculum_id DESC LIMIT 1`,
+        [programOrCurriculumId]
+      );
+      if (curRes.rows.length > 0) curriculumId = curRes.rows[0].curriculum_id;
+    }
+
+    const yearLevel = data.year_level || data.yearLevel;
+
+    // Distinguish "field not sent" from "field explicitly cleared"
+    const has = (k) => Object.prototype.hasOwnProperty.call(data, k);
+    const sectionWasSent = has('section_id') || has('assignment_id');
+
+    let assignmentId = null;
+    let sectionYearId = null;
+    let sectionSemesterId = null;
+
+    if (sectionWasSent) {
+      // Prefer an explicit assignment_id if the client sent one
+      if (data.assignment_id) {
+        assignmentId = parseInt(data.assignment_id, 10);
+        const meta = await client.query(
+          `SELECT year_id, semester_id FROM section_assignments WHERE assignment_id = $1`,
+          [assignmentId]
+        );
+        if (meta.rows[0]) {
+          sectionYearId = meta.rows[0].year_id;
+          sectionSemesterId = meta.rows[0].semester_id;
+        }
+      } else if (data.section_id) {
+        // Otherwise resolve from section_id within the active term
+        const termInfo = await this.getActiveAcademicTerm(client);
+        const assignRes = await client.query(`
+          SELECT assignment_id, year_id, semester_id
+          FROM section_assignments
+          WHERE section_id = $1 AND year_id = $2 AND semester_id = $3
+          LIMIT 1
+        `, [data.section_id, data.year_id || termInfo.year_id, data.semester_id || termInfo.current_sem]);
+        if (assignRes.rows[0]) {
+          assignmentId = assignRes.rows[0].assignment_id;
+          sectionYearId = assignRes.rows[0].year_id;
+          sectionSemesterId = assignRes.rows[0].semester_id;
+        }
+      }
+      // If neither resolved, assignmentId stays null → this CLEARS the section
+    }
+
+    if (curriculumId || yearLevel || data.classification || sectionWasSent) {
+      const eduRes = await client.query(`
+        UPDATE student_education SET
+          curriculum_id = COALESCE($1, curriculum_id),
+          year_level = COALESCE($2, year_level),
+          classification = COALESCE($3, classification),
+          year_id = COALESCE($4, year_id),
+          semester_id = COALESCE($5, semester_id),
+          assignment_id = CASE WHEN $6 THEN $7 ELSE assignment_id END,
+          updated_at = NOW()
+        WHERE student_id = $8 AND is_current = true
+        RETURNING education_id
+      `, [
+        curriculumId || null,
+        yearLevel ? String(yearLevel) : null,
+        data.classification || null,
+        sectionYearId,
+        sectionSemesterId,
+        sectionWasSent,
+        assignmentId,
+        studentId
       ]);
 
-      // 4. Upsert Present Address
-      const presHouse = data.present_houseno || data.perm_house_no || data.house_no;
-      const presStreet = data.present_street || data.perm_street || data.street;
-      const presBrgy = data.present_sbdvsn_brgy || data.perm_barangay || data.barangay;
-      const presCity = data.present_city_mncplty || data.perm_city || data.city_municipality;
-      const presProvince = data.perm_province || data.province;
-
-      if (presHouse || presStreet || presBrgy || presCity || presProvince) {
-        await client.query(`
-          INSERT INTO student_addresses (student_id, address_type, house_no, street, barangay, city_municipality, province, updated_at)
-          VALUES ($1, 'Present', $2, $3, $4, $5, $6, NOW())
-          ON CONFLICT (student_id, address_type) DO UPDATE SET
-            house_no = EXCLUDED.house_no,
-            street = EXCLUDED.street,
-            barangay = EXCLUDED.barangay,
-            city_municipality = EXCLUDED.city_municipality,
-            province = EXCLUDED.province,
-            updated_at = NOW()
-        `, [studentId, presHouse || null, presStreet || null, presBrgy || null, presCity || null, presProvince || null]);
+      if (eduRes.rowCount === 0) {
+        throw new Error('No current enrollment row found for this student.');
       }
-
-      // 5. Upsert Provincial Address
-      const provHouse = data.provincial_houseno || data.prov_house_no;
-      const provStreet = data.provincial_street || data.prov_street;
-      const provBrgy = data.provincial_sbdvsn_brgy || data.prov_barangay;
-      const provCity = data.provincial_city_mncplty || data.prov_city;
-      const provProvince = data.prov_province;
-
-      if (provHouse || provStreet || provBrgy || provCity || provProvince) {
-        await client.query(`
-          INSERT INTO student_addresses (student_id, address_type, house_no, street, barangay, city_municipality, province, updated_at)
-          VALUES ($1, 'Provincial', $2, $3, $4, $5, $6, NOW())
-          ON CONFLICT (student_id, address_type) DO UPDATE SET
-            house_no = EXCLUDED.house_no,
-            street = EXCLUDED.street,
-            barangay = EXCLUDED.barangay,
-            city_municipality = EXCLUDED.city_municipality,
-            province = EXCLUDED.province,
-            updated_at = NOW()
-        `, [studentId, provHouse || null, provStreet || null, provBrgy || null, provCity || null, provProvince || null]);
-      }
-
-      // 6. Upsert Highschool
-      const hsGrad = data.highschool_graduated || data.highschoolGraduated;
-      const hsGwa = data.hs_final_gwa || data.hsFinalGWA;
-      const hsAddress = data.hs_school_address || data.schoolAddress;
-      const pubpriv = data.pub_priv_hs || data.pubprivHS;
-
-      if (hsGrad || hsGwa || hsAddress) {
-        await client.query(`
-          INSERT INTO student_highschool (student_id, highschool_graduated, pubpriv_hs, highschool_address, hs_final_gwa, updated_at)
-          VALUES ($1, $2, $3, $4, $5, NOW())
-          ON CONFLICT (student_id) DO UPDATE SET
-            highschool_graduated = EXCLUDED.highschool_graduated,
-            pubpriv_hs = EXCLUDED.pubpriv_hs,
-            highschool_address = EXCLUDED.highschool_address,
-            hs_final_gwa = EXCLUDED.hs_final_gwa,
-            updated_at = NOW()
-        `, [studentId, hsGrad || null, pubpriv || null, hsAddress || null, hsGwa ? parseFloat(hsGwa) : null]);
-      }
-
-      // 7. Safe Family Member Updates (Delete-then-Insert Strategy)
-      // ✅ FIXED: Removed LOWER(relation_type) – compare directly with enum values.
-      if (data.father_name || data.father_firstname) {
-        await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND relation_type = 'Father'`, [studentId]);
-        await client.query(`
-          INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
-          VALUES ($1, 'Father', $2, $3, $4, $5, false)
-        `, [
-          studentId,
-          data.father_firstname || data.father_name || null,
-          data.father_occupation || null,
-          data.father_contact || data.father_contact_no || null,
-          data.father_status === 'Living'
-        ]);
-      }
-
-      if (data.mother_name || data.mother_firstname) {
-        await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND relation_type = 'Mother'`, [studentId]);
-        await client.query(`
-          INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
-          VALUES ($1, 'Mother', $2, $3, $4, $5, false)
-        `, [
-          studentId,
-          data.mother_firstname || data.mother_name || null,
-          data.mother_occupation || null,
-          data.mother_contact || data.mother_contact_no || null,
-          data.mother_status === 'Living'
-        ]);
-      }
-
-      if (data.guardian_name || data.guardian_firstname) {
-        await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND relation_type = 'Guardian'`, [studentId]);
-        await client.query(`
-          INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
-          VALUES ($1, 'Guardian', $2, $3, $4, true, true)
-        `, [
-          studentId,
-          data.guardian_firstname || data.guardian_name || null,
-          data.guardian_occupation || null,
-          data.guardian_contact || data.guardian_contact_no || null
-        ]);
-      }
-
-      // 7b. Upsert Family Background
-      const support = data.support || data.supportSource;
-      const parentsIncome = data.parents_income || data.parentsIncome;
-      const livingIn = data.living_in || data.livingIn;
-      const dailyTranspo = data.daily_transpo_expense || data.dailyTranspoExpense;
-      const noSiblings = data.no_siblings ?? data.noSiblings;
-      const ordinalPosition = data.ordinal_position || data.ordinalPosition;
-
-      if (support || parentsIncome || livingIn || dailyTranspo || noSiblings || ordinalPosition) {
-        await client.query(`
-          INSERT INTO student_family (student_id, support, parents_income, living_in, daily_transpo_expense, no_siblings, ordinal_position, updated_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-          ON CONFLICT (student_id) DO UPDATE SET
-            support = EXCLUDED.support,
-            parents_income = EXCLUDED.parents_income,
-            living_in = EXCLUDED.living_in,
-            daily_transpo_expense = EXCLUDED.daily_transpo_expense,
-            no_siblings = EXCLUDED.no_siblings,
-            ordinal_position = EXCLUDED.ordinal_position,
-            updated_at = NOW()
-        `, [
-          studentId,
-          support || null,
-          parentsIncome || null,
-          livingIn || null,
-          dailyTranspo || null,
-          (noSiblings !== undefined && noSiblings !== '') ? parseInt(noSiblings, 10) : null,
-          ordinalPosition || null
-        ]);
-      }
-
-      // 7c. Upsert Achievements, Hobbies, Interests
-      const awardsHonors = data.awards_honors || data.awardsHonors;
-      const hobbiesInterests = data.hobbies_interests || data.hobbiesInterests;
-      const futureCareer = data.future_career || data.futureCareer;
-      const acadExtracurr = data.acad_extracurr || data.acad_clubs_extracurr || data.academicClubsExtracurr;
-
-      if (awardsHonors || hobbiesInterests || futureCareer || acadExtracurr) {
-        await client.query(`
-          INSERT INTO student_achievements (student_id, awards_honors, hobbies_interests, future_career, acad_extracurr, updated_at)
-          VALUES ($1, $2, $3, $4, $5, NOW())
-          ON CONFLICT (student_id) DO UPDATE SET
-            awards_honors = EXCLUDED.awards_honors,
-            hobbies_interests = EXCLUDED.hobbies_interests,
-            future_career = EXCLUDED.future_career,
-            acad_extracurr = EXCLUDED.acad_extracurr,
-            updated_at = NOW()
-        `, [
-          studentId,
-          awardsHonors || null,
-          hobbiesInterests || null,
-          futureCareer || null,
-          acadExtracurr || null
-        ]);
-      }
-
-      // 8. Update Active Education
-      const programOrCurriculumId = data.curriculum_id || data.program_id;
-      let curriculumId = programOrCurriculumId;
-
-      if (programOrCurriculumId) {
-        const curRes = await client.query(
-          `SELECT curriculum_id FROM curricula WHERE program_id = $1 ORDER BY curriculum_id DESC LIMIT 1`,
-          [programOrCurriculumId]
-        );
-        if (curRes.rows.length > 0) curriculumId = curRes.rows[0].curriculum_id;
-      }
-
-      const yearLevel = data.year_level || data.yearLevel;
-
-      if (curriculumId || yearLevel || data.classification) {
-        await client.query(`
-          UPDATE student_education SET
-            curriculum_id = COALESCE($1, curriculum_id),
-            year_level = COALESCE($2, year_level),
-            classification = COALESCE($3, classification),
-            updated_at = NOW()
-          WHERE student_id = $4 AND is_current = true
-        `, [
-          curriculumId || null,
-          yearLevel ? String(yearLevel) : null,
-          data.classification || null,
-          studentId
-        ]);
-      }
-
-      if (isDedicatedClient) await client.query('COMMIT');
-      return true;
-    } catch (error) {
-      if (isDedicatedClient) await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      if (isDedicatedClient && client.release) client.release();
     }
+
+    if (isDedicatedClient) await client.query('COMMIT');
+    return true;
+  } catch (error) {
+    if (isDedicatedClient) await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    if (isDedicatedClient && client.release) client.release();
   }
+}
+
+static async bulkUpdateEducation(studentIds, { yearLevel = null, sectionId = null } = {}) {
+  let assignmentId = null;
+  if (sectionId) {
+    const termInfo = await this.getActiveAcademicTerm(db);
+    const assignRes = await db.query(`
+      SELECT assignment_id FROM section_assignments
+      WHERE section_id = $1 AND year_id = $2 AND semester_id = $3
+      LIMIT 1
+    `, [sectionId, termInfo.year_id, termInfo.current_sem]);
+    assignmentId = assignRes.rows[0]?.assignment_id || null;
+  }
+
+  const result = await db.query(`
+    UPDATE student_education
+    SET
+      year_level = COALESCE($1, year_level),
+      assignment_id = COALESCE($2, assignment_id),
+      updated_at = NOW()
+    WHERE student_id = ANY($3) AND is_current = true
+    RETURNING student_id
+  `, [yearLevel ? String(yearLevel) : null, assignmentId, studentIds]);
+  return result.rows.map(r => r.student_id);
+}
 
  static async delete(studentId) {
   const client = db.getClient ? await db.getClient() : db;

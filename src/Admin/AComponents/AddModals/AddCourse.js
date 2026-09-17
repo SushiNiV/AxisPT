@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from 'react-dom';
-import ConfirmationModal from './ConfirmationModal';
-import '../../GlobalForm.css';
-import '../../GlobalOverlay.css';
-import '../../Global.css';
+import ConfirmationModal from '../ConfirmationModal';
+import '../../../GlobalForm.css';
+import '../../../GlobalOverlay.css';
+import '../../../Global.css';
 
 function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
   const [formData, setFormData] = useState({

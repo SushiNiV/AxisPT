@@ -120,7 +120,7 @@ p, h1, h3, td, tr {
   font-weight: 600;
 }
 
-.MasterlistStanding.regular {
+.MasterlistStanding.None {
   background: #e8f5e9;
   color: #2e7d32;
 }
@@ -513,4 +513,105 @@ p, h1, h3, td, tr {
 
 .PopUpCard input::placeholder {
   color: #c2c6cb;
+}
+
+/* ============================================
+   Bulk Action Bar — floating Material-3-style pill
+   ============================================ */
+.BulkActionBar {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  gap: 20px;
+
+  background-color: #3D1616; /* brand maroon surface */
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 10px 12px 10px 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.15);
+
+  animation: BulkActionBarRise 0.2s ease-out;
+}
+
+@keyframes BulkActionBarRise {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.BulkActionCount {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #ffffff;
+  opacity: 0.9;
+}
+
+.BulkActionButtons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Shared pill-segment button reset, scoped to the bar only
+   so it doesn't affect .TopbarBtn / .tableDeleteBtn elsewhere */
+.BulkActionBar .TopbarBtn,
+.BulkActionBar .tableDeleteBtn,
+.BulkActionBar .ClearSelectionBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.BulkActionBar .TopbarBtn {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+.BulkActionBar .TopbarBtn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.BulkActionBar .tableDeleteBtn {
+  background-color: #ffffff;
+  color: #c62828;
+}
+.BulkActionBar .tableDeleteBtn:hover {
+  background-color: #ffe5e5;
+}
+
+.BulkActionBar .ClearSelectionBtn {
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  padding: 10px 14px;
+}
+.BulkActionBar .ClearSelectionBtn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.BulkActionBar button:active {
+  transform: scale(0.96);
+}
+
+/* Icons already sized via react-icons' default; nudge slightly for the pill */
+.BulkActionBar svg {
+  font-size: 1rem;
 }

@@ -16,8 +16,10 @@ router.post('/change-password', verifyToken, adminController.changePassword);
 router.get('/students', verifyToken, adminController.getStudentMasterlist);
 router.get('/students/:id', verifyToken, adminController.getStudentById);
 router.post('/students', verifyToken, adminController.createStudent);
+router.put('/students/batch-update', verifyToken, adminController.updateStudentsBulk);
 router.put('/students/:id', verifyToken, adminController.updateStudent);
 router.delete('/students/:id', verifyToken, adminController.deleteStudent);
+
 
 //grade management
 router.get('/students/:id/grades', verifyToken, adminController.getStudentGrades);

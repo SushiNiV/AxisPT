@@ -5,8 +5,9 @@ import ConfirmationModal from '../AComponents/ConfirmationModal';
 import '../../GlobalHistory.css';
 import '../../Global.css';
 import '../../GlobalEmpty.css';
-import AddStudent from '../AComponents/AddStudent';
-import AddGrade from '../AComponents/AddGrade';
+import AddStudent from '../AComponents/AddModals/AddStudent';
+import AddGrade from '../AComponents/AddModals/AddGrade';
+import BulkStudent from '../AComponents/BulkModals/BulkStudent';
 
 function Masterlist() {
   const [students, setStudents] = useState([]);
@@ -20,6 +21,10 @@ function Masterlist() {
   // Overlay & Editing states
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
+
+  // Bulk selection & bulk-edit states
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [showBulkEdit, setShowBulkEdit] = useState(false);
 
   // Grade Modal state
   const [viewingGradesFor, setViewingGradesFor] = useState(null);
@@ -38,7 +43,7 @@ function Masterlist() {
 
   const [programOptions, setProgramOptions] = useState([]);
   const [yearLevelOptions] = useState(["1st Year", "2nd Year", "3rd Year", "4th Year"]);
-  const [statusOptions] = useState(["Regular", "Warning", "Probationary 1", "Probationary 2"]);
+  const [statusOptions] = useState(["None", "Warning", "Probationary 1", "Probationary 2"]);
 
   const hasActiveFilters = selectedProgram !== "" || selectedYearLevel !== "" || selectedStatus !== "";
 
@@ -174,13 +179,13 @@ function Masterlist() {
   const visibleEnd = Math.min(indexOfLastItem, filteredStudents.length);
   const standingCounts = filteredStudents.reduce(
     (counts, student) => {
-      const status = student.academic_status || 'Regular';
-      if (status === 'Regular') counts.regular += 1;
+      const status = student.academic_status || 'None';
+      if (status === 'None') counts.none += 1;
       else if (status === 'Warning') counts.warning += 1;
       else if (status.startsWith('Probationary')) counts.probationary += 1;
       return counts;
     },
-    { regular: 0, warning: 0, probationary: 0 }
+    { none: 0, warning: 0, probationary: 0 }
   );
 
   const handleSearch = (e) => {
@@ -225,7 +230,7 @@ function Masterlist() {
 
   const getStandingBadgeProps = (status) => {
     switch (status) {
-      case "Regular":
+      case "None":
         return { className: "statusBadge active-bg" };
       case "Warning":
         return { className: "statusBadge", style: { backgroundColor: "#fff3cd", color: "#8a6512" } };
@@ -284,6 +289,74 @@ function Masterlist() {
     });
   };
 
+  // ---------- Bulk selection helpers ----------
+  const toggleSelectOne = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) =>
+      prev.length === currentItems.length ? [] : currentItems.map((s) => s.student_id)
+    );
+  };
+
+  const clearSelection = () => setSelectedIds([]);
+
+  // ---------- Bulk delete via ConfirmationModal ----------
+  const handleBulkDelete = () => {
+    openConfirm({
+      title: 'Delete Students',
+      message: (
+        <>
+          Permanently delete <strong>{selectedIds.length}</strong> selected student record(s)?
+          <br /><br />
+          <span style={{ color: '#c62828', fontSize: '0.75rem' }}>
+            This action cannot be undone. All associated grades, family information,
+            and enrollment records for these students will be permanently removed.
+          </span>
+        </>
+      ),
+      variant: 'danger',
+      confirmLabel: 'DELETE',
+      onConfirm: async () => {
+        setConfirmState((s) => ({ ...s, loading: true }));
+        try {
+          const token = sessionStorage.getItem('token');
+          const response = await fetch(
+            `${process.env.REACT_APP_API_URL}/admin/students/batch-delete`,
+            {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ studentIds: selectedIds }),
+            }
+          );
+          const data = await response.json();
+          setConfirmState({ isOpen: false });
+          if (data.success) {
+            clearSelection();
+            fetchStudents();
+            openAlert('Students Deleted', data.message, 'success');
+          } else {
+            openAlert('Delete Failed', data.message || 'Failed to delete selected students.', 'danger');
+          }
+        } catch (err) {
+          console.error("Error batch-deleting students:", err);
+          setConfirmState({ isOpen: false });
+          openAlert('Error', 'An unexpected error occurred.', 'danger');
+        }
+      },
+      onCancel: () => setConfirmState({ isOpen: false }),
+    });
+  };
+
+  const handleBulkEditSuccess = () => {
+    setShowBulkEdit(false);
+    clearSelection();
+    fetchStudents();
+  };
+
   if (loading) {
     return (
       <div className="InnerContainer">
@@ -322,6 +395,14 @@ function Masterlist() {
           onSuccess={handleAddSuccess}
           initialData={editingStudent}
           isEditMode={!!editingStudent}
+        />
+      )}
+
+      {showBulkEdit && (
+        <BulkStudent
+          studentIds={selectedIds}
+          onClose={() => setShowBulkEdit(false)}
+          onSuccess={handleBulkEditSuccess}
         />
       )}
 
@@ -408,7 +489,7 @@ function Masterlist() {
               Showing {visibleStart}–{visibleEnd} of {filteredStudents.length} students
             </span>
             <div className="MasterlistStandingCounts" aria-label="Academic standing summary">
-              <span className="MasterlistStanding regular">Regular {standingCounts.regular}</span>
+              <span className="MasterlistStanding None">None {standingCounts.None}</span>
               <span className="MasterlistStanding warning">Warning {standingCounts.warning}</span>
               <span className="MasterlistStanding probationary">Probationary {standingCounts.probationary}</span>
             </div>
@@ -418,19 +499,33 @@ function Masterlist() {
             <table className="Table">
               <thead>
                 <tr>
+                  <th style={{ width: '40px' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.length === currentItems.length && currentItems.length > 0}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
                   <th>Student No.</th>
                   <th>Full Name</th>
                   <th>Program</th>
                   <th>Year Level</th>
                   <th>Section</th>
                   <th>Email</th>
-                  <th>Standing</th>
+                  <th>Probation</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {currentItems.map((std) => (
                   <tr key={std.student_id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(std.student_id)}
+                        onChange={() => toggleSelectOne(std.student_id)}
+                      />
+                    </td>
                     <td>{std.student_number}</td>
                     <td>{`${std.last_name}, ${std.first_name}`}</td>
                     <td>{std.program_abbr || std.program_name || '-'}</td>
@@ -439,7 +534,7 @@ function Masterlist() {
                     <td>{std.personal_email}</td>
                     <td>
                       <span {...getStandingBadgeProps(std.academic_status)}>
-                        {std.academic_status || 'Regular'}
+                        {std.academic_status || 'None'}
                       </span>
                     </td>
                     <td className="tableActions">
@@ -482,6 +577,24 @@ function Masterlist() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Bottom floating bulk-action bar — appears once at least one row is checked */}
+      {selectedIds.length > 1 && (
+        <div className="BulkActionBar">
+          <span className="BulkActionCount">{selectedIds.length} selected</span>
+          <div className="BulkActionButtons">
+            <button className="TopbarBtn" onClick={() => setShowBulkEdit(true)}>
+              <BiPencil className="linkIcon" /> Edit Selected
+            </button>
+            <button className="tableDeleteBtn" onClick={handleBulkDelete}>
+              <BiTrash /> Delete Selected
+            </button>
+            <button className="ClearSelectionBtn" onClick={clearSelection}>
+              <BiX /> Clear
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

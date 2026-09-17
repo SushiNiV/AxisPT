@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import '../../GlobalForm.css';
-import '../../GlobalOverlay.css';
-import '../../Global.css';
-import ConfirmationModal from '../AComponents/ConfirmationModal';
+import '../../../GlobalForm.css';
+import '../../../GlobalOverlay.css';
+import '../../../Global.css';
+import ConfirmationModal from '../ConfirmationModal';
 
 /**
  * ============================================================================

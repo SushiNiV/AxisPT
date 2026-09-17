@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
-import ConfirmationModal from '../AComponents/ConfirmationModal';
-import '../../GlobalForm.css';
-import '../../GlobalOverlay.css';
-import '../../Global.css';
+import ConfirmationModal from '../ConfirmationModal';
+import '../../../GlobalForm.css';
+import '../../../GlobalOverlay.css';
+import '../../../Global.css';
+
 
 const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = null }) => {
   const [showDetailedInfo, setShowDetailedInfo] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [programs, setPrograms] = useState([]);
-
+  const [rawSections, setRawSections] = useState([]);
   // ✅ Success modal state
   const [successState, setSuccessState] = useState({ isOpen: false });
 
@@ -59,8 +60,9 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
 
     // Program & Education
     programId: '',
+    sectionId:'',
     yearLevel: '1',
-    classification: 'Regular',
+    classification: 'New',
     highschoolGraduated: '',
     pubprivHS: 'Public',
     schoolAddress: '',
@@ -125,6 +127,63 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     fetchPrograms();
   }, []);
 
+    useEffect(() => {
+    // Clear immediately so we never show the previous program's sections
+    // while the new fetch is in-flight.
+    setRawSections([]);
+
+    if (!formData.programId) return;
+
+    let cancelled = false;
+    const fetchSections = async () => {
+      const token = sessionStorage.getItem('token');
+      try {
+        const response = await fetch(
+          `${process.env.REACT_APP_API_URL}/admin/sections/by-program/${formData.programId}`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        const data = await response.json();
+        if (!cancelled && data.success) setRawSections(data.data);
+      } catch (err) {
+        if (!cancelled) console.error('Error fetching sections:', err);
+      }
+    };
+    fetchSections();
+
+    return () => { cancelled = true; };
+  }, [formData.programId]);
+
+    const sections = useMemo(() => {
+    const yl = String(formData.yearLevel || '');
+    let list = rawSections.filter((s) => !yl || String(s.year_level) === yl);
+
+    // Only inject the student's current section if we're still looking at
+    // their original program — otherwise it would belong to a program the
+    // user just switched away from.
+    const programUnchanged =
+      isEditMode &&
+      String(studentData?.program_id || studentData?.curriculum_id || '') === String(formData.programId || '');
+
+    if (
+      programUnchanged &&
+      studentData?.section_id &&
+      !list.some((s) => String(s.section_id) === String(studentData.section_id))
+    ) {
+      list = [
+        {
+          section_id: studentData.section_id,
+          assignment_id: studentData.assignment_id,
+          section_name: studentData.section || `(Section #${studentData.section_id})`,
+          year_level: studentData.year_level,
+          year_id: studentData.year_id,
+          semester_id: studentData.semester_id,
+        },
+        ...list,
+      ];
+    }
+    return list;
+  }, [rawSections, formData.yearLevel, formData.programId, isEditMode, studentData]);
+
   // Populate form in edit mode
   useEffect(() => {
     if (studentData) {
@@ -134,7 +193,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         accountStatus: typeof studentData.account_status === 'boolean'
           ? studentData.account_status
           : studentData.account_status === 'Active' || studentData.account_status === 1 || studentData.account_status === true,
-
+        sectionId: studentData.section_id || studentData.sectionId || '',
         firstName: studentData.first_name || studentData.firstname || studentData.firstName || '',
         middleName: studentData.middle_name || studentData.middlename || studentData.middleName || '',
         lastName: studentData.last_name || studentData.lastname || studentData.lastName || '',
@@ -168,8 +227,9 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         provProvince: studentData.prov_province || studentData.provProvince || '',
 
         programId: studentData.program_id || studentData.curriculum_id || studentData.programId || '',
+        sectionId: studentData.section_id || studentData.sectionId || '',
         yearLevel: studentData.year_level?.toString() || studentData.yearLevel?.toString() || '1',
-        classification: studentData.classification || 'Regular',
+        classification: studentData.classification || 'New',
         highschoolGraduated: studentData.highschool_graduated || studentData.highschoolGraduated || '',
         pubprivHS: studentData.pub_priv_hs || studentData.pubprivHS || 'Public',
         schoolAddress: studentData.hs_school_address || studentData.schoolAddress || '',
@@ -211,7 +271,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         academicClubsExtracurr: studentData.acad_extracurr || studentData.acad_clubs_extracurr || studentData.academicClubsExtracurr || ''
       });
 
-      setShowDetailedInfo(true);
+      setShowDetailedInfo(false);
     }
   }, [studentData]);
 
@@ -231,6 +291,16 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
           provProvince: prev.permProvince
         } : {})
       }));
+      return;
+    }
+
+    if (name === 'yearLevel') {
+      setFormData((prev) => ({ ...prev, yearLevel: value, sectionId: '' }));
+      return;
+    }
+
+    if (name === 'programId') {
+      setFormData((prev) => ({ ...prev, programId: value, sectionId: '' }));
       return;
     }
 
@@ -259,6 +329,14 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
 
       const method = isEditMode && studentId ? 'PUT' : 'POST';
 
+      // Resolve the picked section from the merged list (which includes the
+      // student's current section in edit mode), then derive year_id and
+      // semester_id from the section itself so the backend stores the exact
+      // term the section belongs to.
+      const pickedSection = sections.find(
+        (s) => String(s.section_id) === String(formData.sectionId)
+      );
+
       const payload = {
         student_number: formData.studentNumber,
         studentNumber: formData.studentNumber,
@@ -266,7 +344,10 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         email: formData.email,
         account_status: Boolean(formData.accountStatus),
         accountStatus: Boolean(formData.accountStatus),
-
+        section_id: formData.sectionId ? parseInt(formData.sectionId, 10) : null,
+        assignment_id: pickedSection?.assignment_id ? parseInt(pickedSection.assignment_id, 10) : null,
+        year_id: pickedSection?.year_id ? parseInt(pickedSection.year_id, 10) : null,
+        semester_id: pickedSection?.semester_id ? parseInt(pickedSection.semester_id, 10) : null,
         first_name: formData.firstName,
         firstName: formData.firstName,
         middle_name: formData.middleName || null,
@@ -320,7 +401,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         programId: formData.programId ? parseInt(formData.programId, 10) : null,
         year_level: formData.yearLevel ? String(formData.yearLevel) : '1',
         yearLevel: formData.yearLevel ? String(formData.yearLevel) : '1',
-        classification: formData.classification || 'Regular',
+        classification: formData.classification || 'New',
         highschool_graduated: formData.highschoolGraduated || null,
         highschoolGraduated: formData.highschoolGraduated || null,
         pub_priv_hs: formData.pubprivHS || 'Public',
@@ -388,7 +469,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
       const data = await response.json();
 
       if (data.success || response.ok) {
-        // ✅ Show success modal instead of alert
         setSuccessState({
           isOpen: true,
           title: isEditMode ? 'Student Updated' : 'Student Created',
@@ -481,15 +561,15 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </select>
               </div>
               <div className="formGroup">
-                <label className="formLabel">STATUS</label>
-                <div className="statusToggleContainer" onClick={() => setFormData(p => ({ ...p, accountStatus: !p.accountStatus }))}>
-                  <div className={`statusSwitch ${formData.accountStatus ? 'active' : 'inactive'}`}>
-                    <div className="switchHandle" />
-                  </div>
-                  <span className={`statusLabel ${formData.accountStatus ? 'text-active' : 'text-inactive'}`}>
-                    {formData.accountStatus ? 'ACTIVE' : 'INACTIVE'}
-                  </span>
-                </div>
+                <label className="formLabel">SECTION</label>
+                <select name="sectionId" value={formData.sectionId} onChange={handleChange}>
+                  <option value="">Unassigned</option>
+                  {sections.map(sec => (
+                    <option key={sec.assignment_id || sec.section_id} value={sec.section_id}>
+                      {sec.section_name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -652,11 +732,12 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 <div className="formGroup">
                   <label className="formLabel">CLASSIFICATION</label>
                   <select name="classification" value={formData.classification} onChange={handleChange}>
-                    <option value="Regular">Regular</option>
-                    <option value="Irregular">Irregular</option>
-                    <option value="Transferee">Transferee</option>
-                    <option value="Returnee">Returnee</option>
-                  </select>
+                  <option value="New">New</option>
+                  <option value="Continuing">Continuing</option>
+                  <option value="Returnee">Returnee</option>
+                  <option value="Shiftee">Shiftee</option>
+                  <option value="Transferee">Transferee</option>
+                </select>
                 </div>
                 <div className="formGroup">
                   <label className="formLabel">PRIVATE OR PUBLIC</label>

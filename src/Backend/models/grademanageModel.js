@@ -49,7 +49,7 @@ const GradingEngine = require('./gradingEngine');
  * is displayed as 'Regular' to match how the masterlist presents it.
  */
 const ACADEMIC_STANDING = {
-  REGULAR: 'Regular',
+  NONE: 'None',
   WARNING: 'Warning',
   PROBATIONARY_1: 'Probationary 1',
   PROBATIONARY_2: 'Probationary 2'
@@ -57,7 +57,7 @@ const ACADEMIC_STANDING = {
 
 /** Maps the raw student_status.probation_status enum value to a display label. */
 const PROBATION_STATUS_LABELS = {
-  None: ACADEMIC_STANDING.REGULAR,
+  None: ACADEMIC_STANDING.NONE,
   Warning: ACADEMIC_STANDING.WARNING,
   'Probationary 1': ACADEMIC_STANDING.PROBATIONARY_1,
   'Probationary 2': ACADEMIC_STANDING.PROBATIONARY_2
@@ -468,7 +468,7 @@ class GradeManageModel {
     `);
 
     const overrides = new Map(
-      overrideRes.rows.map((r) => [r.student_id, PROBATION_STATUS_LABELS[r.probation_status] || ACADEMIC_STANDING.REGULAR])
+      overrideRes.rows.map((r) => [r.student_id, PROBATION_STATUS_LABELS[r.probation_status] || ACADEMIC_STANDING.NONE])
     );
 
     const standingMap = new Map();
@@ -480,7 +480,7 @@ class GradeManageModel {
       }
 
       const { max_course_repeat, max_semester_fails, total_courses_failed } = row;
-      let status = ACADEMIC_STANDING.REGULAR;
+      let status = ACADEMIC_STANDING.NONE;
 
       if (max_course_repeat >= 3 || max_semester_fails >= 5) {
         status = ACADEMIC_STANDING.PROBATIONARY_2;

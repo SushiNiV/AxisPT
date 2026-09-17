@@ -38,7 +38,7 @@ class DocumentModel {
     // Academic standing
     const standingMap = await GradeManageModel.getAcademicStandingMap();
     const standing = standingMap.get(Number(studentId));
-    const probationStatus = standing?.status || 'Regular';
+    const probationStatus = standing?.status || 'None';
 
     // Residency
     const residencyRes = await db.query(`

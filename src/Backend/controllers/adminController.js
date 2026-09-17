@@ -347,7 +347,7 @@ exports.getStudentMasterlist = async (req, res) => {
       const standing = standingMap.get(student.student_id);
       return {
         ...student,
-        academic_status: standing?.status || 'Regular',
+        academic_status: standing?.status || 'None',
         academic_status_overridden: standing?.isOverridden || false
       };
     });
@@ -446,6 +446,23 @@ exports.deleteStudent = async (req, res) => {
     });
   } catch (error) {
     console.error("Error deleting student:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.updateStudentsBulk = async (req, res) => {
+  const { studentIds, yearLevel, sectionId } = req.body;
+  if (!Array.isArray(studentIds) || studentIds.length === 0) {
+    return res.status(400).json({ success: false, message: "studentIds (array) is required." });
+  }
+  if (!yearLevel && !sectionId) {
+    return res.status(400).json({ success: false, message: "Provide at least a yearLevel or sectionId to update." });
+  }
+  try {
+    const updated = await StudentManageModel.bulkUpdateEducation(studentIds, { yearLevel, sectionId });
+    res.json({ success: true, message: `${updated.length} student(s) updated.`, data: updated });
+  } catch (error) {
+    console.error("Error batch-updating students:", error);
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 };
@@ -786,11 +803,13 @@ exports.getSectionsByProgramId = async (req, res) => {
   try {
     const { programId } = req.params;
     const { yearId, semesterId } = req.query;
+
     const sections = await SectionModel.getByProgramAndTerm(
       programId,
-      yearId ? parseInt(yearId, 10) : null,
-      semesterId ? parseInt(semesterId, 10) : null
+      yearId ? Number(yearId) : null,
+      semesterId ? Number(semesterId) : null
     );
+
     res.json({ success: true, data: sections });
   } catch (error) {
     console.error('Error fetching sections by program:', error);

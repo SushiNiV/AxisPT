@@ -3,7 +3,7 @@ import { BiSearch, BiFilterAlt, BiPlusCircle, BiX,BiPencil, BiTrash, BiExport } 
 import '../../GlobalHistory.css';
 import '../../Global.css';
 import '../../GlobalEmpty.css';
-import AddFaculty from '../AComponents/AddFaculty';
+import AddFaculty from '../AComponents/AddModals/AddFaculty';
 
 function AManage() {
   const [users, setUsers] = useState([]);

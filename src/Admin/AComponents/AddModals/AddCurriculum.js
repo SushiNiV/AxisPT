@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 import ReactDOM from 'react-dom';
 import { BiChevronDown } from 'react-icons/bi';
 
-import '../../GlobalForm.css'
-import '../../GlobalOverlay.css';
-import '../../Global.css';
+import '../../../GlobalForm.css';
+import '../../../GlobalOverlay.css';
+import '../../../Global.css';
+
 
 function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
   const isEditMode = !!curriculumToEdit;
