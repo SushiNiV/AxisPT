@@ -79,7 +79,13 @@
   grid-template-columns: repeat(11, 1fr);
 }
 
-
+.date-with-underline {
+  display: inline-block;
+  border-bottom: 1px solid #000;
+  min-width: 100px;
+  text-align: center;
+  font-family: 'Times New Roman', Times, serif;
+}
 
 .two-rows {
   display: grid;
@@ -281,34 +287,18 @@
   align-content: center;
   padding-bottom: 2px;
 }
-
 input.small-check {
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  
-  width: 10px !important;
-  height: 10px !important;
-  min-width: 10px !important;
-  min-height: 10px !important;
-  
-  border: 1px solid black !important;
-  background-color: white !important;
-  margin: 0 !important;
-  padding: 0 !important;
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
+  margin: 0;
+  padding: 0;
   cursor: pointer;
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box !important;
-}
-
-input.tiny-check:checked::before {
-  content: "×" !important;
-  font-size: 9px !important;
-  line-height: 1;
-  color: black;
-  font-weight: bold;
-  display: block;
+  accent-color: #000;   /* ensures black fill in modern browsers */
+  display: inline-block;
+  vertical-align: middle;
+  box-sizing: border-box;
 }
 
 

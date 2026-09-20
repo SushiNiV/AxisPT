@@ -257,132 +257,230 @@ class DocumentModel {
     return await this._buildFromContext(studentId, context);
   }
 
+  // ---------- Internal: build a course outline from a curriculum id ----------
+  static async _buildCourseOutline(curriculumId) {
+    // 1. Get the curriculum + program header
+    const headRes = await db.query(`
+      SELECT 
+        c.curriculum_id,
+        c.version_name,
+        c.start_year,
+        p.program_id,
+        p.program_name,
+        p.program_abbr,
+        p.total_year
+      FROM curricula c
+      JOIN programs p ON p.program_id = c.program_id
+      WHERE c.curriculum_id = $1
+    `, [curriculumId]);
 
+    const head = headRes.rows[0];
+    if (!head) return null;
 
-  // ---------- Public: CourseOutline Grade document ----------
-  static async getCourseOutlineData(curriculumId) {
-  // 1. Get the curriculum + program header
-  const headRes = await db.query(`
-    SELECT 
-      c.curriculum_id,
-      c.version_name,
-      c.start_year,
-      p.program_id,
-      p.program_name,
-      p.program_abbr,
-      p.total_year
-    FROM curricula c
-    JOIN programs p ON p.program_id = c.program_id
-    WHERE c.curriculum_id = $1
-  `, [curriculumId]);
-
-  const head = headRes.rows[0];
-  if (!head) return null;
-
-  // 2. Get all courses in this curriculum with prerequisites as a
-  //    comma-separated string of course codes.
+    // 2. Get all courses in this curriculum with prerequisites as a
+    //    comma-separated string of course codes.
     const coursesRes = await db.query(`
-    SELECT 
-      cc.year_level,
-      cc.semester_id,
-      s.semester_label,
-      co.course_id,
-      co.course_code,
-      co.course_name,
-      co.lec_units,
-      co.lab_units,
-      co.total_units,
-      co.prerequisites
-    FROM curriculum_courses cc
-    JOIN courses co ON co.course_id = cc.course_id
-    JOIN semester s ON s.semester_id = cc.semester_id
-    WHERE cc.curriculum_id = $1
-    ORDER BY cc.year_level ASC, cc.semester_id ASC, co.course_code ASC
-  `, [curriculumId]);
-  // 3. Group by year, then by semester
-  const yearMap = new Map();
+      SELECT 
+        cc.year_level,
+        cc.semester_id,
+        s.semester_label,
+        co.course_id,
+        co.course_code,
+        co.course_name,
+        co.lec_units,
+        co.lab_units,
+        co.total_units,
+        co.prerequisites
+      FROM curriculum_courses cc
+      JOIN courses co ON co.course_id = cc.course_id
+      JOIN semester s ON s.semester_id = cc.semester_id
+      WHERE cc.curriculum_id = $1
+      ORDER BY cc.year_level ASC, cc.semester_id ASC, co.course_code ASC
+    `, [curriculumId]);
 
-  for (const row of coursesRes.rows) {
-    const yl = Number(row.year_level);
-    const semId = Number(row.semester_id);
+    // 3. Group by year, then by semester
+    const yearMap = new Map();
 
-    if (!yearMap.has(yl)) {
-      yearMap.set(yl, {
-        yearLevel: yl,
-        semesters: new Map(),
+    for (const row of coursesRes.rows) {
+      const yl = Number(row.year_level);
+      const semId = Number(row.semester_id);
+
+      if (!yearMap.has(yl)) {
+        yearMap.set(yl, {
+          yearLevel: yl,
+          semesters: new Map(),
+        });
+      }
+
+      const yearBlock = yearMap.get(yl);
+      if (!yearBlock.semesters.has(semId)) {
+        yearBlock.semesters.set(semId, {
+          semesterId: semId,
+          semesterLabel: row.semester_label,
+          courses: [],
+        });
+      }
+
+      yearBlock.semesters.get(semId).courses.push({
+        courseId: row.course_id,
+        courseCode: row.course_code,
+        courseName: row.course_name,
+        lecUnits: row.lec_units || 0,
+        labUnits: row.lab_units || 0,
+        totalUnits: row.total_units || (row.lec_units || 0) + (row.lab_units || 0),
+        prerequisites: (row.prerequisites || '').trim() || 'None',
       });
     }
 
-    const yearBlock = yearMap.get(yl);
-    if (!yearBlock.semesters.has(semId)) {
-      yearBlock.semesters.set(semId, {
-        semesterId: semId,
-        semesterLabel: row.semester_label,
-        courses: [],
-      });
-    }
+    // 4. Calculate totals for each semester
+    const computeTotals = (courses) =>
+      courses.reduce(
+        (acc, c) => ({
+          lec: acc.lec + (c.lecUnits || 0),
+          lab: acc.lab + (c.labUnits || 0),
+          total: acc.total + (c.totalUnits || 0),
+        }),
+        { lec: 0, lab: 0, total: 0 }
+      );
 
-    yearBlock.semesters.get(semId).courses.push({
-      courseId: row.course_id,
-      courseCode: row.course_code,
-      courseName: row.course_name,
-      lecUnits: row.lec_units || 0,
-      labUnits: row.lab_units || 0,
-      totalUnits: row.total_units || (row.lec_units || 0) + (row.lab_units || 0),
-      prerequisites: (row.prerequisites || '').trim() || 'None',
-    });
+    const years = Array.from(yearMap.values())
+      .sort((a, b) => a.yearLevel - b.yearLevel)
+      .map((yb) => {
+        const sems = Array.from(yb.semesters.values())
+          .sort((a, b) => a.semesterId - b.semesterId)
+          .map((s) => ({
+            ...s,
+            totals: computeTotals(s.courses),
+          }));
+        return {
+          yearLevel: yb.yearLevel,
+          semesters: sems,
+        };
+      });
+
+    // 5. Grand totals across the whole curriculum
+    const allCourses = coursesRes.rows.map((r) => ({
+      lecUnits: r.lec_units || 0,
+      labUnits: r.lab_units || 0,
+      totalUnits: r.total_units || (r.lec_units || 0) + (r.lab_units || 0),
+    }));
+    const grandTotals = {
+      totalUnits: allCourses.reduce((s, c) => s + c.totalUnits, 0),
+      totalCourses: allCourses.length,
+    };
+
+    const currentYear = new Date().getFullYear();
+
+    return {
+      curriculumId: head.curriculum_id,
+      programName: head.program_name,
+      programAbbr: head.program_abbr,
+      versionName: head.version_name,
+      startYear: head.start_year,
+      effectiveYear: `${currentYear} - ${currentYear + 1}`,
+      years,
+      grandTotals,
+    };
   }
 
-  // 4. Calculate totals for each semester
-  const computeTotals = (courses) =>
-    courses.reduce(
-      (acc, c) => ({
-        lec: acc.lec + (c.lecUnits || 0),
-        lab: acc.lab + (c.labUnits || 0),
-        total: acc.total + (c.totalUnits || 0),
-      }),
-      { lec: 0, lab: 0, total: 0 }
-    );
+  // ---------- Public: Course Outline document (by curriculum) ----------
+  static async getCourseOutlineData(curriculumId) {
+    return await this._buildCourseOutline(curriculumId);
+  }
 
-  const years = Array.from(yearMap.values())
-    .sort((a, b) => a.yearLevel - b.yearLevel)
-    .map((yb) => {
-      const sems = Array.from(yb.semesters.values())
-        .sort((a, b) => a.semesterId - b.semesterId)
-        .map((s) => ({
-          ...s,
-          totals: computeTotals(s.courses),
-        }));
-      return {
-        yearLevel: yb.yearLevel,
-        semesters: sems,
-      };
-    });
+ // ---------- Public: Course Outline document (by student) ----------
+  static async getCourseOutlineDataByStudent(studentId, evaluator = null) {
+    const student = await StudentManageModel.getById(studentId);
+    if (!student) return null;
 
-  // 5. Grand totals across the whole curriculum
-  const allCourses = coursesRes.rows.map((r) => ({
-    lecUnits: r.lec_units || 0,
-    labUnits: r.lab_units || 0,
-    totalUnits: r.total_units || (r.lec_units || 0) + (r.lab_units || 0),
-  }));
-  const grandTotals = {
-    totalUnits: allCourses.reduce((s, c) => s + c.totalUnits, 0),
-    totalCourses: allCourses.length,
-  };
+    // Resolve the student's curriculum + enrollment context
+    const ctxRes = await db.query(`
+      SELECT se.curriculum_id,
+            se.year_id,
+            se.semester_id,
+            se.year_level,
+            ay.year_label AS academic_year_label
+      FROM student_education se
+      LEFT JOIN academic_year ay ON ay.year_id = se.year_id
+      WHERE se.student_id = $1
+      ORDER BY se.is_current DESC NULLS LAST, se.created_at DESC
+      LIMIT 1
+    `, [studentId]);
 
-  const currentYear = new Date().getFullYear();
+    const ctx = ctxRes.rows[0];
+    if (!ctx?.curriculum_id) return null;
 
-  return {
-    curriculumId: head.curriculum_id,
-    programName: head.program_name,
-    programAbbr: head.program_abbr,
-    versionName: head.version_name,
-    startYear: head.start_year,
-    effectiveYear: `${currentYear} - ${currentYear + 1}`,
-    years,
-    grandTotals,
-  };
+    const outline = await this._buildCourseOutline(ctx.curriculum_id);
+    if (!outline) return null;
+
+    // Evaluator = the logged-in user (dean / program head / faculty)
+    const { facultyName } = await this._resolveEvaluator(evaluator);
+
+    // School year: from enrollment, else active AY
+    let schoolYear = ctx.academic_year_label || null;
+    if (!schoolYear) {
+      const ayRes = await db.query(
+        `SELECT year_label FROM academic_year WHERE is_active = true LIMIT 1`
+      );
+      schoolYear = ayRes.rows[0]?.year_label || null;
+    }
+
+    // Per-course final grades for this student
+    const gradeRes = await db.query(`
+      SELECT course_id, final_grade
+      FROM grades
+      WHERE student_id = $1
+    `, [studentId]);
+    const gradeMap = new Map(gradeRes.rows.map(r => [r.course_id, r.final_grade]));
+
+    for (const year of outline.years) {
+      for (const sem of year.semesters) {
+        for (const course of sem.courses) {
+          course.finalGrade = gradeMap.get(course.courseId) ?? null;
+        }
+      }
+    }
+
+    return {
+      ...outline,
+      student: {
+        student_id: student.student_id,
+        student_number: student.student_number,
+        first_name: student.first_name,
+        last_name: student.last_name,
+        middle_name: student.middle_name || null,
+      },
+      facultyName,
+      schoolYear,
+    };
+  }
+
+    static async _resolveEvaluator(user) {
+    if (!user) return { facultyName: null };
+
+    const facultyId = user.faculty_id || null;
+    const userId = user.id || user.user_id || null;
+
+    if (!facultyId && !userId) return { facultyName: null };
+
+    const res = await db.query(`
+      SELECT f.first_name, f.middle_name, f.last_name, f.suffix
+      FROM faculties f
+      WHERE f.account_status = true
+        AND ( ($1::int IS NOT NULL AND f.faculty_id = $1)
+          OR ($2::int IS NOT NULL AND f.user_id    = $2) )
+      LIMIT 1
+    `, [facultyId, userId]);
+
+    const f = res.rows[0];
+    if (!f) return { facultyName: null };
+
+    const mi = f.middle_name ? ` ${f.middle_name.charAt(0)}.` : '';
+    const sfx = f.suffix ? ` ${f.suffix}` : '';
+    return { facultyName: `${f.first_name}${mi} ${f.last_name}${sfx}`.trim() };
+  }
 }
-}
+
+
 
 module.exports = DocumentModel;

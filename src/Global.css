@@ -569,8 +569,7 @@ p, h1, h3, td, tr {
   gap: 6px;
 }
 
-/* Shared pill-segment button reset, scoped to the bar only
-   so it doesn't affect .TopbarBtn / .tableDeleteBtn elsewhere */
+
 .BulkActionBar .TopbarBtn,
 .BulkActionBar .tableDeleteBtn,
 .BulkActionBar .ClearSelectionBtn {
@@ -617,7 +616,7 @@ p, h1, h3, td, tr {
   transform: scale(0.96);
 }
 
-/* Icons already sized via react-icons' default; nudge slightly for the pill */
+
 .BulkActionBar svg {
   font-size: 1rem;
 }

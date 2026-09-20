@@ -32,7 +32,7 @@ router.put('/students/:id/grades', verifyToken, adminController.updateStudentGra
 router.get('/student-form/:id', verifyToken, adminController.getStudentFormById);
 router.get('/term-grade/:id', verifyToken, adminController.getTermGradeById);
 router.get('/course-outline/:id', verifyToken, adminController.getCourseOutlineById);
-
+    
 //academic year
 router.get('/academic-years', verifyToken, adminController.getAcademicYears);
 router.post('/academic-years', verifyToken, adminController.addAcademicYear);

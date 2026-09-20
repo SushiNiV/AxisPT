@@ -483,7 +483,7 @@ function StudentForm({ adminMode = false, studentId: propsId }) {
        <div className="grid-row two-cols border-bottom">
         <div className="sfinput-group vertical-border">
           <label>COURSE/YEAR/SECTION</label>
-          <div className="value-line">{data?.program} {data?.year_level} {data?.section}</div>
+          <div className="value-line">{data?.section}</div>
         </div>
         <div className="sfinput-group last-cell">
           <label>NAME OF CLASS ADVISER</label>

@@ -13,12 +13,12 @@ const PAGE_WIDTH_MM = 215.9;
 const PAGE_HEIGHT_MM = 330.2;
 
 function DocumentsCourseOutline() {
-  const [curricula, setCurricula] = useState([]);
+  const [students, setStudents] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const [selectedCurriculumId, setSelectedCurriculumId] = useState(null);
+  const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
 
   const [outlineData, setOutlineData] = useState(null);
@@ -38,38 +38,40 @@ function DocumentsCourseOutline() {
   const hasActiveFilters = selectedProgram !== '';
 
   // --- Fetch programs + curricula on mount ---
-  useEffect(() => {
-    const fetchAll = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const token = sessionStorage.getItem('token');
-        const [programsRes, curriculaRes] = await Promise.all([
-          fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${process.env.REACT_APP_API_URL}/admin/curricula`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
-        const programsData = await programsRes.json();
-        const curriculaData = await curriculaRes.json();
-        if (programsData.success) setProgramOptions(programsData.data.map((p) => p.program_abbr || p.program_name));
-        if (curriculaData.success) setCurricula(curriculaData.data);
-        else setError(curriculaData.message || 'Failed to load curricula.');
-      } catch (err) {
-        console.error('Error loading documents:', err);
-        setError('Failed to connect to the server.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAll();
-  }, []);
+// --- Fetch programs (for filter) + students on mount ---
+useEffect(() => {
+  const fetchAll = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = sessionStorage.getItem('token');
+      const [programsRes, studentsRes] = await Promise.all([
+        fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${process.env.REACT_APP_API_URL}/admin/students`, {   // <-- was /admin/curricula
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      const programsData = await programsRes.json();
+      const studentsData = await studentsRes.json();
+      if (programsData.success) setProgramOptions(programsData.data.map((p) => p.program_abbr || p.program_name));
+      if (studentsData.success) setStudents(studentsData.data);      // <-- rename state
+      else setError(studentsData.message || 'Failed to load students.');
+    } catch (err) {
+      console.error('Error loading documents:', err);
+      setError('Failed to connect to the server.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchAll();
+}, []);
 
-  // --- Fetch outline when a curriculum is selected ---
+
+// --- Fetch outline when a student is selected ---
   useEffect(() => {
-    if (!selectedCurriculumId) {
+    if (!selectedStudentId) {
       setOutlineData(null);
       return;
     }
@@ -79,7 +81,7 @@ function DocumentsCourseOutline() {
       try {
         const token = sessionStorage.getItem('token');
         const response = await fetch(
-          `${process.env.REACT_APP_API_URL}/admin/course-outline/${selectedCurriculumId}`,
+          `${process.env.REACT_APP_API_URL}/admin/course-outline/${selectedStudentId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const data = await response.json();
@@ -93,24 +95,24 @@ function DocumentsCourseOutline() {
       }
     };
     fetchOutline();
-  }, [selectedCurriculumId]);
+  }, [selectedStudentId]);
 
-  const filteredCurricula = useMemo(() => {
-    const term = searchTerm.toLowerCase();
-    return curricula.filter((c) => {
-      const label = `${c.program_name || ''} ${c.version_name || ''} ${c.program_abbr || ''}`.toLowerCase();
-      const matchesSearch = !term || label.includes(term);
-      const matchesProgram = !selectedProgram || (c.program_abbr || c.program_name) === selectedProgram;
-      return matchesSearch && matchesProgram;
-    });
-  }, [curricula, searchTerm, selectedProgram]);
+      const filteredStudents = useMemo(() => {
+      const term = searchTerm.toLowerCase();
+      return students.filter((s) => {
+        const label = `${s.first_name || ''} ${s.last_name || ''} ${s.student_number || ''} ${s.program_abbr || ''}`.toLowerCase();
+        const matchesSearch = !term || label.includes(term);
+        const matchesProgram = !selectedProgram || (s.program_abbr || s.program_name) === selectedProgram;
+        return matchesSearch && matchesProgram;
+      });
+    }, [students, searchTerm, selectedProgram]);
 
-  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const selectedCurriculum = curricula.find((c) => c.curriculum_id === selectedCurriculumId) || null;
+    const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+    const selectedStudent = students.find((s) => s.student_id === selectedStudentId) || null;
 
-  const toggleSelection = (id) => {
-    setSelectedIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
-  };
+    const toggleSelection = (id) => {
+      setSelectedIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+    };
 
   const handlePrint = async () => {
     if (selectedIds.length === 0 || isPreparingPrint) return;
@@ -118,16 +120,16 @@ function DocumentsCourseOutline() {
     setPrintError(null);
     try {
       const token = sessionStorage.getItem('token');
-      const forms = await Promise.all(selectedIds.map(async (curriculumId) => {
+      const forms = await Promise.all(selectedIds.map(async (studentId) => {
         const response = await fetch(
-          `${process.env.REACT_APP_API_URL}/admin/course-outline/${curriculumId}`,
+          `${process.env.REACT_APP_API_URL}/admin/course-outline/${studentId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const result = await response.json();
         if (!response.ok || !result.success) {
           throw new Error(result.message || 'Unable to prepare one or more outlines.');
         }
-        return { curriculumId, data: result.data };
+        return { studentId, data: result.data };
       }));
       setPrintForms(forms);
       setIsPrintPending(true);
@@ -180,7 +182,7 @@ function DocumentsCourseOutline() {
               <BiSearch className="SearchIcon" />
               <input
                 type="text"
-                placeholder="Search curricula..."
+                placeholder="Search students..."
                 className="SearchInput"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -205,30 +207,32 @@ function DocumentsCourseOutline() {
               <p className="DocListMessage">Loading curricula...</p>
             ) : error ? (
               <p className="DocListMessage" style={{ color: '#c62828' }}>{error}</p>
-            ) : filteredCurricula.length === 0 ? (
-              <p className="DocListMessage">No curricula found.</p>
+            ) : filteredStudents.length === 0 ? (
+              <p className="DocListMessage">No students found.</p>
             ) : (
-              filteredCurricula.map((cur) => (
-                <div
-                  key={cur.curriculum_id}
-                  className={`DocStudentRow ${selectedCurriculumId === cur.curriculum_id ? 'Active' : ''} ${selectedIdSet.has(cur.curriculum_id) ? 'Selected' : ''}`}
-                  onClick={() => {
-                    setSelectedCurriculumId(cur.curriculum_id);
-                    toggleSelection(cur.curriculum_id);
-                  }}
-                >
-                  <input
-                    className="DocStudentCheckbox"
-                    type="checkbox"
-                    checked={selectedIdSet.has(cur.curriculum_id)}
-                    onChange={() => toggleSelection(cur.curriculum_id)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <div className="DocStudentRowContent">
-                    <p className="DocStudentName">
-                      {cur.program_abbr || cur.program_name} — {cur.version_name}
-                    </p>
-                    <p className="DocStudentMeta">Started {cur.start_year}</p>
+              filteredStudents.map((stu) => (
+              <div
+                key={stu.student_id}
+                className={`DocStudentRow ${selectedStudentId === stu.student_id ? 'Active' : ''} ${selectedIdSet.has(stu.student_id) ? 'Selected' : ''}`}
+                onClick={() => {
+                  setSelectedStudentId(stu.student_id);
+                  toggleSelection(stu.student_id);
+                }}
+              >
+                <input
+                  className="DocStudentCheckbox"
+                  type="checkbox"
+                  checked={selectedIdSet.has(stu.student_id)}
+                  onChange={() => toggleSelection(stu.student_id)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <div className="DocStudentRowContent">
+                  <p className="DocStudentName">
+                    {stu.last_name}, {stu.first_name} {stu.middle_name ? stu.middle_name[0] + '.' : ''}
+                  </p>
+                  <p className="DocStudentMeta">
+                    {stu.student_number} · {stu.program_abbr || stu.program_name}
+                  </p>
                   </div>
                 </div>
               ))
@@ -251,8 +255,8 @@ function DocumentsCourseOutline() {
             <button type="button" className="DocPreviewZoomButton" onClick={() => changePreviewScale(-PREVIEW_SCALE_STEP)} disabled={previewScale <= MIN_PREVIEW_SCALE}>−</button>
           </div>
 
-          {!selectedCurriculum ? (
-            <div className="DocEmptyState"><p>Select a curriculum to preview its course outline.</p></div>
+          {!selectedStudent ? (
+            <div className="DocEmptyState"><p>Select a student to preview its course outline.</p></div>
           ) : outlineLoading ? (
             <div className="DocEmptyState"><p>Loading outline...</p></div>
           ) : outlineError ? (
@@ -275,8 +279,8 @@ function DocumentsCourseOutline() {
 
       {/* Batch print area */}
       <div className="DocBatchPrintArea">
-        {printForms.map(({ curriculumId, data }) => (
-          <div className="DocBatchPrintForm" key={curriculumId}>
+        {printForms.map(({ studentId, data }) => (
+          <div className="DocBatchPrintForm" key={studentId}>
             <CourseOutline data={data} />
           </div>
         ))}

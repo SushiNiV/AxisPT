@@ -2,6 +2,7 @@ import React from 'react';
 import './TermGrade.css';
 
 const TermGrade = ({ data }) => {
+  
   if (!data) {
     return <div className="term-container">No data available</div>;
   }
@@ -53,6 +54,15 @@ const TermGrade = ({ data }) => {
     ));
   };
 
+  const formatDatePHT = (date = new Date()) =>
+  new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric',
+  }).format(date);
+
+console.log('[TermGrade] data.probationStatus =', JSON.stringify(data.probationStatus));
   const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim();
   const studentNumber = data.student_number || '';
   const yearLevel = data.year_level || '';
@@ -229,7 +239,9 @@ const TermGrade = ({ data }) => {
           <span className="field-label align-left">Verified by:___________________________________(Program Head)</span>
         </div>
         <div className="label-group no-border">
-          <span className="field-label">Date:______________________</span>
+          <span className="field-label">
+            Date: <span className="date-with-underline">{formatDatePHT()}</span>
+          </span>
         </div>
       </div>
 

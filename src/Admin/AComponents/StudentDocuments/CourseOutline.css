@@ -1,5 +1,5 @@
 .course-outline {
-  width: 215.9mm; 
+  width: 215.9mm;
   min-height: 330.2mm;
   padding: 10mm 20mm;
   margin: auto;
@@ -9,20 +9,18 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  
 }
 
-.header-text{
+.header-text {
   text-align: center;
   font-size: 10px;
   font-weight: bold;
 }
 
-.campus-list{
+.campus-list {
   text-align: center;
   font-size: 8px;
   font-weight: bold;
-
 }
 
 .year-header {
@@ -49,37 +47,35 @@
 }
 
 .dynamic-row {
-  display: flex; /* Syncs the height of left and right side */
+  display: flex;
   width: 100%;
   border-bottom: 1px solid black;
 }
 
 .semester-side {
-  flex: 1; /* Half width each */
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
 
 .row-cells {
   display: flex;
-  flex: 1; 
+  flex: 1;
 }
 
 .summer-table {
   margin-top: 7.5px;
   width: 50%;
-  
 }
 
 .summer-table .semester-side {
   flex: 0 0 100%;
 }
 
-
 .cell {
   border-right: 1px solid black;
   display: flex;
-  align-items: center; 
+  align-items: center;
   justify-content: center;
   box-sizing: border-box;
   font-size: 6px;
@@ -87,26 +83,39 @@
 }
 
 .sem-right .cell:last-child {
-  border-right: none; 
+  border-right: none;
 }
+
 .col-code  { width: 35px;  min-width: 35px; flex-shrink: 0; }
 .col-total { width: 30px;  min-width: 30px; flex-shrink: 0; }
 .col-pre   { width: 45px;  min-width: 45px; flex-shrink: 0; }
-.col-empty { width: 35px;  min-width: 35px; flex-shrink: 0; }
-.col-title { 
+
+/* Empty leading column — no left border, the container edge / mid-divider handles it */
+.col-empty {
+  width: 35px;
+  min-width: 35px;
+  flex-shrink: 0;
+}
+
+/* Mid-divider between the two semester halves — only the right half draws it */
+.sem-right .col-empty {
+  border-left: 1px solid black;
+}
+
+.col-title {
   font-weight: bold;
   padding: 2px;
-  flex: 1; 
+  flex: 1;
   display: flex;
   justify-content: flex-start;
   text-align: left;
   font-size: 6px;
   line-height: 1.1;
-  word-break: break-word; /* Prevents overflow */
+  word-break: break-word;
 }
 
 .semester-side .col-unit {
-  width: 25x;
+  width: 25px;
   min-width: 25px;
   flex-shrink: 0;
 }
@@ -131,28 +140,26 @@
   flex: 1;
 }
 
-
 .units-sub-cells .col-unit:first-child {
   border-right: 1px solid black;
 }
 
-
 .no-border-right {
   border-right: none !important;
 }
-.text-left { justify-content: flex-start; text-align: left; }
-.text-right { justify-content: flex-end; text-align: right; }
-.text-center { justify-content: center; text-align: center; }
-.bold { font-weight: bold; }
+
+.text-left   { justify-content: flex-start; text-align: left; }
+.text-right  { justify-content: flex-end;   text-align: right; }
+.text-center { justify-content: center;     text-align: center; }
+.bold        { font-weight: bold; }
 
 .divider {
   margin-top: 7.5px;
 }
 
-
 .grand-footer-table {
   width: 100%;
-  margin-top: 7.5px; 
+  margin-top: 7.5px;
   border-collapse: collapse;
   font-family: Arial, sans-serif;
   font-size: 6px;
@@ -162,20 +169,18 @@
 
 .footer-col {
   vertical-align: top;
-  padding: 5px 2px; /* Reduced horizontal padding for alignment */
+  padding: 5px 2px;
 }
 
-/* Specific Column Tuning */
-.student-label-col { width: 8%; } 
+.student-label-col     { width: 8%; }
 .student-underline-col { width: 32%; }
-.eval-label-col { width: 10%; text-align: right; padding-right: 8px; }
-.eval-sig-col { width: 25%; text-align: center; }
-.totals-col { width: 25%; text-align: right; }
+.eval-label-col        { width: 10%; text-align: right; padding-right: 8px; }
+.eval-sig-col          { width: 25%; text-align: left; }
+.totals-col            { width: 25%; text-align: right; }
 
 .input-row {
   margin-bottom: 6px;
   white-space: nowrap;
- 
 }
 
 .type-row {
@@ -184,11 +189,10 @@
 
 .sig-label {
   font-weight: bold;
-  margin-top: -4px;
-  margin-bottom: 15px;
-  margin-left: 10px;
+  margin:  -5px 0 11px -23px;
+  text-align: center;
+  width: 100%;
 }
-
 .sig-sub {
   font-size: 6px;
   margin-top: 4px;
@@ -202,19 +206,14 @@
   max-width: 150px;
 }
 
-.totals-label-col { 
-  width: 20%; 
-  text-align: right; 
-  padding-right: 15px; /* Adjust this to control the gap between text and numbers */
+.totals-label-col {
+  width: 20%;
+  text-align: right;
+  padding-right: 15px;
 }
 
-.totals-label-col { 
-  width: 20%; 
-  text-align: right; 
-  padding-right: 15px; /* Adjust this to control the gap between text and numbers */
-}
-
-.total-entry-label, .total-entry-value {
+.total-entry-label,
+.total-entry-value {
   margin-bottom: 4px;
   white-space: nowrap;
   height: 12px;
@@ -222,10 +221,43 @@
 }
 
 .reminders-cell {
-  
   font-size: 6px;
   font-weight: bold;
 }
-.spacer{
-  margin-top:23px
+
+.spacer {
+  margin-top: 23px;
 }
+
+/* Stacked field: value on top, line underneath spanning full cell width */
+.field-block {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 6px;
+  width: 100%;
+}
+
+.field-value {
+  font-size: 6px;
+  font-weight: bold;
+  color: #000;
+  line-height: 1.1;
+  min-height: 7px;      /* keeps the line from collapsing when value is empty */
+  padding-left: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.field-line {
+  display: block;
+  width: 70%;
+  border-bottom: 1px solid #000;
+  height: 0;
+  margin-top: 1px;
+}
+
+/* Stable minimum widths so the columns don't jump
+   between filled and blank rows */
+.student-underline-col .filled-value { min-width: 160px; }
+.eval-sig-col .filled-value { min-width: 140px; }

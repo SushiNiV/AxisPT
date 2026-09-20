@@ -11,7 +11,25 @@ const CourseOutline = ({ data }) => {
     effectiveYear,
     years,
     grandTotals,
+    student,
+    facultyName,
+    schoolYear,
   } = data;
+
+  const currentYear = new Date().getFullYear();
+  const syLabel = schoolYear || `${currentYear} - ${currentYear + 1}`;
+  const studentFullName = student
+    ? `${student.last_name}, ${student.first_name}${student.middle_name ? ` ${student.middle_name.charAt(0)}.` : ''}`
+    : '';
+  const studentNumber = student?.student_number || '';
+
+  const formatDatePHT = (date = new Date()) =>
+  new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric',
+  }).format(date);
 
   // --- Render column header row (CODE | TITLE | LEC | LAB | TOTAL | PRE) ---
   const renderColumnLabels = () => (
@@ -78,7 +96,7 @@ const CourseOutline = ({ data }) => {
     );
   };
 
-  // --- Full body for a year (regular semesters side by side) ---
+  // --- Full body for a year ---
   const renderYearBody = (yearBlock) => {
     const first = yearBlock.semesters.find((s) => s.semesterId === 1);
     const second = yearBlock.semesters.find((s) => s.semesterId === 2);
@@ -139,8 +157,6 @@ const CourseOutline = ({ data }) => {
     );
   };
 
-  const currentYear = new Date().getFullYear();
-
   return (
     <div className="course-outline">
       <div className="header-text">
@@ -162,7 +178,7 @@ const CourseOutline = ({ data }) => {
         </React.Fragment>
       ))}
 
-      {/* Footer with totals */}
+      {/* Footer with totals + student / faculty / SY */}
       <table className="grand-footer-table">
         <tbody>
           <tr>
@@ -173,10 +189,19 @@ const CourseOutline = ({ data }) => {
               <div className="type-row">Type: </div>
             </td>
 
-            <td className="footer-col student-underline-col">
-              <div className="input-row">_____________________________________________</div>
-              <div className="input-row">_______________________</div>
-              <div className="input-row">_______________________</div>
+           <td className="footer-col student-underline-col">
+              <div className="field-block">
+                <span className="field-value">{studentFullName}</span>
+                <span className="field-line"></span>
+              </div>
+              <div className="field-block">
+                <span className="field-value">{studentNumber}</span>
+                <span className="field-line"></span>
+              </div>
+              <div className="field-block">
+                <span className="field-value">{syLabel}</span>
+                <span className="field-line"></span>
+              </div>
               <div className="input-row">_______________________Freshman</div>
               <div className="input-row">_______________________Transferee</div>
             </td>
@@ -188,9 +213,15 @@ const CourseOutline = ({ data }) => {
             </td>
 
             <td className="footer-col eval-sig-col">
-              <div className="input-row text-left">_______________________________</div>
+              <div className="field-block">
+                <span className="field-value">{facultyName}</span>
+                <span className="field-line"></span>
+              </div>
               <div className="sig-label text-left">College of Physical Therapy</div>
-              <div className="input-row text-left">________________________________</div>
+              <div className="field-block">
+                <span className="field-value">{formatDatePHT()}</span>
+                <span className="field-line"></span>
+              </div>
             </td>
 
             <td className="footer-col totals-label-col">

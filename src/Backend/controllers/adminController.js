@@ -768,21 +768,22 @@ exports.activateAcademicYear = async (req, res) => {
   }
 };
 
+// adminController.js — change the handler body
 exports.getCourseOutlineById = async (req, res) => {
   try {
     const { id } = req.params;
-    const outline = await DocumentModel.getCourseOutlineData(id);
+    const outline = await DocumentModel.getCourseOutlineDataByStudent(id, req.user);
 
     if (!outline) {
       return res.status(404).json({
         success: false,
-        message: 'Curriculum not found, so a course outline could not be built.',
+        message: 'No curriculum found for this student, so a course outline could not be built.',
       });
     }
 
     res.status(200).json({ success: true, data: outline });
   } catch (error) {
-    console.error('Error fetching course outline:', error);
+    console.error('Error fetching student course outline:', error);
     res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 };
