@@ -15,7 +15,7 @@
 
 require('dotenv').config();
 const db = require('./config/db');
-const GradeManageModel = require('./models/gradeManageModel');
+const GradeManageModel = require('./models/grademanageModel');
 const GradingEngine = require('./models/gradingEngine');
 const FAIL_RATE = 0.15;         // ~15% of courses fail
 const PASS_BAND = [85, 97];     // composite target for passing courses

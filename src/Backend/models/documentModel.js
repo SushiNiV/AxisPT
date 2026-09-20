@@ -7,7 +7,7 @@
  */
 
 const StudentManageModel = require('./studentmanageModel');
-const GradeManageModel = require('./gradeManageModel');
+const GradeManageModel = require('./grademanageModel');
 const GradingEngine = require('./gradingEngine');
 const db = require('../config/db');
 
