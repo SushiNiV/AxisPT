@@ -1,0 +1,220 @@
+/* ============================================================================
+   Dashboard
+   Uses the same tokens as Global.css (maroon #3d1616, soft grays, card row
+   style from GlobalCard.css) so it blends with the rest of the admin portal.
+   ============================================================================ */
+
+.DashboardContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-bottom: 1rem;
+  overflow-y: auto;
+}
+
+.DashboardContainer::-webkit-scrollbar {
+  width: 6px;
+}
+
+.DashboardContainer::-webkit-scrollbar-thumb {
+  background: #3d1616aa;
+  border-radius: 3px;
+}
+
+
+
+/* ---------- KPI Grid ---------- */
+.DashboardKPIGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.DashboardKPI {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #eee;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.DashboardKPI:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(61, 22, 22, 0.08);
+}
+
+.DashboardKPIIcon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5ecec;
+  color: #3d1616;
+  border-radius: 12px;
+  font-size: 1.5rem;
+}
+
+.DashboardKPIContent {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.DashboardKPILabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #888;
+  font-weight: 600;
+  margin: 0;
+}
+
+.DashboardKPIValue {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #3d1616;
+  margin: 0.15rem 0 0;
+  line-height: 1.1;
+}
+
+.DashboardKPISub {
+  font-size: 0.7rem;
+  color: #999;
+  margin: 0.15rem 0 0;
+}
+
+/* ---------- Chart Row ---------- */
+.DashboardChartRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .DashboardChartRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Cards ---------- */
+.DashboardCard {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #eee;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  padding: 1rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.DashboardFullWidth {
+  grid-column: 1 / -1;
+}
+
+.DashboardCardHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.DashboardCardHeader h3 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #3d1616;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.DashboardCardHint {
+  font-size: 0.7rem;
+  color: #aaa;
+}
+
+.DashboardChartBody,
+.DashboardCardBody {
+  flex: 1;
+  min-height: 0;
+}
+
+.DashboardEmpty {
+  font-size: 0.85rem;
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  padding: 3rem 0;
+  margin: 0;
+}
+
+/* ---------- Recent Enrollments List ---------- */
+.DashboardRecentList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.DashboardRecentItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.DashboardRecentItem:last-child {
+  border-bottom: none;
+}
+
+.DashboardRecentInitial {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #3d1616;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-radius: 50%;
+}
+
+.DashboardRecentContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.DashboardRecentName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.DashboardRecentMeta {
+  font-size: 0.7rem;
+  color: #999;
+  margin: 0.15rem 0 0;
+}
+
+.DashboardRecentDate {
+  font-size: 0.7rem;
+  color: #aaa;
+  flex-shrink: 0;
+}

@@ -3,19 +3,34 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 75px;
+  min-height: 75px;       
   width: 100%;
-  padding: 0 1rem 0 1rem;
+  padding: 1rem 1rem;     
   box-sizing: border-box;
 }
 
-.HeaderTitle {
+.HeaderLeft {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   margin-right: auto;
+  min-width: 0;
+}
+
+.HeaderTitle {
   font-size: 2.25rem;
   color: #3d1616;
   font-weight: bold;
+  line-height: 1.15;
+  margin: 0;
 }
 
+.SubHeaderTitle {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 2px 0 0 0;
+  line-height: 1.2;
+}
 .HeaderRight {
   display: flex;
   align-items: center;

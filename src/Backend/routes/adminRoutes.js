@@ -12,6 +12,9 @@ router.get('/designations', verifyToken, adminController.getDesignations);
 router.post('/login', adminController.login);
 router.post('/change-password', verifyToken, adminController.changePassword);
 
+//dashboard
+router.get('/dashboard/stats', verifyToken, adminController.getDashboardStats);
+
 //student management
 router.get('/students', verifyToken, adminController.getStudentMasterlist);
 router.get('/students/:id', verifyToken, adminController.getStudentById);

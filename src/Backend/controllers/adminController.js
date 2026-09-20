@@ -4,6 +4,7 @@ const db = require('../config/db');
 
 // Models
 const AdminModel = require('../models/adminModel');
+const DashboardModel = require('../models/dashboardModel');
 const ProgramModel = require('../models/programModel');
 const AcademicYearModel = require('../models/acadyearModel');
 const CurriculumModel = require('../models/curriculumModel');
@@ -327,6 +328,20 @@ exports.addUser = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error." });
   } finally {
     if (db.getClient && client.release) client.release();
+  }
+};
+
+//===========================================
+// DASHBOARD
+//===========================================
+
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const stats = await DashboardModel.getStats();
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 };
 

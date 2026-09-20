@@ -32,7 +32,12 @@ function AHeader({ user }) {
 
   return (
     <div className="HeaderContainer">
-      <span className="HeaderTitle">{getHeaderTitle()}</span>
+      <div className="HeaderLeft">
+        <span className="HeaderTitle">{getHeaderTitle()}</span>
+        <p className="SubHeaderTitle">
+          Our Lady of Fatima University &middot; College of Physical Therapy
+        </p>
+      </div>
       
       <div className="HeaderRight">
         <div className="notificationBtn">
@@ -70,6 +75,7 @@ function AHeader({ user }) {
           </div>
         </div>
       </PopupOverlay>
+
     </div>
   );
 }

@@ -18,22 +18,16 @@ function Masterlist() {
   const [rowsPerPage] = useState(30);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // Overlay & Editing states
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
 
-  // Bulk selection & bulk-edit states
   const [selectedIds, setSelectedIds] = useState([]);
   const [showBulkEdit, setShowBulkEdit] = useState(false);
 
-  // Grade Modal state
   const [viewingGradesFor, setViewingGradesFor] = useState(null);
 
-  // Confirmation / Alert modal state
-  //   confirmState: { isOpen, title, message, variant, confirmLabel, onConfirm, isAlert, loading }
   const [confirmState, setConfirmState] = useState({ isOpen: false });
 
-  // Filter States
   const [selectedProgram, setSelectedProgram] = useState("");
   const [selectedYearLevel, setSelectedYearLevel] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
@@ -63,8 +57,7 @@ function Masterlist() {
       });
       const data = await response.json();
       if (data.success) {
-        const programs = data.data.map(p => p.program_name);
-        setProgramOptions(programs);
+        setProgramOptions(data.data.map(p => p.program_name));
       }
     } catch (err) {
       console.error("Error fetching programs:", err);
@@ -98,7 +91,6 @@ function Masterlist() {
     fetchStudents();
   }, [fetchPrograms, fetchStudents]);
 
-  // ---------- Helper: open confirm / alert ----------
   const closeConfirm = () => setConfirmState({ isOpen: false });
 
   const openConfirm = (config) => {
@@ -125,11 +117,10 @@ function Masterlist() {
     });
   };
 
-  // Filter Configuration
   const filters = [
-    { name: "program", label: "PROGRAM", value: tempProgram, options: programOptions, placeholder: "ALL PROGRAMS" },
-    { name: "yearLevel", label: "YEAR LEVEL", value: tempYearLevel, options: yearLevelOptions, placeholder: "ALL YEARS" },
-    { name: "status", label: "ACADEMIC STANDING", value: tempStatus, options: statusOptions, placeholder: "ALL STANDINGS" },
+    { name: "program",   label: "PROGRAM",           value: tempProgram,   options: programOptions,  placeholder: "ALL PROGRAMS" },
+    { name: "yearLevel", label: "YEAR LEVEL",        value: tempYearLevel, options: yearLevelOptions, placeholder: "ALL YEARS" },
+    { name: "status",    label: "ACADEMIC STANDING", value: tempStatus,    options: statusOptions,   placeholder: "ALL STANDINGS" },
   ];
 
   const handleFilterChange = (name, value) => {
@@ -177,6 +168,8 @@ function Masterlist() {
   const currentItems = filteredStudents.slice(indexOfFirstItem, indexOfLastItem);
   const visibleStart = filteredStudents.length ? indexOfFirstItem + 1 : 0;
   const visibleEnd = Math.min(indexOfLastItem, filteredStudents.length);
+
+  // Fix: was reading standingCounts.None / .warning / .probationary but writing counts.none
   const standingCounts = filteredStudents.reduce(
     (counts, student) => {
       const status = student.academic_status || 'None';
@@ -224,9 +217,7 @@ function Masterlist() {
     }
   };
 
-  const handleViewGrades = (student) => {
-    setViewingGradesFor(student);
-  };
+  const handleViewGrades = (student) => setViewingGradesFor(student);
 
   const getStandingBadgeProps = (status) => {
     switch (status) {
@@ -243,7 +234,6 @@ function Masterlist() {
     }
   };
 
-  // ---------- Delete via ConfirmationModal ----------
   const handleDelete = (student) => {
     const studentName = `${student.last_name}, ${student.first_name}`;
     openConfirm({
@@ -267,10 +257,7 @@ function Masterlist() {
           const token = sessionStorage.getItem('token');
           const response = await fetch(
             `${process.env.REACT_APP_API_URL}/admin/students/${student.student_id}`,
-            {
-              method: 'DELETE',
-              headers: { 'Authorization': `Bearer ${token}` },
-            }
+            { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
           );
           const data = await response.json();
           setConfirmState({ isOpen: false });
@@ -289,7 +276,6 @@ function Masterlist() {
     });
   };
 
-  // ---------- Bulk selection helpers ----------
   const toggleSelectOne = (id) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -297,14 +283,12 @@ function Masterlist() {
   };
 
   const toggleSelectAll = () => {
-    setSelectedIds((prev) =>
-      prev.length === currentItems.length ? [] : currentItems.map((s) => s.student_id)
-    );
+    const allSelected = currentItems.length > 0 && selectedIds.length === currentItems.length;
+    setSelectedIds(allSelected ? [] : currentItems.map((s) => s.student_id));
   };
 
   const clearSelection = () => setSelectedIds([]);
 
-  // ---------- Bulk delete via ConfirmationModal ----------
   const handleBulkDelete = () => {
     openConfirm({
       title: 'Delete Students',
@@ -388,10 +372,7 @@ function Masterlist() {
       {showAddStudent && (
         <AddStudent
           isOpen={showAddStudent}
-          onClose={() => {
-            setShowAddStudent(false);
-            setEditingStudent(null);
-          }}
+          onClose={() => { setShowAddStudent(false); setEditingStudent(null); }}
           onSuccess={handleAddSuccess}
           initialData={editingStudent}
           isEditMode={!!editingStudent}
@@ -410,14 +391,10 @@ function Masterlist() {
         <AddGrade
           student={viewingGradesFor}
           onClose={() => setViewingGradesFor(null)}
-          onSuccess={() => {
-            setViewingGradesFor(null);
-            fetchStudents();
-          }}
+          onSuccess={() => { setViewingGradesFor(null); fetchStudents(); }}
         />
       )}
 
-      {/* Reusable Confirmation / Alert Modal */}
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}
@@ -441,9 +418,7 @@ function Masterlist() {
             value={searchTerm}
             onChange={handleSearch}
           />
-          {searchTerm && (
-            <BiX className="ClearSearchIcon" onClick={clearSearch} />
-          )}
+          {searchTerm && <BiX className="ClearSearchIcon" onClick={clearSearch} />}
         </div>
 
         <Filter
@@ -489,7 +464,7 @@ function Masterlist() {
               Showing {visibleStart}–{visibleEnd} of {filteredStudents.length} students
             </span>
             <div className="MasterlistStandingCounts" aria-label="Academic standing summary">
-              <span className="MasterlistStanding None">None {standingCounts.None}</span>
+              <span className="MasterlistStanding None">None {standingCounts.none}</span>
               <span className="MasterlistStanding warning">Warning {standingCounts.warning}</span>
               <span className="MasterlistStanding probationary">Probationary {standingCounts.probationary}</span>
             </div>
@@ -502,7 +477,7 @@ function Masterlist() {
                   <th style={{ width: '40px' }}>
                     <input
                       type="checkbox"
-                      checked={selectedIds.length === currentItems.length && currentItems.length > 0}
+                      checked={currentItems.length > 0 && selectedIds.length === currentItems.length}
                       onChange={toggleSelectAll}
                     />
                   </th>
@@ -579,7 +554,6 @@ function Masterlist() {
         </>
       )}
 
-      {/* Bottom floating bulk-action bar — appears once at least one row is checked */}
       {selectedIds.length > 1 && (
         <div className="BulkActionBar">
           <span className="BulkActionCount">{selectedIds.length} selected</span>

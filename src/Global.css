@@ -68,8 +68,9 @@ p, h1, h3, td, tr {
   flex-direction: column;
   overflow: hidden;
   height: 100%;
-  padding: 0 1rem 0 0.5rem;
+  padding: 0 1rem;              /* symmetric — was: 0 1rem 0 0.5rem */
   box-sizing: border-box;
+  min-width: 0;
 }
 
 .InnerContainer {
@@ -381,11 +382,15 @@ p, h1, h3, td, tr {
 
 .TableContainer {
   flex: 1 1 auto;
-  min-height: 0; 
+  min-height: 0;
+  min-width: 0;                 /* prevents flex overflow */
   overflow-y: auto;
+  overflow-x: auto;             /* was implicit; now explicit */
   background-color: #fff;
   border-radius: 5px 5px 0 0;
   margin-bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .TableContainer::-webkit-scrollbar {
@@ -407,6 +412,7 @@ p, h1, h3, td, tr {
 
 .Table {
   width: 100%;
+  min-width: 900px;              /* gives the Actions column room so it doesn't collapse */
   border-collapse: collapse;
   text-align: left;
   font-size: 0.85rem;
