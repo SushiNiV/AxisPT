@@ -26,6 +26,15 @@ import ConfirmationModal from '../ConfirmationModal';
  * a delete button on each row - both act at the semester level, since a
  * course's row spans all three term tables at once.
  *
+ * RETAKES: the same course can appear in more than one (yearLevel, semesterId)
+ * slot - e.g. a Y1 S1 fail and a Y2 S1 retake. Editable state is keyed by
+ * a composite `courseId-yearLevel-semesterId` so the two attempts keep their
+ * own scores and never overwrite each other on save.
+ *
+ * FUTURE-YEAR LOCK: a student can only be graded for year levels up to and
+ * including their current one. Higher years render as disabled accordions
+ * ("Not yet enrolled"). Backend enforces this too as defense in depth.
+ *
  * Every field a course needs (which components, at what weight, in which
  * term) comes from the backend as `enterableFields` - nothing about
  * GradingEngine's weight tables is duplicated here; the preview functions
@@ -41,6 +50,12 @@ import ConfirmationModal from '../ConfirmationModal';
  */
 
 const TERMS = ['Prelim', 'Midterm', 'Final'];
+
+// A course can appear in more than one (yearLevel, semesterId) slot — e.g.
+// a Y1 S1 fail + a Y2 S1 retake. The modal keys its editable state by that
+// composite so the two attempts don't share inputs.
+const makeAttemptKey = (courseId, yearLevel, semesterId) =>
+  `${courseId}-${yearLevel}-${semesterId}`;
 
 // Scoped override: .Table th is sticky globally (Global.css), which isn't
 // wanted here since each semester renders three back-to-back tables inside
@@ -67,13 +82,13 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
 
   const [openYears, setOpenYears] = useState(new Set());
 
-  // Editable grade state, keyed by courseId:
-  // { [courseId]: { yearLevel, semesterId, category, enterableFields, scoresByTerm } }
+  // Editable grade state, keyed by attemptKey:
+  // { [attemptKey]: { courseId, yearLevel, semesterId, category, enterableFields, scoresByTerm } }
   const [gradesMap, setGradesMap] = useState({});
 
-  // Which course IDs are currently displayed per semester (curriculum
+  // Which attempt keys are currently displayed per semester (curriculum
   // defaults + manually added), keyed by `${yearLevel}-${semesterId}`.
-  const [courseIdsBySemester, setCourseIdsBySemester] = useState({});
+  const [attemptKeysBySemester, setAttemptKeysBySemester] = useState({});
 
   // Full catalog of addable courses (with category/enterableFields
   // pre-resolved server-side), fetched once for the "add course" pickers.
@@ -161,14 +176,18 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
         setYears(sheet.years);
 
         const map = {};
-        const idsBySemester = {};
+        const keysBySemester = {};
         sheet.years.forEach((yearBlock) => {
           yearBlock.semesters.forEach((sem) => {
             const semKey = `${yearBlock.yearLevel}-${sem.semesterId}`;
-            idsBySemester[semKey] = sem.courses.map((c) => c.courseId);
+            keysBySemester[semKey] = sem.courses.map((c) =>
+              makeAttemptKey(c.courseId, yearBlock.yearLevel, sem.semesterId)
+            );
 
             sem.courses.forEach((course) => {
-              map[course.courseId] = {
+              const key = makeAttemptKey(course.courseId, yearBlock.yearLevel, sem.semesterId);
+              map[key] = {
+                courseId: course.courseId,
                 yearLevel: yearBlock.yearLevel,
                 semesterId: sem.semesterId,
                 courseCode: course.courseCode,
@@ -176,6 +195,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                 units: course.units,
                 category: course.category,
                 enterableFields: course.enterableFields,
+                attemptCount: course.attemptCount || 1,
                 scoresByTerm: {
                   Prelim: { ...course.scoresByTerm?.Prelim },
                   Midterm: { ...course.scoresByTerm?.Midterm },
@@ -186,7 +206,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
           });
         });
         setGradesMap(map);
-        setCourseIdsBySemester(idsBySemester);
+        setAttemptKeysBySemester(keysBySemester);
         setOpenYears(new Set([sheet.currentYearLevel]));
 
         if (coursesJson.success) setGradableCourses(coursesJson.data);
@@ -224,17 +244,17 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     (enterableFields || []).find((f) => f.component === component && (f.term === null || f.term === term)) || null
   );
 
-  /** Updates one component score for one course/term, clamped to 0-100. */
-  const handleScoreChange = (courseId, term, component, rawValue) => {
+  /** Updates one component score for one attempt/term, clamped to 0-100. */
+  const handleScoreChange = (attemptKey, term, component, rawValue) => {
     if (rawValue !== '' && (Number(rawValue) < 0 || Number(rawValue) > 100)) return;
 
     setGradesMap((prev) => ({
       ...prev,
-      [courseId]: {
-        ...prev[courseId],
+      [attemptKey]: {
+        ...prev[attemptKey],
         scoresByTerm: {
-          ...prev[courseId].scoresByTerm,
-          [term]: { ...prev[courseId].scoresByTerm[term], [component]: rawValue }
+          ...prev[attemptKey].scoresByTerm,
+          [term]: { ...prev[attemptKey].scoresByTerm[term], [component]: rawValue }
         }
       }
     }));
@@ -337,9 +357,12 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     const course = gradableCourses.find((c) => c.courseId === Number(courseToAdd));
     if (!course) return;
 
+    const attemptKey = makeAttemptKey(course.courseId, yearLevel, semesterId);
+
     setGradesMap((prev) => ({
       ...prev,
-      [course.courseId]: {
+      [attemptKey]: {
+        courseId: course.courseId,
         yearLevel,
         semesterId,
         courseCode: course.courseCode,
@@ -347,20 +370,21 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
         units: course.units,
         category: course.category,
         enterableFields: course.enterableFields,
+        attemptCount: 1,
         scoresByTerm: { Prelim: {}, Midterm: {}, Final: {} }
       }
     }));
 
-    setCourseIdsBySemester((prev) => ({
+    setAttemptKeysBySemester((prev) => ({
       ...prev,
-      [semKey]: [...(prev[semKey] || []), course.courseId]
+      [semKey]: [...(prev[semKey] || []), attemptKey]
     }));
 
     setCourseToAdd('');
     setAddingToSemesterKey(null);
   };
 
-  const handleRemoveCourse = (yearLevel, semesterId, courseId) => {
+  const handleRemoveCourse = (yearLevel, semesterId, attemptKey) => {
     openConfirm({
       title: 'Remove Course',
       message: 'Are you sure you want to remove this course from the grade sheet? Any unsaved entries for this course will be lost.',
@@ -368,13 +392,13 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
       confirmLabel: 'REMOVE',
       onConfirm: () => {
         const semKey = `${yearLevel}-${semesterId}`;
-        setCourseIdsBySemester((prev) => ({
+        setAttemptKeysBySemester((prev) => ({
           ...prev,
-          [semKey]: (prev[semKey] || []).filter((id) => id !== courseId)
+          [semKey]: (prev[semKey] || []).filter((k) => k !== attemptKey)
         }));
         setGradesMap((prev) => {
           const next = { ...prev };
-          delete next[courseId];
+          delete next[attemptKey];
           return next;
         });
         closeConfirm();
@@ -393,8 +417,8 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     try {
       const entries = Object.entries(gradesMap)
         .filter(([, v]) => TERMS.some((t) => Object.values(v.scoresByTerm[t] || {}).some((val) => val !== '' && val !== undefined)))
-        .map(([courseId, v]) => ({
-          courseId: Number(courseId),
+        .map(([, v]) => ({
+          courseId: v.courseId,
           yearLevel: v.yearLevel,
           semesterId: v.semesterId,
           scoresByTerm: v.scoresByTerm
@@ -437,11 +461,11 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   // ---------------------------------------------------------------------
   // Render: one table per term for a given semester's current course list.
   // ---------------------------------------------------------------------
-  const renderTermTable = (yearLevel, semesterId, term, courseIds) => {
-    const semesterCourses = courseIds.map((id) => gradesMap[id]).filter(Boolean);
-    const needsLab = semesterCourses.some((c) => (c.enterableFields || []).some((f) => f.component === 'Unit Practical Exam'));
+  const renderTermTable = (yearLevel, semesterId, term, attemptKeys) => {
+    const semesterAttempts = attemptKeys.map((k) => gradesMap[k]).filter(Boolean);
+    const needsLab = semesterAttempts.some((c) => (c.enterableFields || []).some((f) => f.component === 'Unit Practical Exam'));
     const specialExamField = term === 'Final'
-      ? semesterCourses.map((c) => getFieldForTerm(c.enterableFields, 'Comprehensive Examination', 'Final') || getFieldForTerm(c.enterableFields, 'Revalida Examination', 'Final')).find(Boolean)
+      ? semesterAttempts.map((c) => getFieldForTerm(c.enterableFields, 'Comprehensive Examination', 'Final') || getFieldForTerm(c.enterableFields, 'Revalida Examination', 'Final')).find(Boolean)
       : null;
 
     return (
@@ -465,8 +489,8 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
             </tr>
           </thead>
           <tbody>
-            {courseIds.map((courseId) => {
-              const entry = gradesMap[courseId];
+            {attemptKeys.map((attemptKey) => {
+              const entry = gradesMap[attemptKey];
               if (!entry) return null;
 
               const termScores = entry.scoresByTerm[term] || {};
@@ -487,15 +511,32 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                   <input
                     type="number" min="0" max="100" step="0.01"
                     value={termScores[component] ?? ''}
-                    onChange={(e) => handleScoreChange(courseId, term, component, e.target.value)}
+                    onChange={(e) => handleScoreChange(attemptKey, term, component, e.target.value)}
                     style={{ width: '65px', padding: '4px 6px' }}
                   />
                 );
               };
 
               return (
-                <tr key={courseId}>
-                  <td>{entry.courseCode}</td>
+                <tr key={attemptKey}>
+                  <td>
+                    {entry.courseCode}
+                    {entry.attemptCount > 1 && (
+                      <sup
+                        title={`Retake — ${entry.attemptCount} attempts on file`}
+                        style={{
+                          marginLeft: '3px',
+                          fontSize: '0.65rem',
+                          color: '#c62828',
+                          fontWeight: 700,
+                          cursor: 'help',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        ×{entry.attemptCount}
+                      </sup>
+                    )}
+                  </td>
                   <td>{entry.courseName}</td>
                   <td>{renderInput(quizField, 'Quizzes/AT')}</td>
                   <td>{renderInput(examField, `${term} Exam`)}</td>
@@ -513,7 +554,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                   <td>
                     <button
                       type="button"
-                      onClick={() => handleRemoveCourse(yearLevel, semesterId, courseId)}
+                      onClick={() => handleRemoveCourse(yearLevel, semesterId, attemptKey)}
                       title="Remove this course from the sheet"
                       style={{
                         background: 'none',
@@ -574,26 +615,42 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
               {years.map((yearBlock) => {
                 const isYearOpen = openYears.has(yearBlock.yearLevel);
                 const isCurrentYear = meta && yearBlock.yearLevel === meta.currentYearLevel;
+                const isFutureYear = meta && yearBlock.yearLevel > meta.currentYearLevel;
 
                 return (
                   <div key={yearBlock.yearLevel} className="accordionToggleArea" style={{ flexDirection: 'column' }}>
                     <button
                       type="button"
                       className="accordionBtn"
-                      onClick={() => toggleYear(yearBlock.yearLevel)}
-                      style={isCurrentYear ? { borderColor: '#3d1616', borderWidth: '2px' } : undefined}
+                      onClick={() => !isFutureYear && toggleYear(yearBlock.yearLevel)}
+                      disabled={isFutureYear}
+                      style={{
+                        ...(isCurrentYear ? { borderColor: '#3d1616', borderWidth: '2px' } : {}),
+                        ...(isFutureYear ? { opacity: 0.45, cursor: 'not-allowed' } : {}),
+                      }}
+                      title={isFutureYear ? 'Student has not yet reached this year level' : ''}
                     >
-                      <span>{ordinalYear(yearBlock.yearLevel)}{isCurrentYear ? ' (Current Year Level)' : ''}</span>
+                      <span>
+                        {ordinalYear(yearBlock.yearLevel)}
+                        {isCurrentYear ? ' (Current Year Level)' : ''}
+                        {isFutureYear ? ' — Not yet enrolled' : ''}
+                      </span>
                       <span className={`arrow ${isYearOpen ? 'open' : ''}`}>&#9660;</span>
                     </button>
 
-                    {isYearOpen && (
+                    {isYearOpen && !isFutureYear && (
                       <div className="detailedInfoContainer">
                         {yearBlock.semesters.map((sem) => {
                           const semKey = `${yearBlock.yearLevel}-${sem.semesterId}`;
-                          const courseIds = courseIdsBySemester[semKey] || [];
-                          const usedIds = new Set(courseIds);
-                          const addableCourses = gradableCourses.filter((c) => !usedIds.has(c.courseId));
+                          const attemptKeys = attemptKeysBySemester[semKey] || [];
+
+                          // Courses already used in THIS semester are hidden from
+                          // the picker. Courses used in OTHER semesters remain
+                          // addable — that's how you add a retake.
+                          const usedCourseIds = new Set(
+                            attemptKeys.map((k) => gradesMap[k]?.courseId).filter(Boolean)
+                          );
+                          const addableCourses = gradableCourses.filter((c) => !usedCourseIds.has(c.courseId));
 
                           return (
                             <div key={sem.semesterId} style={{ marginBottom: '1.5rem' }}>
@@ -610,7 +667,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                                 </button>
                               </div>
 
-                              {courseIds.length > 0 && (
+                              {attemptKeys.length > 0 && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
                                   <span style={{ fontSize: '0.7rem', color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Jump to:</span>
                                   {TERMS.map((t) => (
@@ -652,10 +709,10 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                                 </div>
                               )}
 
-                              {courseIds.length === 0 ? (
+                              {attemptKeys.length === 0 ? (
                                 <p style={{ fontSize: '0.85rem', color: '#999' }}>No courses in this semester yet.</p>
                               ) : (
-                                TERMS.map((term) => renderTermTable(yearBlock.yearLevel, sem.semesterId, term, courseIds))
+                                TERMS.map((term) => renderTermTable(yearBlock.yearLevel, sem.semesterId, term, attemptKeys))
                               )}
                             </div>
                           );

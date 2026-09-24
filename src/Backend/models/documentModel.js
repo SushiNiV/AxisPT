@@ -425,11 +425,17 @@ class DocumentModel {
       schoolYear = ayRes.rows[0]?.year_label || null;
     }
 
-    // Per-course final grades for this student
+    // Per-course final grades for this student, LATEST attempt only.
+    // DISTINCT ON keeps exactly one row per course - the one with the
+    // highest year_id (then highest semester_id) - so a course that was
+    // failed and later retaken shows the retake's grade on the outline.
     const gradeRes = await db.query(`
-      SELECT course_id, final_grade
+      SELECT DISTINCT ON (course_id)
+        course_id,
+        final_grade
       FROM grades
       WHERE student_id = $1
+      ORDER BY course_id, year_id DESC, semester_id DESC
     `, [studentId]);
     const gradeMap = new Map(gradeRes.rows.map(r => [r.course_id, r.final_grade]));
 

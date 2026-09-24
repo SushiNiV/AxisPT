@@ -16,7 +16,9 @@
  *                             (student, course, academic_year, term) combo -
  *                             final_grade here is the CUMULATIVE course
  *                             grade (GradingEngine.computeCumulativeGrade),
- *                             not any single term's score.
+ *                             not any single term's score. Also stores the
+ *                             curricular year_level the attempt was taken in,
+ *                             so retakes placed in a later year stay distinct.
  *   4. grade_components     -> named sub-scores per term (Quizzes/AT,
  *                             Prelim/Midterm/Final Exam, Unit Practical
  *                             Exam, OSCE/OSPE, etc. - see gradingEngine.js
@@ -95,6 +97,7 @@ class GradeManageModel {
       SELECT 
         se.curriculum_id,
         se.year_level AS current_year_level,
+        se.year_id AS current_year_id,
         c.program_id,
         p.program_name,
         p.program_abbr,
@@ -113,7 +116,16 @@ class GradeManageModel {
   /**
    * Builds the complete grade sheet for a student: every course required by
    * their curriculum, grouped by year level then semester/term, merged with
-   * any grade + grade_components already on file.
+   * any grades + grade_components already on file.
+   *
+   * RETAKES: a course can have multiple grade rows for the same student, one
+   * per (year_id, semester_id) it was attempted in. Each attempt is its own
+   * row in the sheet, placed in the (year_level, semester_id) it was actually
+   * taken in. Placement uses grades.year_level — a stored fact — rather than
+   * inferring it from the student's current year level, which would be wrong
+   * for retakes that happened in a past year.
+   *
+   * Every row carries attemptCount + attempts[] so the UI can badge retakes.
    *
    * @param {number} studentId
    * @returns {Promise<object|null>} null if the student has no enrollment
@@ -146,13 +158,14 @@ class GradeManageModel {
     `, [curriculum_id]);
 
     // 2. Every grade (and its named term components) already recorded for
-    //    this student.
+    //    this student. Multiple rows per course are possible (retakes).
     const gradesRes = await db.query(`
       SELECT 
         g.grade_id,
         g.course_id,
         g.year_id,
         g.semester_id,
+        g.year_level,
         g.final_grade,
         g.remarks,
         gc.term,
@@ -163,70 +176,147 @@ class GradeManageModel {
       WHERE g.student_id = $1
     `, [studentId]);
 
-    // Index existing grades by course_id for O(1) lookup while merging below.
-    // scoresByTerm nests component scores as { Prelim: { 'Quizzes/AT': 88 }, ... }
-    // matching the shape GradingEngine expects.
-    const gradesByCourse = new Map();
+    // Group attempts per course_id. Each attempt = one grade_id, carrying
+    // its own (year_id, semester_id, year_level) placement and scores.
+    const attemptsByCourse = new Map();
     for (const row of gradesRes.rows) {
-      if (!gradesByCourse.has(row.course_id)) {
-        gradesByCourse.set(row.course_id, {
+      if (!attemptsByCourse.has(row.course_id)) attemptsByCourse.set(row.course_id, []);
+
+      const attempts = attemptsByCourse.get(row.course_id);
+      let attempt = attempts.find((a) => a.gradeId === row.grade_id);
+      if (!attempt) {
+        attempt = {
           gradeId: row.grade_id,
           yearId: row.year_id,
           semesterId: row.semester_id,
+          yearLevel: row.year_level,
           finalGrade: row.final_grade,
           remarks: row.remarks,
           scoresByTerm: { Prelim: {}, Midterm: {}, Final: {} }
-        });
+        };
+        attempts.push(attempt);
       }
       if (row.term && row.component_name) {
-        gradesByCourse.get(row.course_id).scoresByTerm[row.term][row.component_name] = row.score;
+        attempt.scoresByTerm[row.term][row.component_name] = row.score;
       }
     }
 
-    // 3. Group courses -> year level -> semester, attaching grade data to each.
-    const yearMap = new Map();
-    for (const c of coursesRes.rows) {
-      if (!yearMap.has(c.year_level)) yearMap.set(c.year_level, new Map());
-      const semMap = yearMap.get(c.year_level);
+    // Cache semester labels so synthetic buckets are never shown as "undefined".
+    const semLabelCache = new Map();
+    const getSemesterLabel = async (semesterId) => {
+      if (semLabelCache.has(semesterId)) return semLabelCache.get(semesterId);
+      const res = await db.query(
+        `SELECT semester_label FROM semester WHERE semester_id = $1`,
+        [semesterId]
+      );
+      const label = res.rows[0]?.semester_label || `Semester ${semesterId}`;
+      semLabelCache.set(semesterId, label);
+      return label;
+    };
 
-      if (!semMap.has(c.semester_id)) {
-        semMap.set(c.semester_id, {
-          semesterId: c.semester_id,
-          semesterLabel: c.semester_label,
+    // --- Build the year -> semester -> courses tree.
+    const yearMap = new Map();
+    const ensureYearAndSem = (yearLevel, semesterId, semesterLabel) => {
+      if (!yearMap.has(yearLevel)) yearMap.set(yearLevel, new Map());
+      const semMap = yearMap.get(yearLevel);
+      if (!semMap.has(semesterId)) {
+        semMap.set(semesterId, {
+          semesterId,
+          semesterLabel,
           courses: []
         });
       }
+      return semMap.get(semesterId);
+    };
 
-      const existing = gradesByCourse.get(c.course_id) || null;
-      const scoresByTerm = existing?.scoresByTerm || { Prelim: {}, Midterm: {}, Final: {} };
-      const category = GradingEngine.getCourseCategory(c);
-
-      const cumulative = existing
-        ? GradingEngine.computeCumulativeGrade(c, scoresByTerm)
+    // Helper: build the row payload for one (course, attempt) pair.
+    const buildCourseRow = (courseMeta, attempt, allAttempts) => {
+      const category = GradingEngine.getCourseCategory(courseMeta);
+      const scoresByTerm = attempt?.scoresByTerm || { Prelim: {}, Midterm: {}, Final: {} };
+      const cumulative = attempt
+        ? GradingEngine.computeCumulativeGrade(courseMeta, scoresByTerm)
         : { finalGrade: null, remarks: null };
 
-      semMap.get(c.semester_id).courses.push({
-        courseId: c.course_id,
-        courseCode: c.course_code,
-        courseName: c.course_name,
-        units: c.total_units,
+      return {
+        courseId: courseMeta.course_id,
+        courseCode: courseMeta.course_code,
+        courseName: courseMeta.course_name,
+        units: courseMeta.total_units,
         category,
-        // Which component inputs this specific course needs - resolved
-        // per-course (not per-category) since comprehensive/revalida
-        // courses recurse into their own lab_units-dependent table.
-        enterableFields: GradingEngine.getEnterableFields(c),
-        gradeId: existing?.gradeId || null,
-        finalGrade: existing?.finalGrade ?? cumulative.finalGrade,
-        remarks: existing?.remarks || cumulative.remarks,
+        enterableFields: GradingEngine.getEnterableFields(courseMeta),
+        gradeId: attempt?.gradeId || null,
+        finalGrade: attempt?.finalGrade ?? cumulative.finalGrade,
+        remarks: attempt?.remarks || cumulative.remarks,
         scoresByTerm,
         termGrades: {
           Prelim: GradingEngine.computeTermGrade(category, 'Prelim', scoresByTerm),
           Midterm: GradingEngine.computeTermGrade(category, 'Midterm', scoresByTerm),
           Final: GradingEngine.computeTermGrade(category, 'Final', scoresByTerm)
-        }
-      });
+        },
+        attemptCount: allAttempts.length,
+        attempts: allAttempts.map((a) => ({
+          gradeId: a.gradeId,
+          yearId: a.yearId,
+          semesterId: a.semesterId,
+          yearLevel: a.yearLevel,
+          finalGrade: a.finalGrade,
+          remarks: a.remarks
+        }))
+      };
+    };
+
+    // Pass 1 — one row per curriculum slot. Attach the attempt whose
+    // (year_level, semester_id) matches the slot's own placement.
+    for (const c of coursesRes.rows) {
+      const slotYear = Number(c.year_level);
+      const slotSem = Number(c.semester_id);
+      const sem = ensureYearAndSem(slotYear, slotSem, c.semester_label);
+
+      const attempts = attemptsByCourse.get(c.course_id) || [];
+      const exact = attempts.find(
+        (a) => Number(a.yearLevel) === slotYear && Number(a.semesterId) === slotSem
+      );
+      const latest = [...attempts].sort(
+        (a, b) => (b.yearLevel - a.yearLevel) || (b.semesterId - a.semesterId)
+      )[0] || null;
+      const chosen = exact || latest;
+
+      sem.courses.push(buildCourseRow(c, chosen, attempts));
     }
 
+    // Pass 2 — retakes. Any attempt whose (year_level, semester_id) does NOT
+    // match its curriculum slot gets its own row, placed in the year+semester
+    // it was actually taken in.
+    for (const [courseId, attempts] of attemptsByCourse.entries()) {
+      const metaRes = await db.query(`
+        SELECT course_id, course_code, course_name, total_units, lab_units, grading_scheme
+        FROM courses WHERE course_id = $1
+      `, [courseId]);
+      const courseMeta = metaRes.rows[0];
+      if (!courseMeta) continue;
+
+      const nativeSlot = coursesRes.rows.find((r) => r.course_id === courseId);
+      const nativeYear = nativeSlot ? Number(nativeSlot.year_level) : null;
+      const nativeSem = nativeSlot ? Number(nativeSlot.semester_id) : null;
+
+      for (const attempt of attempts) {
+        const aYear = Number(attempt.yearLevel);
+        const aSem = Number(attempt.semesterId);
+
+        if (nativeYear !== null && aYear === nativeYear && aSem === nativeSem) continue;
+
+        const label = await getSemesterLabel(aSem);
+        const targetSem = ensureYearAndSem(aYear, aSem, label);
+
+        if (targetSem.courses.some(
+          (r) => r.courseId === courseId && r.gradeId === attempt.gradeId
+        )) continue;
+
+        targetSem.courses.push(buildCourseRow(courseMeta, attempt, attempts));
+      }
+    }
+
+    // --- Flatten into the shape the modal consumes.
     const years = Array.from(yearMap.entries())
       .sort(([a], [b]) => a - b)
       .map(([yearLevel, semMap]) => ({
@@ -352,6 +442,14 @@ class GradeManageModel {
         const course = courseRes.rows[0];
         const category = GradingEngine.getCourseCategory(course);
 
+        // Guard: reject grades for year levels the student hasn't reached yet.
+        const ctx = await this.getStudentCurriculumContext(studentId);
+        if (ctx && Number(yearLevel) > Number(ctx.current_year_level)) {
+          throw new Error(
+            `Cannot save grades for Year ${yearLevel} — student is currently Year ${ctx.current_year_level}.`
+          );
+        }
+
         const { year_id, semester_id } = await this.resolveAcademicPeriod(
           client, studentId, yearLevel, semesterId
         );
@@ -366,17 +464,17 @@ class GradeManageModel {
         const { finalGrade, remarks } = GradingEngine.computeCumulativeGrade(course, scoresByTerm);
 
         // Upsert the grade header row for this (student, course, year, term).
-        const gradeRes = await client.query(`
-          INSERT INTO grades (student_id, course_id, year_id, semester_id, faculty_id, final_grade, remarks, updated_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-          ON CONFLICT (student_id, course_id, year_id, semester_id) DO UPDATE SET
+                const gradeRes = await client.query(`
+          INSERT INTO grades (student_id, course_id, year_id, semester_id, year_level, faculty_id, final_grade, remarks, updated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+          ON CONFLICT (student_id, course_id, year_id, semester_id, year_level) DO UPDATE SET
             faculty_id = EXCLUDED.faculty_id,
             final_grade = EXCLUDED.final_grade,
             remarks = EXCLUDED.remarks,
             updated_at = NOW()
           RETURNING grade_id
-        `, [studentId, courseId, year_id, semester_id, facultyId || null, finalGrade, remarks]);
-
+        `, [studentId, courseId, year_id, semester_id, Number(yearLevel), facultyId || null, finalGrade, remarks]);
+        
         const gradeId = gradeRes.rows[0].grade_id;
 
         // Replace all components wholesale — simpler and safer than
@@ -496,4 +594,5 @@ class GradeManageModel {
     return standingMap;
   }
 }
+
 module.exports = GradeManageModel;

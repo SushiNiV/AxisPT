@@ -818,12 +818,13 @@ exports.getSectionsByProgram = exports.getAllSectionsByProgram;
 exports.getSectionsByProgramId = async (req, res) => {
   try {
     const { programId } = req.params;
-    const { yearId, semesterId } = req.query;
+    const { yearId, semesterId, yearLevel } = req.query;
 
     const sections = await SectionModel.getByProgramAndTerm(
       programId,
       yearId ? Number(yearId) : null,
-      semesterId ? Number(semesterId) : null
+      semesterId ? Number(semesterId) : null,
+      yearLevel ? String(yearLevel) : null
     );
 
     res.json({ success: true, data: sections });

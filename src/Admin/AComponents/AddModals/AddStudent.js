@@ -127,7 +127,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     fetchPrograms();
   }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     // Clear immediately so we never show the previous program's sections
     // while the new fetch is in-flight.
     setRawSections([]);
@@ -138,8 +138,12 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     const fetchSections = async () => {
       const token = sessionStorage.getItem('token');
       try {
+        const params = new URLSearchParams();
+        if (formData.yearLevel) params.set('yearLevel', formData.yearLevel);
+        const qs = params.toString();
+
         const response = await fetch(
-          `${process.env.REACT_APP_API_URL}/admin/sections/by-program/${formData.programId}`,
+          `${process.env.REACT_APP_API_URL}/admin/sections/by-program/${formData.programId}${qs ? `?${qs}` : ''}`,
           { headers: { 'Authorization': `Bearer ${token}` } }
         );
         const data = await response.json();
@@ -151,8 +155,8 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     fetchSections();
 
     return () => { cancelled = true; };
-  }, [formData.programId]);
-
+  }, [formData.programId, formData.yearLevel]);
+  
     const sections = useMemo(() => {
     const yl = String(formData.yearLevel || '');
     let list = rawSections.filter((s) => !yl || String(s.year_level) === yl);
