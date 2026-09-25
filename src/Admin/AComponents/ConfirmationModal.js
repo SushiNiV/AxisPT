@@ -9,7 +9,9 @@ import '../../GlobalForm.css';
  * Props:
  *   - isOpen:      boolean – show/hide
  *   - title:       string  – modal header text
- *   - message:     string | ReactNode – main content
+ *   - summary:     ReactNode – optional large lead line (e.g. the question)
+ *   - message:     string | ReactNode – smaller supporting text
+ *   - children:    ReactNode – optional extra content below the message
  *   - variant:     'danger' | 'warning' | 'info' | 'success' – controls color + icon
  *   - confirmLabel: string – confirm button text (default: "CONFIRM")
  *   - cancelLabel:  string – cancel button text (default: "CANCEL")
@@ -21,7 +23,9 @@ import '../../GlobalForm.css';
 function ConfirmationModal({
   isOpen,
   title = 'Confirm Action',
+  summary,
   message,
+  children,
   variant = 'info',
   confirmLabel,
   cancelLabel = 'CANCEL',
@@ -35,7 +39,7 @@ function ConfirmationModal({
   const portalTarget = document.getElementById('portal-root') || document.body;
 
   const variantConfig = {
-    danger:  { icon: '⚠️', color: '#c62828', buttonColor: '#c62828' },
+    danger:  { icon: '⚠️', color: '#c62828', buttonColor: '#3d1616' },
     warning: { icon: '⚠️', color: '#e65100', buttonColor: '#e65100' },
     info:    { icon: 'ℹ️', color: '#3d1616', buttonColor: '#3d1616' },
     success: { icon: '✅', color: '#2e7d32', buttonColor: '#2e7d32' },
@@ -74,53 +78,83 @@ function ConfirmationModal({
         <div className="modalScrollArea">
           <div
             className="confirmBody"
-            style={{ display: 'column', alignItems: 'flex-start' }}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              gap: '12px',
+              padding: '8px 0',
+            }}
           >
             <div
               className="confirmIcon"
               style={{
                 fontSize: '3rem',
                 lineHeight: 1,
-                flexShrink: 0,
                 color: config.color,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
               {config.icon}
             </div>
-            <div
-              className="confirmMessage"
-              style={{
-                fontSize: '1rem',
-                color: '#333',
-                lineHeight: 1.5,
-                paddingTop: '4px',
-              }}
-            >
-              {message}
-            </div>
+
+            {summary && (
+              <div
+                className="confirmSummary"
+                style={{
+                  fontSize: '1.05rem',
+                  fontWeight: 600,
+                  color: '#222',
+                  lineHeight: 1.4,
+                  maxWidth: '380px',
+                }}
+              >
+                {summary}
+              </div>
+            )}
+
+            {message && (
+              <div
+                className="confirmMessage"
+                style={{
+                  fontSize: '0.8rem',
+                  fontWeight: 400,
+                  color: '#666',
+                  lineHeight: 1.5,
+                  maxWidth: '380px',
+                }}
+              >
+                {message}
+              </div>
+            )}
+
+            {children}
           </div>
-          
-        <div className="modalFooter">
-          {!isAlert && (
+
+          <div className="modalFooter">
+            {!isAlert && (
+              <button
+                type="button"
+                className="cancelBtn"
+                onClick={onCancel}
+                disabled={loading}
+              >
+                {cancelLabel}
+              </button>
+            )}
             <button
               type="button"
-              className="cancelBtn"
-              onClick={onCancel}
+              className="submitBtn"
+              style={{ backgroundColor: config.buttonColor }}
+              onClick={onConfirm}
               disabled={loading}
             >
-              {cancelLabel}
+              {loading ? 'PROCESSING...' : (confirmLabel || defaultConfirm)}
             </button>
-          )}
-          <button
-            type="button"
-            className="submitBtn"
-            style={{ backgroundColor: config.buttonColor }}
-            onClick={onConfirm}
-            disabled={loading}
-          >
-            {loading ? 'PROCESSING...' : (confirmLabel || defaultConfirm)}
-          </button>
-        </div>
+          </div>
         </div>
       </div>
     </div>

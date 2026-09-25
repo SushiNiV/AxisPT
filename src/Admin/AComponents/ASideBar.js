@@ -53,7 +53,7 @@ function ASideBar() {
               `navLink ${location.pathname.includes('/admin/academics') ? 'activeLink' : ''}`
             }
           >
-            <BiBookAlt className="linkIcon" /> {!isCollapsed && <span>Academics & Grades</span>}
+            <BiBookAlt className="linkIcon" /> {!isCollapsed && <span>Program Management</span>}
           </NavLink>
           
           {/*}

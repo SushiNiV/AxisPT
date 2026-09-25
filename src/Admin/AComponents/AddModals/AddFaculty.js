@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import ReactDOM from 'react-dom';
+import ConfirmationModal from '../ConfirmationModal';
 import '../../../GlobalForm.css';
 import '../../../GlobalOverlay.css';
 import '../../../Global.css';
@@ -23,32 +24,52 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [isNewDesignation, setIsNewDesignation] = useState(false);
-  const [portalRoot, setPortalRoot] = useState(null);
+  const portalRoot = document.getElementById('portal-root') || document.body;
   const isEditMode = !!facultyToEdit;
+
+  const [confirmState, setConfirmState] = useState({ isOpen: false });
+  const [successState, setSuccessState] = useState({ isOpen: false });
+
+  const closeConfirm = () => setConfirmState({ isOpen: false });
+
+  const openAlert = (title, message, variant = 'info') => {
+    setConfirmState({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      isAlert: true,
+      onConfirm: closeConfirm,
+      onCancel: closeConfirm,
+    });
+  };
+
+  const showSuccess = (title, message) => {
+    setSuccessState({ isOpen: true, title, message, variant: 'success' });
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       const token = sessionStorage.getItem('token');
       const headers = { 'Authorization': `Bearer ${token}` };
-      
+
       try {
         const [rolesRes, designationsRes] = await Promise.all([
           fetch(`${process.env.REACT_APP_API_URL}/admin/roles`, { headers }),
           fetch(`${process.env.REACT_APP_API_URL}/admin/designations`, { headers })
         ]);
-        
+
         const rolesData = await rolesRes.json();
         const designationsData = await designationsRes.json();
-        
+
         if (rolesData.success) setRoles(rolesData.data);
         if (designationsData.success) setDesignations(designationsData.data);
       } catch (err) {
         console.error("Error fetching data:", err);
       }
     };
-    
+
     fetchData();
-    setPortalRoot(document.getElementById('portal-root') || document.body);
   }, []);
 
   useEffect(() => {
@@ -73,7 +94,7 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     if (name === "designation_id" && value === "new") {
       setIsNewDesignation(true);
       setFormData(prev => ({ ...prev, designation_id: "" }));
@@ -91,22 +112,22 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
     const { last_name, first_name, username, email, role_id, designation_id, new_designation_name } = formData;
 
     if (!last_name || !first_name || !username || !email || !role_id) {
-      alert("Please fill in all required fields.");
+      openAlert('Missing Fields', 'Please fill in all required fields.', 'warning');
       return;
     }
 
     if (!isNewDesignation && !designation_id) {
-      alert("Please select a designation.");
+      openAlert('Missing Designation', 'Please select a designation.', 'warning');
       return;
     }
 
     if (isNewDesignation && !new_designation_name) {
-      alert("Please enter the new designation name.");
+      openAlert('Missing Designation Name', 'Please enter the new designation name.', 'warning');
       return;
     }
 
     if (!email.includes('@')) {
-      alert("Please enter a valid email address.");
+      openAlert('Invalid Email', 'Please enter a valid email address.', 'warning');
       return;
     }
 
@@ -114,10 +135,10 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
 
     try {
       const token = sessionStorage.getItem('token');
-      const url = isEditMode 
+      const url = isEditMode
         ? `${process.env.REACT_APP_API_URL}/admin/users/${facultyToEdit.user_id}`
         : `${process.env.REACT_APP_API_URL}/admin/users`;
-      
+
       const method = isEditMode ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
@@ -143,17 +164,23 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
       const data = await response.json();
 
       if (data.success) {
-        alert(isEditMode ? "User updated successfully!" : "User created successfully!");
-        if (data.password) {
-          alert(`Temporary password: ${data.password}`);
-        }
-        onSuccess();
+        // Show success; include temporary password if this was a new user.
+        showSuccess(
+          isEditMode ? 'User Updated' : 'User Created',
+          data.password
+            ? `The user has been ${isEditMode ? 'updated' : 'created'} successfully.\n\nTemporary password: ${data.password}`
+            : `The user has been ${isEditMode ? 'updated' : 'created'} successfully.`
+        );
       } else {
-        alert(data.message || (isEditMode ? "Failed to update user." : "Failed to create user."));
+        openAlert(
+          isEditMode ? 'Update Failed' : 'Creation Failed',
+          data.message || (isEditMode ? 'Failed to update user.' : 'Failed to create user.'),
+          'danger'
+        );
       }
     } catch (error) {
       console.error("Error submitting user:", error);
-      alert("An error occurred. Please try again.");
+      openAlert('Connection Error', 'An unexpected error occurred. Please try again.', 'danger');
     } finally {
       setIsSubmitting(false);
     }
@@ -173,8 +200,8 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
           <div className="FormContent">
             <div className="formRow">
               <div className="formGroup">
-                <label className="formLabel">LAST NAME <span style={{color: 'red'}}>*</span></label>
-                <input 
+                <label className="formLabel">LAST NAME <span style={{ color: 'red' }}>*</span></label>
+                <input
                   type="text"
                   name="last_name"
                   placeholder="Dela Cruz"
@@ -184,8 +211,8 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
               </div>
 
               <div className="formGroup">
-                <label className="formLabel">FIRST NAME <span style={{color: 'red'}}>*</span></label>
-                <input 
+                <label className="formLabel">FIRST NAME <span style={{ color: 'red' }}>*</span></label>
+                <input
                   type="text"
                   name="first_name"
                   placeholder="Juan"
@@ -193,12 +220,12 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
                   onChange={handleChange}
                 />
               </div>
-            </div> 
+            </div>
 
             <div className="formRow">
               <div className="formGroup">
                 <label className="formLabel">MIDDLE NAME</label>
-                <input 
+                <input
                   type="text"
                   name="middle_name"
                   placeholder="Santos"
@@ -208,7 +235,7 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
               </div>
               <div className="formGroup">
                 <label className="formLabel">SUFFIX</label>
-                <select 
+                <select
                   name="suffix"
                   value={formData.suffix}
                   onChange={handleChange}
@@ -225,8 +252,8 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
 
             <div className="formRow">
               <div className="formGroup">
-                <label className="formLabel">USERNAME <span style={{color: 'red'}}>*</span></label>
-                <input 
+                <label className="formLabel">USERNAME <span style={{ color: 'red' }}>*</span></label>
+                <input
                   type="text"
                   name="username"
                   placeholder="01230001231"
@@ -236,8 +263,8 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
               </div>
 
               <div className="formGroup">
-                <label className="formLabel"> SCHOOL EMAIL <span style={{color: 'red'}}>*</span></label>
-                <input 
+                <label className="formLabel"> SCHOOL EMAIL <span style={{ color: 'red' }}>*</span></label>
+                <input
                   type="email"
                   name="email"
                   placeholder="juan.delacruz@school.edu"
@@ -246,11 +273,11 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
                 />
               </div>
             </div>
-            
+
             <div className="formRow">
               <div className="formGroup">
-                <label className="formLabel">ROLE <span style={{color: 'red'}}>*</span></label>
-                <select 
+                <label className="formLabel">ROLE <span style={{ color: 'red' }}>*</span></label>
+                <select
                   name="role_id"
                   value={formData.role_id}
                   onChange={handleChange}
@@ -265,8 +292,8 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
                 </select>
               </div>
               <div className="formGroup">
-                <label className="formLabel">DESIGNATION <span style={{color: 'red'}}>*</span></label>
-                <select 
+                <label className="formLabel">DESIGNATION <span style={{ color: 'red' }}>*</span></label>
+                <select
                   name="designation_id"
                   value={formData.designation_id}
                   onChange={handleChange}
@@ -285,8 +312,8 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
 
             {isNewDesignation && (
               <div className="formGroup">
-                <label className="formLabel">NEW DESIGNATION NAME <span style={{color: 'red'}}>*</span></label>
-                <input 
+                <label className="formLabel">NEW DESIGNATION NAME <span style={{ color: 'red' }}>*</span></label>
+                <input
                   type="text"
                   name="new_designation_name"
                   placeholder="e.g., Department Chair"
@@ -297,7 +324,7 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
             )}
 
             <div className="formGroup">
-              <label className="formLabel">STATUS <span style={{color: 'red'}}>*</span></label>
+              <label className="formLabel">STATUS <span style={{ color: 'red' }}>*</span></label>
               <div className="statusToggleContainer" onClick={toggleActive}>
                 <div className={`statusSwitch ${isActive ? 'active' : 'inactive'}`}>
                   <div className="switchHandle"></div>
@@ -317,11 +344,37 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
           </div>
         </div>
       </div>
+
+      {/* Success modal */}
+      <ConfirmationModal
+        isOpen={successState.isOpen}
+        title={successState.title}
+        message={successState.message}
+        variant={successState.variant}
+        isAlert={true}
+        onConfirm={() => {
+          setSuccessState({ isOpen: false });
+          onSuccess();
+        }}
+        onCancel={() => {
+          setSuccessState({ isOpen: false });
+          onSuccess();
+        }}
+      />
+
+      {/* Alert / error modal */}
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        isAlert={confirmState.isAlert}
+        onConfirm={confirmState.onConfirm}
+        onCancel={confirmState.onCancel}
+      />
     </div>
   );
 
-  if (!portalRoot) return null;
-  
   return ReactDOM.createPortal(modalContent, portalRoot);
 }
 

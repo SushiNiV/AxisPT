@@ -10,6 +10,7 @@ import ADashboard from './Admin/APages/ADashboard';
 
 import AStudentManage from './Admin/APages/AStudentManage';
 import Masterlist from './Admin/APages/Masterlist';
+import Archive from './Admin/APages/Archive';
 
 import AAcademics from './Admin/APages/AGrades';
 import AProgSec from './Admin/APages/AProgSec';
@@ -73,8 +74,7 @@ function AppContent() {
             <Route path="/admin/student-management" element={<AStudentManage />}>
               <Route index element={<Navigate to="masterlist" replace />} />
               <Route path="masterlist" element={<Masterlist />} />
-              <Route path="pending-students" element={<AStudentManage />} />
-              <Route path="student-grades" element={<AStudentManage />} />
+              <Route path="archive" element={<Archive />} />
             </Route>
 
             <Route path="/admin/academics" element={<AAcademics />}>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import ReactDOM from 'react-dom';
-import { BiChevronDown } from 'react-icons/bi';
+import ConfirmationModal from '../ConfirmationModal';
 
 import '../../../GlobalForm.css';
 import '../../../GlobalOverlay.css';
@@ -10,7 +10,7 @@ import '../../../Global.css';
 function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
   const isEditMode = !!curriculumToEdit;
   const currentYear = new Date().getFullYear();
-  
+
   const [formData, setFormData] = useState({
     program: "",
     start_year: currentYear,
@@ -20,7 +20,28 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
   const [programs, setPrograms] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isActive, setIsActive] = useState(true);
-  const [portalRoot, setPortalRoot] = useState(null);
+  const portalRoot = document.getElementById('portal-root') || document.body;
+
+  const [confirmState, setConfirmState] = useState({ isOpen: false });
+  const [successState, setSuccessState] = useState({ isOpen: false });
+
+  const closeConfirm = () => setConfirmState({ isOpen: false });
+
+  const openAlert = (title, message, variant = 'info') => {
+    setConfirmState({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      isAlert: true,
+      onConfirm: closeConfirm,
+      onCancel: closeConfirm,
+    });
+  };
+
+  const showSuccess = (title, message) => {
+    setSuccessState({ isOpen: true, title, message, variant: 'success' });
+  };
 
   const yearOptions = [];
   for (let year = currentYear - 10; year <= currentYear + 10; year++) {
@@ -41,8 +62,6 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
       }
     };
     fetchPrograms();
-    
-    setPortalRoot(document.getElementById('portal-root') || document.body);
   }, []);
 
   useEffect(() => {
@@ -70,7 +89,7 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
     const { program, start_year, version } = formData;
 
     if (!program || !start_year || !version) {
-      alert("Please fill in all required fields.");
+      openAlert('Missing Fields', 'Please fill in Program, Start Year, and Version.', 'warning');
       return;
     }
 
@@ -78,10 +97,10 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
 
     try {
       const token = sessionStorage.getItem('token');
-      const url = isEditMode 
+      const url = isEditMode
         ? `${process.env.REACT_APP_API_URL}/admin/curricula/${curriculumToEdit.curriculum_id}`
         : `${process.env.REACT_APP_API_URL}/admin/curricula`;
-      
+
       const method = isEditMode ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
@@ -101,14 +120,22 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
       const data = await response.json();
 
       if (data.success) {
-        alert(isEditMode ? "Curriculum updated successfully!" : "Curriculum created successfully!");
-        onSuccess();
+        showSuccess(
+          isEditMode ? 'Curriculum Updated' : 'Curriculum Created',
+          isEditMode
+            ? 'The curriculum has been updated successfully.'
+            : 'The curriculum has been created successfully.'
+        );
       } else {
-        alert(data.message || (isEditMode ? "Failed to update curriculum." : "Failed to create curriculum."));
+        openAlert(
+          isEditMode ? 'Update Failed' : 'Creation Failed',
+          data.message || (isEditMode ? 'Failed to update curriculum.' : 'Failed to create curriculum.'),
+          'danger'
+        );
       }
     } catch (error) {
       console.error("Error submitting curriculum:", error);
-      alert("An error occurred. Please try again.");
+      openAlert('Connection Error', 'An unexpected error occurred. Please try again.', 'danger');
     } finally {
       setIsSubmitting(false);
     }
@@ -117,21 +144,21 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
   const modalContent = (
     <div className="modalOverlay">
       <div className="modalContainer">
-        
+
         <div className="modalHeader">
           <h3 className="modalTitle">{isEditMode ? "UPDATE CURRICULUM" : "ADD NEW CURRICULUM"}</h3>
           <div className="CloseBtnArea">
-          <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
-        </div>
+            <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
+          </div>
         </div>
 
         <div className="modalScrollArea">
           <div className="FormContent">
             <div className="formGroup">
-              <label className="formLabel">Program <span style={{color: 'red'}}>*</span></label>
-              <select 
-                name="program" 
-                value={formData.program} 
+              <label className="formLabel">Program <span style={{ color: 'red' }}>*</span></label>
+              <select
+                name="program"
+                value={formData.program}
                 onChange={handleChange}
                 className="formSelect"
               >
@@ -145,10 +172,10 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
             </div>
 
             <div className="formGroup">
-              <label className="formLabel">Start Year <span style={{color: 'red'}}>*</span></label>
-              <select 
-                name="start_year" 
-                value={formData.start_year} 
+              <label className="formLabel">Start Year <span style={{ color: 'red' }}>*</span></label>
+              <select
+                name="start_year"
+                value={formData.start_year}
                 onChange={handleChange}
                 className="formSelect"
               >
@@ -161,18 +188,18 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
             </div>
 
             <div className="formGroup">
-              <label className="formLabel">Version <span style={{color: 'red'}}>*</span></label>
-              <input 
-                type="text" 
-                name="version" 
-                placeholder="Version 1.0" 
+              <label className="formLabel">Version <span style={{ color: 'red' }}>*</span></label>
+              <input
+                type="text"
+                name="version"
+                placeholder="Version 1.0"
                 value={formData.version}
                 onChange={handleChange}
               />
             </div>
 
             <div className="formGroup">
-              <label className="formLabel">CURRICULUM STATUS <span style={{color: 'red'}}>*</span></label>
+              <label className="formLabel">CURRICULUM STATUS <span style={{ color: 'red' }}>*</span></label>
               <div className="statusToggleContainer" onClick={toggleActive}>
                 <div className={`statusSwitch ${isActive ? 'active' : 'inactive'}`}>
                   <div className="switchHandle"></div>
@@ -192,11 +219,37 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
           </div>
         </div>
       </div>
+
+      {/* Success modal */}
+      <ConfirmationModal
+        isOpen={successState.isOpen}
+        title={successState.title}
+        message={successState.message}
+        variant={successState.variant}
+        isAlert={true}
+        onConfirm={() => {
+          setSuccessState({ isOpen: false });
+          onSuccess();
+        }}
+        onCancel={() => {
+          setSuccessState({ isOpen: false });
+          onSuccess();
+        }}
+      />
+
+      {/* Alert / error modal */}
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        isAlert={confirmState.isAlert}
+        onConfirm={confirmState.onConfirm}
+        onCancel={confirmState.onCancel}
+      />
     </div>
   );
 
-  if (!portalRoot) return null;
-  
   return ReactDOM.createPortal(modalContent, portalRoot);
 }
 

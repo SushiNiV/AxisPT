@@ -4,52 +4,32 @@
  * ============================================================================
  * Data access layer for viewing and recording student grades.
  *
- * A student's "grade sheet" is assembled from four tables:
+ * A student's "grade sheet" is assembled from five tables:
  *
- *   1. curriculum_courses  -> the fixed list of courses a curriculum requires,
- *                             organized by year_level + semester_id (term type,
- *                             e.g. 1st Sem / 2nd Sem / Summer).
+ *   1. curriculum_courses    -> the fixed list of courses a curriculum
+ *                               requires, organized by year_level +
+ *                               semester_id (term type).
  *   2. courses               -> lec_units/lab_units/grading_scheme, which
- *                             determine a course's grading category
- *                             (see GradingEngine.getCourseCategory).
- *   3. grades               -> the recorded outcome for a specific
- *                             (student, course, academic_year, term) combo -
- *                             final_grade here is the CUMULATIVE course
- *                             grade (GradingEngine.computeCumulativeGrade),
- *                             not any single term's score. Also stores the
- *                             curricular year_level the attempt was taken in,
- *                             so retakes placed in a later year stay distinct.
- *   4. grade_components     -> named sub-scores per term (Quizzes/AT,
- *                             Prelim/Midterm/Final Exam, Unit Practical
- *                             Exam, OSCE/OSPE, etc. - see gradingEngine.js
- *                             for the full weight tables per category).
- *
- * All grading math (category detection, period-local term grades, the
- * cumulative course grade, and the percentage->grade-point conversion)
- * lives in GradingEngine - this model's job is purely data access: fetch
- * the right rows, hand them to GradingEngine, persist what comes back.
- *
- * IMPORTANT DESIGN NOTE:
- * curriculum_courses does not know *which* academic year a term belongs to —
- * it only knows "Year 2, 1st Semester" in the abstract. The grades table,
- * however, needs a concrete year_id. To resolve this, every grade entry is
- * anchored to the academic year taken from the student's own enrollment
- * history (student_education). If the student does not yet have a
- * student_education row for that year_level/semester (e.g. an admin is
- * pre-encoding a grade for a term the student hasn't formally reached),
- * the model falls back to the currently active academic year so the record
- * still has a valid anchor. See resolveAcademicPeriod().
+ *                               determine a course's grading category
+ *                               (see GradingEngine.getCourseCategory).
+ *   3. grades                -> the recorded outcome for a specific
+ *                               (student, course, academic_year, term)
+ *                               combo. Also stores year_level so retakes
+ *                               placed in a later year stay distinct.
+ *   4. grade_components      -> named sub-scores per term (Quizzes/AT,
+ *                               Prelim/Midterm/Final Exam, Unit Practical
+ *                               Exam, OSCE/OSPE, etc.).
+ *   5. grade_prereq_overrides -> which prerequisite courses were missing
+ *                               when a grade was saved with an override.
+ *                               One row per (grade, missing prereq).
+ *                               Audit detail (who/when) lives in history_logs.
  * ============================================================================
  */
 
 const db = require('../config/db');
 const GradingEngine = require('./gradingEngine');
+const HistoryModel = require('./historyModel');
 
-/**
- * Academic standing tiers, derived from a student's failed-grade history.
- * Mirrors the enum used by student_status.probation_status, except 'None'
- * is displayed as 'Regular' to match how the masterlist presents it.
- */
 const ACADEMIC_STANDING = {
   NONE: 'None',
   WARNING: 'Warning',
@@ -57,7 +37,6 @@ const ACADEMIC_STANDING = {
   PROBATIONARY_2: 'Probationary 2'
 };
 
-/** Maps the raw student_status.probation_status enum value to a display label. */
 const PROBATION_STATUS_LABELS = {
   None: ACADEMIC_STANDING.NONE,
   Warning: ACADEMIC_STANDING.WARNING,
@@ -67,13 +46,6 @@ const PROBATION_STATUS_LABELS = {
 
 class GradeManageModel {
 
-  /**
-   * Fetches the currently active academic year + its active semester.
-   * Used as a fallback anchor when recording a grade for a term the
-   * student has no student_education row for yet.
-   *
-   * @param {import('pg').PoolClient|import('pg').Pool} client
-   */
   static async getActiveAcademicTerm(client = db) {
     const res = await client.query(`
       SELECT year_id, current_sem AS semester_id
@@ -84,14 +56,6 @@ class GradeManageModel {
     return res.rows[0] || { year_id: null, semester_id: null };
   }
 
-  /**
-   * Resolves the student's active curriculum/program context, used as the
-   * source of truth for which courses belong on their grade sheet.
-   * Prefers the student's current (is_current = true) enrollment record,
-   * falling back to their most recent one otherwise.
-   *
-   * @param {number} studentId
-   */
   static async getStudentCurriculumContext(studentId) {
     const res = await db.query(`
       SELECT 
@@ -114,31 +78,127 @@ class GradeManageModel {
   }
 
   /**
-   * Builds the complete grade sheet for a student: every course required by
-   * their curriculum, grouped by year level then semester/term, merged with
-   * any grades + grade_components already on file.
-   *
-   * RETAKES: a course can have multiple grade rows for the same student, one
-   * per (year_id, semester_id) it was attempted in. Each attempt is its own
-   * row in the sheet, placed in the (year_level, semester_id) it was actually
-   * taken in. Placement uses grades.year_level — a stored fact — rather than
-   * inferring it from the student's current year level, which would be wrong
-   * for retakes that happened in a past year.
-   *
-   * Every row carries attemptCount + attempts[] so the UI can badge retakes.
-   *
-   * @param {number} studentId
-   * @returns {Promise<object|null>} null if the student has no enrollment
-   *   record (and therefore no curriculum to build a grade sheet from).
+   * Map of course_id → year_level for every course in the student's
+   * active curriculum. Only courses in the curriculum are present.
+   * If a course appears in multiple curriculum slots, the earliest year
+   * level wins.
    */
+  static async getCurriculumYearLevelMap(studentId) {
+    const ctx = await this.getStudentCurriculumContext(studentId);
+    if (!ctx || !ctx.curriculum_id) return new Map();
+
+    const res = await db.query(`
+      SELECT course_id, MIN(year_level)::int AS year_level
+      FROM curriculum_courses
+      WHERE curriculum_id = $1
+      GROUP BY course_id
+    `, [ctx.curriculum_id]);
+
+    return new Map(res.rows.map((r) => [r.course_id, Number(r.year_level)]));
+  }
+
+  /**
+   * Map of course_id → bool, true when the student's LATEST attempt at
+   * that course has remarks = 'P'. Courses with no attempt are absent.
+   */
+  static async getCoursePassedMap(studentId) {
+    const res = await db.query(`
+      SELECT DISTINCT ON (course_id)
+        course_id, remarks
+      FROM grades
+      WHERE student_id = $1
+      ORDER BY course_id, year_level DESC, semester_id DESC
+    `, [studentId]);
+
+    const map = new Map();
+    for (const r of res.rows) {
+      map.set(r.course_id, r.remarks === 'P');
+    }
+    return map;
+  }
+
+  /**
+   * For a set of course IDs, returns a Map keyed by course_id:
+   *   { eligible: bool, missing: [code, ...], missingIds: [id, ...] }
+   *
+   * "Eligible" = the student has a PASSING grade (remarks = 'P') in every
+   * prerequisite of the course. Uses the LATEST attempt per prerequisite
+   * course, so a retake pass overrides an original fail.
+   *
+   * Prerequisites are stored on courses.prerequisites as a comma-separated
+   * string of course IDs (e.g. "12,10,16").
+   */
+  static async checkPrerequisiteEligibility(studentId, courseIds) {
+    if (!courseIds || courseIds.length === 0) return new Map();
+
+    const courseRes = await db.query(`
+      SELECT course_id, course_code, prerequisites
+      FROM courses
+      WHERE course_id = ANY($1::int[])
+    `, [courseIds]);
+
+    const allCodesRes = await db.query(`SELECT course_id, course_code FROM courses`);
+    const codeById = new Map(allCodesRes.rows.map((r) => [String(r.course_id), r.course_code]));
+
+    const prereqIds = new Set();
+    for (const c of courseRes.rows) {
+      const str = (c.prerequisites || '').trim();
+      if (!str) continue;
+      for (const tok of str.split(',').map((s) => s.trim()).filter(Boolean)) {
+        if (/^\d+$/.test(tok)) prereqIds.add(Number(tok));
+      }
+    }
+
+    const passedSet = new Set();
+    if (prereqIds.size > 0) {
+      const gradeRes = await db.query(`
+        SELECT DISTINCT ON (course_id)
+          course_id, remarks
+        FROM grades
+        WHERE student_id = $1 AND course_id = ANY($2::int[])
+        ORDER BY course_id, year_level DESC, semester_id DESC
+      `, [studentId, [...prereqIds]]);
+      for (const g of gradeRes.rows) {
+        if (g.remarks === 'P') passedSet.add(g.course_id);
+      }
+    }
+
+    const result = new Map();
+    for (const c of courseRes.rows) {
+      const str = (c.prerequisites || '').trim();
+      if (!str) {
+        result.set(c.course_id, { eligible: true, missing: [], missingIds: [] });
+        continue;
+      }
+
+      const tokens = str.split(',').map((s) => s.trim()).filter(Boolean);
+      const missing = [];
+      const missingIds = [];
+      for (const tok of tokens) {
+        if (/^\d+$/.test(tok)) {
+          const id = Number(tok);
+          if (!passedSet.has(id)) {
+            missing.push(codeById.get(tok) || `#${tok}`);
+            missingIds.push(id);
+          }
+        }
+      }
+
+      result.set(c.course_id, {
+        eligible: missing.length === 0,
+        missing,
+        missingIds
+      });
+    }
+    return result;
+  }
+
   static async getGradeSheet(studentId) {
     const context = await this.getStudentCurriculumContext(studentId);
     if (!context) return null;
 
     const { curriculum_id, current_year_level, program_name, program_abbr, total_year } = context;
 
-    // 1. Every course required by this curriculum, plus what determines its
-    //    grading category (see GradingEngine.getCourseCategory).
     const coursesRes = await db.query(`
       SELECT 
         cc.year_level,
@@ -157,8 +217,6 @@ class GradeManageModel {
       ORDER BY cc.year_level ASC, cc.semester_id ASC, co.course_code ASC
     `, [curriculum_id]);
 
-    // 2. Every grade (and its named term components) already recorded for
-    //    this student. Multiple rows per course are possible (retakes).
     const gradesRes = await db.query(`
       SELECT 
         g.grade_id,
@@ -176,8 +234,6 @@ class GradeManageModel {
       WHERE g.student_id = $1
     `, [studentId]);
 
-    // Group attempts per course_id. Each attempt = one grade_id, carrying
-    // its own (year_id, semester_id, year_level) placement and scores.
     const attemptsByCourse = new Map();
     for (const row of gradesRes.rows) {
       if (!attemptsByCourse.has(row.course_id)) attemptsByCourse.set(row.course_id, []);
@@ -201,7 +257,14 @@ class GradeManageModel {
       }
     }
 
-    // Cache semester labels so synthetic buckets are never shown as "undefined".
+    // Prerequisite eligibility for every course that will appear.
+    const allCourseIds = new Set(coursesRes.rows.map((c) => c.course_id));
+    for (const cid of attemptsByCourse.keys()) allCourseIds.add(cid);
+    const eligibilityMap = await this.checkPrerequisiteEligibility(
+      studentId,
+      [...allCourseIds]
+    );
+
     const semLabelCache = new Map();
     const getSemesterLabel = async (semesterId) => {
       if (semLabelCache.has(semesterId)) return semLabelCache.get(semesterId);
@@ -214,7 +277,6 @@ class GradeManageModel {
       return label;
     };
 
-    // --- Build the year -> semester -> courses tree.
     const yearMap = new Map();
     const ensureYearAndSem = (yearLevel, semesterId, semesterLabel) => {
       if (!yearMap.has(yearLevel)) yearMap.set(yearLevel, new Map());
@@ -229,13 +291,15 @@ class GradeManageModel {
       return semMap.get(semesterId);
     };
 
-    // Helper: build the row payload for one (course, attempt) pair.
     const buildCourseRow = (courseMeta, attempt, allAttempts) => {
       const category = GradingEngine.getCourseCategory(courseMeta);
       const scoresByTerm = attempt?.scoresByTerm || { Prelim: {}, Midterm: {}, Final: {} };
       const cumulative = attempt
         ? GradingEngine.computeCumulativeGrade(courseMeta, scoresByTerm)
         : { finalGrade: null, remarks: null };
+
+      const eligibility = eligibilityMap.get(courseMeta.course_id)
+        || { eligible: true, missing: [], missingIds: [] };
 
       return {
         courseId: courseMeta.course_id,
@@ -244,6 +308,9 @@ class GradeManageModel {
         units: courseMeta.total_units,
         category,
         enterableFields: GradingEngine.getEnterableFields(courseMeta),
+        prereqEligible: eligibility.eligible,
+        prereqMissing: eligibility.missing,
+        prereqMissingIds: eligibility.missingIds,
         gradeId: attempt?.gradeId || null,
         finalGrade: attempt?.finalGrade ?? cumulative.finalGrade,
         remarks: attempt?.remarks || cumulative.remarks,
@@ -265,8 +332,7 @@ class GradeManageModel {
       };
     };
 
-    // Pass 1 — one row per curriculum slot. Attach the attempt whose
-    // (year_level, semester_id) matches the slot's own placement.
+    // Pass 1 — curriculum slots.
     for (const c of coursesRes.rows) {
       const slotYear = Number(c.year_level);
       const slotSem = Number(c.semester_id);
@@ -284,9 +350,7 @@ class GradeManageModel {
       sem.courses.push(buildCourseRow(c, chosen, attempts));
     }
 
-    // Pass 2 — retakes. Any attempt whose (year_level, semester_id) does NOT
-    // match its curriculum slot gets its own row, placed in the year+semester
-    // it was actually taken in.
+    // Pass 2 — retakes outside their native curriculum slot.
     for (const [courseId, attempts] of attemptsByCourse.entries()) {
       const metaRes = await db.query(`
         SELECT course_id, course_code, course_name, total_units, lab_units, grading_scheme
@@ -316,7 +380,6 @@ class GradeManageModel {
       }
     }
 
-    // --- Flatten into the shape the modal consumes.
     const years = Array.from(yearMap.entries())
       .sort(([a], [b]) => a - b)
       .map(([yearLevel, semMap]) => ({
@@ -335,16 +398,6 @@ class GradeManageModel {
     };
   }
 
-  /**
-   * Every active course, with its grading category + enterableFields
-   * already resolved via GradingEngine. Powers AddGrade.js's "add course"
-   * picker for manually adding a row beyond the curriculum's defaults
-   * (e.g. a retake, an elective, or a shifting student's carried-over
-   * course) - resolved server-side so the frontend never needs its own
-   * copy of GradingEngine's category/weight logic.
-   *
-   * @returns {Promise<Array<object>>}
-   */
   static async getGradableCourses() {
     const res = await db.query(`
       SELECT course_id, course_code, course_name, total_units, lab_units, grading_scheme
@@ -363,14 +416,6 @@ class GradeManageModel {
     }));
   }
 
-  /**
-   * Determines the real academic_year to anchor a grade entry to, based on
-   * the student's own enrollment history. Falls back to the currently
-   * active academic year if the student has no matching student_education
-   * row yet for that year_level/semester (see module header note).
-   *
-   * @param {import('pg').PoolClient} client - transaction-bound client.
-   */
   static async resolveAcademicPeriod(client, studentId, yearLevel, semesterId) {
     const res = await client.query(`
       SELECT year_id, semester_id 
@@ -386,31 +431,6 @@ class GradeManageModel {
     return { year_id: active.year_id, semester_id: semesterId };
   }
 
-  /**
-   * Persists a batch of grade entries for a student inside a single
-   * transaction — either the whole batch succeeds or none of it does.
-   *
-   * Each entry carries a course's FULL set of per-term component scores
-   * (not just one term's worth) - GradingEngine.computeCumulativeGrade
-   * needs all three terms' data together to produce the official grade,
-   * so partial per-term saves aren't supported at this layer; the
-   * frontend is expected to submit whatever it currently has for a course
-   * across all terms whenever any of it changes.
-   *
-   * @param {number} studentId
-   * @param {number|null} facultyId - id of the recorder, if applicable.
-   * @param {Array<{
-   *   courseId: number,
-   *   yearLevel: number,
-   *   semesterId: number,
-   *   scoresByTerm: {
-   *     Prelim: Object<string, number|string>,
-   *     Midterm: Object<string, number|string>,
-   *     Final: Object<string, number|string>
-   *   }
-   * }>} entries
-   * @returns {Promise<boolean>}
-   */
   static async saveGrades(studentId, facultyId, entries) {
     if (!Array.isArray(entries) || entries.length === 0) {
       throw new Error('No grade entries provided.');
@@ -423,15 +443,12 @@ class GradeManageModel {
       if (isDedicatedClient) await client.query('BEGIN');
 
       for (const entry of entries) {
-        const { courseId, yearLevel, semesterId, scoresByTerm } = entry;
+        const { courseId, yearLevel, semesterId, scoresByTerm, missingPrereqs } = entry;
 
         if (!courseId || !yearLevel || !semesterId || !scoresByTerm) {
           throw new Error('Incomplete grade entry: course, year level, semester, and scores are required.');
         }
 
-        // Category is derived server-side from the course's own record -
-        // never trusted from the client, since it determines the weight
-        // table used to compute the official grade.
         const courseRes = await client.query(`
           SELECT course_id, lab_units, grading_scheme FROM courses WHERE course_id = $1
         `, [courseId]);
@@ -442,7 +459,7 @@ class GradeManageModel {
         const course = courseRes.rows[0];
         const category = GradingEngine.getCourseCategory(course);
 
-        // Guard: reject grades for year levels the student hasn't reached yet.
+        // Guard: reject grades for year levels the student hasn't reached.
         const ctx = await this.getStudentCurriculumContext(studentId);
         if (ctx && Number(yearLevel) > Number(ctx.current_year_level)) {
           throw new Error(
@@ -463,8 +480,7 @@ class GradeManageModel {
 
         const { finalGrade, remarks } = GradingEngine.computeCumulativeGrade(course, scoresByTerm);
 
-        // Upsert the grade header row for this (student, course, year, term).
-                const gradeRes = await client.query(`
+        const gradeRes = await client.query(`
           INSERT INTO grades (student_id, course_id, year_id, semester_id, year_level, faculty_id, final_grade, remarks, updated_at)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
           ON CONFLICT (student_id, course_id, year_id, semester_id, year_level) DO UPDATE SET
@@ -474,11 +490,56 @@ class GradeManageModel {
             updated_at = NOW()
           RETURNING grade_id
         `, [studentId, courseId, year_id, semester_id, Number(yearLevel), facultyId || null, finalGrade, remarks]);
-        
+
         const gradeId = gradeRes.rows[0].grade_id;
 
-        // Replace all components wholesale — simpler and safer than
-        // diffing a variable-length set of named components on every save.
+        // Wipe + rewrite prereq override rows for this grade.
+        await client.query(
+          `DELETE FROM grade_prereq_overrides WHERE grade_id = $1`,
+          [gradeId]
+        );
+
+        if (Array.isArray(missingPrereqs) && missingPrereqs.length > 0) {
+          for (const missingCourseId of missingPrereqs) {
+            await client.query(`
+              INSERT INTO grade_prereq_overrides (grade_id, missing_prereq_course_id)
+              VALUES ($1, $2)
+            `, [gradeId, missingCourseId]);
+          }
+
+          const codesRes = await client.query(
+            `SELECT course_id, course_code FROM courses WHERE course_id = ANY($1::int[])`,
+            [missingPrereqs]
+          );
+          const codeMap = new Map(codesRes.rows.map((r) => [r.course_id, r.course_code]));
+
+          const courseRes2 = await client.query(
+            `SELECT course_code FROM courses WHERE course_id = $1`,
+            [courseId]
+          );
+
+          await HistoryModel.log({
+            userId: facultyId || null,
+            targetUserId: null,
+            tableName: 'grades',
+            recordId: gradeId,
+            action: 'PREREQ_OVERRIDE',
+            oldValues: null,
+            newValues: {
+              student_id: studentId,
+              course_id: courseId,
+              course_code: courseRes2.rows[0]?.course_code || null,
+              year_level: Number(yearLevel),
+              semester_id: semester_id,
+              missing_prereq_ids: missingPrereqs,
+              missing_prereqs: missingPrereqs.map((id) => codeMap.get(id) || `#${id}`),
+              timestamp: new Date().toISOString()
+            },
+            ipAddress: null,
+            userAgent: null
+          });
+        }
+
         await client.query(`DELETE FROM grade_components WHERE grade_id = $1`, [gradeId]);
 
         for (const term of ['Prelim', 'Midterm', 'Final']) {
@@ -505,39 +566,15 @@ class GradeManageModel {
     }
   }
 
-  /**
-   * Computes every student's academic standing from their failed-grade
-   * ('F' remarks) history, honoring any Program Head override on file.
-   *
-   * Auto-computed tiers (evaluated worst-to-best, first match wins):
-   *   - Probationary 2: failed the same course 3+ times, OR failed 5+
-   *     distinct courses within a single semester.
-   *   - Probationary 1: failed the same course 2x, OR failed 3-4 distinct
-   *     courses within a single semester.
-   *   - Warning: failed 2+ distinct courses cumulatively, regardless of
-   *     curricular year (and no Probationary tier already applies).
-   *   - Regular: none of the above.
-   *
-   * Override: if student_status has a *verified* (verified_by_id IS NOT
-   * NULL) probation_status recorded for the student's current academic
-   * year, that value is used instead of the auto-computed one — this is
-   * the "Program Head can override" path.
-   *
-   * @returns {Promise<Map<number, { status: string, isOverridden: boolean }>>}
-   *   Keyed by student_id.
-   */
   static async getAcademicStandingMap() {
-    // Per-student failure aggregates, computed straight from `grades`.
     const aggRes = await db.query(`
       WITH course_repeats AS (
-        -- How many times has each student failed a given course, across all terms?
         SELECT student_id, course_id, COUNT(*)::int AS times_failed
         FROM grades
         WHERE remarks = 'F'
         GROUP BY student_id, course_id
       ),
       semester_fails AS (
-        -- How many distinct courses did each student fail within a single semester?
         SELECT student_id, year_id, semester_id, COUNT(DISTINCT course_id)::int AS courses_failed
         FROM grades
         WHERE remarks = 'F'
@@ -554,8 +591,6 @@ class GradeManageModel {
       GROUP BY s.student_id
     `);
 
-    // Program Head overrides: the latest *verified* probation_status per
-    // student, scoped to their current (active) academic year.
     const overrideRes = await db.query(`
       SELECT DISTINCT ON (ss.student_id)
         ss.student_id, ss.probation_status

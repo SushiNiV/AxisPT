@@ -11,56 +11,36 @@ import ConfirmationModal from '../ConfirmationModal';
  * ============================================================================
  * Modal for viewing and updating a student's grades, organized the same way
  * their curriculum is: Year Level -> Semester -> [Prelim / Midterm / Final
- * tables]. This mirrors TermGrade.js's own layout on purpose - the editor
+ * tables]. This mirrors TermGrade.js's layout on purpose - the editor
  * should visually match the document it produces.
  *
- * Each semester renders three term tables. Columns are fixed (Quizzes/AT,
- * Exam, Lab Practical, OSCE/OSPE, Grade, Remarks) matching TermGrade.js's
- * structure - a cell simply has no input when a course's category doesn't
- * need that component (e.g. a lecture-only course has no Lab Practical
- * cell), rather than varying the column set per course.
- *
- * Courses can be added beyond the curriculum's default list (retakes,
- * electives, carried-over courses for shifting/irregular students) via a
- * course picker fetched from GET /admin/courses/gradable, and removed via
- * a delete button on each row - both act at the semester level, since a
- * course's row spans all three term tables at once.
- *
  * RETAKES: the same course can appear in more than one (yearLevel, semesterId)
- * slot - e.g. a Y1 S1 fail and a Y2 S1 retake. Editable state is keyed by
- * a composite `courseId-yearLevel-semesterId` so the two attempts keep their
+ * slot - e.g. a Y1 S1 fail and a Y2 S1 retake. Editable state is keyed by a
+ * composite `courseId-yearLevel-semesterId` so the two attempts keep their
  * own scores and never overwrite each other on save.
  *
- * FUTURE-YEAR LOCK: a student can only be graded for year levels up to and
- * including their current one. Higher years render as disabled accordions
- * ("Not yet enrolled"). Backend enforces this too as defense in depth.
+ * PREREQUISITES: every row carries prereqEligible + prereqMissing (codes)
+ * + prereqMissingIds (course IDs). Ineligible rows show a passive orange ⚠
+ * with a tooltip listing the missing prereqs. On save, if any ineligible row
+ * would be written, a single confirmation modal lists them. Confirming
+ * records the override (rows in grade_prereq_overrides + a history_logs entry).
  *
- * Every field a course needs (which components, at what weight, in which
- * term) comes from the backend as `enterableFields` - nothing about
- * GradingEngine's weight tables is duplicated here; the preview functions
- * below only replicate the ALGORITHM shape (local re-weighting, cumulative
- * re-weighting), never the actual weight numbers themselves.
+ * COURSE PICKER: the "+ Add Course" list is filtered per year block:
+ *   - Only courses in the student's curriculum
+ *   - Curriculum year level must be ≤ the block's year
+ *   - Courses already passed by the student are hidden
+ *   - Courses already present in this semester's row set are hidden
  *
- * Props:
- *   - onClose:   () => void         called when the modal is dismissed
- *   - onSuccess: () => void         called after a successful save
- *   - student:   { student_id, first_name, last_name, student_number, ... }
- *                the row selected from the masterlist table
+ * FUTURE-YEAR LOCK: higher year accordions render disabled. Backend also
+ * rejects grades for year levels the student hasn't reached.
  * ============================================================================
  */
 
 const TERMS = ['Prelim', 'Midterm', 'Final'];
 
-// A course can appear in more than one (yearLevel, semesterId) slot — e.g.
-// a Y1 S1 fail + a Y2 S1 retake. The modal keys its editable state by that
-// composite so the two attempts don't share inputs.
 const makeAttemptKey = (courseId, yearLevel, semesterId) =>
   `${courseId}-${yearLevel}-${semesterId}`;
 
-// Scoped override: .Table th is sticky globally (Global.css), which isn't
-// wanted here since each semester renders three back-to-back tables inside
-// one scrollable modal. Scoped to .gradeTermTable so nothing else using
-// .Table elsewhere in the app is affected.
 const GRADE_TABLE_STYLE_OVERRIDES = `
   .gradeTermTable th {
     position: static;
@@ -76,35 +56,17 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   const [error, setError] = useState(null);
 
   const [meta, setMeta] = useState(null);
-
-  // Curriculum structure: [{ yearLevel, semesters: [{ semesterId, semesterLabel, courses: [...] }] }]
   const [years, setYears] = useState([]);
-
   const [openYears, setOpenYears] = useState(new Set());
-
-  // Editable grade state, keyed by attemptKey:
-  // { [attemptKey]: { courseId, yearLevel, semesterId, category, enterableFields, scoresByTerm } }
   const [gradesMap, setGradesMap] = useState({});
-
-  // Which attempt keys are currently displayed per semester (curriculum
-  // defaults + manually added), keyed by `${yearLevel}-${semesterId}`.
   const [attemptKeysBySemester, setAttemptKeysBySemester] = useState({});
-
-  // Full catalog of addable courses (with category/enterableFields
-  // pre-resolved server-side), fetched once for the "add course" pickers.
   const [gradableCourses, setGradableCourses] = useState([]);
-
-  // Which semester's "add course" picker is currently open, if any.
   const [addingToSemesterKey, setAddingToSemesterKey] = useState(null);
   const [courseToAdd, setCourseToAdd] = useState('');
 
-  // Confirmation / Success modal states
   const [confirmState, setConfirmState] = useState({ isOpen: false });
   const [successState, setSuccessState] = useState({ isOpen: false });
 
-  // ---------------------------------------------------------------------
-  // Confirmation / Alert helpers (top-level, accessible everywhere)
-  // ---------------------------------------------------------------------
   const closeConfirm = () => setConfirmState({ isOpen: false });
 
   const openConfirm = (config) => {
@@ -135,9 +97,6 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     setSuccessState({ isOpen: true, title, message, variant: 'success' });
   };
 
-  // ---------------------------------------------------------------------
-  // Load the grade sheet + gradable course catalog on open.
-  // ---------------------------------------------------------------------
   useEffect(() => {
     if (!studentId) return;
 
@@ -152,7 +111,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
           fetch(`${process.env.REACT_APP_API_URL}/admin/students/${studentId}/grades`, {
             headers: { Authorization: `Bearer ${token}` }
           }),
-          fetch(`${process.env.REACT_APP_API_URL}/admin/courses/gradable`, {
+          fetch(`${process.env.REACT_APP_API_URL}/admin/students/${studentId}/gradable-courses`, {
             headers: { Authorization: `Bearer ${token}` }
           })
         ]);
@@ -196,6 +155,9 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                 category: course.category,
                 enterableFields: course.enterableFields,
                 attemptCount: course.attemptCount || 1,
+                prereqEligible: course.prereqEligible !== false,
+                prereqMissing: course.prereqMissing || [],
+                prereqMissingIds: course.prereqMissingIds || [],
                 scoresByTerm: {
                   Prelim: { ...course.scoresByTerm?.Prelim },
                   Midterm: { ...course.scoresByTerm?.Midterm },
@@ -221,10 +183,6 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     fetchAll();
   }, [studentId]);
 
-  // ---------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------
-
   const ordinalYear = (n) => {
     const labels = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year', 5: '5th Year' };
     return labels[n] || `Year ${n}`;
@@ -239,12 +197,10 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     });
   };
 
-  /** Finds a course's applicable field for a given term (its own term, or a spans-all-terms field). */
   const getFieldForTerm = (enterableFields, component, term) => (
     (enterableFields || []).find((f) => f.component === component && (f.term === null || f.term === term)) || null
   );
 
-  /** Updates one component score for one attempt/term, clamped to 0-100. */
   const handleScoreChange = (attemptKey, term, component, rawValue) => {
     if (rawValue !== '' && (Number(rawValue) < 0 || Number(rawValue) > 100)) return;
 
@@ -260,10 +216,6 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     }));
   };
 
-  /**
-   * Mirrors GradingEngine.percentageToGradePoint() so the live preview
-   * can never drift from what the backend actually computes and saves.
-   */
   const percentageToGradePoint = (percentage, scale) => {
     if (percentage < scale.passingPercentage) return scale.failingPoint;
     const steps = Math.floor((100 - percentage) / scale.percentageStep);
@@ -271,11 +223,6 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     return Math.min(gradePoint, scale.lowestPassingPoint);
   };
 
-  /**
-   * Period-local term preview - mirrors GradingEngine.computeTermGrade():
-   * only this term's applicable fields, re-weighted to sum to 100% among
-   * themselves, using only whatever's been entered for THIS term.
-   */
   const previewTermGrade = (enterableFields, term, scoresByTerm) => {
     if (!meta) return { pointGrade: null };
 
@@ -293,11 +240,6 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     return { pointGrade: percentageToGradePoint(average, meta.gradeScale) };
   };
 
-  /**
-   * Cumulative preview - mirrors GradingEngine.computeCumulativeGrade():
-   * spans-all-terms fields average whichever terms have an entry; single-
-   * term fields use that term directly. Incomplete -> 'INC', not a guess.
-   */
   const previewCumulativeGrade = (enterableFields, scoresByTerm) => {
     if (!meta || !enterableFields) return { finalGrade: null, remarks: null };
 
@@ -338,25 +280,14 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     );
   };
 
-  /** True N/A - this field genuinely doesn't exist for this course. */
   const renderNA = () => <span style={{ color: '#d5d5d5' }}>—</span>;
 
-  /** Pending - the field applies, but there's no score/grade yet. */
   const renderPending = (label = 'Awaiting scores') => (
     <span style={{ color: '#999', fontStyle: 'italic' }} title={label}>—</span>
   );
 
-  // ---------------------------------------------------------------------
-  // Add / delete rows
-  // ---------------------------------------------------------------------
-
-  const handleAddCourse = (yearLevel, semesterId) => {
+  const insertCourseRow = (course, yearLevel, semesterId) => {
     const semKey = `${yearLevel}-${semesterId}`;
-    if (!courseToAdd) return;
-
-    const course = gradableCourses.find((c) => c.courseId === Number(courseToAdd));
-    if (!course) return;
-
     const attemptKey = makeAttemptKey(course.courseId, yearLevel, semesterId);
 
     setGradesMap((prev) => ({
@@ -371,6 +302,9 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
         category: course.category,
         enterableFields: course.enterableFields,
         attemptCount: 1,
+        prereqEligible: course.prereqEligible !== false,
+        prereqMissing: course.prereqMissing || [],
+        prereqMissingIds: course.prereqMissingIds || [],
         scoresByTerm: { Prelim: {}, Midterm: {}, Final: {} }
       }
     }));
@@ -382,6 +316,16 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
 
     setCourseToAdd('');
     setAddingToSemesterKey(null);
+  };
+
+  const handleAddCourse = (yearLevel, semesterId) => {
+    if (!courseToAdd) return;
+
+    const course = gradableCourses.find((c) => c.courseId === Number(courseToAdd));
+    if (!course) return;
+
+    // No confirmation here anymore — the save-time prompt is the only gate.
+    insertCourseRow(course, yearLevel, semesterId);
   };
 
   const handleRemoveCourse = (yearLevel, semesterId, attemptKey) => {
@@ -407,29 +351,9 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     });
   };
 
-  // ---------------------------------------------------------------------
-  // Submit
-  // ---------------------------------------------------------------------
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const submitGrades = async (entries) => {
     setIsSubmitting(true);
-
     try {
-      const entries = Object.entries(gradesMap)
-        .filter(([, v]) => TERMS.some((t) => Object.values(v.scoresByTerm[t] || {}).some((val) => val !== '' && val !== undefined)))
-        .map(([, v]) => ({
-          courseId: v.courseId,
-          yearLevel: v.yearLevel,
-          semesterId: v.semesterId,
-          scoresByTerm: v.scoresByTerm
-        }));
-
-      if (entries.length === 0) {
-        setIsSubmitting(false);
-        openAlert('No Grades Entered', 'Please enter at least one grade before saving.', 'warning');
-        return;
-      }
-
       const token = sessionStorage.getItem('token');
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/admin/students/${studentId}/grades`,
@@ -454,13 +378,79 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     }
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const entries = Object.entries(gradesMap)
+      .filter(([, v]) => TERMS.some((t) => Object.values(v.scoresByTerm[t] || {}).some((val) => val !== '' && val !== undefined)))
+      .map(([key, v]) => ({
+        _attemptKey: key,
+        courseId: v.courseId,
+        yearLevel: v.yearLevel,
+        semesterId: v.semesterId,
+        scoresByTerm: v.scoresByTerm,
+        prereqEligible: v.prereqEligible !== false,
+        prereqMissing: v.prereqMissing || [],
+        prereqMissingIds: v.prereqMissingIds || []
+      }));
+
+    if (entries.length === 0) {
+      openAlert('No Grades Entered', 'Please enter at least one grade before saving.', 'warning');
+      return;
+    }
+
+    const overrideNeeded = entries.filter((en) => !en.prereqEligible);
+
+    if (overrideNeeded.length > 0) {
+      const labelled = overrideNeeded
+        .map((en) => {
+          const metaRow = gradesMap[en._attemptKey];
+          return `• ${metaRow?.courseCode || `#${en.courseId}`} — missing: ${en.prereqMissing.join(', ')}`;
+        })
+        .join('\n');
+
+      openConfirm({
+        title: 'Prerequisite(s) Not Met',
+        message: (
+          <>
+            The following course(s) have unmet prerequisites:
+            <pre style={{ margin: '8px 0', fontSize: '0.8rem', whiteSpace: 'pre-wrap' }}>{labelled}</pre>
+            Save anyway? This will be recorded in the audit log.
+          </>
+        ),
+        variant: 'warning',
+        confirmLabel: 'SAVE ANYWAY',
+        cancelLabel: 'CANCEL',
+        onConfirm: () => {
+          closeConfirm();
+          const finalEntries = entries.map((en) => ({
+            courseId: en.courseId,
+            yearLevel: en.yearLevel,
+            semesterId: en.semesterId,
+            scoresByTerm: en.scoresByTerm,
+            missingPrereqs: !en.prereqEligible ? en.prereqMissingIds : []
+          }));
+          submitGrades(finalEntries);
+        },
+        onCancel: closeConfirm
+      });
+      return;
+    }
+
+    const finalEntries = entries.map((en) => ({
+      courseId: en.courseId,
+      yearLevel: en.yearLevel,
+      semesterId: en.semesterId,
+      scoresByTerm: en.scoresByTerm,
+      missingPrereqs: []
+    }));
+    submitGrades(finalEntries);
+  };
+
   if (!studentId) return null;
 
   const studentLabel = student.full_name || `${student.last_name || ''}, ${student.first_name || ''}`.trim();
 
-  // ---------------------------------------------------------------------
-  // Render: one table per term for a given semester's current course list.
-  // ---------------------------------------------------------------------
   const renderTermTable = (yearLevel, semesterId, term, attemptKeys) => {
     const semesterAttempts = attemptKeys.map((k) => gradesMap[k]).filter(Boolean);
     const needsLab = semesterAttempts.some((c) => (c.enterableFields || []).some((f) => f.component === 'Unit Practical Exam'));
@@ -534,6 +524,20 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                         }}
                       >
                         ×{entry.attemptCount}
+                      </sup>
+                    )}
+                    {entry.prereqEligible === false && (
+                      <sup
+                        title={`Prerequisite(s) not met: ${entry.prereqMissing.join(', ')}`}
+                        style={{
+                          marginLeft: '3px',
+                          fontSize: '0.75rem',
+                          color: '#e65100',
+                          fontWeight: 700,
+                          cursor: 'help',
+                        }}
+                      >
+                        ⚠
                       </sup>
                     )}
                   </td>
@@ -644,13 +648,17 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                           const semKey = `${yearBlock.yearLevel}-${sem.semesterId}`;
                           const attemptKeys = attemptKeysBySemester[semKey] || [];
 
-                          // Courses already used in THIS semester are hidden from
-                          // the picker. Courses used in OTHER semesters remain
-                          // addable — that's how you add a retake.
                           const usedCourseIds = new Set(
                             attemptKeys.map((k) => gradesMap[k]?.courseId).filter(Boolean)
                           );
-                          const addableCourses = gradableCourses.filter((c) => !usedCourseIds.has(c.courseId));
+
+                          const addableCourses = gradableCourses.filter((c) => {
+                            if (usedCourseIds.has(c.courseId)) return false;
+                            if (c.alreadyPassed === true) return false;
+                            if (c.curriculumYearLevel && c.curriculumYearLevel > yearBlock.yearLevel) return false;
+                            if (!c.curriculumYearLevel) return false;
+                            return true;
+                          });
 
                           return (
                             <div key={sem.semesterId} style={{ marginBottom: '1.5rem' }}>
@@ -734,7 +742,6 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
         </div>
       </form>
 
-      {/* Success modal (green) */}
       <ConfirmationModal
         isOpen={successState.isOpen}
         title={successState.title}
@@ -751,7 +758,6 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
         }}
       />
 
-      {/* Confirmation / alert modal (warning/danger/info) */}
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}

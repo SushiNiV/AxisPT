@@ -16,7 +16,7 @@ function AHeader({ user }) {
     const path = location.pathname;
     if (path.startsWith('/admin/dashboard')) return 'Dashboard';
     if (path.startsWith('/admin/student-management')) return 'Student Management';
-    if (path.startsWith('/admin/academics')) return 'Academics & Grades';
+    if (path.startsWith('/admin/academics')) return 'Program Management';
     if (path.startsWith('/admin/documents')) return 'Documents';
     if (path.startsWith('/admin/access-control')) return 'Access Control';
     if (path.startsWith('/admin/history')) return 'History';

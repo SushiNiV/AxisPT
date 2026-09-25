@@ -214,9 +214,9 @@ p, h1, h3, td, tr {
 }
 
 .TopbarBtn.FilterActive {
-  background-color: #d32f2f;
+  background-color: #3d1616;
   color: white;
-  border-color: #d32f2f;
+  border-color: #3d1616;
 }
 
 .TopbarBtn.FilterActive .linkIcon {

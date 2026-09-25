@@ -11,14 +11,15 @@ class StudentManageModel {
     `);
     return res.rows[0] || { year_id: null, current_sem: null };
   }
-
-  static async getMasterlist({ search = '', programId = null, limit = 100, offset = 0 }) {
+  static async getMasterlist({ search = '', programId = null, includeArchived = false, limit = 100, offset = 0 }) {
     let query = `
       SELECT 
         s.student_id,
         u.user_id,
         u.username AS student_number,
         s.account_status,
+        s.archived_at,
+        s.archive_reason,
         p.last_name,
         p.first_name,
         p.middle_name,
@@ -36,7 +37,8 @@ class StudentManageModel {
         sec.section_name,
         prog.program_id,
         prog.program_code,
-        prog.program_abbr
+        prog.program_abbr,
+        prog.program_name
       FROM students s
       LEFT JOIN users u ON s.user_id = u.user_id
       LEFT JOIN student_pii p ON s.student_id = p.student_id
@@ -50,6 +52,10 @@ class StudentManageModel {
 
     const values = [];
     let paramIndex = 1;
+
+    if (!includeArchived) {
+      query += ` AND s.archived_at IS NULL`;
+    }
 
     if (search) {
       query += ` AND (
@@ -878,6 +884,91 @@ class StudentManageModel {
       RETURNING student_id
     `, [yearLevel ? String(yearLevel) : null, assignmentId, studentIds]);
     return result.rows.map(r => r.student_id);
+  }
+     static async archive(studentId, { reason = null } = {}) {
+    const client = db.getClient ? await db.getClient() : db;
+    const isDedicatedClient = Boolean(db.getClient);
+
+    try {
+      if (isDedicatedClient) await client.query('BEGIN');
+
+      const studentRes = await client.query(
+        `SELECT user_id, archived_at FROM students WHERE student_id = $1`,
+        [studentId]
+      );
+      if (studentRes.rows.length === 0) throw new Error('Student not found.');
+      if (studentRes.rows[0].archived_at) throw new Error('Student is already archived.');
+      const userId = studentRes.rows[0].user_id;
+
+      await client.query(`
+        UPDATE students
+        SET archived_at = NOW(),
+            archive_reason = $1,
+            updated_at = NOW()
+        WHERE student_id = $2
+      `, [reason || null, studentId]);
+
+      if (userId) {
+        await client.query(`
+          UPDATE users SET is_active = false, updated_at = NOW()
+          WHERE user_id = $1
+        `, [userId]);
+      }
+
+      await client.query(`
+        UPDATE student_education
+        SET is_current = false, updated_at = NOW()
+        WHERE student_id = $1 AND is_current = true
+      `, [studentId]);
+
+      if (isDedicatedClient) await client.query('COMMIT');
+      return true;
+    } catch (error) {
+      if (isDedicatedClient) await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      if (isDedicatedClient && client.release) client.release();
+    }
+  }
+
+  static async unarchive(studentId) {
+    const client = db.getClient ? await db.getClient() : db;
+    const isDedicatedClient = Boolean(db.getClient);
+
+    try {
+      if (isDedicatedClient) await client.query('BEGIN');
+
+      const studentRes = await client.query(
+        `SELECT user_id, archived_at FROM students WHERE student_id = $1`,
+        [studentId]
+      );
+      if (studentRes.rows.length === 0) throw new Error('Student not found.');
+      if (!studentRes.rows[0].archived_at) throw new Error('Student is not archived.');
+      const userId = studentRes.rows[0].user_id;
+
+      await client.query(`
+        UPDATE students
+        SET archived_at = NULL,
+            archive_reason = NULL,
+            updated_at = NOW()
+        WHERE student_id = $1
+      `, [studentId]);
+
+      if (userId) {
+        await client.query(`
+          UPDATE users SET is_active = true, updated_at = NOW()
+          WHERE user_id = $1
+        `, [userId]);
+      }
+
+      if (isDedicatedClient) await client.query('COMMIT');
+      return true;
+    } catch (error) {
+      if (isDedicatedClient) await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      if (isDedicatedClient && client.release) client.release();
+    }
   }
 
   static async delete(studentId) {

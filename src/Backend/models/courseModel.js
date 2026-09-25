@@ -27,7 +27,50 @@ class CourseModel {
       GROUP BY c.course_id
       ORDER BY c.course_code ASC
     `);
-    return result.rows;
+
+    // Resolve prerequisites from comma-separated IDs/codes to a
+    // comma-separated string of course codes for display.
+    // Handles both formats stored in the DB (legacy codes and new IDs).
+    const rows = result.rows;
+    const allPrereqTokens = new Set();
+    const parsed = rows.map((row) => {
+      const str = (row.prerequisites || '').trim();
+      if (!str) return { ...row, prerequisite_codes: '' };
+
+      const parts = str.split(',').map((s) => s.trim()).filter(Boolean);
+      parts.forEach((p) => allPrereqTokens.add(p));
+      return { ...row, _prereqParts: parts };
+    });
+
+    // Split tokens into numeric IDs vs string codes.
+    const numericIds = [];
+    const stringCodes = [];
+    for (const token of allPrereqTokens) {
+      if (/^\d+$/.test(token)) numericIds.push(Number(token));
+      else stringCodes.push(token);
+    }
+
+    // Look up whichever tokens are numeric IDs.
+    const idToCode = new Map();
+    if (numericIds.length > 0) {
+      const idRes = await db.query(
+        `SELECT course_id, course_code FROM courses WHERE course_id = ANY($1::int[])`,
+        [numericIds]
+      );
+      idRes.rows.forEach((r) => idToCode.set(String(r.course_id), r.course_code));
+    }
+
+    // Any string tokens are already course codes.
+    for (const code of stringCodes) idToCode.set(code, code);
+
+    // Build the final `prerequisite_codes` string per row.
+    return parsed.map((row) => {
+      const { _prereqParts, ...clean } = row;
+      const codes = (_prereqParts || [])
+        .map((tok) => idToCode.get(tok) || tok)
+        .filter(Boolean);
+      return { ...clean, prerequisite_codes: codes.join(', ') };
+    });
   }
 
   static async getById(courseId) {

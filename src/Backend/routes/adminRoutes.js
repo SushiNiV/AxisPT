@@ -20,13 +20,17 @@ router.get('/students', verifyToken, adminController.getStudentMasterlist);
 router.get('/students/:id', verifyToken, adminController.getStudentById);
 router.post('/students', verifyToken, adminController.createStudent);
 router.put('/students/batch-update', verifyToken, adminController.updateStudentsBulk);
+router.delete('/students/batch-delete', verifyToken, adminController.deleteStudentsBulk);
 router.put('/students/:id', verifyToken, adminController.updateStudent);
 router.delete('/students/:id', verifyToken, adminController.deleteStudent);
+router.post('/students/:id/restore', verifyToken, adminController.restoreStudent);
+
 
 
 //grade management
 router.get('/students/:id/grades', verifyToken, adminController.getStudentGrades);
 router.put('/students/:id/grades', verifyToken, adminController.updateStudentGrades);
+router.get('/students/:id/gradable-courses', verifyToken, adminController.getGradableCoursesForStudent); 
 
 //documents
 router.get('/student-form/:id', verifyToken, adminController.getStudentFormById);
@@ -49,8 +53,6 @@ router.get('/courses/gradable', verifyToken, adminController.getGradableCourses)
 //program
 router.post('/programs', verifyToken, adminController.addProgram);
 router.get('/programs', verifyToken, adminController.getPrograms);
-
-
 
 //course
 router.get('/courses', verifyToken, adminController.getCourses);

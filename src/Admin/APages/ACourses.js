@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash } from 'react-icons/bi';
 import Filter from '../../Components/Filter';
+import ConfirmationModal from '../AComponents/ConfirmationModal';
 import '../../GlobalHistory.css';
 import '../../Global.css';
 import '../../GlobalEmpty.css';
@@ -22,7 +23,9 @@ function ACourses() {
   const [tempYearLevel, setTempYearLevel] = useState("");
   const [tempSemester, setTempSemester] = useState("");
   const [editingCourse, setEditingCourse] = useState(null);
-  
+
+  const [confirmState, setConfirmState] = useState({ isOpen: false });
+
   const [programOptions, setProgramOptions] = useState([]);
   const [yearLevelOptions] = useState(["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"]);
   const [semesterOptions] = useState(["1st Semester", "2nd Semester", "Summer"]);
@@ -36,6 +39,32 @@ function ACourses() {
       setTempSemester(selectedSemester);
     }
   }, [isFilterOpen, selectedProgram, selectedYearLevel, selectedSemester]);
+
+  const closeConfirm = () => setConfirmState({ isOpen: false });
+
+  const openConfirm = (config) => {
+    setConfirmState({
+      isOpen: true,
+      variant: 'info',
+      confirmLabel: 'CONFIRM',
+      cancelLabel: 'CANCEL',
+      isAlert: false,
+      loading: false,
+      ...config,
+    });
+  };
+
+  const openAlert = (title, message, variant = 'info') => {
+    setConfirmState({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      isAlert: true,
+      onConfirm: () => setConfirmState({ isOpen: false }),
+      onCancel: () => setConfirmState({ isOpen: false }),
+    });
+  };
 
   const fetchPrograms = useCallback(async () => {
     try {
@@ -81,23 +110,23 @@ function ACourses() {
   }, [fetchPrograms, fetchCourses]);
 
   const filters = [
-    { 
-      name: "program", 
-      label: "PROGRAM", 
+    {
+      name: "program",
+      label: "PROGRAM",
       value: tempProgram,
       options: programOptions,
       placeholder: "ALL PROGRAMS"
     },
-    { 
-      name: "yearLevel", 
-      label: "YEAR LEVEL", 
+    {
+      name: "yearLevel",
+      label: "YEAR LEVEL",
       value: tempYearLevel,
       options: yearLevelOptions,
       placeholder: "ALL YEARS"
     },
-    { 
-      name: "semester", 
-      label: "SEMESTER", 
+    {
+      name: "semester",
+      label: "SEMESTER",
       value: tempSemester,
       options: semesterOptions,
       placeholder: "ALL SEMESTERS"
@@ -129,23 +158,23 @@ function ACourses() {
     setCurrentPage(1);
   };
 
-const filteredCourses = courses.filter((course) => {
-  const matchesSearch = 
-    course.course_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    course.course_name?.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredCourses = courses.filter((course) => {
+    const matchesSearch =
+      course.course_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.course_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
-  const matchesProgram = !selectedProgram || 
-    (course.program_abbrs || []).some(abbr => abbr === selectedProgram) ||
-    (course.program_names || []).some(name => name === selectedProgram);
+    const matchesProgram = !selectedProgram ||
+      (course.program_abbrs || []).some(abbr => abbr === selectedProgram) ||
+      (course.program_names || []).some(name => name === selectedProgram);
 
-  const matchesYearLevel = !selectedYearLevel || 
-    (course.year_levels || []).some(yl => yl?.toString() === selectedYearLevel.charAt(0));
+    const matchesYearLevel = !selectedYearLevel ||
+      (course.year_levels || []).some(yl => yl?.toString() === selectedYearLevel.charAt(0));
 
-  const matchesSemester = !selectedSemester || 
-    (course.semester_labels || []).some(sem => sem === selectedSemester);
+    const matchesSemester = !selectedSemester ||
+      (course.semester_labels || []).some(sem => sem === selectedSemester);
 
-  return matchesSearch && matchesProgram && matchesYearLevel && matchesSemester;
-});
+    return matchesSearch && matchesProgram && matchesYearLevel && matchesSemester;
+  });
 
   const totalPages = Math.ceil(filteredCourses.length / rowsPerPage) || 1;
   const indexOfLastItem = currentPage * rowsPerPage;
@@ -162,12 +191,12 @@ const filteredCourses = courses.filter((course) => {
     setCurrentPage(1);
   };
 
-  const goToNextPage = () => { 
-    if (currentPage < totalPages) setCurrentPage(p => p + 1); 
+  const goToNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(p => p + 1);
   };
-  
-  const goToPrevPage = () => { 
-    if (currentPage > 1) setCurrentPage(p => p - 1); 
+
+  const goToPrevPage = () => {
+    if (currentPage > 1) setCurrentPage(p => p - 1);
   };
 
   const handleAddSuccess = () => {
@@ -177,30 +206,53 @@ const filteredCourses = courses.filter((course) => {
   };
 
   const handleEdit = (course) => {
-  setEditingCourse(course);
-  setShowAddCourse(true);
-};
+    setEditingCourse(course);
+    setShowAddCourse(true);
+  };
 
-const handleDelete = async (courseId) => {
-  if (window.confirm("Are you sure you want to delete this course?")) {
-    try {
-      const token = sessionStorage.getItem('token');
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/courses/${courseId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (data.success) {
-        fetchCourses();
-      } else {
-        alert(data.message || "Failed to delete course.");
-      }
-    } catch (err) {
-      console.error("Error deleting course:", err);
-      alert("An error occurred.");
-    }
-  }
-};
+  const handleDelete = (course) => {
+    openConfirm({
+      title: 'Delete Course',
+      summary: (
+        <>Delete <strong>{course.course_code}</strong> — {course.course_name}?</>
+      ),
+      message: (
+        <>
+        <span style={{ color: '#c62828', fontSize: '0.75rem' }}>
+          This action cannot be undone. If the course is referenced by a
+          curriculum, grades, or other records, the deletion will be blocked.
+        </span>
+        </>
+      ),
+      variant: 'danger',
+      confirmLabel: 'DELETE',
+      onConfirm: async () => {
+        setConfirmState((s) => ({ ...s, loading: true }));
+        try {
+          const token = sessionStorage.getItem('token');
+          const response = await fetch(
+            `${process.env.REACT_APP_API_URL}/admin/courses/${course.course_id}`,
+            {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` }
+            }
+          );
+          const data = await response.json();
+          setConfirmState({ isOpen: false });
+          if (data.success) {
+            fetchCourses();
+          } else {
+            openAlert('Delete Failed', data.message || 'Failed to delete course.', 'danger');
+          }
+        } catch (err) {
+          console.error("Error deleting course:", err);
+          setConfirmState({ isOpen: false });
+          openAlert('Error', 'An unexpected error occurred.', 'danger');
+        }
+      },
+      onCancel: closeConfirm,
+    });
+  };
 
   if (loading) {
     return (
@@ -230,7 +282,21 @@ const handleDelete = async (courseId) => {
 
   return (
     <div className="InnerContainer">
-            {showAddCourse && (
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        summary={confirmState.summary}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        confirmLabel={confirmState.confirmLabel}
+        cancelLabel={confirmState.cancelLabel}
+        isAlert={confirmState.isAlert}
+        loading={confirmState.loading}
+        onConfirm={confirmState.onConfirm}
+        onCancel={confirmState.onCancel}
+      />
+
+      {showAddCourse && (
         <AddCourse
           onClose={() => {
             setShowAddCourse(false);
@@ -244,21 +310,21 @@ const handleDelete = async (courseId) => {
       <div className="TopSection">
         <div className="SearchWrapper">
           <BiSearch className="SearchIcon" />
-          <input 
-            type="text" 
-            placeholder="Search course code or name..." 
+          <input
+            type="text"
+            placeholder="Search course code or name..."
             className="SearchInput"
             value={searchTerm}
             onChange={handleSearch}
           />
           {searchTerm && (
-            <BiX 
-              className="ClearSearchIcon" 
+            <BiX
+              className="ClearSearchIcon"
               onClick={clearSearch}
             />
           )}
         </div>
-        
+
         <Filter
           isOpen={isFilterOpen}
           setIsOpen={setIsFilterOpen}
@@ -319,22 +385,21 @@ const handleDelete = async (courseId) => {
                     <td>{course.course_name}</td>
                     <td>{course.program_abbrs?.length ? course.program_abbrs.join(', ') : course.program_names?.[0] || '-'}</td>
                     <td>
-                      {course.year_levels?.length > 1 
-                        ? 'Multiple' 
+                      {course.year_levels?.length > 1
+                        ? 'Multiple'
                         : `${course.year_level || ''} Year - ${course.semester_label || ''}`}
                     </td>
                     <td>{course.total_units || course.lec_units + course.lab_units}</td>
-                    <td>{course.prerequisites || 'None'}</td>
+                    <td>{course.prerequisite_codes || 'None'}</td>
 
                     <td className="tableActions">
                       <button className="tableEditBtn" onClick={() => handleEdit(course)}>
                         <BiPencil /> Edit
                       </button>
-                      <button className="tableDeleteBtn" onClick={() => handleDelete(course.course_id)}>
+                      <button className="tableDeleteBtn" onClick={() => handleDelete(course)}>
                         <BiTrash /> Delete
                       </button>
                     </td>
-                    
                   </tr>
                 ))}
               </tbody>
@@ -346,14 +411,14 @@ const handleDelete = async (courseId) => {
               <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
               <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
               <div className="CurrentPageInputWrapper">
-                <input 
-                  type="number" 
-                  value={currentPage} 
+                <input
+                  type="number"
+                  value={currentPage}
                   onChange={(e) => {
                     const val = parseInt(e.target.value);
                     if (val > 0 && val <= totalPages) setCurrentPage(val);
-                  }} 
-                  className="CurrentPageInput" 
+                  }}
+                  className="CurrentPageInput"
                 />
               </div>
               <div className="PaginationInfo">

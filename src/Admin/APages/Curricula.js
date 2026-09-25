@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './Curricula.css';
+import ConfirmationModal from '../AComponents/ConfirmationModal';
 import { BiSearch, BiPlusCircle, BiX, BiBook, BiPencil, BiTrash } from 'react-icons/bi';
 
 import '../../Global.css';
@@ -13,6 +14,34 @@ function ACurricula() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [editingCurriculum, setEditingCurriculum] = useState(null);
+
+  const [confirmState, setConfirmState] = useState({ isOpen: false });
+
+  const closeConfirm = () => setConfirmState({ isOpen: false });
+
+  const openConfirm = (config) => {
+    setConfirmState({
+      isOpen: true,
+      variant: 'info',
+      confirmLabel: 'CONFIRM',
+      cancelLabel: 'CANCEL',
+      isAlert: false,
+      loading: false,
+      ...config,
+    });
+  };
+
+  const openAlert = (title, message, variant = 'info') => {
+    setConfirmState({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      isAlert: true,
+      onConfirm: closeConfirm,
+      onCancel: closeConfirm,
+    });
+  };
 
   const fetchCurricula = useCallback(async () => {
     setLoading(true);
@@ -43,25 +72,49 @@ function ACurricula() {
     setShowAdd(true);
   };
 
-  const handleDelete = async (curriculumId, curriculumName) => {
-    if (window.confirm(`Are you sure you want to delete ${curriculumName}?`)) {
-      try {
-        const token = sessionStorage.getItem('token');
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/curricula/${curriculumId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (data.success) {
-          fetchCurricula();
-        } else {
-          alert(data.message || "Failed to delete curriculum.");
+  const handleDelete = (curriculum) => {
+    openConfirm({
+      title: 'Delete Curriculum',
+      summary: (
+        <>
+          Delete <strong>{curriculum.program_name}</strong> — {curriculum.version_name}?
+        </>
+      ),
+      message: (
+        <>
+          This action cannot be undone. All courses assigned to this curriculum
+          will be unlinked. If it's already referenced by student enrollment,
+          the deletion will be blocked.
+        </>
+      ),
+      variant: 'danger',
+      confirmLabel: 'DELETE',
+      onConfirm: async () => {
+        setConfirmState((s) => ({ ...s, loading: true }));
+        try {
+          const token = sessionStorage.getItem('token');
+          const response = await fetch(
+            `${process.env.REACT_APP_API_URL}/admin/curricula/${curriculum.curriculum_id}`,
+            {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` }
+            }
+          );
+          const data = await response.json();
+          setConfirmState({ isOpen: false });
+          if (data.success) {
+            fetchCurricula();
+          } else {
+            openAlert('Delete Failed', data.message || 'Failed to delete curriculum.', 'danger');
+          }
+        } catch (error) {
+          console.error("Error deleting curriculum:", error);
+          setConfirmState({ isOpen: false });
+          openAlert('Error', 'An unexpected error occurred.', 'danger');
         }
-      } catch (error) {
-        console.error("Error deleting curriculum:", error);
-        alert("An error occurred.");
-      }
-    }
+      },
+      onCancel: closeConfirm,
+    });
   };
 
   const getCurriculumStatus = (isActive) => {
@@ -70,7 +123,7 @@ function ACurricula() {
   };
 
   const getStatusLabel = (status) => {
-    switch(status) {
+    switch (status) {
       case 'current': return 'Active';
       case 'inactive': return 'Inactive';
       default: return '';
@@ -78,7 +131,7 @@ function ACurricula() {
   };
 
   const getStatusClass = (status) => {
-    switch(status) {
+    switch (status) {
       case 'current': return 'active-bg';
       case 'inactive': return 'inactive-bg';
       default: return '';
@@ -95,6 +148,20 @@ function ACurricula() {
 
   return (
     <div className="InnerContainer">
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        summary={confirmState.summary}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        confirmLabel={confirmState.confirmLabel}
+        cancelLabel={confirmState.cancelLabel}
+        isAlert={confirmState.isAlert}
+        loading={confirmState.loading}
+        onConfirm={confirmState.onConfirm}
+        onCancel={confirmState.onCancel}
+      />
+
       {showAdd && (
         <AddCurriculum
           onClose={() => {
@@ -141,7 +208,7 @@ function ACurricula() {
             const statusLabel = getStatusLabel(status);
             const statusClass = getStatusClass(status);
             const academicYear = `${curriculum.start_year} - ${curriculum.start_year + 1}`;
-            
+
             return (
               <div className="Card" key={curriculum.curriculum_id}>
                 <div className="CardMain">
@@ -165,7 +232,7 @@ function ACurricula() {
                     <button className="actionBtn editBtn" onClick={() => handleEdit(curriculum)}>
                       <BiPencil /> Edit
                     </button>
-                    <button className="actionBtn deleteBtn" onClick={() => handleDelete(curriculum.curriculum_id, curriculum.program_name)}>
+                    <button className="actionBtn deleteBtn" onClick={() => handleDelete(curriculum)}>
                       <BiTrash /> Delete
                     </button>
                   </div>

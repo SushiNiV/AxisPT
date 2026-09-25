@@ -143,10 +143,13 @@ function AProgSec() {
   const handleDelete = (program) => {
     openConfirm({
       title: 'Delete Program',
-      message: (
+      summary: (
         <>
           Are you sure you want to permanently delete <strong>{program.program_name}</strong> ({program.program_abbr})?
-          <br /><br />
+        </>
+      ),
+      message: (
+        <>
           <span style={{ color: '#c62828', fontSize: '0.75rem' }}>
             This action cannot be undone. All associated curricula, sections, and
             curriculum assignments will be permanently removed.
@@ -185,10 +188,13 @@ function AProgSec() {
   const handleSectionDelete = (programId, section) => {
     openConfirm({
       title: 'Delete Section',
+      summary: (
+        <>
+        Are you sure you want to delete <strong>{section.section_name}</strong>?
+        </>
+      ),
       message: (
         <>
-          Are you sure you want to delete <strong>{section.section_name}</strong>?
-          <br /><br />
           <span style={{ color: '#c62828', fontSize: '0.75rem' }}>
             Sections that still have enrolled students or active assignments cannot be deleted.
           </span>
@@ -572,13 +578,13 @@ function AProgSec() {
                                       className="tableEditBtn"
                                       onClick={() => handleSectionEdit(section)}
                                     >
-                                      Edit
+                                      <BiPencil> </BiPencil> Edit
                                     </button>
                                     <button
                                       className="tableDeleteBtn"
                                       onClick={() => handleSectionDelete(prog.program_id, section)}
                                     >
-                                      Delete
+                                      <BiTrash> </BiTrash> Delete
                                     </button>
                                   </td>
                                 </tr>
@@ -629,6 +635,7 @@ function AProgSec() {
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}
+        summary={confirmState.summary}
         message={confirmState.message}
         variant={confirmState.variant}
         confirmLabel={confirmState.confirmLabel}

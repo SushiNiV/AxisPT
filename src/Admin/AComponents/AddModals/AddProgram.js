@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from 'react-dom';
-import { BiChevronDown } from "react-icons/bi";
+import ConfirmationModal from '../ConfirmationModal';
 import '../../../GlobalForm.css';
 import '../../../GlobalOverlay.css';
 import '../../../Global.css';
@@ -14,8 +14,11 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
   const [isActive, setIsActive] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [portalRoot, setPortalRoot] = useState(document.getElementById('portal-root') || document.body);
-  
+  const portalRoot = document.getElementById('portal-root') || document.body;
+
+  const [confirmState, setConfirmState] = useState({ isOpen: false });
+  const [successState, setSuccessState] = useState({ isOpen: false });
+
   const dropdownRef = useRef(null);
   const isEditMode = !!programToEdit;
 
@@ -28,13 +31,31 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
     "5th Year": 5
   };
 
+  const closeConfirm = () => setConfirmState({ isOpen: false });
+
+  const openAlert = (title, message, variant = 'info') => {
+    setConfirmState({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      isAlert: true,
+      onConfirm: closeConfirm,
+      onCancel: closeConfirm,
+    });
+  };
+
+  const showSuccess = (title, message) => {
+    setSuccessState({ isOpen: true, title, message, variant: 'success' });
+  };
+
   useEffect(() => {
     if (programToEdit) {
       setProgramName(programToEdit.program_name || "");
       setAbbreviation(programToEdit.program_abbr || "");
       setDescription(programToEdit.program_description || "");
       setIsActive(programToEdit.program_status === true);
-      
+
       const yearsArray = [];
       const totalYears = programToEdit.total_year || 0;
       for (let i = 1; i <= totalYears; i++) {
@@ -57,7 +78,7 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
         setIsOpen(false);
       }
     };
-    
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
@@ -66,19 +87,19 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
 
   const handleYearClick = (clickedYear) => {
     const clickedYearNum = yearOrder[clickedYear];
-    
+
     if (selectedYears.includes(clickedYear)) {
       setSelectedYears(prev => prev.filter(y => y !== clickedYear));
       return;
     }
-    
+
     const yearsToSelect = [];
     for (let i = 1; i <= clickedYearNum; i++) {
       yearsToSelect.push(options[i - 1]);
     }
-    
+
     const allSelected = yearsToSelect.every(year => selectedYears.includes(year));
-    
+
     if (allSelected) {
       setSelectedYears(prev => [...prev, clickedYear]);
     } else {
@@ -88,7 +109,11 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
 
   const handleSubmit = async () => {
     if (!programName || !abbreviation || selectedYears.length === 0) {
-      alert("Please fill in all required fields.");
+      openAlert(
+        'Missing Fields',
+        'Please fill in Program Name, Abbreviation, and Total Year before saving.',
+        'warning'
+      );
       return;
     }
 
@@ -96,10 +121,10 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
 
     try {
       const token = sessionStorage.getItem('token');
-      const url = isEditMode 
+      const url = isEditMode
         ? `${process.env.REACT_APP_API_URL}/admin/programs/${programToEdit.program_id}`
         : `${process.env.REACT_APP_API_URL}/admin/programs`;
-      
+
       const method = isEditMode ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
@@ -120,14 +145,22 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
       const data = await response.json();
 
       if (data.success) {
-        alert(isEditMode ? "Program updated successfully!" : "Program created successfully!");
-        onSuccess();
+        showSuccess(
+          isEditMode ? 'Program Updated' : 'Program Created',
+          isEditMode
+            ? 'The program has been updated successfully.'
+            : 'The program has been created successfully.'
+        );
       } else {
-        alert(data.message || (isEditMode ? "Failed to update program." : "Failed to create program."));
+        openAlert(
+          isEditMode ? 'Update Failed' : 'Creation Failed',
+          data.message || (isEditMode ? 'Failed to update program.' : 'Failed to create program.'),
+          'danger'
+        );
       }
     } catch (error) {
       console.error("Error submitting program:", error);
-      alert("An error occurred. Please try again.");
+      openAlert('Connection Error', 'An unexpected error occurred. Please try again.', 'danger');
     } finally {
       setIsSubmitting(false);
     }
@@ -139,43 +172,43 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
         <div className="modalHeader">
           <h3 className="modalTitle">{isEditMode ? "UPDATE PROGRAM" : "ADD NEW PROGRAM"}</h3>
           <div className="CloseBtnArea">
-          <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
-        </div>
+            <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
+          </div>
         </div>
 
         <div className="modalScrollArea">
           <div className="FormContent">
             <div className="formGroup">
-              <label className="formLabel">PROGRAM NAME <span style={{color: 'red'}}>*</span></label>
-              <input 
-                type="text" 
-                placeholder="Physical Therapy" 
+              <label className="formLabel">PROGRAM NAME <span style={{ color: 'red' }}>*</span></label>
+              <input
+                type="text"
+                placeholder="Physical Therapy"
                 value={programName}
                 onChange={(e) => setProgramName(e.target.value)}
               />
             </div>
 
             <div className="formGroup">
-              <label className="formLabel">PROGRAM ABBREVIATION <span style={{color: 'red'}}>*</span></label>
-              <input 
-                type="text" 
-                placeholder="BSPT" 
+              <label className="formLabel">PROGRAM ABBREVIATION <span style={{ color: 'red' }}>*</span></label>
+              <input
+                type="text"
+                placeholder="BSPT"
                 value={abbreviation}
                 onChange={(e) => setAbbreviation(e.target.value.toUpperCase())}
               />
             </div>
 
             <div className="formGroup">
-              <label className="formLabel">TOTAL YEAR <span style={{color: 'red'}}>*</span></label>
+              <label className="formLabel">TOTAL YEAR <span style={{ color: 'red' }}>*</span></label>
               <div className="custom-multiselect" ref={dropdownRef}>
-                <div 
-                  className={`select-display`} 
+                <div
+                  className={`select-display`}
                   onClick={() => setIsOpen(!isOpen)}
                   tabIndex="0"
                 >
                   <span className="selected-text">
-                    {selectedYears.length > 0 
-                      ? selectedYears.join(", ") 
+                    {selectedYears.length > 0
+                      ? selectedYears.join(", ")
                       : "Select Year Levels"}
                   </span>
                 </div>
@@ -184,8 +217,8 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
                   <div className="dropdown-menu">
                     {options.map(year => (
                       <label key={year} className="dropdown-item">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           checked={selectedYears.includes(year)}
                           onChange={() => handleYearClick(year)}
                         />
@@ -199,8 +232,8 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
 
             <div className="formGroup">
               <label className="formLabel">PROGRAM DESCRIPTION</label>
-              <textarea 
-                rows="4" 
+              <textarea
+                rows="4"
                 placeholder="Enter program description..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -208,7 +241,7 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
             </div>
 
             <div className="formGroup">
-              <label className="formLabel">PROGRAM STATUS <span style={{color: 'red'}}>*</span></label>
+              <label className="formLabel">PROGRAM STATUS <span style={{ color: 'red' }}>*</span></label>
               <div className="statusToggleContainer" onClick={() => setIsActive(!isActive)}>
                 <div className={`statusSwitch ${isActive ? 'active' : 'inactive'}`}>
                   <div className="switchHandle"></div>
@@ -228,6 +261,34 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
           </div>
         </div>
       </div>
+
+      {/* Success modal */}
+      <ConfirmationModal
+        isOpen={successState.isOpen}
+        title={successState.title}
+        message={successState.message}
+        variant={successState.variant}
+        isAlert={true}
+        onConfirm={() => {
+          setSuccessState({ isOpen: false });
+          onSuccess();
+        }}
+        onCancel={() => {
+          setSuccessState({ isOpen: false });
+          onSuccess();
+        }}
+      />
+
+      {/* Alert / error modal */}
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        isAlert={confirmState.isAlert}
+        onConfirm={confirmState.onConfirm}
+        onCancel={confirmState.onCancel}
+      />
     </div>
   );
 

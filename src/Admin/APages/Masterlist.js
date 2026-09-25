@@ -120,7 +120,7 @@ function Masterlist() {
   const filters = [
     { name: "program",   label: "PROGRAM",           value: tempProgram,   options: programOptions,  placeholder: "ALL PROGRAMS" },
     { name: "yearLevel", label: "YEAR LEVEL",        value: tempYearLevel, options: yearLevelOptions, placeholder: "ALL YEARS" },
-    { name: "status",    label: "ACADEMIC STANDING", value: tempStatus,    options: statusOptions,   placeholder: "ALL STANDINGS" },
+    { name: "status",    label: "PROBATIONARY STATUS", value: tempStatus,    options: statusOptions,   placeholder: "ALL STANDINGS" },
   ];
 
   const handleFilterChange = (name, value) => {
@@ -169,7 +169,6 @@ function Masterlist() {
   const visibleStart = filteredStudents.length ? indexOfFirstItem + 1 : 0;
   const visibleEnd = Math.min(indexOfLastItem, filteredStudents.length);
 
-  // Fix: was reading standingCounts.None / .warning / .probationary but writing counts.none
   const standingCounts = filteredStudents.reduce(
     (counts, student) => {
       const status = student.academic_status || 'None';
@@ -238,14 +237,15 @@ function Masterlist() {
     const studentName = `${student.last_name}, ${student.first_name}`;
     openConfirm({
       title: 'Delete Student Record',
+      summary: (
+        <>Delete <strong>{studentName}</strong> ({student.student_number})?</>
+      ),
       message: (
         <>
-          Are you sure you want to permanently delete the record of{' '}
-          <strong>{studentName}</strong> ({student.student_number})?
-          <br /><br />
           <span style={{ color: '#c62828', fontSize: '0.75rem' }}>
-            This action cannot be undone. All associated grades, family information,
-            and enrollment records will be permanently removed.
+            Their account will be deactivated and they will be hidden from the
+            default Masterlist. All their grades, enrollment history, and
+            personal records are preserved. You can restore them later.
           </span>
         </>
       ),
@@ -257,7 +257,14 @@ function Masterlist() {
           const token = sessionStorage.getItem('token');
           const response = await fetch(
             `${process.env.REACT_APP_API_URL}/admin/students/${student.student_id}`,
-            { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
+            {
+              method: 'DELETE',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ reason: null })
+            }
           );
           const data = await response.json();
           setConfirmState({ isOpen: false });
@@ -292,14 +299,15 @@ function Masterlist() {
   const handleBulkDelete = () => {
     openConfirm({
       title: 'Delete Students',
+      summary: ( 
+        <>
+        Delete <strong>{selectedIds.length}</strong> selected student record(s)?
+        </>
+      ),
       message: (
         <>
-          Permanently delete <strong>{selectedIds.length}</strong> selected student record(s)?
-          <br /><br />
-          <span style={{ color: '#c62828', fontSize: '0.75rem' }}>
-            This action cannot be undone. All associated grades, family information,
-            and enrollment records for these students will be permanently removed.
-          </span>
+          Their accounts will be deactivated and they will be hidden from the
+          default Masterlist. All data is preserved and can be restored later.
         </>
       ),
       variant: 'danger',
@@ -398,6 +406,7 @@ function Masterlist() {
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}
+        summary={confirmState.summary}
         message={confirmState.message}
         variant={confirmState.variant}
         confirmLabel={confirmState.confirmLabel}
@@ -502,7 +511,25 @@ function Masterlist() {
                       />
                     </td>
                     <td>{std.student_number}</td>
-                    <td>{`${std.last_name}, ${std.first_name}`}</td>
+                    <td>
+                      {`${std.last_name}, ${std.first_name}`}
+                      {std.archived_at && (
+                        <sup
+                          title="Deleted"
+                          style={{
+                            marginLeft: '4px',
+                            fontSize: '0.65rem',
+                            color: '#666',
+                            fontWeight: 600,
+                            padding: '1px 4px',
+                            background: '#f0f0f0',
+                            borderRadius: '4px',
+                          }}
+                        >
+                          Archived
+                        </sup>
+                      )}
+                    </td>
                     <td>{std.program_abbr || std.program_name || '-'}</td>
                     <td>{std.year_level ? `${std.year_level}` : '-'}</td>
                     <td>{std.section_name || '-'}</td>
@@ -516,12 +543,16 @@ function Masterlist() {
                       <button className="tableEditBtn" onClick={() => handleViewGrades(std)}>
                         <BiListCheck /> Grades
                       </button>
-                      <button className="tableEditBtn" onClick={() => handleEdit(std)}>
-                        <BiPencil /> Edit
-                      </button>
-                      <button className="tableDeleteBtn" onClick={() => handleDelete(std)}>
-                        <BiTrash /> Delete
-                      </button>
+                      
+                        <>
+                          <button className="tableEditBtn" onClick={() => handleEdit(std)}>
+                            <BiPencil /> Edit
+                          </button>
+                          <button className="tableDeleteBtn" onClick={() => handleDelete(std)}>
+                            <BiTrash /> Delete
+                          </button>
+                        </>
+                      
                     </td>
                   </tr>
                 ))}

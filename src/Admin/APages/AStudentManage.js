@@ -6,7 +6,7 @@ import '../../Global.css';
 function AStudentManage() {
   const studentTabs = [
     { label: 'Masterlist', path: '/admin/student-management/masterlist' },
-    { label: 'Pending Students', path: '/admin/student-management/pending-students' },
+    { label: 'Archive', path: '/admin/student-management/archive' },
   ];
   return (
     <div className="InnerContainer">

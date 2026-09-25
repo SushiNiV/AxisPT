@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { BiSearch, BiFilterAlt, BiPlusCircle, BiX,BiPencil, BiTrash, BiExport } from 'react-icons/bi';
+import { BiSearch, BiFilterAlt, BiPlusCircle, BiX, BiPencil, BiTrash } from 'react-icons/bi';
+import ConfirmationModal from '../AComponents/ConfirmationModal';
 import '../../GlobalHistory.css';
 import '../../Global.css';
 import '../../GlobalEmpty.css';
@@ -17,11 +18,39 @@ function AManage() {
   const [editingFaculty, setEditingFaculty] = useState(null);
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
-  
+
+  const [confirmState, setConfirmState] = useState({ isOpen: false });
+
   const filterRef = useRef(null);
-  
+
   const [roleOptions, setRoleOptions] = useState([]);
   const [statusOptions] = useState(["Active", "Inactive"]);
+
+  const closeConfirm = () => setConfirmState({ isOpen: false });
+
+  const openConfirm = (config) => {
+    setConfirmState({
+      isOpen: true,
+      variant: 'info',
+      confirmLabel: 'CONFIRM',
+      cancelLabel: 'CANCEL',
+      isAlert: false,
+      loading: false,
+      ...config,
+    });
+  };
+
+  const openAlert = (title, message, variant = 'info') => {
+    setConfirmState({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      isAlert: true,
+      onConfirm: closeConfirm,
+      onCancel: closeConfirm,
+    });
+  };
 
   const formatRoleName = (role) => {
     if (role === 'SUPERADMIN') return 'Super Admin';
@@ -37,7 +66,7 @@ function AManage() {
         setIsFilterOpen(false);
       }
     };
-    
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
@@ -83,29 +112,51 @@ function AManage() {
     setShowAddFaculty(true);
   };
 
-  const handleDelete = async (userId, username) => {
-    if (window.confirm(`Are you sure you want to delete user "${username}"?`)) {
-      try {
-        const token = sessionStorage.getItem('token');
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/users/${userId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (data.success) {
-          fetchUsers();
-        } else {
-          alert(data.message || "Failed to delete user.");
+  const handleDelete = (user) => {
+    const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    openConfirm({
+      title: 'Delete User',
+      summary: (
+        <>Delete <strong>{user.username}</strong>{fullName ? ` (${fullName})` : ''}?</>
+      ),
+      message: (
+        <>
+          This action cannot be undone. All associated data for this user will
+          be permanently removed from the system.
+        </>
+      ),
+      variant: 'danger',
+      confirmLabel: 'DELETE',
+      onConfirm: async () => {
+        setConfirmState((s) => ({ ...s, loading: true }));
+        try {
+          const token = sessionStorage.getItem('token');
+          const response = await fetch(
+            `${process.env.REACT_APP_API_URL}/admin/users/${user.user_id}`,
+            {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` }
+            }
+          );
+          const data = await response.json();
+          setConfirmState({ isOpen: false });
+          if (data.success) {
+            fetchUsers();
+          } else {
+            openAlert('Delete Failed', data.message || 'Failed to delete user.', 'danger');
+          }
+        } catch (error) {
+          console.error("Error deleting user:", error);
+          setConfirmState({ isOpen: false });
+          openAlert('Error', 'An unexpected error occurred.', 'danger');
         }
-      } catch (error) {
-        console.error("Error deleting user:", error);
-        alert("An error occurred.");
-      }
-    }
+      },
+      onCancel: closeConfirm,
+    });
   };
 
   const filteredUsers = users.filter((user) => {
-    const matchesSearch = 
+    const matchesSearch =
       user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -140,12 +191,12 @@ function AManage() {
     setCurrentPage(1);
   };
 
-  const goToNextPage = () => { 
-    if (currentPage < totalPages) setCurrentPage(p => p + 1); 
+  const goToNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(p => p + 1);
   };
-  
-  const goToPrevPage = () => { 
-    if (currentPage > 1) setCurrentPage(p => p - 1); 
+
+  const goToPrevPage = () => {
+    if (currentPage > 1) setCurrentPage(p => p - 1);
   };
 
   if (loading) {
@@ -176,6 +227,20 @@ function AManage() {
 
   return (
     <div className="InnerContainer">
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        summary={confirmState.summary}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        confirmLabel={confirmState.confirmLabel}
+        cancelLabel={confirmState.cancelLabel}
+        isAlert={confirmState.isAlert}
+        loading={confirmState.loading}
+        onConfirm={confirmState.onConfirm}
+        onCancel={confirmState.onCancel}
+      />
+
       {showAddFaculty && (
         <AddFaculty
           onClose={() => {
@@ -190,23 +255,23 @@ function AManage() {
       <div className="TopSection">
         <div className="SearchWrapper">
           <BiSearch className="SearchIcon" />
-          <input 
-            type="text" 
-            placeholder="Search users..." 
+          <input
+            type="text"
+            placeholder="Search users..."
             className="SearchInput"
             value={searchTerm}
             onChange={handleSearch}
           />
           {searchTerm && (
-            <BiX 
-              className="ClearSearchIcon" 
+            <BiX
+              className="ClearSearchIcon"
               onClick={clearSearch}
             />
           )}
         </div>
-        
+
         <div className="TopbarBtnContainer" ref={filterRef}>
-          <button 
+          <button
             className={`TopbarBtn ${isFilterOpen ? 'Active' : ''} ${hasActiveFilters ? 'FilterActive' : ''}`}
             onClick={() => setIsFilterOpen(!isFilterOpen)}
           >
@@ -218,8 +283,8 @@ function AManage() {
             <div className="FilterDropdown">
               <div className="FilterGroup">
                 <label>ROLE</label>
-                <select 
-                  value={selectedRole} 
+                <select
+                  value={selectedRole}
                   onChange={(e) => {
                     setSelectedRole(e.target.value);
                     setCurrentPage(1);
@@ -236,8 +301,8 @@ function AManage() {
 
               <div className="FilterGroup">
                 <label>STATUS</label>
-                <select 
-                  value={selectedStatus} 
+                <select
+                  value={selectedStatus}
                   onChange={(e) => {
                     setSelectedStatus(e.target.value);
                     setCurrentPage(1);
@@ -319,8 +384,12 @@ function AManage() {
                       </span>
                     </td>
                     <td className="tableActions">
-                      <button className="tableEditBtn" onClick={() => handleEdit(user)}> <BiPencil /> Edit</button>
-                      <button className="tableDeleteBtn" onClick={() => handleDelete(user.user_id, user.username)}> <BiTrash /> Delete</button>
+                      <button className="tableEditBtn" onClick={() => handleEdit(user)}>
+                        <BiPencil /> Edit
+                      </button>
+                      <button className="tableDeleteBtn" onClick={() => handleDelete(user)}>
+                        <BiTrash /> Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -333,14 +402,14 @@ function AManage() {
               <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
               <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
               <div className="CurrentPageInputWrapper">
-                <input 
-                  type="number" 
-                  value={currentPage} 
+                <input
+                  type="number"
+                  value={currentPage}
                   onChange={(e) => {
                     const val = parseInt(e.target.value);
                     if (val > 0 && val <= totalPages) setCurrentPage(val);
-                  }} 
-                  className="CurrentPageInput" 
+                  }}
+                  className="CurrentPageInput"
                 />
               </div>
               <div className="PaginationInfo">

@@ -351,8 +351,14 @@ exports.getDashboardStats = async (req, res) => {
 
 exports.getStudentMasterlist = async (req, res) => {
   try {
-    const { search, programId, limit, offset } = req.query;
-    const masterlist = await StudentManageModel.getMasterlist({ search, programId, limit, offset });
+    const { search, programId, limit, offset, includeArchived } = req.query;
+    const masterlist = await StudentManageModel.getMasterlist({
+      search,
+      programId,
+      includeArchived: includeArchived === 'true',
+      limit,
+      offset
+    });
 
     // Merge in each student's academic standing (Regular / Warning /
     // Probationary 1 / Probationary 2), auto-computed from their grade
@@ -449,19 +455,63 @@ exports.updateStudent = async (req, res) => {
 exports.deleteStudent = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await StudentManageModel.delete(id);
+    const { reason } = req.body || {};
+    const userId = req.user.id;
+    const ipAddress = getIpAddress(req);
+    const userAgent = req.headers['user-agent'];
 
-    if (!deleted) {
-      return res.status(404).json({ success: false, message: "Student record not found or already deleted." });
-    }
+    await StudentManageModel.archive(id);
+
+    await HistoryModel.log({
+      userId,
+      targetUserId: userId,
+      tableName: 'students',
+      recordId: Number(id),
+      action: 'STUDENT_ARCHIVED',
+      oldValues: null,
+      newValues: { student_id: Number(id), reason: reason || null, timestamp: new Date().toISOString() },
+      ipAddress,
+      userAgent
+    });
 
     res.status(200).json({
       success: true,
-      message: "Student record deleted successfully."
+      message: "Student archived successfully."
     });
   } catch (error) {
-    console.error("Error deleting student:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
+    console.error("Error archiving student:", error);
+    res.status(500).json({ success: false, message: error.message || "Internal server error." });
+  }
+};
+
+exports.restoreStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const ipAddress = getIpAddress(req);
+    const userAgent = req.headers['user-agent'];
+
+    await StudentManageModel.unarchive(id);
+
+    await HistoryModel.log({
+      userId,
+      targetUserId: userId,
+      tableName: 'students',
+      recordId: Number(id),
+      action: 'STUDENT_RESTORED',
+      oldValues: null,
+      newValues: { student_id: Number(id), timestamp: new Date().toISOString() },
+      ipAddress,
+      userAgent
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Student restored successfully."
+    });
+  } catch (error) {
+    console.error("Error restoring student:", error);
+    res.status(500).json({ success: false, message: error.message || "Internal server error." });
   }
 };
 
@@ -478,6 +528,53 @@ exports.updateStudentsBulk = async (req, res) => {
     res.json({ success: true, message: `${updated.length} student(s) updated.`, data: updated });
   } catch (error) {
     console.error("Error batch-updating students:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.deleteStudentsBulk = async (req, res) => {
+  const { studentIds, reason } = req.body;
+  if (!Array.isArray(studentIds) || studentIds.length === 0) {
+    return res.status(400).json({ success: false, message: "studentIds (array) is required." });
+  }
+
+  const userId = req.user?.id || null;
+  const ipAddress = getIpAddress(req);
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    let archived = 0;
+    const failures = [];
+
+    for (const id of studentIds) {
+      try {
+        await StudentManageModel.archive(id, { reason: reason || null });
+        archived++;
+
+        await HistoryModel.log({
+          userId,
+          targetUserId: userId,
+          tableName: 'students',
+          recordId: Number(id),
+          action: 'STUDENT_ARCHIVED',
+          oldValues: null,
+          newValues: { student_id: Number(id), reason: reason || null, timestamp: new Date().toISOString() },
+          ipAddress,
+          userAgent
+        });
+      } catch (err) {
+        console.error(`Failed to archive student ${id}:`, err.message);
+        failures.push({ id, error: err.message });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `${archived} student(s) archived.`,
+      data: { archived, failures }
+    });
+  } catch (error) {
+    console.error("Error batch-archiving students:", error);
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 };
@@ -1172,9 +1269,10 @@ exports.addCourse = async (req, res) => {
       lec_units: lecUnits,
       lab_units: labUnits,
       course_desc: course_desc || null,
-      is_active: true
+      is_active: true,
+      prerequisites: prerequisites || []
     });
-
+    
     for (const assignment of assignments) {
       await CourseModel.addToCurriculum(
         assignment.curriculum_id,
@@ -1228,10 +1326,9 @@ exports.addCourse = async (req, res) => {
     if (db.getClient && client.release) client.release();
   }
 };
-
 exports.updateCourse = async (req, res) => {
   const { id } = req.params;
-  const { course_code, course_name, lec_units, lab_units, course_desc, grading_scheme, assignments } = req.body;
+  const { course_code, course_name, lec_units, lab_units, course_desc, grading_scheme, assignments, prerequisites } = req.body;
   const userId = req.user.id;
   const ipAddress = getIpAddress(req);
   const userAgent = req.headers['user-agent'];
@@ -1265,7 +1362,8 @@ exports.updateCourse = async (req, res) => {
       lec_units: parseInt(lec_units) || 0,
       lab_units: parseInt(lab_units) || 0,
       course_desc: course_desc || null,
-      grading_scheme: grading_scheme || null
+      grading_scheme: grading_scheme || null,
+      prerequisites: prerequisites || []
     });
 
     // ----- Update assignments -----
@@ -1433,6 +1531,19 @@ exports.getHistory = async (req, res) => {
           case 'CURRICULUM_CREATED':
             formattedDetails = `${displayName} created curriculum for program ID ${newValues.program_id} (${newValues.version_name})`;
             break;
+          case 'PREREQ_OVERRIDE':
+            formattedDetails = `${displayName} overrode prerequisites for ${newValues.course_code || `course #${newValues.course_id}`}`;
+            if (Array.isArray(newValues.missing_prereqs) && newValues.missing_prereqs.length > 0) {
+              formattedDetails += ` (missing: ${newValues.missing_prereqs.join(', ')})`;
+            }
+            break;
+          case 'STUDENT_ARCHIVED':
+            formattedDetails = `${displayName} archived student #${newValues.student_id}`;
+            if (newValues.reason) formattedDetails += ` (reason: ${newValues.reason})`;
+            break;
+          case 'STUDENT_RESTORED':
+            formattedDetails = `${displayName} restored student #${newValues.student_id}`;
+            break;
           case 'SEMESTER_CHANGED':
             const getSemesterName = (s) => s === 1 ? '1st Semester' : s === 2 ? '2nd Semester' : s === 3 ? 'Summer' : 'None';
             formattedDetails = `${displayName} changed semester from ${getSemesterName(oldValues.current_sem)} to ${getSemesterName(newValues.current_sem)}`;
@@ -1535,5 +1646,44 @@ exports.updateStudentGrades = async (req, res) => {
   } catch (error) {
     console.error('Error updating student grades:', error);
     res.status(500).json({ success: false, message: error.message || 'Internal server error.' });
+  }
+};
+
+exports.getGradableCoursesForStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const courses = await GradeManageModel.getGradableCourses();
+
+    // 1. Prerequisite eligibility per course.
+    const eligibility = await GradeManageModel.checkPrerequisiteEligibility(
+      id,
+      courses.map((c) => c.courseId)
+    );
+
+    // 2. Curriculum year level per course.
+    const curriculumYearMap = await GradeManageModel.getCurriculumYearLevelMap(id);
+
+    // 3. Passed status per course (latest attempt wins).
+    const passedMap = await GradeManageModel.getCoursePassedMap(id);
+
+    // Only surface courses that are actually in the student's curriculum.
+    const enriched = courses
+      .filter((c) => curriculumYearMap.has(c.courseId))
+      .map((c) => {
+        const e = eligibility.get(c.courseId) || { eligible: true, missing: [], missingIds: [] };
+        return {
+          ...c,
+          curriculumYearLevel: curriculumYearMap.get(c.courseId),
+          alreadyPassed: passedMap.get(c.courseId) === true,
+          prereqEligible: e.eligible,
+          prereqMissing: e.missing,
+          prereqMissingIds: e.missingIds
+        };
+      });
+
+    res.status(200).json({ success: true, data: enriched });
+  } catch (error) {
+    console.error('Error fetching gradable courses for student:', error);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 };
