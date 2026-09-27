@@ -6,25 +6,25 @@ import SessionExpired from './Components/SessionExpire';
 import ASignIn from './Admin/ASignIn';
 import AChangePass from './Admin/AChangePass';
 
-import ADashboard from './Admin/APages/ADashboard';
+import ADashboard from './Admin/APages/Dashboard/ADashboard';
 
-import AStudentManage from './Admin/APages/AStudentManage';
-import Masterlist from './Admin/APages/Masterlist';
+import AStudentManage from './Admin/APages/StudentManagement/AStudentManage';
+import Masterlist from './Admin/APages/StudentManagement/Masterlist';
 import Archive from './Admin/APages/Archive';
 
-import AAcademics from './Admin/APages/AGrades';
-import AProgSec from './Admin/APages/AProgSec';
-import ACourses from './Admin/APages/ACourses';
+import AAcademics from './Admin/APages/ProgramManagement/AGrades';
+import AProgSec from './Admin/APages/ProgramManagement/AProgSec';
+import ACourses from './Admin/APages/ProgramManagement/ACourses';
 
-import ADocuments from './Admin/APages/ADocuments';
-import DocumentsStudentForm from './Admin/APages/DocumentsStudentForm';
-import DocumentsTermGrade from './Admin/APages/DocumentsTermGrade';
-import DocumentsCourseOutline from './Admin/APages/DocumentsCourseOutline';
+import ADocuments from './Admin/APages/Documents/ADocuments';
+import DocumentsStudentForm from './Admin/APages/Documents/DocumentsStudentForm';
+import DocumentsTermGrade from './Admin/APages/Documents/DocumentsTermGrade';
+import DocumentsCourseOutline from './Admin/APages/Documents/DocumentsCourseOutline';
 
-import AAccessCtrl from './Admin/APages/AAccessCtrl';
-import Manage from './Admin/APages/Manage';
-import AcadYear from './Admin/APages/AcadYear';
-import Curricula from './Admin/APages/Curricula';
+import AAccessCtrl from './Admin/APages/AccessControl/AAccessCtrl';
+import Manage from './Admin/APages/AccessControl/Manage';
+import AcadYear from './Admin/APages/AccessControl/AcadYear';
+import Curricula from './Admin/APages/AccessControl/Curricula';
 
 import AHistory from './Admin/APages/AHistory';
 

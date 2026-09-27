@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash } from 'react-icons/bi';
-import Filter from '../../Components/Filter';
-import ConfirmationModal from '../AComponents/ConfirmationModal';
-import '../../GlobalHistory.css';
-import '../../Global.css';
-import '../../GlobalEmpty.css';
-import AddCourse from '../AComponents/AddModals/AddCourse';
+import Filter from '../../../Components/Filter';
+import ConfirmationModal from '../../AComponents/ConfirmationModal';
+import '../../../GlobalHistory.css';
+import '../../../Global.css';
+import '../../../GlobalEmpty.css';
+import AddCourse from '../../AComponents/AddModals/AddCourse';
 
 function ACourses() {
   const [courses, setCourses] = useState([]);

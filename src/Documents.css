@@ -71,8 +71,7 @@
 
 
 .DocListTop .TopbarBtn {
-  padding: 6px 12px;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 .DocListTop .TopbarBtnContainer {
@@ -95,7 +94,7 @@
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--border-light);
   color: var(--text-secondary);
-  font-size: 0.76rem;
+  font-size: 1rem;
 }
 
 .DocStudentList {
@@ -114,7 +113,7 @@
 
 .DocListMessage {
   padding: 1rem;
-  font-size: 0.85rem;
+  font-size: 1rem;
   color: var(--text-muted);
   text-align: center;
 }
@@ -122,7 +121,7 @@
 .DocStudentRow {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 1rem;
   padding: 10px 14px;
   border-top: 1px solid var(--border-light);
   cursor: pointer;
@@ -158,14 +157,14 @@
 
 .DocStudentName {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .DocStudentMeta {
   margin: 2px 0 0;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--text-secondary);
 }
 
@@ -176,7 +175,7 @@
 .DocPrintError {
   margin: 0 0 0.5rem;
   color: #c62828;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 /* ---- Right panel: preview canvas ---- */

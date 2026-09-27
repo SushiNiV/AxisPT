@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { BiSearch, BiX, BiPrinter, BiFullscreen } from 'react-icons/bi';
-import Filter from '../../Components/Filter';
-import '../../Global.css';
-import '../../Documents.css';
-import CourseOutline from '../AComponents/StudentDocuments/CourseOutline';
+import Filter from '../../../Components/Filter';
+import '../../../Global.css';
+import '../../../Documents.css';
+import CourseOutline from '../../AComponents/StudentDocuments/CourseOutline';
 
 const DEFAULT_PREVIEW_SCALE = 1;
 const MIN_PREVIEW_SCALE = 0.3;

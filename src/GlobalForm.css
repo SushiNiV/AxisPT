@@ -22,7 +22,7 @@
 }
 
 .formLabel {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   font-weight: 800;
   color: #555;
   text-transform: uppercase;
@@ -36,7 +36,7 @@
   padding: 12px;
   border: 1px solid #ccc;
   border-radius: 8px;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   width: 100%;
   box-sizing: border-box;
   background-color: white;
@@ -81,7 +81,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #333;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 
 .custom-multiselect .dropdown-menu {
@@ -119,7 +119,7 @@
 }
 
 .custom-multiselect .dropdown-item span {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   flex: 1;
   color: #333;
   font-weight: normal !important;
@@ -131,7 +131,7 @@
 
 .formGroup select option {
   padding: 10px 12px;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -173,7 +173,7 @@ select[size] {
   display: inline-block;
   user-select: none;
   color: #555;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .rowItem {
@@ -190,7 +190,7 @@ select[size] {
 
 .rowItem span {
   color: #555;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   text-transform: uppercase;
 }
 
@@ -236,7 +236,7 @@ select[size] {
   align-items: center;
   padding: 8px 12px;
   border-bottom: 1px solid #e0e0e0;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 
 .assignmentItem:last-child {
@@ -250,7 +250,7 @@ select[size] {
   padding: 4px 12px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
 }
 
 .RemoveBtn:hover {
@@ -270,7 +270,7 @@ select[size] {
   color: white;
   border-radius: 4px;
   padding: 2px 12px;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   border: 1px solid #ccc;
   display: inline-flex;
   align-items: center;

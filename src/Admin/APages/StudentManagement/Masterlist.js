@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash, BiListCheck } from 'react-icons/bi';
-import Filter from '../../Components/Filter';
-import ConfirmationModal from '../AComponents/ConfirmationModal';
-import '../../GlobalHistory.css';
-import '../../Global.css';
-import '../../GlobalEmpty.css';
-import AddStudent from '../AComponents/AddModals/AddStudent';
-import AddGrade from '../AComponents/AddModals/AddGrade';
-import BulkStudent from '../AComponents/BulkModals/BulkStudent';
+import Filter from '../../../Components/Filter';
+import ConfirmationModal from '../../AComponents/ConfirmationModal';
+import '../../../GlobalHistory.css';
+import '../../../Global.css';
+import '../../../GlobalEmpty.css';
+import AddStudent from '../../AComponents/AddModals/AddStudent';
+import AddGrade from '../../AComponents/AddModals/AddGrade';
+import BulkStudent from '../../AComponents/BulkModals/BulkStudent';
 
 function Masterlist() {
   const [students, setStudents] = useState([]);

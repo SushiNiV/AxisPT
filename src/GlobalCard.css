@@ -90,7 +90,7 @@
 .statusBadge {
   padding: 4px 12px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
@@ -105,7 +105,7 @@
 }
 
 .cardTitle {
-  font-size: 0.85rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #333;
 }
@@ -122,7 +122,7 @@
   padding: 4px 10px;
   background: #f5f5f5;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: #666;
   display: inline-block;
 }
@@ -172,7 +172,7 @@
   gap: 6px;
   padding: 8px 16px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -264,13 +264,14 @@
 .tableActions {
   display: flex;
   gap: 8px;
+  font-size: 1rem;
 }
 
 .tableEditBtn,
 .tableDeleteBtn {
   padding: 4px 12px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 0.8rem;
   cursor: pointer;
   border: none;
 }
@@ -293,37 +294,4 @@
   background: #ffcdd2;
 }
 
-/* ===== Expand/collapse chevron ===== */
-.expandToggle {
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: #555;
-  font-size: 1.2rem;
-  padding: 0;
-  transition: color 0.2s ease;
-}
 
-.expandToggle:hover {
-  color: #3d1616;
-}
-
-.expandToggle:focus-visible {
-  outline: none;
-  color: #3d1616;
-}
-
-/* Rotate the same chevron when expanded */
-.expandToggle svg {
-  transition: transform 0.2s ease;
-}
-
-.expandToggle[aria-expanded="true"] svg {
-  transform: rotate(90deg);
-}

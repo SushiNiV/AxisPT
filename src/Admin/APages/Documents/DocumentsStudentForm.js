@@ -1,9 +1,21 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { BiSearch, BiX, BiPrinter, BiFullscreen } from 'react-icons/bi';
-import Filter from '../../Components/Filter';
-import '../../Global.css';
-import '../../Documents.css';
-import TermGrade from '../AComponents/StudentDocuments/TermGrade';
+import Filter from '../../../Components/Filter';
+import '../../../Global.css';
+import '../../../Documents.css';
+import StudentForm from '../../AComponents/StudentDocuments/StudentForm'; 
+
+/**
+ * ============================================================================
+ * DocumentsStudentForm
+ * ============================================================================
+ * Routed under ADocuments (the "Student Form" tab). Browse students on the
+ * left, preview their generated STAMP form on the right at a reduced scale -
+ * the underlying document is built for physical paper dimensions via
+ * StudentForm.css, so it's rendered at full size and scaled down for
+ * on-screen viewing rather than reflowed.
+ * ============================================================================
+ */
 
 const DEFAULT_PREVIEW_SCALE = 1;
 const MIN_PREVIEW_SCALE = 0.3;
@@ -13,7 +25,7 @@ const PAGE_WIDTH_MM = 215.9;
 const PAGE_HEIGHT_MM = 330.2;
 const STUDENTS_PER_PAGE = 15;
 
-function DocumentsTermGrade() {
+function DocumentsStudentForm() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,31 +39,22 @@ function DocumentsTermGrade() {
   const [isPrintPending, setIsPrintPending] = useState(false);
   const [printError, setPrintError] = useState(null);
 
-  const [termGradeData, setTermGradeData] = useState(null);
-  const [gradeLoading, setGradeLoading] = useState(false);
-  const [gradeError, setGradeError] = useState(null);
-
-  // Academic period selector – this is the "selectedYearLevel" for the document content
-  const [selectedYearLevel, setSelectedYearLevel] = useState(null);
-  const [selectedSemesterId, setSelectedSemesterId] = useState(null);
-  const [academicPeriods, setAcademicPeriods] = useState([]);
-
-  // Filter state – renamed to avoid conflict with the document period selector
+  // Filter state, same temp/selected pattern used in Masterlist.js
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState('');
-  const [selectedYearLevelFilter, setSelectedYearLevelFilter] = useState('');
+  const [selectedYearLevel, setSelectedYearLevel] = useState('');
   const [tempProgram, setTempProgram] = useState('');
-  const [tempYearLevelFilter, setTempYearLevelFilter] = useState('');
+  const [tempYearLevel, setTempYearLevel] = useState('');
   const [programOptions, setProgramOptions] = useState([]);
   const [yearLevelOptions] = useState(['1st Year', '2nd Year', '3rd Year', '4th Year']);
-  const hasActiveFilters = selectedProgram !== '' || selectedYearLevelFilter !== '';
+  const hasActiveFilters = selectedProgram !== '' || selectedYearLevel !== '';
 
   useEffect(() => {
     if (isFilterOpen) {
       setTempProgram(selectedProgram);
-      setTempYearLevelFilter(selectedYearLevelFilter);
+      setTempYearLevel(selectedYearLevel);
     }
-  }, [isFilterOpen, selectedProgram, selectedYearLevelFilter]);
+  }, [isFilterOpen, selectedProgram, selectedYearLevel]);
 
   const fetchPrograms = useCallback(async () => {
     try {
@@ -95,77 +98,6 @@ function DocumentsTermGrade() {
     fetchPrograms();
   }, [fetchStudents, fetchPrograms]);
 
-  // When a student is selected, fetch their available periods for the dropdown
-  useEffect(() => {
-    if (!selectedStudentId) {
-      setTermGradeData(null);
-      setAcademicPeriods([]);
-      setSelectedYearLevel(null);
-      setSelectedSemesterId(null);
-      return;
-    }
-
-    setSelectedYearLevel(null);
-    setSelectedSemesterId(null);
-
-    const fetchPeriods = async () => {
-      try {
-        const token = sessionStorage.getItem('token');
-        const response = await fetch(
-          `${process.env.REACT_APP_API_URL}/admin/students/${selectedStudentId}/grades`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const data = await response.json();
-        if (data.success) {
-          const years = data.data.years || [];
-          const totalYears = data.data.totalYears || 5;
-          // Only show valid year levels (1 to totalYears)
-          const filtered = years.filter(y => y.yearLevel >= 1 && y.yearLevel <= totalYears);
-          setAcademicPeriods(filtered);
-        }
-      } catch (err) {
-        console.error('Error fetching academic periods:', err);
-      }
-    };
-
-    fetchPeriods();
-  }, [selectedStudentId]);
-
-  // Fetch the actual term grade document when student or period changes
-  useEffect(() => {
-    if (!selectedStudentId) return;
-
-    const fetchTermGrade = async () => {
-      setGradeLoading(true);
-      setGradeError(null);
-      try {
-        const token = sessionStorage.getItem('token');
-        const params = new URLSearchParams();
-        if (selectedYearLevel) params.set('yearLevel', selectedYearLevel);
-        if (selectedSemesterId) params.set('semesterId', selectedSemesterId);
-        const query = params.toString() ? `?${params.toString()}` : '';
-
-        const response = await fetch(
-          `${process.env.REACT_APP_API_URL}/admin/term-grade/${selectedStudentId}${query}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const data = await response.json();
-        if (data.success) {
-          setTermGradeData(data.data);
-        } else {
-          setGradeError(data.message || 'Failed to load term grade document.');
-        }
-      } catch (err) {
-        console.error('Error fetching term grade document:', err);
-        setGradeError('Failed to connect to the server.');
-      } finally {
-        setGradeLoading(false);
-      }
-    };
-
-    fetchTermGrade();
-  }, [selectedStudentId, selectedYearLevel, selectedSemesterId]);
-
   const filteredStudents = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return students.filter((std) => {
@@ -176,11 +108,11 @@ function DocumentsTermGrade() {
         std.personal_email?.toLowerCase().includes(term);
 
       const matchesProgram = !selectedProgram || std.program_name === selectedProgram;
-      const matchesYearLevel = !selectedYearLevelFilter || std.year_level?.toString() === selectedYearLevelFilter.charAt(0);
+      const matchesYearLevel = !selectedYearLevel || std.year_level?.toString() === selectedYearLevel.charAt(0);
 
       return matchesSearch && matchesProgram && matchesYearLevel;
     });
-  }, [students, searchTerm, selectedProgram, selectedYearLevelFilter]);
+  }, [students, searchTerm, selectedProgram, selectedYearLevel]);
 
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / STUDENTS_PER_PAGE));
   const indexOfFirstStudent = (currentPage - 1) * STUDENTS_PER_PAGE;
@@ -213,7 +145,7 @@ function DocumentsTermGrade() {
     {
       name: 'yearLevel',
       label: 'YEAR LEVEL',
-      value: tempYearLevelFilter,
+      value: tempYearLevel,
       options: yearLevelOptions,
       placeholder: 'ALL YEARS'
     }
@@ -221,21 +153,21 @@ function DocumentsTermGrade() {
 
   const handleFilterChange = (name, value) => {
     if (name === 'program') setTempProgram(value);
-    else if (name === 'yearLevel') setTempYearLevelFilter(value);
+    else if (name === 'yearLevel') setTempYearLevel(value);
   };
 
   const resetFilters = () => {
     setTempProgram('');
-    setTempYearLevelFilter('');
+    setTempYearLevel('');
     setSelectedProgram('');
-    setSelectedYearLevelFilter('');
+    setSelectedYearLevel('');
     setIsFilterOpen(false);
     setCurrentPage(1);
   };
 
   const applyFilters = () => {
     setSelectedProgram(tempProgram);
-    setSelectedYearLevelFilter(tempYearLevelFilter);
+    setSelectedYearLevel(tempYearLevel);
     setIsFilterOpen(false);
     setCurrentPage(1);
   };
@@ -243,11 +175,11 @@ function DocumentsTermGrade() {
   const selectedStudent = students.find((s) => s.student_id === selectedStudentId) || null;
 
   const toggleStudentSelection = (studentId) => {
-    setSelectedStudentIds((ids) =>
+    setSelectedStudentIds((ids) => (
       ids.includes(studentId)
         ? ids.filter((id) => id !== studentId)
         : [...ids, studentId]
-    );
+    ));
   };
 
   const handlePrint = async () => {
@@ -258,35 +190,25 @@ function DocumentsTermGrade() {
 
     try {
       const token = sessionStorage.getItem('token');
-
-      // Build query string with the current period selection
-      const params = new URLSearchParams();
-      if (selectedYearLevel) params.set('yearLevel', selectedYearLevel);
-      if (selectedSemesterId) params.set('semesterId', selectedSemesterId);
-      const query = params.toString() ? `?${params.toString()}` : '';
-
       const forms = await Promise.all(selectedStudentIds.map(async (studentId) => {
         const response = await fetch(
-          `${process.env.REACT_APP_API_URL}/admin/term-grade/${studentId}${query}`,
+          `${process.env.REACT_APP_API_URL}/admin/student-form/${studentId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const result = await response.json();
 
         if (!response.ok || !result.success) {
-          throw new Error(result.message || 'Unable to prepare one or more term grade documents.');
+          throw new Error(result.message || 'Unable to prepare one or more student forms.');
         }
 
         return { studentId, data: result.data };
       }));
 
       setPrintForms(forms);
-      console.log('Batch print forms:', forms);
-      console.log('First student data:', forms[0]?.data);
-      console.log('prelimCourses:', forms[0]?.data?.prelimCourses);
       setIsPrintPending(true);
     } catch (err) {
       console.error('Batch print error:', err);
-      setPrintError(err.message || 'Unable to prepare the selected term grade documents.');
+      setPrintError(err.message || 'Unable to prepare the selected student forms.');
     } finally {
       setIsPreparingPrint(false);
     }
@@ -304,6 +226,7 @@ function DocumentsTermGrade() {
   return (
     <>
       <div className="DocSplitView">
+
         <div className="DocListPanel">
           <div className="DocListTop">
             <div className="SearchWrapper">
@@ -397,36 +320,6 @@ function DocumentsTermGrade() {
 
         <div className="DocPreviewPanel">
           <div className="DocPreviewActions">
-            {academicPeriods.length > 0 && (
-              <div style={{ display: 'inline-flex', gap: '6px', marginRight: '8px' }}>
-                <select
-                  value={selectedYearLevel || ''}
-                  onChange={(e) => {
-                    const yl = e.target.value ? Number(e.target.value) : null;
-                    setSelectedYearLevel(yl);
-                    setSelectedSemesterId(null);
-                  }}
-                  style={{ fontSize: '0.8rem', padding: '4px 6px' }}
-                >
-                  <option value="">Current Period</option>
-                  {academicPeriods.map((yb) => (
-                    <option key={yb.yearLevel} value={yb.yearLevel}>Year {yb.yearLevel}</option>
-                  ))}
-                </select>
-                {selectedYearLevel && (
-                  <select
-                    value={selectedSemesterId || ''}
-                    onChange={(e) => setSelectedSemesterId(e.target.value ? Number(e.target.value) : null)}
-                    style={{ fontSize: '0.8rem', padding: '4px 6px' }}
-                  >
-                    <option value="">-- Semester --</option>
-                    {(academicPeriods.find((yb) => yb.yearLevel === selectedYearLevel)?.semesters || []).map((sem) => (
-                      <option key={sem.semesterId} value={sem.semesterId}>{sem.semesterLabel}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            )}
             <button className="TopbarBtn" onClick={handlePrint} disabled={selectedStudentIds.length === 0 || isPreparingPrint}>
               <BiPrinter className="linkIcon" /> {isPreparingPrint ? 'Preparing…' : `Print (${selectedStudentIds.length})`}
             </button>
@@ -468,15 +361,7 @@ function DocumentsTermGrade() {
 
           {!selectedStudent ? (
             <div className="DocEmptyState">
-              <p>Select a student to preview their term grade document.</p>
-            </div>
-          ) : gradeLoading ? (
-            <div className="DocEmptyState">
-              <p>Loading term grade document...</p>
-            </div>
-          ) : gradeError ? (
-            <div className="DocEmptyState">
-              <p style={{ color: '#c62828' }}>{gradeError}</p>
+              <p>Select a student to preview their document.</p>
             </div>
           ) : (
             <div
@@ -494,17 +379,18 @@ function DocumentsTermGrade() {
                   transform: `scale(${previewScale})`
                 }}
               >
-                <TermGrade data={termGradeData} />
+                <StudentForm adminMode={true} studentId={selectedStudent.student_id} />
               </div>
             </div>
           )}
         </div>
+
       </div>
 
       <div className="DocBatchPrintArea">
         {printForms.map(({ studentId, data }) => (
           <div className="DocBatchPrintForm" key={studentId}>
-            <TermGrade data={data} />
+            <StudentForm adminMode={true} studentId={studentId} studentData={data} />
           </div>
         ))}
       </div>
@@ -512,4 +398,4 @@ function DocumentsTermGrade() {
   );
 }
 
-export default DocumentsTermGrade;
+export default DocumentsStudentForm;

@@ -1,22 +1,29 @@
 const db = require('../config/db');
 
 class ProgramModel {
-  static async getAll() {
-    const result = await db.query(`
-      SELECT 
-        program_id,
-        program_name,
-        program_abbr,
-        total_year,
-        program_description,
-        program_status,
-        created_at,
-        updated_at
-      FROM programs
-      ORDER BY program_name ASC
-    `);
-    return result.rows;
+ static async getAll({ mode = 'active' } = {}) {
+  let query = `
+    SELECT 
+      program_id,
+      program_name,
+      program_abbr,
+      total_year,
+      program_description,
+      program_status,
+      created_at,
+      updated_at
+    FROM programs
+  `;
+  if (mode === 'active') {
+    query += ` WHERE program_status = true`;
+  } else if (mode === 'archived') {
+    query += ` WHERE program_status = false`;
   }
+  query += ` ORDER BY program_name ASC`;
+
+  const result = await db.query(query);
+  return result.rows;
+}
 
   static async create(programData) {
     const { program_name, program_abbr, total_year, program_description, program_status } = programData;
@@ -44,11 +51,24 @@ class ProgramModel {
     return result.rows[0];
   }
 
-  static async delete(programId) {
+  static async deactivate(programId) {
     const result = await db.query(`
-      DELETE FROM programs WHERE program_id = $1
+      UPDATE programs
+      SET program_status = false, updated_at = NOW()
+      WHERE program_id = $1
+      RETURNING *
     `, [programId]);
-    return result.rowCount > 0;
+    return result.rows[0] || null;
+  }
+
+  static async reactivate(programId) {
+    const result = await db.query(`
+      UPDATE programs
+      SET program_status = true, updated_at = NOW()
+      WHERE program_id = $1
+      RETURNING *
+    `, [programId]);
+    return result.rows[0] || null;
   }
 
   static async findById(programId) {

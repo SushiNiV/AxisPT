@@ -5,8 +5,8 @@ import {
   LineChart, Line,
 } from 'recharts';
 import { BiUser, BiBook, BiBookOpen, BiGroup, BiTrendingUp } from 'react-icons/bi';
-import '../../Global.css';
-import '../../GlobalEmpty.css';
+import '../../../Global.css';
+import '../../../GlobalCard.css';
 import './Dashboard.css';
 
 const PROGRAM_COLORS = ['#3d1616', '#7a2e2e', '#a84d4d', '#c97a7a', '#e5b4b4'];

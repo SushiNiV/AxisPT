@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import AddYear from './../AComponents/AddModals/AddYear';
-import ConfirmationModal from '../AComponents/ConfirmationModal';
+import AddYear from '../../AComponents/AddModals/AddYear';
+import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import { BiSearch, BiPlusCircle, BiCalendar, BiX, BiPencil, BiTrash } from 'react-icons/bi';
 
-import '../../Global.css';
-import '../../GlobalCard.css';
-import '../../GlobalEmpty.css';
+import '../../../Global.css';
+import '../../../GlobalCard.css';
+import '../../../GlobalEmpty.css';
 
 function AAcadYear() {
   const [academicYears, setAcademicYears] = useState([]);

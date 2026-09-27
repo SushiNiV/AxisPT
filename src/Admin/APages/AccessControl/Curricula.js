@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './Curricula.css';
-import ConfirmationModal from '../AComponents/ConfirmationModal';
+import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import { BiSearch, BiPlusCircle, BiX, BiBook, BiPencil, BiTrash } from 'react-icons/bi';
 
-import '../../Global.css';
-import '../../GlobalCard.css';
-import '../../GlobalEmpty.css';
-import AddCurriculum from '../AComponents/AddModals/AddCurriculum';
+import '../../../Global.css';
+import '../../../GlobalCard.css';
+import '../../../GlobalEmpty.css';
+import AddCurriculum from '../../AComponents/AddModals/AddCurriculum';
 
 function ACurricula() {
   const [curricula, setCurricula] = useState([]);

@@ -1,76 +1,117 @@
 const express = require('express');
 const router = express.Router();
-const adminController = require('../controllers/adminController');
 const { verifyToken } = require('../middleware/auth');
 
-//auth
-router.post('/users', verifyToken, adminController.addUser);
-router.get('/users', verifyToken, adminController.getUsers);
-router.get('/roles', verifyToken, adminController.getRoles);
-router.get('/designations', verifyToken, adminController.getDesignations);
+// ==========================================
+// IMPORT SEPARATED CONTROLLERS
+// ==========================================
+const authController = require('../controllers/authController');
+const dashboardController = require('../controllers/dashboardController');
+const studentController = require('../controllers/studentController');
+const documentController = require('../controllers/documentController');
+const academicController = require('../controllers/academicController');
+const programController = require('../controllers/programController');
+const courseController = require('../controllers/courseController');
+const facultyController = require('../controllers/facultyController');
+const historyController = require('../controllers/historyController');
+const gradeController = require('../controllers/gradeController');
 
-router.post('/login', adminController.login);
-router.post('/change-password', verifyToken, adminController.changePassword);
+// ==========================================
+// AUTH & USER MANAGEMENT
+// ==========================================
+router.post('/users', verifyToken, authController.addUser);
+router.get('/users', verifyToken, authController.getUsers);
+router.get('/roles', verifyToken, authController.getRoles);
+router.get('/designations', verifyToken, authController.getDesignations);
 
-//dashboard
-router.get('/dashboard/stats', verifyToken, adminController.getDashboardStats);
+router.post('/login', authController.login);
+router.post('/change-password', verifyToken, authController.changePassword);
 
-//student management
-router.get('/students', verifyToken, adminController.getStudentMasterlist);
-router.get('/students/:id', verifyToken, adminController.getStudentById);
-router.post('/students', verifyToken, adminController.createStudent);
-router.put('/students/batch-update', verifyToken, adminController.updateStudentsBulk);
-router.delete('/students/batch-delete', verifyToken, adminController.deleteStudentsBulk);
-router.put('/students/:id', verifyToken, adminController.updateStudent);
-router.delete('/students/:id', verifyToken, adminController.deleteStudent);
-router.post('/students/:id/restore', verifyToken, adminController.restoreStudent);
+// ==========================================
+// DASHBOARD
+// ==========================================
+router.get('/dashboard/stats', verifyToken, dashboardController.getDashboardStats);
 
+// ==========================================
+// STUDENT MANAGEMENT
+// ==========================================
+router.get('/students', verifyToken, studentController.getStudentMasterlist);
+router.delete('/students/batch-delete', verifyToken, studentController.deleteStudentsBulk);
+router.get('/students/:id', verifyToken, studentController.getStudentById);
+router.post('/students', verifyToken, studentController.createStudent);
+router.put('/students/batch-update', verifyToken, studentController.updateStudentsBulk);
+router.put('/students/:id', verifyToken, studentController.updateStudent);
+router.delete('/students/:id', verifyToken, studentController.deleteStudent);
+router.post('/students/:id/restore', verifyToken, studentController.restoreStudent);
 
+// ==========================================
+// GRADE MANAGEMENT
+// ==========================================
+router.get('/students/:id/grades', verifyToken, gradeController.getStudentGrades);
+router.put('/students/:id/grades', verifyToken, gradeController.updateStudentGrades);
+router.get('/students/:id/gradable-courses', verifyToken, gradeController.getGradableCoursesForStudent);
+router.get('/courses/gradable', verifyToken, gradeController.getGradableCourses);
 
-//grade management
-router.get('/students/:id/grades', verifyToken, adminController.getStudentGrades);
-router.put('/students/:id/grades', verifyToken, adminController.updateStudentGrades);
-router.get('/students/:id/gradable-courses', verifyToken, adminController.getGradableCoursesForStudent); 
+// ==========================================
+// DOCUMENTS
+// ==========================================
+router.get('/student-form/:id', verifyToken, documentController.getStudentFormById);
+router.get('/term-grade/:id', verifyToken, documentController.getTermGradeById);
+router.get('/course-outline/:id', verifyToken, documentController.getCourseOutlineById);
 
-//documents
-router.get('/student-form/:id', verifyToken, adminController.getStudentFormById);
-router.get('/term-grade/:id', verifyToken, adminController.getTermGradeById);
-router.get('/course-outline/:id', verifyToken, adminController.getCourseOutlineById);
-    
-//academic year
-router.get('/academic-years', verifyToken, adminController.getAcademicYears);
-router.post('/academic-years', verifyToken, adminController.addAcademicYear);
-router.put('/academic-years/:year_id/semester', verifyToken, adminController.updateAcademicYearSemester);
-router.put('/academic-years/:year_id/activate', verifyToken, adminController.activateAcademicYear);
-router.put('/academic-years/:year_id', verifyToken, adminController.updateAcademicYear);
+// ==========================================
+// ACADEMIC YEAR
+// ==========================================
+router.get('/academic-years', verifyToken, academicController.getAcademicYears);
+router.post('/academic-years', verifyToken, academicController.addAcademicYear);
+router.put('/academic-years/:year_id/semester', verifyToken, academicController.updateAcademicYearSemester);
+router.put('/academic-years/:year_id/activate', verifyToken, academicController.activateAcademicYear);
+router.put('/academic-years/:year_id', verifyToken, academicController.updateAcademicYear);
 
-//curriculum
-router.get('/curricula', verifyToken, adminController.getCurricula);
-router.post('/curricula', verifyToken, adminController.addCurriculum);
-router.put('/curricula/:curriculum_id', verifyToken, adminController.updateCurriculum);
-router.get('/courses/gradable', verifyToken, adminController.getGradableCourses);
+// ==========================================
+// CURRICULUM
+// ==========================================
+router.get('/curricula', verifyToken, academicController.getCurricula);
+router.post('/curricula', verifyToken, academicController.addCurriculum);
+router.put('/curricula/:curriculum_id', verifyToken, academicController.updateCurriculum);
 
-//program
-router.post('/programs', verifyToken, adminController.addProgram);
-router.get('/programs', verifyToken, adminController.getPrograms);
+// ==========================================
+// PROGRAM
+// ==========================================
+router.post('/programs', verifyToken, programController.addProgram);
+router.get('/programs', verifyToken, programController.getPrograms);
+router.put('/programs/:program_id', verifyToken, programController.updateProgram);
+router.delete('/programs/:program_id', verifyToken, programController.deleteProgram);
+router.post('/programs/:program_id/restore', verifyToken, programController.restoreProgram);
 
-//course
-router.get('/courses', verifyToken, adminController.getCourses);
-router.get('/courses/:id', verifyToken, adminController.getCourseById);
-router.post('/courses', verifyToken, adminController.addCourse);
-router.put('/courses/:id', verifyToken, adminController.updateCourse);
-router.delete('/courses/:id', verifyToken, adminController.deleteCourse);
+// ==========================================
+// COURSE
+// ==========================================
+router.get('/courses', verifyToken, courseController.getCourses);
+router.get('/courses/:id', verifyToken, courseController.getCourseById);
+router.post('/courses', verifyToken, courseController.addCourse);
+router.put('/courses/:id', verifyToken, courseController.updateCourse);
+router.delete('/courses/:id', verifyToken, courseController.deleteCourse);
 
-//faculty
-router.get('/faculties', verifyToken, adminController.getFaculties);
+// ==========================================
+// FACULTY
+// ==========================================
+router.get('/faculties', verifyToken, facultyController.getFaculties);
 
+// ==========================================
+// SECTION
+// ==========================================
+router.get('/sections', verifyToken, academicController.getSectionsByProgram);
+router.get('/sections/active', verifyToken, academicController.getActiveSectionsByProgram);
+router.get('/sections/all', verifyToken, academicController.getAllSectionsByProgram);
+router.post('/section-assignments', verifyToken, academicController.addSectionAssignment);
+router.delete('/section-assignments/:assignment_id', verifyToken, academicController.deleteSectionAssignment);
+router.post('/section-assignments/:assignment_id/restore', verifyToken, academicController.restoreSectionAssignment);
+router.get('/sections/by-program/:programId', verifyToken, academicController.getSectionsByProgramId);
 
-//section
-router.get('/sections', verifyToken, adminController.getSectionsByProgram);
-router.get('/sections/active', verifyToken, adminController.getActiveSectionsByProgram);
-router.get('/sections/all', verifyToken, adminController.getAllSectionsByProgram);
-router.post('/section-assignments', verifyToken, adminController.addSectionAssignment);
-router.get('/sections/by-program/:programId', verifyToken, adminController.getSectionsByProgramId);
-router.get('/history', verifyToken, adminController.getHistory); 
+// ==========================================
+// HISTORY
+// ==========================================
+router.get('/history', verifyToken, historyController.getHistory);
 
 module.exports = router;
