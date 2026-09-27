@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { BiSearch, BiX, BiPrinter, BiFullscreen } from 'react-icons/bi';
+import { BiSearch, BiX, BiPrinter, BiFullscreen, BiDocument } from 'react-icons/bi';
 import Filter from '../../../Components/Filter';
 import '../../../Global.css';
 import '../../../Documents.css';
@@ -361,6 +361,7 @@ function DocumentsStudentForm() {
 
           {!selectedStudent ? (
             <div className="DocEmptyState">
+              <div className="emptyStateIcon">🪪</div>
               <p>Select a student to preview their document.</p>
             </div>
           ) : (

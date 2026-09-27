@@ -468,6 +468,7 @@ function DocumentsTermGrade() {
 
           {!selectedStudent ? (
             <div className="DocEmptyState">
+              <div className="emptyStateIcon">🪪</div>
               <p>Select a student to preview their term grade document.</p>
             </div>
           ) : gradeLoading ? (

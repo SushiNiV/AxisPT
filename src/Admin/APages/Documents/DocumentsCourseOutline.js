@@ -256,7 +256,9 @@ useEffect(() => {
           </div>
 
           {!selectedStudent ? (
-            <div className="DocEmptyState"><p>Select a student to preview its course outline.</p></div>
+            <div className="DocEmptyState">
+              <div className="emptyStateIcon">🪪</div>
+              <p>Select a student to preview its course outline.</p></div>
           ) : outlineLoading ? (
             <div className="DocEmptyState"><p>Loading outline...</p></div>
           ) : outlineError ? (

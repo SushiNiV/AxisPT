@@ -341,7 +341,7 @@ function AProgSec() {
         <main className="ProgDetail">
           {!selectedProgram ? (
             <div className="emptyState">
-              <div className="emptyStateIcon"><BiBook /></div>
+              <div className="emptyStateIcon">📓</div>
               <h3 className="emptyStateTitle">Select a Program</h3>
               <p className="emptyStateText">Choose a program on the left to view and manage its sections.</p>
             </div>
