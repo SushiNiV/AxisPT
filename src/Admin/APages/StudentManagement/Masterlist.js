@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash, BiListCheck } from 'react-icons/bi';
 import Filter from '../../../Components/Filter';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
@@ -17,6 +17,8 @@ const ARCHIVE_REASON_OPTIONS = [
   'Deceased',
   'Others',
 ];
+
+
 
 const OTHERS = 'Others';
 
@@ -56,6 +58,8 @@ function Masterlist() {
   const hasActiveFilters =
     selectedProgram !== "" || selectedYearLevel !== "" || selectedStatus !== "";
 
+  const archiveSelectionRef = useRef({ category: '', other: '' });
+  
   useEffect(() => {
     if (isFilterOpen) {
       setTempProgram(selectedProgram);
@@ -257,6 +261,7 @@ function Masterlist() {
   const handleDelete = (student) => {
     const studentName = `${student.last_name}, ${student.first_name}`;
     resetArchiveReason();
+    archiveSelectionRef.current = { category: '', other: '' }; // reset live selection
 
     openConfirm({
       title: 'Delete Student Record',
@@ -271,15 +276,15 @@ function Masterlist() {
       variant: 'danger',
       confirmLabel: 'DELETE',
 
-      // Dropdown
       selectLabel: 'REASON FOR ARCHIVING',
       selectPlaceholder: 'Select a reason',
       selectValue: '',
       selectOptions: ARCHIVE_REASON_OPTIONS,
       selectRequired: true,
       onSelectChange: (value) => {
+        archiveSelectionRef.current.category = value;   // ← always current
+        if (value !== OTHERS) archiveSelectionRef.current.other = '';
         setArchiveReasonCategory(value);
-        if (value !== OTHERS) setArchiveReasonOther('');
         setConfirmState((s) => ({
           ...s,
           selectValue: value,
@@ -287,21 +292,25 @@ function Masterlist() {
         }));
       },
 
-      // Textarea (only when "Others")
       showInput: false,
       inputLabel: 'SPECIFY REASON',
       inputPlaceholder: 'Type the reason…',
       inputValue: '',
       inputRequired: true,
       onInputChange: (value) => {
+        archiveSelectionRef.current.other = value;       // ← always current
         setArchiveReasonOther(value);
         setConfirmState((s) => ({ ...s, inputValue: value }));
       },
 
       onConfirm: async () => {
-        const category = confirmState.selectValue;
-        const other = confirmState.inputValue || '';
+        const { category, other } = archiveSelectionRef.current; // ← live, not stale
         const finalReason = category === OTHERS ? other.trim() : category;
+
+        if (!finalReason) {
+          openAlert('Reason Required', 'Please select or specify a reason for archiving.', 'warning');
+          return;
+        }
 
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
