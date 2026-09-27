@@ -11,6 +11,7 @@ const studentController = require('../controllers/studentController');
 const documentController = require('../controllers/documentController');
 const academicController = require('../controllers/academicController');
 const programController = require('../controllers/programController');
+const sectionController = require('../controllers/sectionController');
 const courseController = require('../controllers/courseController');
 const facultyController = require('../controllers/facultyController');
 const historyController = require('../controllers/historyController');
@@ -96,19 +97,25 @@ router.delete('/courses/:id', verifyToken, courseController.deleteCourse);
 // ==========================================
 // FACULTY
 // ==========================================
+// ==========================================
+// FACULTY
+// ==========================================
 router.get('/faculties', verifyToken, facultyController.getFaculties);
-
+router.get('/users/:id', verifyToken, facultyController.getFacultyById);       
+router.post('/users', verifyToken, facultyController.addFaculty);             
+router.put('/users/:id', verifyToken, facultyController.updateFaculty);        
 // ==========================================
 // SECTION
 // ==========================================
-router.get('/sections', verifyToken, academicController.getSectionsByProgram);
-router.get('/sections/active', verifyToken, academicController.getActiveSectionsByProgram);
-router.get('/sections/all', verifyToken, academicController.getAllSectionsByProgram);
-router.post('/section-assignments', verifyToken, academicController.addSectionAssignment);
-router.delete('/section-assignments/:assignment_id', verifyToken, academicController.deleteSectionAssignment);
-router.post('/section-assignments/:assignment_id/restore', verifyToken, academicController.restoreSectionAssignment);
-router.get('/sections/by-program/:programId', verifyToken, academicController.getSectionsByProgramId);
-
+router.get('/sections', verifyToken, sectionController.getSectionsByProgram);
+router.get('/sections/active', verifyToken, sectionController.getActiveSectionsByProgram);
+router.get('/sections/all', verifyToken, sectionController.getAllSectionsByProgram);
+router.post('/section-assignments', verifyToken, sectionController.addSectionAssignment);
+router.delete('/section-assignments/:assignment_id', verifyToken, sectionController.deleteSectionAssignment);
+router.post('/section-assignments/:assignment_id/restore', verifyToken, sectionController.restoreSectionAssignment);
+router.put('/section-assignments/:assignment_id', verifyToken, sectionController.updateSectionAssignment);
+router.get('/sections/by-program/:programId', verifyToken, sectionController.getSectionsByProgramId);
+router.get('/sections/archived', verifyToken, sectionController.getArchivedSections);
 // ==========================================
 // HISTORY
 // ==========================================

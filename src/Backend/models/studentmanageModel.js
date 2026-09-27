@@ -11,6 +11,7 @@ class StudentManageModel {
     `);
     return res.rows[0] || { year_id: null, current_sem: null };
   }
+
   static async getMasterlist({ search = '', programId = null, includeArchived = false, limit = 100, offset = 0 }) {
     let query = `
       SELECT 
@@ -836,7 +837,38 @@ class StudentManageModel {
         ]);
 
         if (eduRes.rowCount === 0) {
-          throw new Error('No current enrollment row found for this student.');
+          // No active row — revive the most recent one (fixes legacy archived students)
+          const reviveRes = await client.query(`
+            UPDATE student_education SET
+              curriculum_id = COALESCE($1, curriculum_id),
+              year_level = COALESCE($2, year_level),
+              classification = COALESCE($3, classification),
+              year_id = COALESCE($4, year_id),
+              semester_id = COALESCE($5, semester_id),
+              assignment_id = CASE WHEN $6 THEN $7 ELSE assignment_id END,
+              is_current = true,
+              updated_at = NOW()
+            WHERE education_id = (
+              SELECT education_id FROM student_education
+              WHERE student_id = $8
+              ORDER BY education_id DESC
+              LIMIT 1
+            )
+            RETURNING education_id
+          `, [
+            curriculumId || null,
+            yearLevel ? String(yearLevel) : null,
+            data.classification || null,
+            sectionYearId,
+            sectionSemesterId,
+            sectionWasSent,
+            assignmentId,
+            studentId
+          ]);
+
+          if (reviveRes.rowCount === 0) {
+            throw new Error('No enrollment row found for this student.');
+          }
         }
       }
 
@@ -885,7 +917,8 @@ class StudentManageModel {
     `, [yearLevel ? String(yearLevel) : null, assignmentId, studentIds]);
     return result.rows.map(r => r.student_id);
   }
-     static async archive(studentId, { reason = null } = {}) {
+
+  static async archive(studentId, { reason = null } = {}) {
     const client = db.getClient ? await db.getClient() : db;
     const isDedicatedClient = Boolean(db.getClient);
 
@@ -915,11 +948,9 @@ class StudentManageModel {
         `, [userId]);
       }
 
-      await client.query(`
-        UPDATE student_education
-        SET is_current = false, updated_at = NOW()
-        WHERE student_id = $1 AND is_current = true
-      `, [studentId]);
+      // NOTE: We intentionally do NOT touch student_education here.
+      // Keeping is_current = true lets the archived list still resolve
+      // the student's program, year level, and section.
 
       if (isDedicatedClient) await client.query('COMMIT');
       return true;

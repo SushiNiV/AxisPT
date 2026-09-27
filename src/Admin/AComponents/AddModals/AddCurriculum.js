@@ -39,8 +39,8 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
     });
   };
 
-  const showSuccess = (title, message) => {
-    setSuccessState({ isOpen: true, title, message, variant: 'success' });
+  const showSuccess = (title, summary) => {
+    setSuccessState({ isOpen: true, title, summary, variant: 'success' });
   };
 
   const yearOptions = [];
@@ -224,7 +224,7 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
       <ConfirmationModal
         isOpen={successState.isOpen}
         title={successState.title}
-        message={successState.message}
+        summary={successState.summary}
         variant={successState.variant}
         isAlert={true}
         onConfirm={() => {

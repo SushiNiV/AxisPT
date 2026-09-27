@@ -44,8 +44,8 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
     });
   };
 
-  const showSuccess = (title, message) => {
-    setSuccessState({ isOpen: true, title, message, variant: 'success' });
+  const showSuccess = (title, summary) => {
+    setSuccessState({ isOpen: true, title, summary, variant: 'success' });
   };
 
   useEffect(() => {
@@ -72,24 +72,24 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (isEditMode && facultyToEdit) {
-      setFormData({
-        last_name: facultyToEdit.last_name || "",
-        first_name: facultyToEdit.first_name || "",
-        middle_name: facultyToEdit.middle_name || "",
-        suffix: facultyToEdit.suffix || "",
-        username: facultyToEdit.username || "",
-        email: facultyToEdit.email || "",
-        role_id: facultyToEdit.role_id || "",
-        designation_id: facultyToEdit.designation_id || "",
-        new_designation_name: "",
-        is_active: facultyToEdit.is_active !== undefined ? facultyToEdit.is_active : true
-      });
-      setIsActive(facultyToEdit.is_active !== undefined ? facultyToEdit.is_active : true);
-      setIsNewDesignation(false);
-    }
-  }, [isEditMode, facultyToEdit]);
+useEffect(() => {
+  if (isEditMode && facultyToEdit) {
+    setFormData({
+      last_name: facultyToEdit.last_name || "",
+      first_name: facultyToEdit.first_name || "",
+      middle_name: facultyToEdit.middle_name || "",
+      suffix: facultyToEdit.suffix || "",
+      username: facultyToEdit.username || "",
+      email: facultyToEdit.email || "",
+      role_id: facultyToEdit.role_id != null ? String(facultyToEdit.role_id) : "",
+      designation_id: facultyToEdit.designation_id != null ? String(facultyToEdit.designation_id) : "",
+      new_designation_name: "",
+      is_active: facultyToEdit.is_active !== undefined ? facultyToEdit.is_active : true
+    });
+    setIsActive(facultyToEdit.is_active !== undefined ? facultyToEdit.is_active : true);
+    setIsNewDesignation(false);
+  }
+}, [isEditMode, facultyToEdit]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -349,7 +349,7 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
       <ConfirmationModal
         isOpen={successState.isOpen}
         title={successState.title}
-        message={successState.message}
+        summary={successState.summary}
         variant={successState.variant}
         isAlert={true}
         onConfirm={() => {

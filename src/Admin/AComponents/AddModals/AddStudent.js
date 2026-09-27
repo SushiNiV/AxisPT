@@ -11,7 +11,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [programs, setPrograms] = useState([]);
   const [rawSections, setRawSections] = useState([]);
-  // ✅ Success modal state
+  const [confirmState, setConfirmState] = useState({ isOpen: false });
   const [successState, setSuccessState] = useState({ isOpen: false });
 
   const studentData = studentToEdit || initialData;
@@ -476,7 +476,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         setSuccessState({
           isOpen: true,
           title: isEditMode ? 'Student Updated' : 'Student Created',
-          message: isEditMode
+          summary: isEditMode
             ? 'The student record has been updated successfully.'
             : 'The student record has been created successfully.',
           variant: 'success',
@@ -980,10 +980,11 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
 
       </form>
 
-      {/* ✅ Success modal rendered on top of the form modal */}
+
       <ConfirmationModal
         isOpen={successState.isOpen}
         title={successState.title}
+        summary={successState.summary}
         message={successState.message}
         variant={successState.variant}
         isAlert={true}
@@ -995,6 +996,19 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
           setSuccessState({ isOpen: false });
           onSuccess();
         }}
+      />
+
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        confirmLabel={confirmState.confirmLabel}
+        cancelLabel={confirmState.cancelLabel}
+        isAlert={confirmState.isAlert}
+        loading={confirmState.loading}
+        onConfirm={confirmState.onConfirm}
+        onCancel={confirmState.onCancel}
       />
     </div>
   );

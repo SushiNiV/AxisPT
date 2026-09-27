@@ -1,0 +1,117 @@
+/* ==========================================================================
+   ConfirmationModal.css
+   Scoped styling for the reusable ConfirmationModal component.
+   ========================================================================== */
+
+/* ---- Container sizing: only shrink if the base is too big ---- */
+.modalContainer.confirmContainer {
+  max-width: 620px;
+  min-height: auto;  
+}
+
+/* ---- Body layout ---- */
+.confirmBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+/* ---- Icon ---- */
+.confirmIcon {
+  font-size: 5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center; 
+  justify-content: center;
+}
+
+/* ---- Summary (lead line) ---- */
+.confirmSummary {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #222;
+  line-height: 1.4;
+  max-width: 100%;
+}
+
+/* ---- Message (supporting text) ---- */
+.confirmMessage {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #c62828 ;
+  line-height: 1.5;
+  max-width: 100%;
+}
+
+/* ---- Optional input block ---- */
+.confirmInputBlock {
+  width: 100%;
+  text-align: left;
+  margin-top: 8px;
+}
+
+.confirmInputLabel {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #555;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  letter-spacing: 0.03em;
+}
+
+.confirmInputRequired {
+  color: #c62828;
+}
+
+/* ---- Textarea ---- */
+.confirmTextarea {
+  width: 100%;
+  resize: vertical;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.confirmTextarea:focus {
+  border-color: #ff5f5f;
+  box-shadow: 0 0 0 3px rgba(255, 95, 95, 0.1);
+}
+
+.confirmTextarea:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+/* ---- Select ---- */
+.confirmSelect {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  background-color: white;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.confirmSelect:focus {
+  border-color: #ff5f5f;
+  box-shadow: 0 0 0 3px rgba(255, 95, 95, 0.1);
+}
+
+.confirmSelect:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}

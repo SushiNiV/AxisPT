@@ -2,23 +2,37 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import '../../GlobalOverlay.css';
 import '../../GlobalForm.css';
-
+import './Confirmation.css';
 /**
  * Reusable confirmation / alert modal.
  *
  * Props:
  *   - isOpen:      boolean – show/hide
  *   - title:       string  – modal header text
- *   - summary:     ReactNode – optional large lead line (e.g. the question)
+ *   - summary:     ReactNode – optional large lead line
  *   - message:     string | ReactNode – smaller supporting text
- *   - children:    ReactNode – optional extra content below the message
- *   - variant:     'danger' | 'warning' | 'info' | 'success' – controls color + icon
- *   - confirmLabel: string – confirm button text (default: "CONFIRM")
- *   - cancelLabel:  string – cancel button text (default: "CANCEL")
- *   - isAlert:     boolean – if true, hides the cancel button (OK-only)
- *   - onConfirm:   () => void – called on confirm / OK
- *   - onCancel:    () => void – called on cancel / backdrop click
- *   - loading:     boolean – disables buttons and shows "Processing..."
+ *   - children:    ReactNode – optional extra content
+ *   - variant:     'danger' | 'warning' | 'info' | 'success'
+ *   - confirmLabel, cancelLabel: string
+ *   - isAlert:     boolean – hides cancel button
+ *   - onConfirm, onCancel: () => void
+ *   - loading:     boolean – disables buttons, shows "Processing..."
+ *
+ *   Dropdown (optional):
+ *   - selectLabel:       string
+ *   - selectPlaceholder: string
+ *   - selectValue:       string
+ *   - selectOptions:     string[]
+ *   - onSelectChange:    (value) => void
+ *   - selectRequired:    boolean
+ *
+ *   Textarea (optional):
+ *   - showInput:         boolean – render the textarea
+ *   - inputLabel:        string
+ *   - inputPlaceholder:  string
+ *   - inputValue:        string
+ *   - onInputChange:     (value) => void
+ *   - inputRequired:     boolean
  */
 function ConfirmationModal({
   isOpen,
@@ -33,6 +47,22 @@ function ConfirmationModal({
   onConfirm,
   onCancel,
   loading = false,
+
+  // Dropdown
+  selectLabel,
+  selectPlaceholder = 'Select an option',
+  selectValue,
+  selectOptions = [],
+  onSelectChange,
+  selectRequired = false,
+
+  // Textarea
+  showInput = false,
+  inputLabel,
+  inputPlaceholder,
+  inputValue,
+  onInputChange,
+  inputRequired = false,
 }) {
   if (!isOpen) return null;
 
@@ -49,16 +79,18 @@ function ConfirmationModal({
   const defaultConfirm = isAlert ? 'OK' : 'CONFIRM';
 
   const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget && !loading) {
-      onCancel?.();
-    }
+    if (e.target === e.currentTarget && !loading) onCancel?.();
   };
+
+  const confirmDisabled =
+    loading ||
+    (selectRequired && !selectValue) ||
+    (showInput && inputRequired && !(inputValue || '').trim());
 
   const modalContent = (
     <div className="modalOverlay" onClick={handleBackdropClick}>
       <div
-        className="modalContainer"
-        style={{ maxWidth: '460px' }}
+        className="modalContainer confirmContainer"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modalHeader">
@@ -76,58 +108,65 @@ function ConfirmationModal({
         </div>
 
         <div className="modalScrollArea">
-          <div
-            className="confirmBody"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              textAlign: 'center',
-              gap: '12px',
-              padding: '8px 0',
-            }}
-          >
-            <div
-              className="confirmIcon"
-              style={{
-                fontSize: '3rem',
-                lineHeight: 1,
-                color: config.color,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
+          <div className="confirmBody">
+            <div className="confirmIcon" style={{ color: config.color }}>
               {config.icon}
             </div>
 
-            {summary && (
-              <div
-                className="confirmSummary"
-                style={{
-                  fontSize: '1.05rem',
-                  fontWeight: 600,
-                  color: '#222',
-                  lineHeight: 1.4,
-                  maxWidth: '380px',
-                }}
-              >
-                {summary}
+            {summary && <div className="confirmSummary">{summary}</div>}
+
+            {message && <div className="confirmMessage">{message}</div>}
+
+            {/* ---- Optional dropdown ---- */}
+            {selectLabel && (
+              <div className="confirmInputBlock">
+                <label
+                  htmlFor="confirm-modal-select"
+                  className="confirmInputLabel"
+                >
+                  {selectLabel}
+                  {selectRequired && (
+                    <span className="confirmInputRequired"> *</span>
+                  )}
+                </label>
+                <select
+                  id="confirm-modal-select"
+                  className="confirmSelect"
+                  value={selectValue || ''}
+                  onChange={(e) => onSelectChange?.(e.target.value)}
+                  disabled={loading}
+                >
+                  <option value="">{selectPlaceholder}</option>
+                  {selectOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
 
-            {message && (
-              <div
-                className="confirmMessage"
-                style={{
-                  fontSize: '0.8rem',
-                  fontWeight: 400,
-                  color: '#666',
-                  lineHeight: 1.5,
-                  maxWidth: '380px',
-                }}
-              >
-                {message}
+            {/* ---- Optional textarea (e.g. "Others" specify) ---- */}
+            {showInput && (
+              <div className="confirmInputBlock">
+                <label
+                  htmlFor="confirm-modal-input"
+                  className="confirmInputLabel"
+                >
+                  {inputLabel}
+                  {inputRequired && (
+                    <span className="confirmInputRequired"> *</span>
+                  )}
+                </label>
+                <textarea
+                  id="confirm-modal-input"
+                  className="confirmTextarea"
+                  placeholder={inputPlaceholder}
+                  value={inputValue || ''}
+                  onChange={(e) => onInputChange?.(e.target.value)}
+                  disabled={loading}
+                  rows={3}
+                />
               </div>
             )}
 
@@ -150,7 +189,7 @@ function ConfirmationModal({
               className="submitBtn"
               style={{ backgroundColor: config.buttonColor }}
               onClick={onConfirm}
-              disabled={loading}
+              disabled={confirmDisabled}
             >
               {loading ? 'PROCESSING...' : (confirmLabel || defaultConfirm)}
             </button>

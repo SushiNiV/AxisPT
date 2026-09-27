@@ -9,6 +9,17 @@ import AddStudent from '../../AComponents/AddModals/AddStudent';
 import AddGrade from '../../AComponents/AddModals/AddGrade';
 import BulkStudent from '../../AComponents/BulkModals/BulkStudent';
 
+const ARCHIVE_REASON_OPTIONS = [
+  'Transferred out',
+  'Dropped',
+  'Graduated',
+  'Failed / Retained',
+  'Deceased',
+  'Others',
+];
+
+const OTHERS = 'Others';
+
 function Masterlist() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,8 +36,11 @@ function Masterlist() {
   const [showBulkEdit, setShowBulkEdit] = useState(false);
 
   const [viewingGradesFor, setViewingGradesFor] = useState(null);
-
   const [confirmState, setConfirmState] = useState({ isOpen: false });
+
+  const [archiveReason, setArchiveReason] = useState('');
+  const [archiveReasonCategory, setArchiveReasonCategory] = useState('');
+  const [archiveReasonOther, setArchiveReasonOther] = useState('');
 
   const [selectedProgram, setSelectedProgram] = useState("");
   const [selectedYearLevel, setSelectedYearLevel] = useState("");
@@ -39,7 +53,8 @@ function Masterlist() {
   const [yearLevelOptions] = useState(["1st Year", "2nd Year", "3rd Year", "4th Year"]);
   const [statusOptions] = useState(["None", "Warning", "Probationary 1", "Probationary 2"]);
 
-  const hasActiveFilters = selectedProgram !== "" || selectedYearLevel !== "" || selectedStatus !== "";
+  const hasActiveFilters =
+    selectedProgram !== "" || selectedYearLevel !== "" || selectedStatus !== "";
 
   useEffect(() => {
     if (isFilterOpen) {
@@ -118,8 +133,8 @@ function Masterlist() {
   };
 
   const filters = [
-    { name: "program",   label: "PROGRAM",           value: tempProgram,   options: programOptions,  placeholder: "ALL PROGRAMS" },
-    { name: "yearLevel", label: "YEAR LEVEL",        value: tempYearLevel, options: yearLevelOptions, placeholder: "ALL YEARS" },
+    { name: "program",   label: "PROGRAM",             value: tempProgram,   options: programOptions,  placeholder: "ALL PROGRAMS" },
+    { name: "yearLevel", label: "YEAR LEVEL",          value: tempYearLevel, options: yearLevelOptions, placeholder: "ALL YEARS" },
     { name: "status",    label: "PROBATIONARY STATUS", value: tempStatus,    options: statusOptions,   placeholder: "ALL STANDINGS" },
   ];
 
@@ -148,6 +163,11 @@ function Masterlist() {
     setCurrentPage(1);
   };
 
+  const resetArchiveReason = () => {
+    setArchiveReasonCategory('');
+    setArchiveReasonOther('');
+  };
+
   const filteredStudents = students.filter((std) => {
     const fullName = `${std.first_name} ${std.last_name}`.toLowerCase();
     const matchesSearch =
@@ -156,7 +176,8 @@ function Masterlist() {
       std.personal_email?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesProgram = !selectedProgram || std.program_name === selectedProgram;
-    const matchesYearLevel = !selectedYearLevel || std.year_level?.toString() === selectedYearLevel.charAt(0);
+    const matchesYearLevel =
+      !selectedYearLevel || std.year_level?.toString() === selectedYearLevel.charAt(0);
     const matchesStatus = !selectedStatus || std.academic_status === selectedStatus;
 
     return matchesSearch && matchesProgram && matchesYearLevel && matchesStatus;
@@ -235,23 +256,53 @@ function Masterlist() {
 
   const handleDelete = (student) => {
     const studentName = `${student.last_name}, ${student.first_name}`;
+    resetArchiveReason();
+
     openConfirm({
       title: 'Delete Student Record',
-      summary: (
-        <>Delete <strong>{studentName}</strong> ({student.student_number})?</>
-      ),
+      summary: <>Delete <strong>{studentName}</strong> ({student.student_number})?</>,
       message: (
-        <>
-          <span style={{ color: '#c62828', fontSize: '0.75rem' }}>
-            Their account will be deactivated and they will be hidden from the
-            default Masterlist. All their grades, enrollment history, and
-            personal records are preserved. You can restore them later.
-          </span>
-        </>
+        <span style={{ color: '#c62828', fontSize: '0.75rem' }}>
+          Their account will be deactivated and they will be hidden from the
+          default Masterlist. All their grades, enrollment history, and
+          personal records are preserved. You can restore them later.
+        </span>
       ),
       variant: 'danger',
       confirmLabel: 'DELETE',
+
+      // Dropdown
+      selectLabel: 'REASON FOR ARCHIVING',
+      selectPlaceholder: 'Select a reason',
+      selectValue: '',
+      selectOptions: ARCHIVE_REASON_OPTIONS,
+      selectRequired: true,
+      onSelectChange: (value) => {
+        setArchiveReasonCategory(value);
+        if (value !== OTHERS) setArchiveReasonOther('');
+        setConfirmState((s) => ({
+          ...s,
+          selectValue: value,
+          showInput: value === OTHERS,
+        }));
+      },
+
+      // Textarea (only when "Others")
+      showInput: false,
+      inputLabel: 'SPECIFY REASON',
+      inputPlaceholder: 'Type the reason…',
+      inputValue: '',
+      inputRequired: true,
+      onInputChange: (value) => {
+        setArchiveReasonOther(value);
+        setConfirmState((s) => ({ ...s, inputValue: value }));
+      },
+
       onConfirm: async () => {
+        const category = confirmState.selectValue;
+        const other = confirmState.inputValue || '';
+        const finalReason = category === OTHERS ? other.trim() : category;
+
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
           const token = sessionStorage.getItem('token');
@@ -261,25 +312,30 @@ function Masterlist() {
               method: 'DELETE',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                Authorization: `Bearer ${token}`,
               },
-              body: JSON.stringify({ reason: null })
+              body: JSON.stringify({ reason: finalReason }),
             }
           );
           const data = await response.json();
           setConfirmState({ isOpen: false });
+          resetArchiveReason();
           if (data.success) {
             fetchStudents();
           } else {
             openAlert('Delete Failed', data.message || 'Failed to delete student.', 'danger');
           }
         } catch (err) {
-          console.error("Error deleting student:", err);
+          console.error('Error deleting student:', err);
           setConfirmState({ isOpen: false });
+          resetArchiveReason();
           openAlert('Error', 'An unexpected error occurred.', 'danger');
         }
       },
-      onCancel: () => setConfirmState({ isOpen: false }),
+      onCancel: () => {
+        setConfirmState({ isOpen: false });
+        resetArchiveReason();
+      },
     });
   };
 
@@ -297,22 +353,30 @@ function Masterlist() {
   const clearSelection = () => setSelectedIds([]);
 
   const handleBulkDelete = () => {
+    setArchiveReason('');
     openConfirm({
       title: 'Delete Students',
-      summary: ( 
-        <>
-        Delete <strong>{selectedIds.length}</strong> selected student record(s)?
-        </>
-      ),
+      summary: <>Delete <strong>{selectedIds.length}</strong> selected student record(s)?</>,
       message: (
-        <>
+        <> 
+        <span>
           Their accounts will be deactivated and they will be hidden from the
           default Masterlist. All data is preserved and can be restored later.
+        </span>
         </>
       ),
       variant: 'danger',
       confirmLabel: 'DELETE',
+
+      inputLabel: 'REASON FOR ARCHIVING',
+      inputPlaceholder: 'e.g. Transferred out, dropped, graduated…',
+      inputValue: archiveReason,
+      onInputChange: setArchiveReason,
+      inputRequired: true,
+
       onConfirm: async () => {
+        const category = confirmState.selectValue;
+        const other = confirmState.inputValue || '';
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
           const token = sessionStorage.getItem('token');
@@ -320,12 +384,19 @@ function Masterlist() {
             `${process.env.REACT_APP_API_URL}/admin/students/batch-delete`,
             {
               method: 'DELETE',
-              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ studentIds: selectedIds }),
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                studentIds: selectedIds,
+                reason: (confirmState.inputValue || '').trim() || null,
+              }),
             }
           );
           const data = await response.json();
           setConfirmState({ isOpen: false });
+          setArchiveReason('');
           if (data.success) {
             clearSelection();
             fetchStudents();
@@ -334,12 +405,13 @@ function Masterlist() {
             openAlert('Delete Failed', data.message || 'Failed to delete selected students.', 'danger');
           }
         } catch (err) {
-          console.error("Error batch-deleting students:", err);
+          console.error('Error batch-deleting students:', err);
           setConfirmState({ isOpen: false });
+          setArchiveReason('');
           openAlert('Error', 'An unexpected error occurred.', 'danger');
         }
       },
-      onCancel: () => setConfirmState({ isOpen: false }),
+      onCancel: () => { setConfirmState({ isOpen: false }); setArchiveReason(''); },
     });
   };
 
@@ -415,6 +487,22 @@ function Masterlist() {
         loading={confirmState.loading}
         onConfirm={confirmState.onConfirm}
         onCancel={confirmState.onCancel}
+
+        /* Dropdown */
+        selectLabel={confirmState.selectLabel}
+        selectPlaceholder={confirmState.selectPlaceholder}
+        selectValue={confirmState.selectValue}
+        selectOptions={confirmState.selectOptions}
+        onSelectChange={confirmState.onSelectChange}
+        selectRequired={confirmState.selectRequired}
+
+        /* Textarea */
+        showInput={confirmState.showInput}
+        inputLabel={confirmState.inputLabel}
+        inputPlaceholder={confirmState.inputPlaceholder}
+        inputValue={confirmState.inputValue}
+        onInputChange={confirmState.onInputChange}
+        inputRequired={confirmState.inputRequired}
       />
 
       <div className="TopSection">
@@ -543,16 +631,15 @@ function Masterlist() {
                       <button className="tableEditBtn" onClick={() => handleViewGrades(std)}>
                         <BiListCheck /> Grades
                       </button>
-                      
-                        <>
-                          <button className="tableEditBtn" onClick={() => handleEdit(std)}>
-                            <BiPencil /> Edit
-                          </button>
-                          <button className="tableDeleteBtn" onClick={() => handleDelete(std)}>
-                            <BiTrash /> Delete
-                          </button>
-                        </>
-                      
+
+                      <>
+                        <button className="tableEditBtn" onClick={() => handleEdit(std)}>
+                          <BiPencil /> Edit
+                        </button>
+                        <button className="tableDeleteBtn" onClick={() => handleDelete(std)}>
+                          <BiTrash /> Delete
+                        </button>
+                      </>
                     </td>
                   </tr>
                 ))}

@@ -20,7 +20,7 @@ function AHeader({ user }) {
     if (path.startsWith('/admin/documents')) return 'Documents';
     if (path.startsWith('/admin/access-control')) return 'Access Control';
     if (path.startsWith('/admin/history')) return 'History';
-    
+    if (path.startsWith('/admin/archive')) return 'Archive';
     if (path.startsWith('/settings')) return 'Settings';
     return 'Administrator';
   };

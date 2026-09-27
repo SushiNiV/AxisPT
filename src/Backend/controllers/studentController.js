@@ -84,11 +84,14 @@ exports.deleteStudent = async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body || {};
+
+    console.log('[deleteStudent] id:', id, '| reason:', JSON.stringify(reason), '| body:', JSON.stringify(req.body));
+
     const userId = req.user.id;
     const ipAddress = getIpAddress(req);
     const userAgent = req.headers['user-agent'];
 
-    await StudentManageModel.archive(id);
+    await StudentManageModel.archive(id, { reason });
 
     await HistoryModel.log({
       userId, targetUserId: userId, tableName: 'students', recordId: Number(id),

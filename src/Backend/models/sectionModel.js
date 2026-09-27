@@ -85,6 +85,59 @@ class SectionModel {
     `, [assignmentId]);
     return result.rows[0] || null;
   }
+
+  static async getAllArchived() {
+  const result = await db.query(`
+    SELECT 
+      s.section_id, s.section_name,
+      p.program_id, p.program_abbr, p.program_name,
+      sa.assignment_id, sa.year_level, sa.semester_id, sem.semester_label,
+      sa.is_active,
+      ay.year_id, ay.year_label,
+      COUNT(DISTINCT se.student_id)::int AS student_count
+    FROM sections s
+    INNER JOIN section_assignments sa ON s.section_id = sa.section_id
+    INNER JOIN semester sem ON sa.semester_id = sem.semester_id
+    INNER JOIN academic_year ay ON sa.year_id = ay.year_id
+    INNER JOIN programs p ON s.program_id = p.program_id
+    LEFT JOIN student_education se ON sa.assignment_id = se.assignment_id
+    WHERE sa.is_active = false
+    GROUP BY 
+      s.section_id, s.section_name,
+      p.program_id, p.program_abbr, p.program_name,
+      sa.assignment_id, sa.year_level, sa.semester_id,
+      sa.is_active,
+      sem.semester_label, ay.year_id, ay.year_label
+    ORDER BY p.program_abbr ASC, sa.year_level ASC, sa.semester_id ASC, s.section_name ASC
+  `);
+  return result.rows;
 }
+
+static async updateAssignment(assignmentId, { yearId, semesterId, yearLevel, adviserId, isActive } = {}) {
+  const result = await db.query(`
+    UPDATE section_assignments
+    SET
+      year_id     = COALESCE($1, year_id),
+      semester_id = COALESCE($2, semester_id),
+      year_level  = COALESCE($3, year_level),
+      adviser_id  = $4,
+      is_active   = COALESCE($5, is_active),
+      updated_at  = NOW()
+    WHERE assignment_id = $6
+    RETURNING *
+  `, [
+    yearId ?? null,
+    semesterId ?? null,
+    yearLevel != null ? String(yearLevel) : null,
+    adviserId ?? null,
+    typeof isActive === 'boolean' ? isActive : null,
+    assignmentId,
+  ]);
+  return result.rows[0] || null;
+}
+
+}
+
+
 
 module.exports = SectionModel;

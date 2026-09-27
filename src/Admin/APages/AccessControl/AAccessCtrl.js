@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom';
 import ASubheader from '../../AComponents/ASubheader';
 import '../../../Global.css';
 
-function AGrades() {
+function AAccessCtrl() {
   const accessCtrlTabs = [
     {label: 'Manage People', path: '/admin/access-control/manage-people' },
     {label: 'Academic Year', path: '/admin/access-control/academic-year' },
@@ -17,4 +17,4 @@ function AGrades() {
   );
 }
 
-export default AGrades;
+export default AAccessCtrl;

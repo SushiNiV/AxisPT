@@ -45,8 +45,8 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
     });
   };
 
-  const showSuccess = (title, message) => {
-    setSuccessState({ isOpen: true, title, message, variant: 'success' });
+  const showSuccess = (title, summary) => {
+    setSuccessState({ isOpen: true, title, summary, variant: 'success' });
   };
 
   useEffect(() => {
@@ -266,7 +266,7 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
       <ConfirmationModal
         isOpen={successState.isOpen}
         title={successState.title}
-        message={successState.message}
+        summary={successState.summary}
         variant={successState.variant}
         isAlert={true}
         onConfirm={() => {

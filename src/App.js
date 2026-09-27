@@ -10,7 +10,7 @@ import ADashboard from './Admin/APages/Dashboard/ADashboard';
 
 import AStudentManage from './Admin/APages/StudentManagement/AStudentManage';
 import Masterlist from './Admin/APages/StudentManagement/Masterlist';
-import Archive from './Admin/APages/Archive';
+import Archive from './Admin/APages/Archived/AArchive';
 
 import AAcademics from './Admin/APages/ProgramManagement/AGrades';
 import AProgSec from './Admin/APages/ProgramManagement/AProgSec';
@@ -27,6 +27,11 @@ import AcadYear from './Admin/APages/AccessControl/AcadYear';
 import Curricula from './Admin/APages/AccessControl/Curricula';
 
 import AHistory from './Admin/APages/AHistory';
+
+import AArchive from './Admin/APages/Archived/AArchive';
+import ArchivedStudents from './Admin/APages/Archived/ArchivedStudents';
+import ArchivedPrograms from './Admin/APages/Archived/ArchivedPrograms';
+import ArchivedSections from './Admin/APages/Archived/ArchivedSections';
 
 import ProtectedRoute from './Components/ProtectedRoute';
 import ALayout from './Admin/AComponents/ALayout';
@@ -97,6 +102,15 @@ function AppContent() {
             </Route>
 
             <Route path="/admin/history" element={<AHistory />} />
+            
+            <Route path="/admin/archive" element={<AArchive />}>
+              <Route index element={<Navigate to="students" replace />} />
+              <Route path="students" element={<ArchivedStudents />} />
+              <Route path="programs" element={<ArchivedPrograms />} />
+              <Route path="sections" element={<ArchivedSections />} />
+            </Route>
+            
+
           </Route>
         </Route>
 

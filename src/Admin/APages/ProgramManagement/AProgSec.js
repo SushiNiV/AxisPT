@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash, BiRevision, BiBook
+  BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash, BiUndo, BiBook
 } from 'react-icons/bi';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import AddProgram from '../../AComponents/AddModals/AddProgram';
@@ -18,10 +18,6 @@ function AProgSec() {
   const [loadingSections, setLoadingSections] = useState(false);
   const [searchProgram, setSearchProgram] = useState('');
   const [searchSection, setSearchSection] = useState('');
-
-  const [showArchivedPrograms, setShowArchivedPrograms] = useState(false);
-  const [showArchivedSections, setShowArchivedSections] = useState(false);
-
   const [showAddProgram, setShowAddProgram] = useState(false);
   const [editingProgram, setEditingProgram] = useState(null);
 
@@ -61,10 +57,10 @@ function AProgSec() {
   const fetchPrograms = useCallback(async () => {
     setLoadingPrograms(true);
     try {
-      const qs = showArchivedPrograms ? '?includeArchived=true' : '';
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/admin/programs${qs}`, {
-        headers: { Authorization: `Bearer ${token()}` }
-      });
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}/admin/programs?includeArchived=true`,
+        { headers: { Authorization: `Bearer ${token()}` } }
+      );
       const data = await res.json();
       if (data.success) setPrograms(data.data);
     } catch (err) {
@@ -72,7 +68,7 @@ function AProgSec() {
     } finally {
       setLoadingPrograms(false);
     }
-  }, [showArchivedPrograms]);
+  }, []);
 
   useEffect(() => { fetchPrograms(); }, [fetchPrograms]);
 
@@ -88,9 +84,8 @@ function AProgSec() {
     if (!programId) { setSections([]); return; }
     setLoadingSections(true);
     try {
-      const qs = showArchivedSections ? '?includeArchived=true' : '';
       const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/admin/sections/by-program/${programId}${qs}`,
+        `${process.env.REACT_APP_API_URL}/admin/sections/by-program/${programId}?includeArchived=true`,
         { headers: { Authorization: `Bearer ${token()}` } }
       );
       const data = await res.json();
@@ -100,7 +95,7 @@ function AProgSec() {
     } finally {
       setLoadingSections(false);
     }
-  }, [showArchivedSections]);
+  }, []);
 
   useEffect(() => {
     if (selectedProgram) fetchSections(selectedProgram.program_id);
@@ -122,7 +117,7 @@ function AProgSec() {
     openConfirm({
       title: 'Archive Program',
       summary: <>Archive <strong>{program.program_name}</strong>?</>,
-      message: <>The program will be hidden from all pickers. Curricula, sections, and student records stay intact.</>,
+      message: <> <span style={{ color: '#c62828' }}>The program will be hidden from all pickers. Curricula, sections, and student records stay intact.</span></>,
       variant: 'danger',
       confirmLabel: 'ARCHIVE',
       onConfirm: async () => {
@@ -249,10 +244,15 @@ function AProgSec() {
     p.program_abbr?.toLowerCase().includes(searchProgram.toLowerCase())
   ), [programs, searchProgram]);
 
-  const filteredSections = useMemo(() => sections.filter(s =>
-    !searchSection ||
-    s.section_name?.toLowerCase().includes(searchSection.toLowerCase())
-  ), [sections, searchSection]);
+  const filteredSections = useMemo(() => {
+    const term = searchSection.toLowerCase();
+    return sections.filter(s =>
+      !term ||
+      s.section_name?.toLowerCase().includes(term) ||
+      s.year_level?.toLowerCase().includes(term) ||
+      s.semester_label?.toLowerCase().includes(term)
+    );
+  }, [sections, searchSection]);
 
   return (
     <div className="InnerContainer">
@@ -311,16 +311,6 @@ function AProgSec() {
             </button>
           </div>
 
-          <div className="ProgSidebarToggle">
-            <button
-              className={`SidebarToggleBtn ${showArchivedPrograms ? 'active' : ''}`}
-              onClick={() => setShowArchivedPrograms((v) => !v)}
-            >
-              <BiRevision />
-              {showArchivedPrograms ? 'Hide Archived' : 'Show Archived'}
-            </button>
-          </div>
-
           <ul className="ProgList">
             {loadingPrograms ? (
               <li className="ProgListItemEmpty">Loading…</li>
@@ -372,7 +362,7 @@ function AProgSec() {
                 <div className="ProgDetailActions">
                   {selectedProgram.program_status === false ? (
                     <button className="actionBtn restoreBtn" onClick={() => handleRestoreProgram(selectedProgram)}>
-                      <BiRevision /> Restore
+                      <BiUndo /> Restore
                     </button>
                   ) : (
                     <>
@@ -400,13 +390,6 @@ function AProgSec() {
                   {searchSection && <BiX className="ClearSearchIcon" onClick={() => setSearchSection('')} />}
                 </div>
                 <button
-                  className={`SidebarToggleBtn ${showArchivedSections ? 'active' : ''}`}
-                  onClick={() => setShowArchivedSections((v) => !v)}
-                >
-                  <BiRevision />
-                  {showArchivedSections ? 'Hide Archived' : 'Show Archived'}
-                </button>
-                <button
                   className="TopbarBtn"
                   onClick={() => { setEditingSection(null); setShowAddSection(true); }}
                   disabled={selectedProgram.program_status === false}
@@ -429,9 +412,19 @@ function AProgSec() {
                   </thead>
                   <tbody>
                     {loadingSections ? (
-                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: '#999' }}>Loading sections…</td></tr>
+                      <tr>
+                        <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                          Loading sections…
+                        </td>
+                      </tr>
                     ) : filteredSections.length === 0 ? (
-                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: '#999' }}>No sections {showArchivedSections ? '' : 'yet'}.</td></tr>
+                      <tr>
+                        <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                          {searchSection
+                            ? `No sections matching "${searchSection}"`
+                            : 'No sections yet. Click "Section" above to add one.'}
+                        </td>
+                      </tr>
                     ) : (
                       filteredSections.map((sec) => {
                         const archived = sec.is_active === false;
@@ -447,7 +440,7 @@ function AProgSec() {
                             <td className="tableActions">
                               {archived ? (
                                 <button className="tableEditBtn" onClick={() => handleRestoreSection(sec)}>
-                                  <BiRevision /> Restore
+                                  <BiUndo /> Restore
                                 </button>
                               ) : (
                                 <>

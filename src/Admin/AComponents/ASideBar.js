@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import cptLogo from '../../assets/cpt-logo.png';
-import { BiGridAlt, BiUser, BiBookAlt, BiGroup, BiBriefcase, BiCheckShield, BiFile, BiBell, BiHistory, BiSun, BiMoon, BiChevronLeft, BiChevronRight } from 'react-icons/bi';
+import { BiGridAlt, BiUser, BiBookAlt, BiGroup, BiBriefcase, BiCheckShield, BiFile, BiBell, BiHistory, BiArchive, BiSun, BiMoon, BiChevronLeft, BiChevronRight } from 'react-icons/bi';
 
 import '../../GlobalSidebar.css';
 import '../../Global.css';
@@ -73,7 +73,11 @@ function ASideBar() {
           <NavLink to="/admin/history" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiHistory className="linkIcon" /> {!isCollapsed && <span>History</span>}
           </NavLink>
-      </nav>
+
+          <NavLink to="/admin/archive" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+            <BiArchive className="linkIcon" /> {!isCollapsed && <span>Archive</span>}
+          </NavLink>
+        </nav>
 
       <div className="SidebarFooter">
         <div className='collapseBtnArea'>

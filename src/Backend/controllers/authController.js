@@ -189,59 +189,93 @@ exports.getDesignations = async (req, res) => {
 };
 
 exports.addUser = async (req, res) => {
-  const { last_name, first_name, middle_name, suffix, username, email, role_id, designation_id, new_designation_name, is_active } = req.body;
+  const {
+    last_name, first_name, middle_name, suffix,
+    username, email,
+    role_id, designation_id, new_designation_name,
+    is_active,
+  } = req.body;
+
   const client = db.getClient ? await db.getClient() : db;
+  const isDedicatedClient = Boolean(db.getClient);
 
   try {
-    if (db.getClient) await client.query('BEGIN');
+    if (isDedicatedClient) await client.query('BEGIN');
 
-    let finalDesignationId = designation_id;
-
-    if (new_designation_name) {
+    // 1. Resolve designation (existing or newly-typed)
+    let finalDesignationId = designation_id || null;
+    if (!finalDesignationId && new_designation_name) {
       const newDesignation = await client.query(`
         INSERT INTO designations (designation_name)
         VALUES ($1)
-        ON CONFLICT (designation_name) DO NOTHING
+        ON CONFLICT (designation_name) DO UPDATE
+          SET designation_name = EXCLUDED.designation_name
         RETURNING designation_id
       `, [new_designation_name]);
-
-      if (newDesignation.rows.length > 0) {
-        finalDesignationId = newDesignation.rows[0].designation_id;
-      } else {
-        const existingDesignation = await client.query(`
-          SELECT designation_id FROM designations WHERE designation_name = $1
-        `, [new_designation_name]);
-        finalDesignationId = existingDesignation.rows[0]?.designation_id;
-      }
+      finalDesignationId = newDesignation.rows[0].designation_id;
     }
 
-    const plainPassword = `axis-cpt-${last_name.toLowerCase()}`;
+    // 2. Generate + hash temporary password
+    const safeLast = (last_name || 'user').toLowerCase();
+    const plainPassword = `axis-cpt-${safeLast}`;
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
+    // 3. Create user
     const userResult = await client.query(`
       INSERT INTO users (username, password_hash, school_email, is_active, changed_pass)
       VALUES ($1, $2, $3, $4, false)
       RETURNING user_id
-    `, [username, hashedPassword, email, is_active]);
-
+    `, [
+      username,
+      hashedPassword,
+      email,
+      Boolean(is_active),
+    ]);
     const newUserId = userResult.rows[0].user_id;
 
-    await client.query(`INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`, [newUserId, role_id]);
-
+    // 4. Assign role
     await client.query(`
-      INSERT INTO faculties (user_id, last_name, first_name, middle_name, suffix, designation, account_status)
+      INSERT INTO user_roles (user_id, role_id)
+      VALUES ($1, $2)
+      ON CONFLICT DO NOTHING
+    `, [newUserId, role_id]);
+
+    // 5. Create faculty record
+    await client.query(`
+      INSERT INTO faculties (
+        user_id, last_name, first_name, middle_name, suffix,
+        designation, account_status
+      )
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [newUserId, last_name, first_name, middle_name || null, suffix || null, finalDesignationId, is_active]);
+    `, [
+      newUserId,
+      last_name,
+      first_name,
+      middle_name || null,
+      suffix || null,
+      finalDesignationId,
+      Boolean(is_active),
+    ]);
 
-    if (db.getClient) await client.query('COMMIT');
+    if (isDedicatedClient) await client.query('COMMIT');
 
-    res.json({ success: true, message: "User created successfully", password: plainPassword });
+    res.json({
+      success: true,
+      message: 'User created successfully',
+      password: plainPassword,
+    });
 
   } catch (error) {
-    if (db.getClient) await client.query('ROLLBACK');
+    if (isDedicatedClient) await client.query('ROLLBACK');
     console.error("Error creating user:", error);
+    if (error.code === '23505') {
+      return res.status(400).json({
+        success: false,
+        message: 'Username or email already exists.',
+      });
+    }
     res.status(500).json({ success: false, message: "Internal server error." });
   } finally {
-    if (db.getClient && client.release) client.release();
+    if (isDedicatedClient && client.release) client.release();
   }
 };

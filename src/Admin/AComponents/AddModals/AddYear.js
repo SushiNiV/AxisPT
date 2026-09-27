@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import ReactDOM from 'react-dom';
+import ConfirmationModal from '../ConfirmationModal';
 import '../../../GlobalForm.css';
 import '../../../GlobalOverlay.css';
 import '../../../Global.css';
@@ -25,7 +26,12 @@ function AddYear({ onClose, onSuccess, yearToEdit = null }) {
   const [isActive, setIsActive] = useState(initialIsActive);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [portalRoot, setPortalRoot] = useState(document.getElementById('portal-root') || document.body);
-
+  const [confirmState, setConfirmState] = useState({ isOpen: false });
+  const [successState, setSuccessState] = useState({ isOpen: false });
+  
+  const showSuccess = (title, summary) => {
+    setSuccessState({ isOpen: true, title, summary, variant: 'success' });
+  };
   useEffect(() => {
     if (isEditMode && yearToEdit.year_label) {
       const [start, end] = yearToEdit.year_label.split('-');
@@ -80,16 +86,12 @@ function AddYear({ onClose, onSuccess, yearToEdit = null }) {
       const data = await response.json();
 
       if (data.success) {
-        if (isEditMode) {
-          alert("Academic year updated successfully!");
-        } else {
-          const termType = getTermType(startYear);
-          alert(isActive 
-            ? "Academic year created and set as active!" 
-            : `Academic year created as ${termType}.`
-          );
-        }
-        onSuccess();
+        showSuccess(
+          isEditMode ? 'Program Updated' : 'Program Created',
+          isEditMode
+            ? 'The program has been updated successfully.'
+            : 'The program has been created successfully.'
+        );
       } else {
         alert(data.message || (isEditMode ? "Failed to update academic year." : "Failed to create academic year."));
       }
@@ -161,6 +163,33 @@ function AddYear({ onClose, onSuccess, yearToEdit = null }) {
           </div>
         </div>
       </div>
+      
+      <ConfirmationModal
+        isOpen={successState.isOpen}
+        title={successState.title}
+        summary={successState.summary}
+        variant={successState.variant}
+        isAlert={true}
+        onConfirm={() => {
+          setSuccessState({ isOpen: false });
+          onSuccess();
+        }}
+        onCancel={() => {
+          setSuccessState({ isOpen: false });
+          onSuccess();
+        }}
+      />
+
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        isAlert={confirmState.isAlert}
+        onConfirm={confirmState.onConfirm}
+        onCancel={confirmState.onCancel}
+      />
+
     </div>
   );
 
