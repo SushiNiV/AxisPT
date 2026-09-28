@@ -16,6 +16,7 @@ const courseController = require('../controllers/courseController');
 const facultyController = require('../controllers/facultyController');
 const historyController = require('../controllers/historyController');
 const gradeController = require('../controllers/gradeController');
+const assistantController = require('../controllers/assistantController');
 
 // ==========================================
 // AUTH & USER MANAGEMENT
@@ -27,6 +28,12 @@ router.get('/designations', verifyToken, authController.getDesignations);
 
 router.post('/login', authController.login);
 router.post('/change-password', verifyToken, authController.changePassword);
+
+//===========================================
+// AI
+//===========================================
+
+router.post('/assistant/ask', assistantController.ask);
 
 // ==========================================
 // DASHBOARD
@@ -97,13 +104,11 @@ router.delete('/courses/:id', verifyToken, courseController.deleteCourse);
 // ==========================================
 // FACULTY
 // ==========================================
-// ==========================================
-// FACULTY
-// ==========================================
 router.get('/faculties', verifyToken, facultyController.getFaculties);
 router.get('/users/:id', verifyToken, facultyController.getFacultyById);       
 router.post('/users', verifyToken, facultyController.addFaculty);             
-router.put('/users/:id', verifyToken, facultyController.updateFaculty);        
+router.put('/users/:id', verifyToken, facultyController.updateFaculty);  
+
 // ==========================================
 // SECTION
 // ==========================================
@@ -116,6 +121,7 @@ router.post('/section-assignments/:assignment_id/restore', verifyToken, sectionC
 router.put('/section-assignments/:assignment_id', verifyToken, sectionController.updateSectionAssignment);
 router.get('/sections/by-program/:programId', verifyToken, sectionController.getSectionsByProgramId);
 router.get('/sections/archived', verifyToken, sectionController.getArchivedSections);
+
 // ==========================================
 // HISTORY
 // ==========================================
