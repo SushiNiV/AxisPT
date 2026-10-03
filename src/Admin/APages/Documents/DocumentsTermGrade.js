@@ -55,7 +55,7 @@ function DocumentsTermGrade() {
 
   const fetchPrograms = useCallback(async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -72,7 +72,7 @@ function DocumentsTermGrade() {
     setLoading(true);
     setError(null);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/students`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -110,7 +110,7 @@ function DocumentsTermGrade() {
 
     const fetchPeriods = async () => {
       try {
-        const token = sessionStorage.getItem('token');
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
         const response = await fetch(
           `${process.env.REACT_APP_API_URL}/admin/students/${selectedStudentId}/grades`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -139,7 +139,7 @@ function DocumentsTermGrade() {
       setGradeLoading(true);
       setGradeError(null);
       try {
-        const token = sessionStorage.getItem('token');
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
         const params = new URLSearchParams();
         if (selectedYearLevel) params.set('yearLevel', selectedYearLevel);
         if (selectedSemesterId) params.set('semesterId', selectedSemesterId);
@@ -257,7 +257,7 @@ function DocumentsTermGrade() {
     setPrintError(null);
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
 
       // Build query string with the current period selection
       const params = new URLSearchParams();

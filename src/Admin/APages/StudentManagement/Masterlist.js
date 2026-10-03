@@ -70,7 +70,7 @@ function Masterlist() {
 
   const fetchPrograms = useCallback(async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -87,7 +87,7 @@ function Masterlist() {
     setLoading(true);
     setError(null);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/students`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -226,7 +226,7 @@ function Masterlist() {
 
   const handleEdit = async (student) => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/admin/students/${student.student_id}`,
         { headers: { 'Authorization': `Bearer ${token}` } }
@@ -314,7 +314,7 @@ function Masterlist() {
 
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
-          const token = sessionStorage.getItem('token');
+          const token = sessionStorage.getItem('token') || localStorage.getItem('token');
           const response = await fetch(
             `${process.env.REACT_APP_API_URL}/admin/students/${student.student_id}`,
             {
@@ -388,7 +388,7 @@ function Masterlist() {
         const other = confirmState.inputValue || '';
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
-          const token = sessionStorage.getItem('token');
+          const token = sessionStorage.getItem('token') || localStorage.getItem('token');
           const response = await fetch(
             `${process.env.REACT_APP_API_URL}/admin/students/batch-delete`,
             {

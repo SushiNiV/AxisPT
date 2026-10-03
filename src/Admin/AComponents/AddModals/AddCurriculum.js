@@ -51,7 +51,7 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
   useEffect(() => {
     const fetchPrograms = async () => {
       try {
-        const token = sessionStorage.getItem('token');
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
         const res = await fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -96,7 +96,7 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
     setIsSubmitting(true);
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const url = isEditMode
         ? `${process.env.REACT_APP_API_URL}/admin/curricula/${curriculumToEdit.curriculum_id}`
         : `${process.env.REACT_APP_API_URL}/admin/curricula`;

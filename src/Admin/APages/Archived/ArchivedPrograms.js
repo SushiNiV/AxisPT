@@ -42,7 +42,7 @@ function ArchivedPrograms() {
     setLoading(true);
     setError(null);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const res = await fetch(
         `${process.env.REACT_APP_API_URL}/admin/programs?mode=archived`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -79,7 +79,7 @@ function ArchivedPrograms() {
       onConfirm: async () => {
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
-          const token = sessionStorage.getItem('token');
+          const token = sessionStorage.getItem('token') || localStorage.getItem('token');
           const res = await fetch(
             `${process.env.REACT_APP_API_URL}/admin/programs/${program.program_id}/restore`,
             { method: 'POST', headers: { Authorization: `Bearer ${token}` } }

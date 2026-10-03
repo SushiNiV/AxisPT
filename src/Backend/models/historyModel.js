@@ -1,99 +1,53 @@
 const db = require('../config/db');
 
 const HistoryModel = {
-  async log({ 
-    userId,
-    targetUserId,
-    tableName,
-    recordId,
-    action,
-    oldValues = null,
-    newValues = null,
-    ipAddress = null,
-    userAgent = null
-  }) {
-    const query = `
-      INSERT INTO history_logs 
-      (user_id, target_user_id, table_name, record_id, action, old_values, new_values, ip_address, user_agent, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-      RETURNING id
-    `;
-    
-    const values = [userId, targetUserId, tableName, recordId, action, oldValues, newValues, ipAddress, userAgent];
-    
-    try {
-      const result = await db.query(query, values);
-      return result.rows[0];
-    } catch (err) {
-      console.error("Error adding history log:", err);
-      throw err;
-    }
-  },
+  async log({
+  userId = null,
+  targetUserId = null,
+  tableName = null,
+  recordId = null,
+  action = null,
+  oldValues = null,
+  newValues = null,
+  ipAddress = null,
+  userAgent = null
+}) {
+  const query = `
+    INSERT INTO history_logs
+    (user_id, target_user_id, table_name, record_id, action,
+     old_values, new_values, ip_address, user_agent, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+    RETURNING id
+  `;
 
-  async getHistoryLogs({ limit = 100, offset = 0, userId = null, action = null }) {
-    let query = `
-      SELECT 
-        h.id,
-        h.user_id,
-        h.target_user_id,
-        h.table_name,
-        h.record_id,
-        h.action,
-        h.old_values,
-        h.new_values,
-        h.ip_address,
-        h.user_agent,
-        h.created_at,
-        u.username as user_name,
-        tu.username as target_user_name,
-        f.first_name,
-        f.last_name,
-        d.designation_name,
-        STRING_AGG(DISTINCT r.role_name, ',') as roles
-      FROM history_logs h
-      LEFT JOIN users u ON h.user_id = u.user_id
-      LEFT JOIN users tu ON h.target_user_id = tu.user_id
-      LEFT JOIN faculties f ON u.user_id = f.user_id
-      LEFT JOIN designations d ON f.designation = d.designation_id
-      LEFT JOIN user_roles ur ON u.user_id = ur.user_id
-      LEFT JOIN roles r ON ur.role_id = r.role_id
-      WHERE 1=1
-    `;
-
-    const values = [];
-    let paramIndex = 1;
-
-    if (userId) {
-      query += ` AND (h.user_id = $${paramIndex} OR h.target_user_id = $${paramIndex})`;
-      values.push(userId);
-      paramIndex++;
-    }
-
-    if (action) {
-      query += ` AND h.action = $${paramIndex}`;
-      values.push(action);
-      paramIndex++;
-    }
-
-    query += ` 
-      GROUP BY 
-        h.id, h.user_id, h.target_user_id, h.table_name, h.record_id, 
-        h.action, h.ip_address, h.user_agent, h.created_at,
-        u.username, tu.username, f.first_name, f.last_name, d.designation_name
-      ORDER BY h.created_at DESC 
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-    `;
-
-    values.push(limit, offset);
-
-    try {
-      const result = await db.query(query, values);
-      return result.rows;
-    } catch (err) {
-      console.error("Error fetching history logs:", err);
-      throw err;
-    }
+  // Sanitize IPv6-mapped IPv4 for inet columns
+  let safeIp = ipAddress;
+  if (typeof safeIp === 'string') {
+    if (safeIp.startsWith('::ffff:')) safeIp = safeIp.slice(7);
+    if (safeIp === '::1') safeIp = '127.0.0.1';
   }
+
+  const values = [
+    userId, targetUserId, tableName, recordId, action,
+    oldValues, newValues, safeIp, userAgent
+  ];
+
+  try {
+    const result = await db.query(query, values);
+    return result.rows[0];
+  } catch (err) {
+    // NEVER throw — logging must not break the caller
+    console.error('HistoryModel.log failed (non-fatal):', {
+      message: err.message,
+      code: err.code,
+      detail: err.detail,
+      action,
+      userId,
+      targetUserId
+    });
+    return null;
+  }
+}
 };
 
 module.exports = HistoryModel;

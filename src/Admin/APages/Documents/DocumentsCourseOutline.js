@@ -44,7 +44,7 @@ useEffect(() => {
     setLoading(true);
     setError(null);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const [programsRes, studentsRes] = await Promise.all([
         fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -79,7 +79,7 @@ useEffect(() => {
       setOutlineLoading(true);
       setOutlineError(null);
       try {
-        const token = sessionStorage.getItem('token');
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
         const response = await fetch(
           `${process.env.REACT_APP_API_URL}/admin/course-outline/${selectedStudentId}`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -119,7 +119,7 @@ useEffect(() => {
     setIsPreparingPrint(true);
     setPrintError(null);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const forms = await Promise.all(selectedIds.map(async (studentId) => {
         const response = await fetch(
           `${process.env.REACT_APP_API_URL}/admin/course-outline/${studentId}`,

@@ -72,7 +72,7 @@
     // --- Fetch data on mount ---
     useEffect(() => {
       const fetchData = async () => {
-        const token = sessionStorage.getItem('token');
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
         const headers = { Authorization: `Bearer ${token}` };
         try {
           const [programsRes, curriculaRes, coursesRes] = await Promise.all([
@@ -106,7 +106,7 @@
 
         const fetchFullCourse = async () => {
           try {
-            const token = sessionStorage.getItem('token');
+            const token = sessionStorage.getItem('token') || localStorage.getItem('token');
             const response = await fetch(
               `${process.env.REACT_APP_API_URL}/admin/courses/${courseToEdit.course_id}`,
               { headers: { Authorization: `Bearer ${token}` } }
@@ -287,7 +287,7 @@ const handleSubmit = async () => {
   setIsSubmitting(true);
 
   try {
-    const token = sessionStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     const url = isEditMode
       ? `${process.env.REACT_APP_API_URL}/admin/courses/${courseToEdit.course_id}`
       : `${process.env.REACT_APP_API_URL}/admin/courses`;

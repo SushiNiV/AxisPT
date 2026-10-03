@@ -105,7 +105,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
       setError(null);
 
       try {
-        const token = sessionStorage.getItem('token');
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
 
         const [sheetRes, coursesRes] = await Promise.all([
           fetch(`${process.env.REACT_APP_API_URL}/admin/students/${studentId}/grades`, {
@@ -354,7 +354,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   const submitGrades = async (entries) => {
     setIsSubmitting(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/admin/students/${studentId}/grades`,
         {

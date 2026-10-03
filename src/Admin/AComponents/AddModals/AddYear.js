@@ -64,7 +64,7 @@ function AddYear({ onClose, onSuccess, yearToEdit = null }) {
     setIsSubmitting(true);
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const url = isEditMode 
         ? `${process.env.REACT_APP_API_URL}/admin/academic-years/${yearToEdit.year_id}`
         : `${process.env.REACT_APP_API_URL}/admin/academic-years`;

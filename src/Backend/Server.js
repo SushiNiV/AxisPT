@@ -5,13 +5,27 @@ require('dotenv').config();
 const adminRoutes = require('./routes/adminRoutes');
 
 const helmet = require('helmet');
-const compression = require('compression')
+const compression = require('compression');
 
 const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(helmet()); 
+
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginOpenerPolicy: { policy: 'unsafe-none' },
+  crossOriginEmbedderPolicy: false,
+}));
+
 app.use(compression());
+
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
+}));
+
+// 4. Body parser
+app.use(express.json());
 
 const logRoutes = (prefix, router) => {
   if (!router || !router.stack) return;

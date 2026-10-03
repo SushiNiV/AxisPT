@@ -120,7 +120,7 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
     setIsSubmitting(true);
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const url = isEditMode
         ? `${process.env.REACT_APP_API_URL}/admin/programs/${programToEdit.program_id}`
         : `${process.env.REACT_APP_API_URL}/admin/programs`;
@@ -262,7 +262,6 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
         </div>
       </div>
 
-      {/* Success modal */}
       <ConfirmationModal
         isOpen={successState.isOpen}
         title={successState.title}
@@ -279,7 +278,6 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
         }}
       />
 
-      {/* Alert / error modal */}
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}

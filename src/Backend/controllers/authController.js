@@ -17,17 +17,41 @@ exports.login = async (req, res) => {
   const ipAddress = getIpAddress(req);
   const userAgent = req.headers['user-agent'];
 
+  const safeLog = async (payload) => {
+    try {
+      await HistoryModel.log(payload);
+    } catch (e) {
+      console.error('Login history log failed (non-fatal):', e.message);
+    }
+  };
+
   try {
     const admin = await AdminModel.findByUsername(username);
 
     if (!admin) {
-      await HistoryModel.log({
+      await safeLog({
         userId: null, targetUserId: null, tableName: 'users', recordId: null,
         action: 'Login Failed', oldValues: null,
         newValues: { username, reason: 'User not found', timestamp: new Date().toISOString() },
         ipAddress, userAgent
       });
-      return res.status(404).json({ success: false, message: "Access denied. Invalid credentials." });
+      return res.status(401).json({ success: false, message: 'Invalid Username or Password.' });
+    }
+
+    const isBcrypt = admin.password_hash &&
+      (admin.password_hash.startsWith('$2b$') || admin.password_hash.startsWith('$2a$'));
+    const isMatch = isBcrypt
+      ? await bcrypt.compare(password, admin.password_hash)
+      : (password === admin.password_hash);
+
+    if (!isMatch) {
+      await safeLog({
+        userId: admin.user_id, targetUserId: admin.user_id, tableName: 'users', recordId: admin.user_id,
+        action: 'Login Failed', oldValues: null,
+        newValues: { username, reason: 'Invalid password', timestamp: new Date().toISOString() },
+        ipAddress, userAgent
+      });
+      return res.status(401).json({ success: false, message: 'Invalid Username or Password.' });
     }
 
     const rolesArray = Array.isArray(admin.roles)
@@ -39,75 +63,80 @@ exports.login = async (req, res) => {
     );
 
     if (!admin.is_active) {
-      await HistoryModel.log({
+      await safeLog({
         userId: admin.user_id, targetUserId: admin.user_id, tableName: 'users', recordId: admin.user_id,
         action: 'Login Failed', oldValues: null,
         newValues: { username, reason: 'Account deactivated', timestamp: new Date().toISOString() },
         ipAddress, userAgent
       });
-      return res.status(401).json({ success: false, message: "Account is deactivated. Please contact administrator." });
+      return res.status(403).json({
+        success: false,
+        message: 'Account is deactivated. Please contact administrator.'
+      });
     }
 
     if (!hasAdminRole && !admin.faculty_status) {
-      await HistoryModel.log({
+      await safeLog({
         userId: admin.user_id, targetUserId: admin.user_id, tableName: 'users', recordId: admin.user_id,
         action: 'Login Failed', oldValues: null,
         newValues: { username, reason: 'No active faculty record', timestamp: new Date().toISOString() },
         ipAddress, userAgent
       });
-      return res.status(401).json({ success: false, message: "Access denied. Faculty account not active." });
-    }
-
-    const isBcrypt = admin.password_hash && (admin.password_hash.startsWith('$2b$') || admin.password_hash.startsWith('$2a$'));
-    const isMatch = isBcrypt ? await bcrypt.compare(password, admin.password_hash) : (password === admin.password_hash);
-
-    if (!isMatch) {
-      await HistoryModel.log({
-        userId: admin.user_id, targetUserId: admin.user_id, tableName: 'users', recordId: admin.user_id,
-        action: 'Login Failed', oldValues: null,
-        newValues: { username, reason: 'Invalid password', timestamp: new Date().toISOString() },
-        ipAddress, userAgent
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Faculty account not active.'
       });
-      return res.status(401).json({ success: false, message: "Invalid credentials." });
     }
 
-    const expiresIn = rememberMe ? '7d' : '2h';
+    const wantsRemember = rememberMe === true || rememberMe === 'true';
+    const expiresIn = wantsRemember ? '7d' : '2h';
+
     const token = jwt.sign(
-      { id: admin.user_id, role: admin.roles, designation: admin.designation_name, faculty_id: admin.faculty_id },
-      process.env.JWT_SECRET, { expiresIn }
+      {
+        id: admin.user_id,
+        role: admin.roles,
+        designation: admin.designation_name,
+        faculty_id: admin.faculty_id
+      },
+      process.env.JWT_SECRET,
+      { expiresIn }
     );
 
     await AdminModel.updateLastLogin(admin.user_id);
 
-    await HistoryModel.log({
+    await safeLog({
       userId: admin.user_id, targetUserId: admin.user_id, tableName: 'users', recordId: admin.user_id,
       action: 'Login Success', oldValues: null,
       newValues: {
-        username: admin.username, role: admin.roles, designation: admin.designation_name,
-        rememberMe, timestamp: new Date().toISOString()
+        username: admin.username,
+        role: admin.roles,
+        designation: admin.designation_name,
+        rememberMe: wantsRemember,
+        timestamp: new Date().toISOString()
       },
       ipAddress, userAgent
     });
 
     res.json({
-      success: true, token, employeeID: admin.username, firstName: admin.first_name,
-      role: admin.roles, designation: admin.designation_name,
+      success: true,
+      token,
+      username: admin.username,
+      employeeID: admin.username,
+      firstName: admin.first_name,
+      role: admin.roles,
+      designation: admin.designation_name,
       mustChangePassword: admin.changed_pass === false
     });
 
   } catch (err) {
-    console.error("Login error:", err);
-    try {
-      await HistoryModel.log({
-        userId: null, targetUserId: null, tableName: 'users', recordId: null,
-        action: 'Login Error', oldValues: null,
-        newValues: { username, error: err.message, timestamp: new Date().toISOString() },
-        ipAddress, userAgent
-      });
-    } catch (historyErr) {
-      console.error("Failed to log login error:", historyErr);
-    }
-    res.status(500).json({ success: false, message: "Internal Server Error" });
+    console.error('Login error:', err);
+    await safeLog({
+      userId: null, targetUserId: null, tableName: 'users', recordId: null,
+      action: 'Login Error', oldValues: null,
+      newValues: { username, error: err.message, timestamp: new Date().toISOString() },
+      ipAddress, userAgent
+    });
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 };
 
@@ -119,10 +148,13 @@ exports.changePassword = async (req, res) => {
 
   try {
     const admin = await AdminModel.findById(userId);
-    if (!admin) return res.status(404).json({ success: false, message: "Admin user not found." });
+    if (!admin) return res.status(404).json({ success: false, message: 'Admin user not found.' });
 
-    const isBcrypt = admin.password_hash && (admin.password_hash.startsWith('$2b$') || admin.password_hash.startsWith('$2a$'));
-    const isValid = isBcrypt ? await bcrypt.compare(currentPassword, admin.password_hash) : (currentPassword === admin.password_hash);
+    const isBcrypt = admin.password_hash &&
+      (admin.password_hash.startsWith('$2b$') || admin.password_hash.startsWith('$2a$'));
+    const isValid = isBcrypt
+      ? await bcrypt.compare(currentPassword, admin.password_hash)
+      : (currentPassword === admin.password_hash);
 
     if (!isValid) {
       await HistoryModel.log({
@@ -131,16 +163,16 @@ exports.changePassword = async (req, res) => {
         newValues: { reason: 'Current password is incorrect', timestamp: new Date().toISOString() },
         ipAddress, userAgent
       });
-      return res.status(401).json({ success: false, message: "Current password is incorrect." });
+      return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
     }
 
     if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({ success: false, message: "New password must be at least 8 characters long." });
+      return res.status(400).json({ success: false, message: 'New password must be at least 8 characters long.' });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     const updated = await AdminModel.updatePassword(userId, hashedPassword);
-    if (!updated) return res.status(500).json({ success: false, message: "Failed to update password." });
+    if (!updated) return res.status(500).json({ success: false, message: 'Failed to update password.' });
 
     await HistoryModel.log({
       userId: admin.user_id, targetUserId: admin.user_id, tableName: 'users', recordId: admin.user_id,
@@ -149,11 +181,11 @@ exports.changePassword = async (req, res) => {
       ipAddress, userAgent
     });
 
-    res.json({ success: true, message: "Password changed successfully. Please login again." });
+    res.json({ success: true, message: 'Password changed successfully. Please login again.' });
 
   } catch (err) {
-    console.error("Change password error:", err);
-    res.status(500).json({ success: false, message: "Internal Server Error" });
+    console.error('Change password error:', err);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 };
 
@@ -162,8 +194,8 @@ exports.getUsers = async (req, res) => {
     const users = await UserModel.getAllUsers();
     res.json({ success: true, data: users });
   } catch (error) {
-    console.error("Error fetching users:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
+    console.error('Error fetching users:', error);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 };
 
@@ -173,8 +205,8 @@ exports.getRoles = async (req, res) => {
     const filteredRoles = roles.filter(role => role.role_name.toUpperCase() !== 'STUDENT');
     res.json({ success: true, data: filteredRoles });
   } catch (error) {
-    console.error("Error fetching roles:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
+    console.error('Error fetching roles:', error);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 };
 
@@ -183,8 +215,8 @@ exports.getDesignations = async (req, res) => {
     const designations = await UserModel.getAllDesignations();
     res.json({ success: true, data: designations });
   } catch (error) {
-    console.error("Error fetching designations:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
+    console.error('Error fetching designations:', error);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 };
 
@@ -196,13 +228,11 @@ exports.addUser = async (req, res) => {
     is_active,
   } = req.body;
 
-  const client = db.getClient ? await db.getClient() : db;
-  const isDedicatedClient = Boolean(db.getClient);
+  const client = await db.connect();
 
   try {
-    if (isDedicatedClient) await client.query('BEGIN');
+    await client.query('BEGIN');
 
-    // 1. Resolve designation (existing or newly-typed)
     let finalDesignationId = designation_id || null;
     if (!finalDesignationId && new_designation_name) {
       const newDesignation = await client.query(`
@@ -215,32 +245,23 @@ exports.addUser = async (req, res) => {
       finalDesignationId = newDesignation.rows[0].designation_id;
     }
 
-    // 2. Generate + hash temporary password
     const safeLast = (last_name || 'user').toLowerCase();
     const plainPassword = `axis-cpt-${safeLast}`;
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-    // 3. Create user
     const userResult = await client.query(`
       INSERT INTO users (username, password_hash, school_email, is_active, changed_pass)
       VALUES ($1, $2, $3, $4, false)
       RETURNING user_id
-    `, [
-      username,
-      hashedPassword,
-      email,
-      Boolean(is_active),
-    ]);
+    `, [username, hashedPassword, email, Boolean(is_active)]);
     const newUserId = userResult.rows[0].user_id;
 
-    // 4. Assign role
     await client.query(`
       INSERT INTO user_roles (user_id, role_id)
       VALUES ($1, $2)
       ON CONFLICT DO NOTHING
     `, [newUserId, role_id]);
 
-    // 5. Create faculty record
     await client.query(`
       INSERT INTO faculties (
         user_id, last_name, first_name, middle_name, suffix,
@@ -248,16 +269,12 @@ exports.addUser = async (req, res) => {
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7)
     `, [
-      newUserId,
-      last_name,
-      first_name,
-      middle_name || null,
-      suffix || null,
-      finalDesignationId,
-      Boolean(is_active),
+      newUserId, last_name, first_name,
+      middle_name || null, suffix || null,
+      finalDesignationId, Boolean(is_active),
     ]);
 
-    if (isDedicatedClient) await client.query('COMMIT');
+    await client.query('COMMIT');
 
     res.json({
       success: true,
@@ -266,16 +283,16 @@ exports.addUser = async (req, res) => {
     });
 
   } catch (error) {
-    if (isDedicatedClient) await client.query('ROLLBACK');
-    console.error("Error creating user:", error);
+    await client.query('ROLLBACK');
+    console.error('Error creating user:', error);
     if (error.code === '23505') {
       return res.status(400).json({
         success: false,
         message: 'Username or email already exists.',
       });
     }
-    res.status(500).json({ success: false, message: "Internal server error." });
+    res.status(500).json({ success: false, message: 'Internal server error.' });
   } finally {
-    if (isDedicatedClient && client.release) client.release();
+    client.release();
   }
 };

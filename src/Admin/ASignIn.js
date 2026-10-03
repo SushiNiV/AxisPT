@@ -26,39 +26,51 @@ function ASignIn() {
       [name]: type === 'checkbox' ? checked : value 
     }));
   };
+const handleLogin = async (e) => {
+  console.log('>>> NEW HANDLELOGIN IS RUNNING <<<');
+  e.preventDefault();
+  setPopupStatus(null);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  try {
+    const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
 
-    try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
-      console.log("Login success:", data.success);
-
-      if (data.success) {
-        sessionStorage.setItem('token', data.token);
-        sessionStorage.setItem('username', data.username);
-          
-        if (data.mustChangePassword === true) {
-          navigate('/change-password'); 
-        } else {
-          navigate('/admin/dashboard');
-        }
-      } else {
-        setErrorMessage(data.message || "Invalid Username or Password.");
-        setPopupStatus('error');
-      }
-    } catch (error) {
-      console.error("Login Error:", error);
-      setErrorMessage("Unable to connect to the server. Please try again later.");
+    // Guard against non-JSON bodies (proxy HTML pages, crashes)
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      console.error('Non-JSON response:', response.status);
+      setErrorMessage('Server returned an unexpected response. Please contact the administrator.');
       setPopupStatus('error');
+      return;
     }
-  };
+
+    const data = await response.json();
+
+    if (data.success) {
+      const storage = formData.rememberMe ? localStorage : sessionStorage;
+      storage.setItem('token', data.token);
+      storage.setItem('username', data.username);
+
+      if (data.mustChangePassword === true) {
+        navigate('/change-password');
+      } else {
+        navigate('/admin/dashboard');
+      }
+      return;
+    }
+
+    setErrorMessage(data.message || 'Invalid Username or Password.');
+    setPopupStatus('error');
+
+  } catch (error) {
+    console.error('Login Error:', error);
+    setErrorMessage('Unable to connect to the server. Please try again later.');
+    setPopupStatus('error');
+  }
+};
 
   return (
     <div className="Container">

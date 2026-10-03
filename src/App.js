@@ -38,12 +38,28 @@ import ALayout from './Admin/AComponents/ALayout';
 
 import SSignIn from './Student/SignIn';
 
+// --- Auth-aware helper for public routes ---
+
+// If a token exists -> send to dashboard. Otherwise, render children (the sign-in page).
+function PublicOnlyRoute({ children }) {
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+  if (token) return <Navigate to="/admin/dashboard" replace />;
+  return children;
+}
+
+// Root path: decide where to send the user based on token presence.
+function RootRedirect() {
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+  return <Navigate to={token ? '/admin/dashboard' : '/admin/signin'} replace />;
+}
+
 function AppContent() {
   const navigate = useNavigate();
   const [showSessionExpired, setShowSessionExpired] = useState(false);
 
   const logoutHandler = () => {
     sessionStorage.clear();
+    localStorage.clear();
     setShowSessionExpired(false);
     navigate('/admin/signin');
   };
@@ -52,9 +68,9 @@ function AppContent() {
     const handleSessionExpired = () => {
       setShowSessionExpired(true);
     };
-    
+
     window.addEventListener('sessionExpired', handleSessionExpired);
-    
+
     return () => {
       window.removeEventListener('sessionExpired', handleSessionExpired);
     };
@@ -66,16 +82,24 @@ function AppContent() {
         <SessionExpired onConfirm={logoutHandler} />
       )}
       <Routes>
-        <Route path="/" element={<Navigate to="/admin/signin" />} />
+        {/* Root: token-aware redirect */}
+        <Route path="/" element={<RootRedirect />} />
 
-        {/* ADMIN */}
-        <Route path="/admin/signin" element={<ASignIn />} />
+        {/* ADMIN SIGN-IN: if already logged in, bounce to dashboard */}
+        <Route
+          path="/admin/signin"
+          element={
+            <PublicOnlyRoute>
+              <ASignIn />
+            </PublicOnlyRoute>
+          }
+        />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/change-password" element={<AChangePass />} />
           <Route element={<ALayout />}>
             <Route path="/admin/dashboard" element={<ADashboard />} />
-            
+
             <Route path="/admin/student-management" element={<AStudentManage />}>
               <Route index element={<Navigate to="masterlist" replace />} />
               <Route path="masterlist" element={<Masterlist />} />
@@ -90,7 +114,7 @@ function AppContent() {
 
             <Route path="/admin/documents" element={<ADocuments />}>
               <Route path="student-form" element={<DocumentsStudentForm />} />
-              <Route path="term-grade" element={<DocumentsTermGrade />} />  
+              <Route path="term-grade" element={<DocumentsTermGrade />} />
               <Route path="course-curriculum" element={<DocumentsCourseOutline />} />
             </Route>
 
@@ -102,14 +126,13 @@ function AppContent() {
             </Route>
 
             <Route path="/admin/history" element={<AHistory />} />
-            
+
             <Route path="/admin/archive" element={<AArchive />}>
               <Route index element={<Navigate to="students" replace />} />
               <Route path="students" element={<ArchivedStudents />} />
               <Route path="programs" element={<ArchivedPrograms />} />
               <Route path="sections" element={<ArchivedSections />} />
             </Route>
-            
 
           </Route>
         </Route>

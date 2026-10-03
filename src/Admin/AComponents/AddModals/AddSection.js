@@ -91,7 +91,7 @@ function AddSection({
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const headers = { 'Authorization': `Bearer ${token}` };
 
       try {
@@ -149,7 +149,7 @@ function AddSection({
     setIsSubmitting(true);
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
 
       const url = isEditMode
         ? `${process.env.REACT_APP_API_URL}/admin/section-assignments/${sectionToEdit.assignment_id}`

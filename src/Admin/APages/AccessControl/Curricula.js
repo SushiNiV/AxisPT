@@ -46,7 +46,7 @@ function ACurricula() {
   const fetchCurricula = useCallback(async () => {
     setLoading(true);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const res = await fetch(`${process.env.REACT_APP_API_URL}/admin/curricula`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -92,7 +92,7 @@ function ACurricula() {
       onConfirm: async () => {
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
-          const token = sessionStorage.getItem('token');
+          const token = sessionStorage.getItem('token') || localStorage.getItem('token');
           const response = await fetch(
             `${process.env.REACT_APP_API_URL}/admin/curricula/${curriculum.curriculum_id}`,
             {

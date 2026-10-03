@@ -46,7 +46,7 @@ function StudentForm({ adminMode = false, studentId: propsId }) {
   useEffect(() => {
     if (adminMode && !effectiveId) return;
 
-    const token = sessionStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     
     const fetchUrl = adminMode && effectiveId 
       ? `${process.env.REACT_APP_API_URL}/admin/student-form/${effectiveId}` 

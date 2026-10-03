@@ -51,7 +51,7 @@ const BulkStudent = ({ studentIds, onClose, onSuccess }) => {
 
   // ---------- Data fetching ----------
   useEffect(() => {
-    const token = sessionStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, { headers: { 'Authorization': `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => { if (data.success) setPrograms(data.data); });
@@ -59,7 +59,7 @@ const BulkStudent = ({ studentIds, onClose, onSuccess }) => {
 
   useEffect(() => {
     if (!programId) { setSections([]); setSectionId(''); return; }
-    const token = sessionStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     fetch(`${process.env.REACT_APP_API_URL}/admin/sections/by-program/${programId}`, { headers: { 'Authorization': `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => { if (data.success) setSections(data.data); });
@@ -105,7 +105,7 @@ const BulkStudent = ({ studentIds, onClose, onSuccess }) => {
   const performUpdate = async () => {
     setConfirmState((s) => ({ ...s, loading: true }));
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/students/batch-update`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },

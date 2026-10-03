@@ -68,7 +68,7 @@ function ACourses() {
 
   const fetchPrograms = useCallback(async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -86,7 +86,7 @@ function ACourses() {
     setLoading(true);
     setError(null);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/courses`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -229,7 +229,7 @@ function ACourses() {
       onConfirm: async () => {
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
-          const token = sessionStorage.getItem('token');
+          const token = sessionStorage.getItem('token') || localStorage.getItem('token');
           const response = await fetch(
             `${process.env.REACT_APP_API_URL}/admin/courses/${course.course_id}`,
             {

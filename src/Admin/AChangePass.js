@@ -35,13 +35,13 @@ function AChangePass() {
     confirmPassword: ''
   });
 
-  useEffect(() => {
-    const token = sessionStorage.getItem('token');
-    if (!token) {
-      alert("Session expired. Please log in.");
-      navigate('/admin/signin');
-    }
-  }, [navigate]);
+useEffect(() => {
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+  if (!token) {
+    alert('Session expired. Please log in.');
+    navigate('/admin/signin');
+  }
+}, [navigate]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -62,7 +62,7 @@ function AChangePass() {
       return;
     }
 
-    const token = sessionStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
 
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/change-password`, {
@@ -92,11 +92,13 @@ function AChangePass() {
     }
   };
 
-  const handleFinalizeSuccess = () => {
-    sessionStorage.clear();
-    setPopupStatus(null);
-    navigate('/admin/signin');
-  };
+const handleFinalizeSuccess = () => {
+  sessionStorage.clear();
+localStorage.clear();
+  localStorage.clear();
+  setPopupStatus(null);
+  navigate('/admin/signin');
+};
 
   return (
     <Container>

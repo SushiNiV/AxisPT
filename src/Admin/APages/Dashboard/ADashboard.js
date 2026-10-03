@@ -20,7 +20,7 @@ function Dashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const token = sessionStorage.getItem('token');
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
         const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/dashboard/stats`, {
           headers: { Authorization: `Bearer ${token}` },
         });

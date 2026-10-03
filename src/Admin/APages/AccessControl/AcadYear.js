@@ -44,7 +44,7 @@ function AAcadYear() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const token = sessionStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     const headers = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
@@ -96,7 +96,7 @@ function AAcadYear() {
       onConfirm: async () => {
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
-          const token = sessionStorage.getItem('token');
+          const token = sessionStorage.getItem('token') || localStorage.getItem('token');
           const response = await fetch(
             `${process.env.REACT_APP_API_URL}/admin/academic-years/${year.year_id}`,
             {
@@ -138,7 +138,7 @@ function AAcadYear() {
       onConfirm: async () => {
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
-          const token = sessionStorage.getItem('token');
+          const token = sessionStorage.getItem('token') || localStorage.getItem('token');
           const response = await fetch(
             `${process.env.REACT_APP_API_URL}/admin/academic-years/${year.year_id}/activate`,
             {
@@ -179,7 +179,7 @@ function AAcadYear() {
       onConfirm: async () => {
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
-          const token = sessionStorage.getItem('token');
+          const token = sessionStorage.getItem('token') || localStorage.getItem('token');
           const response = await fetch(
             `${process.env.REACT_APP_API_URL}/admin/academic-years/${year.year_id}/semester`,
             {

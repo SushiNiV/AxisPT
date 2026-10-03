@@ -36,7 +36,7 @@ function AHistory() {
         setLoading(true);
         setError(null);
         
-        const token = sessionStorage.getItem('token');
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
         const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/history`, {
           method: 'GET',
           headers: { 

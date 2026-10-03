@@ -58,7 +58,7 @@ function DocumentsStudentForm() {
 
   const fetchPrograms = useCallback(async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -75,7 +75,7 @@ function DocumentsStudentForm() {
     setLoading(true);
     setError(null);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/students`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -189,7 +189,7 @@ function DocumentsStudentForm() {
     setPrintError(null);
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const forms = await Promise.all(selectedStudentIds.map(async (studentId) => {
         const response = await fetch(
           `${process.env.REACT_APP_API_URL}/admin/student-form/${studentId}`,

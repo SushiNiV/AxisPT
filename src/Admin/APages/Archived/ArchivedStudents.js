@@ -42,7 +42,7 @@ function ArchivedStudents() {
     setLoading(true);
     setError(null);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const res = await fetch(
         `${process.env.REACT_APP_API_URL}/admin/students?includeArchived=true`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -80,7 +80,7 @@ function ArchivedStudents() {
       onConfirm: async () => {
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
-          const token = sessionStorage.getItem('token');
+          const token = sessionStorage.getItem('token') || localStorage.getItem('token');
           const res = await fetch(
             `${process.env.REACT_APP_API_URL}/admin/students/${student.student_id}/restore`,
             { method: 'POST', headers: { Authorization: `Bearer ${token}` } }

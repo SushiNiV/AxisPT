@@ -50,7 +50,7 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const headers = { 'Authorization': `Bearer ${token}` };
 
       try {
@@ -134,7 +134,7 @@ useEffect(() => {
     setIsSubmitting(true);
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const url = isEditMode
         ? `${process.env.REACT_APP_API_URL}/admin/users/${facultyToEdit.user_id}`
         : `${process.env.REACT_APP_API_URL}/admin/users`;
@@ -256,7 +256,7 @@ useEffect(() => {
                 <input
                   type="text"
                   name="username"
-                  placeholder="01230001231"
+                  placeholder="admin.juandelacruz"
                   value={formData.username}
                   onChange={handleChange}
                 />

@@ -112,7 +112,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
   // Fetch Programs on Mount
   useEffect(() => {
     const fetchPrograms = async () => {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const headers = { 'Authorization': `Bearer ${token}` };
 
       try {
@@ -136,7 +136,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
 
     let cancelled = false;
     const fetchSections = async () => {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       try {
         const params = new URLSearchParams();
         if (formData.yearLevel) params.set('yearLevel', formData.yearLevel);
@@ -325,7 +325,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     setIsSubmitting(true);
 
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const studentId = studentData?.student_id || studentData?.studentId;
       const url = isEditMode && studentId
         ? `${process.env.REACT_APP_API_URL}/admin/students/${studentId}`

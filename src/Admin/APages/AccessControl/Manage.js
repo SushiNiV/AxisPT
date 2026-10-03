@@ -77,7 +77,7 @@ function AManage() {
     setLoading(true);
     setError(null);
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -130,7 +130,7 @@ function AManage() {
       onConfirm: async () => {
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
-          const token = sessionStorage.getItem('token');
+          const token = sessionStorage.getItem('token') || localStorage.getItem('token');
           const response = await fetch(
             `${process.env.REACT_APP_API_URL}/admin/users/${user.user_id}`,
             {
