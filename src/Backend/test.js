@@ -14,7 +14,7 @@ const questions = [
     console.log(q, '->', hits[0] ? hits[0].distance.toFixed(3) : 'no hits');
   }
 
-  console.log('\n--- full answer ---');
-  console.log(await answerQuestion(questions[0], { programIds: [] }));
+  console.log('\n--- out of scope ---');
+  console.log(await answerQuestion(questions[2], { programIds: [] }));
   process.exit(0);
 })().catch((e) => { console.error(e); process.exit(1); });

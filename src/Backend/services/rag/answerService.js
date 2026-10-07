@@ -7,7 +7,7 @@ const { retrieve } = require('./ragStore');
 
 const TOP_K = 5;
 // Cosine distance: lower = more similar. Tune this from real retrieval logs.
-const MAX_DISTANCE = Number(process.env.RAG_MAX_DISTANCE || 0.6);
+const MAX_DISTANCE = Number(process.env.RAG_MAX_DISTANCE || 0.45);
 
 const NO_ANSWER = "I don't have that information in the current knowledge base.";
 

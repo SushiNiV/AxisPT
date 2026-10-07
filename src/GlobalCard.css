@@ -264,7 +264,6 @@
 .tableActions {
   display: flex;
   gap: 8px;
-  font-size: 1rem;
 }
 
 .tableEditBtn,

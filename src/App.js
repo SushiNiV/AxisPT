@@ -38,6 +38,8 @@ import ALayout from './Admin/AComponents/ALayout';
 
 import SSignIn from './Student/SignIn';
 
+import AssistantWidget from './Admin/AComponents/Assistant/AssistantWidget';
+
 // --- Auth-aware helper for public routes ---
 
 // If a token exists -> send to dashboard. Otherwise, render children (the sign-in page).
@@ -133,7 +135,7 @@ function AppContent() {
               <Route path="programs" element={<ArchivedPrograms />} />
               <Route path="sections" element={<ArchivedSections />} />
             </Route>
-
+            
           </Route>
         </Route>
 

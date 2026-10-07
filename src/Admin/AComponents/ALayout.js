@@ -1,8 +1,9 @@
 import ASideBar from './ASideBar';
 import AHeader from './AHeader';
 import { Outlet } from 'react-router-dom';
+import AssistantWidget from './Assistant/AssistantWidget';
 
-import '../../Global.css'
+import '../../Global.css';
 
 function ALayout() {
   return (
@@ -14,6 +15,7 @@ function ALayout() {
           <Outlet />
         </main>
       </div>
+      <AssistantWidget />
     </div>
   );
 }

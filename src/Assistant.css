@@ -1,0 +1,457 @@
+/* =========================================================================
+   Assistant — floating widget + panel
+   ========================================================================= */
+
+.AssistantWidgetRoot {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  z-index: 9990; /* below ConfirmationModal's 9999 */
+  pointer-events: none; /* children re-enable */
+}
+
+.AssistantLauncherBtn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: #3d1616;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+  pointer-events: auto;
+}
+
+.AssistantLauncherBtn:hover {
+  transform: scale(1.05);
+  background-color: #5a2020;
+}
+
+.AssistantLauncherBtn:focus-visible {
+  outline: 3px solid rgba(61, 22, 22, 0.35);
+  outline-offset: 3px;
+}
+
+.AssistantFloatingPanel {
+  position: fixed;
+  bottom: 92px;
+  right: 24px;
+  width: 380px;
+  max-height: 70vh;
+  background: #f8fafc;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events: auto;
+  animation: assistantRise 0.2s ease-out;
+}
+
+@keyframes assistantRise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Header ---------- */
+
+.AssistantPanelHeader {
+  background-color: #3d1616;
+  color: #ffffff;
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.AssistantPanelTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.AssistantPanelActions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.AssistantIconBtn {
+  background: none;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.AssistantIconBtn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.AssistantIconBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---------- Message list ---------- */
+
+.AssistantMessageList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-height: 0;
+}
+
+.AssistantMessageList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.AssistantMessageList::-webkit-scrollbar-thumb {
+  background: rgba(61, 22, 22, 0.3);
+  border-radius: 3px;
+}
+
+.AssistantEmptyState {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.AssistantEmptyState .emptyState {
+  padding: 1.5rem 1rem;
+}
+
+.AssistantEmptyState .emptyStateIcon {
+  font-size: 2.5rem;
+}
+
+/* ---------- Message bubbles ---------- */
+
+.AssistantMessage {
+  display: flex;
+  flex-direction: column;
+  max-width: 90%;
+  gap: 0.3rem;
+}
+
+.AssistantMessage--user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.AssistantMessage--assistant {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.AssistantBubble {
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.AssistantBubble--user {
+  background-color: #3d1616;
+  color: #ffffff;
+  border-bottom-right-radius: 3px;
+}
+
+.AssistantBubble--assistant {
+  background-color: #ffffff;
+  color: #222;
+  border: 1px solid #e2e8f0;
+  border-bottom-left-radius: 3px;
+}
+
+.AssistantMessage--error .AssistantBubble {
+  background-color: #fdecea;
+  border-color: #f5c6cb;
+  color: #c62828;
+}
+
+.AssistantMessage--noAnswer .AssistantBubble {
+  background-color: #fff8e1;
+  border-color: #ffe0a6;
+}
+
+.AssistantAnswerBody {
+  margin: 0;
+}
+
+.AssistantNoAnswerIcon {
+  color: #e65100;
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+}
+
+.AssistantNoAnswerHint {
+  font-size: 0.75rem;
+  color: #8a6512;
+  margin: 0.5rem 0 0;
+}
+
+.AssistantErrorText {
+  font-size: 0.85rem;
+}
+
+/* ---------- Citation chips ---------- */
+
+.CitationChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1em;
+  height: 1.1em;
+  padding: 0 0.3em;
+  margin: 0 2px;
+  font-size: 0.7em;
+  font-weight: 700;
+  color: #3d1616;
+  background-color: #f5efe9;
+  border: 1px solid #c9a999;
+  border-radius: 4px;
+  cursor: pointer;
+  vertical-align: baseline;
+  line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.CitationChip:hover,
+.CitationChip:focus-visible {
+  background-color: #3d1616;
+  color: #ffffff;
+  outline: none;
+}
+
+/* ---------- Sources ---------- */
+
+.AssistantSourcesBlock {
+  width: 100%;
+  font-size: 0.75rem;
+}
+
+.AssistantSourcesToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  padding: 0.2rem 0;
+  cursor: pointer;
+  color: #555;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.AssistantSourcesIcon {
+  font-size: 0.9rem;
+}
+
+.AssistantSourcesToggle .arrow {
+  transition: transform 0.2s ease;
+  font-size: 0.6rem;
+}
+
+.AssistantSourcesToggle .arrow.open {
+  transform: rotate(180deg);
+}
+
+.AssistantSourcesList {
+  list-style: none;
+  padding: 0.4rem 0 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.AssistantSourceRow {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
+}
+
+.AssistantSourceRow--highlight {
+  background-color: #fff3cd;
+  border-color: #ffe0a6;
+}
+
+.AssistantSourceNum {
+  color: #3d1616;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.AssistantSourceTitle {
+  color: #444;
+  word-break: break-word;
+}
+
+/* ---------- Input bar ---------- */
+
+.AssistantInputBar {
+  border-top: 1px solid #e2e8f0;
+  padding: 0.6rem 0.75rem;
+  background-color: #ffffff;
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.AssistantInputField {
+  flex: 1;
+  resize: none;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  outline: none;
+  max-height: 120px;
+  overflow-y: auto;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.AssistantInputField:focus {
+  border-color: #3d1616;
+  box-shadow: 0 0 0 2px rgba(61, 22, 22, 0.1);
+}
+
+.AssistantInputField:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.AssistantInputMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.AssistantCharCount {
+  font-size: 0.65rem;
+  color: #888;
+}
+
+.AssistantSendBtn {
+  background-color: #3d1616;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.AssistantSendBtn:hover:not(:disabled) {
+  background-color: #5a2020;
+}
+
+.AssistantSendBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---------- Chips ---------- */
+
+.AssistantChipsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.AssistantChip {
+  background-color: #f5efe9;
+  color: #3d1616;
+  border: 1px solid #e0cfc0;
+  border-radius: 20px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.AssistantChip:hover {
+  background-color: #3d1616;
+  color: #ffffff;
+}
+
+/* ---------- Typing indicator ---------- */
+
+.AssistantTypingDots {
+  display: inline-flex;
+  gap: 4px;
+  padding: 0.65rem 0.85rem;
+}
+
+.AssistantTypingDots span {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #999;
+  animation: assistantDot 1.2s infinite ease-in-out;
+}
+
+.AssistantTypingDots span:nth-child(2) { animation-delay: 0.15s; }
+.AssistantTypingDots span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes assistantDot {
+  0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
+  40%           { opacity: 1;   transform: translateY(-3px); }
+}
+
+/* ---------- Mobile ---------- */
+
+@media (max-width: 640px) {
+  .AssistantFloatingPanel {
+    bottom: 0;
+    right: 0;
+    width: 100vw;
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+  }
+
+  .AssistantLauncherBtn {
+    bottom: 16px;
+    right: 16px;
+  }
+}
