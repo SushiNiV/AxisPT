@@ -26,6 +26,8 @@ function AProgSec() {
 
   const [confirmState, setConfirmState] = useState({ isOpen: false });
 
+  const role = sessionStorage.getItem('role') || localStorage.getItem('role');
+  const isAdmin = role === 'admin' || role === 'superadmin';
   const closeConfirm = () => setConfirmState({ isOpen: false });
 
   const openConfirm = (config) => {
@@ -301,14 +303,16 @@ function AProgSec() {
               />
               {searchProgram && <BiX className="ClearSearchIcon" onClick={() => setSearchProgram('')} />}
             </div>
-            <button
-              className="TopbarBtn"
-              onClick={() => { setEditingProgram(null); setShowAddProgram(true); }}
-              title="Add a new program"
-            >
-              <BiPlusCircle className="linkIcon" />
-              Program
-            </button>
+            {isAdmin && (
+              <button
+                className="TopbarBtn"
+                onClick={() => { setEditingProgram(null); setShowAddProgram(true); }}
+                title="Add a new program"
+              >
+                <BiPlusCircle className="linkIcon" />
+                Program
+              </button>
+            )}
           </div>
 
           <ul className="ProgList">
@@ -360,19 +364,21 @@ function AProgSec() {
                   </div>
                 </div>
                 <div className="ProgDetailActions">
-                  {selectedProgram.program_status === false ? (
-                    <button className="actionBtn restoreBtn" onClick={() => handleRestoreProgram(selectedProgram)}>
-                      <BiUndo /> Restore
-                    </button>
-                  ) : (
-                    <>
-                      <button className="actionBtn editBtn" onClick={() => { setEditingProgram(selectedProgram); setShowAddProgram(true); }}>
-                        <BiPencil /> Edit
+                  {isAdmin && (
+                    selectedProgram.program_status === false ? (
+                      <button className="actionBtn restoreBtn" onClick={() => handleRestoreProgram(selectedProgram)}>
+                        <BiUndo /> Restore
                       </button>
-                      <button className="actionBtn deleteBtn" onClick={() => handleArchiveProgram(selectedProgram)}>
-                        <BiTrash /> Archive
-                      </button>
-                    </>
+                    ) : (
+                      <>
+                        <button className="actionBtn editBtn" onClick={() => { setEditingProgram(selectedProgram); setShowAddProgram(true); }}>
+                          <BiPencil /> Edit
+                        </button>
+                        <button className="actionBtn deleteBtn" onClick={() => handleArchiveProgram(selectedProgram)}>
+                          <BiTrash /> Archive
+                        </button>
+                      </>
+                    )
                   )}
                 </div>
               </header>
@@ -389,14 +395,16 @@ function AProgSec() {
                   />
                   {searchSection && <BiX className="ClearSearchIcon" onClick={() => setSearchSection('')} />}
                 </div>
-                <button
-                  className="TopbarBtn"
-                  onClick={() => { setEditingSection(null); setShowAddSection(true); }}
-                  disabled={selectedProgram.program_status === false}
-                >
-                  <BiPlusCircle className="linkIcon" />
-                  Section
-                </button>
+                {isAdmin && (
+                  <button
+                    className="TopbarBtn"
+                    onClick={() => { setEditingSection(null); setShowAddSection(true); }}
+                    disabled={selectedProgram.program_status === false}
+                  >
+                    <BiPlusCircle className="linkIcon" />
+                    Section
+                  </button>
+                )}
               </div>
 
               <div className="TableContainer">
@@ -407,22 +415,24 @@ function AProgSec() {
                       <th>Year</th>
                       <th>Semester</th>
                       <th>Students</th>
-                      <th style={{ width: '140px' }}>Actions</th>
+                      {isAdmin && <th style={{ width: '140px' }}>Actions</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {loadingSections ? (
                       <tr>
-                        <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                        <td colSpan={isAdmin ? 5 : 4} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
                           Loading sections…
                         </td>
                       </tr>
                     ) : filteredSections.length === 0 ? (
                       <tr>
-                        <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                        <td colSpan={isAdmin ? 5 : 4} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
                           {searchSection
-                            ? `No sections matching "${searchSection}"`
-                            : 'No sections yet. Click "Section" above to add one.'}
+                              ? `No sections matching "${searchSection}"`
+                            : isAdmin
+                              ? 'No sections yet. Click "Section" above to add one.'
+                              : 'No sections yet.'}
                         </td>
                       </tr>
                     ) : (
@@ -437,22 +447,24 @@ function AProgSec() {
                             <td>{sec.year_level}</td>
                             <td>{sec.semester_label}</td>
                             <td>{sec.student_count ?? 0}</td>
-                            <td className="tableActions">
-                              {archived ? (
-                                <button className="tableEditBtn" onClick={() => handleRestoreSection(sec)}>
-                                  <BiUndo /> Restore
-                                </button>
-                              ) : (
-                                <>
-                                  <button className="tableEditBtn" onClick={() => { setEditingSection(sec); setShowAddSection(true); }} title="Edit section">
-                                    <BiPencil /> Edit
+                                                        {isAdmin && (
+                              <td className="tableActions">
+                                {archived ? (
+                                  <button className="tableEditBtn" onClick={() => handleRestoreSection(sec)}>
+                                    <BiUndo /> Restore
                                   </button>
-                                  <button className="tableDeleteBtn" onClick={() => handleArchiveSection(sec)} title="Archive section">
-                                    <BiTrash /> Archive
-                                  </button>
-                                </>
-                              )}
-                            </td>
+                                ) : (
+                                  <>
+                                    <button className="tableEditBtn" onClick={() => { setEditingSection(sec); setShowAddSection(true); }} title="Edit section">
+                                      <BiPencil /> Edit
+                                    </button>
+                                    <button className="tableDeleteBtn" onClick={() => handleArchiveSection(sec)} title="Archive section">
+                                      <BiTrash /> Archive
+                                    </button>
+                                  </>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         );
                       })

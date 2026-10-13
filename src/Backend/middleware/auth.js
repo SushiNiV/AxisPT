@@ -22,6 +22,10 @@ const verifyToken = (req, res, next) => {
   }
 };
 
+/**
+ * Gate a route by role. Roles in the JWT are 'admin' | 'faculty' | 'student'.
+ * Usage: requireRole('admin')  or  requireRole('admin', 'faculty')
+ */
 const requireRole = (...allowed) => {
   return (req, res, next) => {
     if (!req.user) {
@@ -35,4 +39,23 @@ const requireRole = (...allowed) => {
   };
 };
 
-module.exports = { verifyToken, requireRole };
+/**
+ * Gate a route by designation (finer-grained than role).
+ * Designation strings come from the `designations` table via the JWT payload
+ * (`req.user.designation`). Unused today — reserved for the client's
+ * fine-grained pass. Usage: requireDesignation('Dean', 'Program Head')
+ */
+const requireDesignation = (...allowed) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Not authenticated.' });
+    }
+    const designation = req.user.designation;
+    if (!designation || !allowed.includes(designation)) {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
+    next();
+  };
+};
+
+module.exports = { verifyToken, requireRole, requireDesignation };

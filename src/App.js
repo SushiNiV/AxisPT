@@ -40,16 +40,17 @@ import SSignIn from './Student/SignIn';
 
 import AssistantWidget from './Admin/AComponents/Assistant/AssistantWidget';
 
+const ADMIN_AND_FACULTY = ['admin', 'faculty'];
+const ADMIN_ONLY = ['admin'];
+
 // --- Auth-aware helper for public routes ---
 
-// If a token exists -> send to dashboard. Otherwise, render children (the sign-in page).
 function PublicOnlyRoute({ children }) {
   const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   if (token) return <Navigate to="/admin/dashboard" replace />;
   return children;
 }
 
-// Root path: decide where to send the user based on token presence.
 function RootRedirect() {
   const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   return <Navigate to={token ? '/admin/dashboard' : '/admin/signin'} replace />;
@@ -97,45 +98,111 @@ function AppContent() {
           }
         />
 
+        {/* Authenticated area — any role with a valid token */}
         <Route element={<ProtectedRoute />}>
           <Route path="/change-password" element={<AChangePass />} />
-          <Route element={<ALayout />}>
-            <Route path="/admin/dashboard" element={<ADashboard />} />
 
-            <Route path="/admin/student-management" element={<AStudentManage />}>
-              <Route index element={<Navigate to="masterlist" replace />} />
-              <Route path="masterlist" element={<Masterlist />} />
-              <Route path="archive" element={<Archive />} />
+          {/* Admin + faculty shell */}
+          <Route element={<ProtectedRoute allowedRoles={ADMIN_AND_FACULTY} />}>
+            <Route element={<ALayout />}>
+
+              {/* Dashboard — both roles */}
+              <Route path="/admin/dashboard" element={<ADashboard />} />
+
+              {/* Student Management — both roles */}
+              <Route
+                path="/admin/student-management"
+                element={<ProtectedRoute allowedRoles={ADMIN_AND_FACULTY} />}
+              >
+                <Route element={<AStudentManage />}>
+                  <Route index element={<Navigate to="masterlist" replace />} />
+                  <Route path="masterlist" element={<Masterlist />} />
+                  <Route path="archive" element={<Archive />} />
+                </Route>
+              </Route>
+
+              {/* Academics — both roles (faculty is view-only, enforced in-page) */}
+              <Route
+                path="/admin/academics"
+                element={<ProtectedRoute allowedRoles={ADMIN_AND_FACULTY} />}
+              >
+                <Route element={<AAcademics />}>
+                  <Route index element={<Navigate to="programs&sections" replace />} />
+                  <Route path="programs&sections" element={<AProgSec />} />
+                  <Route path="courses" element={<ACourses />} />
+                </Route>
+              </Route>
+
+              {/* Documents — both roles */}
+              <Route
+                path="/admin/documents"
+                element={<ProtectedRoute allowedRoles={ADMIN_AND_FACULTY} />}
+              >
+                <Route element={<ADocuments />}>
+                  <Route path="student-form" element={<DocumentsStudentForm />} />
+                  <Route path="term-grade" element={<DocumentsTermGrade />} />
+                  <Route path="course-curriculum" element={<DocumentsCourseOutline />} />
+                </Route>
+              </Route>
+
+              {/* Access Control — admin only */}
+              <Route
+                path="/admin/access-control"
+                element={<ProtectedRoute allowedRoles={ADMIN_ONLY} />}
+              >
+                <Route element={<AAccessCtrl />}>
+                  <Route index element={<Navigate to="manage-people" replace />} />
+                  <Route path="manage-people" element={<Manage />} />
+                  <Route path="academic-year" element={<AcadYear />} />
+                  <Route path="curricula" element={<Curricula />} />
+                </Route>
+              </Route>
+
+              {/* History — admin only */}
+              <Route
+                path="/admin/history"
+                element={<ProtectedRoute allowedRoles={ADMIN_ONLY} />}
+              >
+                <Route element={<AHistory />} />
+              </Route>
+
+              {/* Archive — both roles for the parent, students only for faculty */}
+              <Route
+                path="/admin/archive"
+                element={<ProtectedRoute allowedRoles={ADMIN_AND_FACULTY} />}
+              >
+                <Route element={<AArchive />}>
+                  <Route
+                    index
+                    element={
+                      <Navigate
+                        to={sessionStorage.getItem('role') === 'faculty' ? 'students' : 'students'}
+                        replace
+                      />
+                    }
+                  />
+                  <Route path="students" element={<ArchivedStudents />} />
+                  {/* Programs & Sections archives — admin only */}
+                  <Route
+                    path="programs"
+                    element={
+                      <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+                        <ArchivedPrograms />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="sections"
+                    element={
+                      <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+                        <ArchivedSections />
+                      </ProtectedRoute>
+                    }
+                  />
+                </Route>
+              </Route>
+
             </Route>
-
-            <Route path="/admin/academics" element={<AAcademics />}>
-              <Route index element={<Navigate to="programs&sections" replace />} />
-              <Route path="programs&sections" element={<AProgSec />} />
-              <Route path="courses" element={<ACourses />} />
-            </Route>
-
-            <Route path="/admin/documents" element={<ADocuments />}>
-              <Route path="student-form" element={<DocumentsStudentForm />} />
-              <Route path="term-grade" element={<DocumentsTermGrade />} />
-              <Route path="course-curriculum" element={<DocumentsCourseOutline />} />
-            </Route>
-
-            <Route path="/admin/access-control" element={<AAccessCtrl />}>
-              <Route index element={<Navigate to="manage-people" replace />} />
-              <Route path="manage-people" element={<Manage />} />
-              <Route path="academic-year" element={<AcadYear />} />
-              <Route path="curricula" element={<Curricula />} />
-            </Route>
-
-            <Route path="/admin/history" element={<AHistory />} />
-
-            <Route path="/admin/archive" element={<AArchive />}>
-              <Route index element={<Navigate to="students" replace />} />
-              <Route path="students" element={<ArchivedStudents />} />
-              <Route path="programs" element={<ArchivedPrograms />} />
-              <Route path="sections" element={<ArchivedSections />} />
-            </Route>
-            
           </Route>
         </Route>
 

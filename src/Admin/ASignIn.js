@@ -26,51 +26,66 @@ function ASignIn() {
       [name]: type === 'checkbox' ? checked : value 
     }));
   };
-const handleLogin = async (e) => {
-  console.log('>>> NEW HANDLELOGIN IS RUNNING <<<');
-  e.preventDefault();
-  setPopupStatus(null);
 
-  try {
-    const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData)
-    });
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setPopupStatus(null);
 
-    // Guard against non-JSON bodies (proxy HTML pages, crashes)
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      console.error('Non-JSON response:', response.status);
-      setErrorMessage('Server returned an unexpected response. Please contact the administrator.');
-      setPopupStatus('error');
-      return;
-    }
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
 
-    const data = await response.json();
-
-    if (data.success) {
-      const storage = formData.rememberMe ? localStorage : sessionStorage;
-      storage.setItem('token', data.token);
-      storage.setItem('username', data.username);
-
-      if (data.mustChangePassword === true) {
-        navigate('/change-password');
-      } else {
-        navigate('/admin/dashboard');
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        console.error('Non-JSON response:', response.status);
+        setErrorMessage('Server returned an unexpected response. Please contact the administrator.');
+        setPopupStatus('error');
+        return;
       }
-      return;
+
+      const data = await response.json();
+
+      if (data.success) {
+        const storage = formData.rememberMe ? localStorage : sessionStorage;
+
+        // Core session
+        storage.setItem('token', data.token);
+        storage.setItem('username', data.username);
+
+        // Role-based access — REQUIRED. ProtectedRoute reads this to gate pages.
+        storage.setItem('role', data.role || '');
+        if (data.designation) storage.setItem('designation', data.designation);
+
+        // user_id — used for ownership checks (e.g. "only restore ones you archived").
+        // The login response doesn't return it directly, so we decode the JWT.
+        try {
+          const payload = JSON.parse(atob(data.token.split('.')[1]));
+          if (payload.id != null) storage.setItem('user_id', String(payload.id));
+          if (payload.faculty_id != null) storage.setItem('faculty_id', String(payload.faculty_id));
+        } catch (decodeErr) {
+          console.warn('Could not decode JWT for user_id:', decodeErr);
+        }
+
+        if (data.mustChangePassword === true) {
+          navigate('/change-password');
+        } else {
+          navigate('/admin/dashboard');
+        }
+        return;
+      }
+
+      setErrorMessage(data.message || 'Invalid Username or Password.');
+      setPopupStatus('error');
+
+    } catch (error) {
+      console.error('Login Error:', error);
+      setErrorMessage('Unable to connect to the server. Please try again later.');
+      setPopupStatus('error');
     }
-
-    setErrorMessage(data.message || 'Invalid Username or Password.');
-    setPopupStatus('error');
-
-  } catch (error) {
-    console.error('Login Error:', error);
-    setErrorMessage('Unable to connect to the server. Please try again later.');
-    setPopupStatus('error');
-  }
-};
+  };
 
   return (
     <div className="Container">

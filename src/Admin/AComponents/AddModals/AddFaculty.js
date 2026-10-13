@@ -286,7 +286,7 @@ useEffect(() => {
                   <option value="">Select Role</option>
                   {roles.map(role => (
                     <option key={role.role_id} value={role.role_id}>
-                      {role.role_name === 'SUPERADMIN' ? 'Super Admin' : 'Admin'}
+                      {role.role_name === 'SUPERADMIN' ? 'Super Admin' : role.role_name}
                     </option>
                   ))}
                 </select>

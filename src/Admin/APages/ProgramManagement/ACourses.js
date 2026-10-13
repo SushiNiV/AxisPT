@@ -30,6 +30,10 @@ function ACourses() {
   const [yearLevelOptions] = useState(["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"]);
   const [semesterOptions] = useState(["1st Semester", "2nd Semester", "Summer"]);
 
+  // Role-based UI gate — faculty can view but not mutate
+  const role = sessionStorage.getItem('role') || localStorage.getItem('role');
+  const isAdmin = role === 'admin' || role === 'superadmin';
+
   const hasActiveFilters = selectedProgram !== "" || selectedYearLevel !== "" || selectedSemester !== "";
 
   useEffect(() => {
@@ -335,12 +339,14 @@ function ACourses() {
           onApply={applyFilters}
         />
 
-        <div className="TopbarBtnContainer">
-          <button className="TopbarBtn" onClick={() => setShowAddCourse(true)}>
-            <BiPlusCircle className="linkIcon" />
-            Course
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="TopbarBtnContainer">
+            <button className="TopbarBtn" onClick={() => setShowAddCourse(true)}>
+              <BiPlusCircle className="linkIcon" />
+              Course
+            </button>
+          </div>
+        )}
       </div>
 
       {hasNoData ? (
@@ -353,7 +359,7 @@ function ACourses() {
               Clear Search
             </button>
           </div>
-        ) : (
+        ) : isAdmin ? (
           <div className="emptyState">
             <div className="emptyStateIcon">📚</div>
             <h3 className="emptyStateTitle">No Courses Yet</h3>
@@ -361,6 +367,12 @@ function ACourses() {
             <button className="emptyStateBtn" onClick={() => setShowAddCourse(true)}>
               <BiPlusCircle className="linkIcon"/> Create Course
             </button>
+          </div>
+        ) : (
+          <div className="emptyState">
+            <div className="emptyStateIcon">📚</div>
+            <h3 className="emptyStateTitle">No Courses Yet</h3>
+            <p className="emptyStateText">There are no courses to display.</p>
           </div>
         )
       ) : (
@@ -375,7 +387,7 @@ function ACourses() {
                   <th>Year & Semester</th>
                   <th>Units</th>
                   <th>Prerequisites</th>
-                  <th>Actions</th>
+                  {isAdmin && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -392,14 +404,16 @@ function ACourses() {
                     <td>{course.total_units || course.lec_units + course.lab_units}</td>
                     <td>{course.prerequisite_codes || 'None'}</td>
 
-                    <td className="tableActions">
-                      <button className="tableEditBtn" onClick={() => handleEdit(course)}>
-                        <BiPencil /> Edit
-                      </button>
-                      <button className="tableDeleteBtn" onClick={() => handleDelete(course)}>
-                        <BiTrash /> Delete
-                      </button>
-                    </td>
+                    {isAdmin && (
+                      <td className="tableActions">
+                        <button className="tableEditBtn" onClick={() => handleEdit(course)}>
+                          <BiPencil /> Edit
+                        </button>
+                        <button className="tableDeleteBtn" onClick={() => handleDelete(course)}>
+                          <BiTrash /> Delete
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

@@ -11,6 +11,9 @@ function ASideBar() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  const role = sessionStorage.getItem('role') || localStorage.getItem('role');
+  const isAdmin = role === 'admin' || role === 'superadmin';
+
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
     document.body.classList.toggle('dark-mode');
@@ -55,24 +58,24 @@ function ASideBar() {
           >
             <BiBookAlt className="linkIcon" /> {!isCollapsed && <span>Program Management</span>}
           </NavLink>
-          
-          {/*}
-          <NavLink to="/ojt-clinical" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
-            <BiBriefcase className="linkIcon" /> {!isCollapsed && <span>OJT & Clinical</span>}
-          </NavLink>
-          */}
 
           <NavLink to="/admin/documents/student-form" className={() => `navLink ${location.pathname.includes('/admin/documents') ? 'activeLink' : ''}`}>
             <BiFile className="linkIcon" /> {!isCollapsed && <span>Documents</span>}
           </NavLink>
-          
-          <NavLink to="/admin/access-control" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
-            <BiBell className="linkIcon" /> {!isCollapsed && <span>Access Control</span>}
-          </NavLink>
-          
-          <NavLink to="/admin/history" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
-            <BiHistory className="linkIcon" /> {!isCollapsed && <span>History</span>}
-          </NavLink>
+
+          {/* Admin-only: Access Control */}
+          {isAdmin && (
+            <NavLink to="/admin/access-control" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+              <BiBell className="linkIcon" /> {!isCollapsed && <span>Access Control</span>}
+            </NavLink>
+          )}
+
+          {/* Admin-only: History */}
+          {isAdmin && (
+            <NavLink to="/admin/history" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
+              <BiHistory className="linkIcon" /> {!isCollapsed && <span>History</span>}
+            </NavLink>
+          )}
 
           <NavLink to="/admin/archive" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiArchive className="linkIcon" /> {!isCollapsed && <span>Archive</span>}
