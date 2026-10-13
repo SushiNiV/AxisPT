@@ -2,11 +2,11 @@ const jwt = require('jsonwebtoken');
 
 const verifyToken = (req, res, next) => {
   const token = req.header('x-auth-token') || req.header('Authorization')?.replace('Bearer ', '');
-  
+
   if (!token) {
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Access denied. No token provided.' 
+    return res.status(401).json({
+      success: false,
+      message: 'Access denied. No token provided.',
     });
   }
 
@@ -15,11 +15,24 @@ const verifyToken = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (err) {
-    return res.status(403).json({ 
-      success: false, 
-      message: 'Invalid or expired token.' 
+    return res.status(403).json({
+      success: false,
+      message: 'Invalid or expired token.',
     });
   }
 };
 
-module.exports = { verifyToken };
+const requireRole = (...allowed) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Not authenticated.' });
+    }
+    const role = req.user.role;
+    if (!allowed.includes(role)) {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
+    next();
+  };
+};
+
+module.exports = { verifyToken, requireRole };

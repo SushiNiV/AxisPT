@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { BiSearch, BiX, BiPrinter, BiFullscreen } from 'react-icons/bi';
+import { BiSearch, BiX, BiPrinter, BiFullscreen, BiChevronDown } from 'react-icons/bi';
 import Filter from '../../../Components/Filter';
 import '../../../Global.css';
 import '../../../Documents.css';
@@ -31,12 +31,10 @@ function DocumentsTermGrade() {
   const [gradeLoading, setGradeLoading] = useState(false);
   const [gradeError, setGradeError] = useState(null);
 
-  // Academic period selector – this is the "selectedYearLevel" for the document content
   const [selectedYearLevel, setSelectedYearLevel] = useState(null);
   const [selectedSemesterId, setSelectedSemesterId] = useState(null);
   const [academicPeriods, setAcademicPeriods] = useState([]);
 
-  // Filter state – renamed to avoid conflict with the document period selector
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState('');
   const [selectedYearLevelFilter, setSelectedYearLevelFilter] = useState('');
@@ -95,7 +93,6 @@ function DocumentsTermGrade() {
     fetchPrograms();
   }, [fetchStudents, fetchPrograms]);
 
-  // When a student is selected, fetch their available periods for the dropdown
   useEffect(() => {
     if (!selectedStudentId) {
       setTermGradeData(null);
@@ -119,7 +116,6 @@ function DocumentsTermGrade() {
         if (data.success) {
           const years = data.data.years || [];
           const totalYears = data.data.totalYears || 5;
-          // Only show valid year levels (1 to totalYears)
           const filtered = years.filter(y => y.yearLevel >= 1 && y.yearLevel <= totalYears);
           setAcademicPeriods(filtered);
         }
@@ -131,7 +127,6 @@ function DocumentsTermGrade() {
     fetchPeriods();
   }, [selectedStudentId]);
 
-  // Fetch the actual term grade document when student or period changes
   useEffect(() => {
     if (!selectedStudentId) return;
 
@@ -203,20 +198,8 @@ function DocumentsTermGrade() {
   }, [isPrintPending, printForms]);
 
   const filters = [
-    {
-      name: 'program',
-      label: 'PROGRAM',
-      value: tempProgram,
-      options: programOptions,
-      placeholder: 'ALL PROGRAMS'
-    },
-    {
-      name: 'yearLevel',
-      label: 'YEAR LEVEL',
-      value: tempYearLevelFilter,
-      options: yearLevelOptions,
-      placeholder: 'ALL YEARS'
-    }
+    { name: 'program', label: 'PROGRAM', value: tempProgram, options: programOptions, placeholder: 'ALL PROGRAMS' },
+    { name: 'yearLevel', label: 'YEAR LEVEL', value: tempYearLevelFilter, options: yearLevelOptions, placeholder: 'ALL YEARS' }
   ];
 
   const handleFilterChange = (name, value) => {
@@ -259,7 +242,6 @@ function DocumentsTermGrade() {
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
 
-      // Build query string with the current period selection
       const params = new URLSearchParams();
       if (selectedYearLevel) params.set('yearLevel', selectedYearLevel);
       if (selectedSemesterId) params.set('semesterId', selectedSemesterId);
@@ -280,9 +262,6 @@ function DocumentsTermGrade() {
       }));
 
       setPrintForms(forms);
-      console.log('Batch print forms:', forms);
-      console.log('First student data:', forms[0]?.data);
-      console.log('prelimCourses:', forms[0]?.data?.prelimCourses);
       setIsPrintPending(true);
     } catch (err) {
       console.error('Batch print error:', err);
@@ -300,6 +279,10 @@ function DocumentsTermGrade() {
   };
 
   const resetPreviewScale = () => setPreviewScale(DEFAULT_PREVIEW_SCALE);
+
+  const semesterOptions = selectedYearLevel
+    ? (academicPeriods.find((yb) => yb.yearLevel === selectedYearLevel)?.semesters || [])
+    : [];
 
   return (
     <>
@@ -398,36 +381,53 @@ function DocumentsTermGrade() {
         <div className="DocPreviewPanel">
           <div className="DocPreviewActions">
             {academicPeriods.length > 0 && (
-              <div style={{ display: 'inline-flex', gap: '6px', marginRight: '8px' }}>
-                <select
-                  value={selectedYearLevel || ''}
-                  onChange={(e) => {
-                    const yl = e.target.value ? Number(e.target.value) : null;
-                    setSelectedYearLevel(yl);
-                    setSelectedSemesterId(null);
-                  }}
-                  style={{ fontSize: '0.8rem', padding: '4px 6px' }}
-                >
-                  <option value="">Current Period</option>
-                  {academicPeriods.map((yb) => (
-                    <option key={yb.yearLevel} value={yb.yearLevel}>Year {yb.yearLevel}</option>
-                  ))}
-                </select>
-                {selectedYearLevel && (
+              <div className="DocPeriodSelector">
+                <div className="DocPeriodSelectWrap">
                   <select
-                    value={selectedSemesterId || ''}
-                    onChange={(e) => setSelectedSemesterId(e.target.value ? Number(e.target.value) : null)}
-                    style={{ fontSize: '0.8rem', padding: '4px 6px' }}
+                    className="DocPeriodSelect"
+                    value={selectedYearLevel || ''}
+                    onChange={(e) => {
+                      const yl = e.target.value ? Number(e.target.value) : null;
+                      setSelectedYearLevel(yl);
+                      setSelectedSemesterId(null);
+                    }}
                   >
-                    <option value="">-- Semester --</option>
-                    {(academicPeriods.find((yb) => yb.yearLevel === selectedYearLevel)?.semesters || []).map((sem) => (
-                      <option key={sem.semesterId} value={sem.semesterId}>{sem.semesterLabel}</option>
+                    <option value="">Current Year</option>
+                    {academicPeriods.map((yb) => (
+                      <option key={yb.yearLevel} value={yb.yearLevel}>
+                        Year {yb.yearLevel}
+                      </option>
                     ))}
                   </select>
-                )}
+                  <BiChevronDown className="DocPeriodSelectChevron" />
+                </div>
+
+                <div className="DocPeriodSelectWrap">
+                  <select
+                    className="DocPeriodSelect"
+                    value={selectedSemesterId || ''}
+                    onChange={(e) => setSelectedSemesterId(e.target.value ? Number(e.target.value) : null)}
+                    disabled={!selectedYearLevel}
+                  >
+                    <option value="">
+                      {selectedYearLevel ? '-- Semester --' : 'Semester'}
+                    </option>
+                    {semesterOptions.map((sem) => (
+                      <option key={sem.semesterId} value={sem.semesterId}>
+                        {sem.semesterLabel}
+                      </option>
+                    ))}
+                  </select>
+                  <BiChevronDown className="DocPeriodSelectChevron" />
+                </div>
               </div>
             )}
-            <button className="TopbarBtn" onClick={handlePrint} disabled={selectedStudentIds.length === 0 || isPreparingPrint}>
+
+            <button
+              className="TopbarBtn"
+              onClick={handlePrint}
+              disabled={selectedStudentIds.length === 0 || isPreparingPrint}
+            >
               <BiPrinter className="linkIcon" /> {isPreparingPrint ? 'Preparing…' : `Print (${selectedStudentIds.length})`}
             </button>
             {printError && <p className="DocPrintError" role="alert">{printError}</p>}

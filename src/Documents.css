@@ -269,6 +269,85 @@
   display: none;
 }
 
+/* ---- Action row: period selectors + print button ---- */
+
+.DocPreviewActions {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: right;
+}
+
+.DocPeriodSelector {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.DocPeriodSelectWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.DocPeriodSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  padding: 8px 32px 8px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: #3d1616;
+  font-weight: 500;
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  min-width: fit-content;
+  outline: none;
+}
+
+.DocPeriodSelect:hover:not(:disabled) {
+  background-color: #3d1616;
+  color: #fff;
+  border-color: #3d1616;
+}
+
+.DocPeriodSelect:hover:not(:disabled) + .DocPeriodSelectChevron {
+  color: #fff;
+}
+
+.DocPeriodSelect:focus {
+  border-color: #3d1616;
+}
+
+.DocPeriodSelect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.DocPeriodSelect option {
+  color: #222;
+  background: #fff;
+}
+
+.DocPeriodSelectChevron {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 1rem;
+  color: #3d1616;
+  transition: color 0.3s ease;
+}
 /* ---- Print handling ----
    Only selected forms reach paper/PDF; each form starts on a new page. */
 @media print {

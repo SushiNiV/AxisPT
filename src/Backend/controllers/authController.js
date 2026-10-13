@@ -11,30 +11,71 @@ const getIpAddress = (req) => req.ip || req.connection.remoteAddress || req.sock
 // ==========================================
 // AUTHENTICATION & USER MANAGEMENT
 // ==========================================
-
 exports.login = async (req, res) => {
   const { username, password, rememberMe } = req.body;
   const ipAddress = getIpAddress(req);
   const userAgent = req.headers['user-agent'];
 
   const safeLog = async (payload) => {
-    try {
-      await HistoryModel.log(payload);
-    } catch (e) {
-      console.error('Login history log failed (non-fatal):', e.message);
-    }
+    try { await HistoryModel.log(payload); } catch (e) { console.error('Log failed:', e.message); }
   };
 
   try {
+    // 1. Check if this is a student
+    const student = await db.query(`
+      SELECT s.student_id, s.user_id, s.birth_date, s.account_status,
+             u.username, u.password_hash, u.is_active, u.changed_pass,
+             p.first_name, p.last_name
+      FROM students s
+      JOIN users u ON u.user_id = s.user_id
+      LEFT JOIN student_pii p ON p.student_id = s.student_id
+      WHERE u.username = $1
+      LIMIT 1
+    `, [username]);
+
+    if (student.rows.length > 0) {
+      const s = student.rows[0];
+
+      const isBcrypt = s.password_hash &&
+        (s.password_hash.startsWith('$2b$') || s.password_hash.startsWith('$2a$'));
+      const isMatch = isBcrypt
+        ? await bcrypt.compare(password, s.password_hash)
+        : (password === s.password_hash);
+
+      if (!isMatch || !s.is_active) {
+        return res.status(401).json({ success: false, message: 'Invalid Username or Password.' });
+      }
+
+      // Student birthday confirmation check (optional second factor)
+      const { birthday } = req.body;
+      if (birthday && s.birth_date) {
+        const dbDate = new Date(s.birth_date).toISOString().split('T')[0];
+        if (dbDate !== birthday) {
+          return res.status(401).json({ success: false, message: 'Birthday does not match our records.' });
+        }
+      }
+
+      const wantsRemember = rememberMe === true || rememberMe === 'true';
+      const token = jwt.sign(
+        { id: s.user_id, student_id: s.student_id, role: 'student' },
+        process.env.JWT_SECRET,
+        { expiresIn: wantsRemember ? '7d' : '2h' }
+      );
+
+      return res.json({
+        success: true,
+        token,
+        username: s.username,
+        firstName: s.first_name,
+        role: 'student',
+        mustChangePassword: s.changed_pass === false,
+      });
+    }
+
+    // 2. Otherwise fall through to admin/faculty login (existing logic)
     const admin = await AdminModel.findByUsername(username);
 
     if (!admin) {
-      await safeLog({
-        userId: null, targetUserId: null, tableName: 'users', recordId: null,
-        action: 'Login Failed', oldValues: null,
-        newValues: { username, reason: 'User not found', timestamp: new Date().toISOString() },
-        ipAddress, userAgent
-      });
       return res.status(401).json({ success: false, message: 'Invalid Username or Password.' });
     }
 
@@ -45,12 +86,6 @@ exports.login = async (req, res) => {
       : (password === admin.password_hash);
 
     if (!isMatch) {
-      await safeLog({
-        userId: admin.user_id, targetUserId: admin.user_id, tableName: 'users', recordId: admin.user_id,
-        action: 'Login Failed', oldValues: null,
-        newValues: { username, reason: 'Invalid password', timestamp: new Date().toISOString() },
-        ipAddress, userAgent
-      });
       return res.status(401).json({ success: false, message: 'Invalid Username or Password.' });
     }
 
@@ -58,84 +93,44 @@ exports.login = async (req, res) => {
       ? admin.roles
       : (typeof admin.roles === 'string' ? admin.roles.split(',') : []);
 
-    const hasAdminRole = rolesArray.some(role =>
-      ['SUPERADMIN', 'ADMIN'].includes(role.trim().toUpperCase())
+    const hasAdminRole = rolesArray.some(r =>
+      ['SUPERADMIN', 'ADMIN'].includes(r.trim().toUpperCase())
     );
 
     if (!admin.is_active) {
-      await safeLog({
-        userId: admin.user_id, targetUserId: admin.user_id, tableName: 'users', recordId: admin.user_id,
-        action: 'Login Failed', oldValues: null,
-        newValues: { username, reason: 'Account deactivated', timestamp: new Date().toISOString() },
-        ipAddress, userAgent
-      });
-      return res.status(403).json({
-        success: false,
-        message: 'Account is deactivated. Please contact administrator.'
-      });
+      return res.status(403).json({ success: false, message: 'Account is deactivated.' });
     }
 
     if (!hasAdminRole && !admin.faculty_status) {
-      await safeLog({
-        userId: admin.user_id, targetUserId: admin.user_id, tableName: 'users', recordId: admin.user_id,
-        action: 'Login Failed', oldValues: null,
-        newValues: { username, reason: 'No active faculty record', timestamp: new Date().toISOString() },
-        ipAddress, userAgent
-      });
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. Faculty account not active.'
-      });
+      return res.status(403).json({ success: false, message: 'Access denied. Faculty account not active.' });
     }
 
     const wantsRemember = rememberMe === true || rememberMe === 'true';
-    const expiresIn = wantsRemember ? '7d' : '2h';
-
     const token = jwt.sign(
       {
         id: admin.user_id,
-        role: admin.roles,
+        role: hasAdminRole ? 'admin' : 'faculty',
         designation: admin.designation_name,
-        faculty_id: admin.faculty_id
+        faculty_id: admin.faculty_id,
       },
       process.env.JWT_SECRET,
-      { expiresIn }
+      { expiresIn: wantsRemember ? '7d' : '2h' }
     );
 
     await AdminModel.updateLastLogin(admin.user_id);
-
-    await safeLog({
-      userId: admin.user_id, targetUserId: admin.user_id, tableName: 'users', recordId: admin.user_id,
-      action: 'Login Success', oldValues: null,
-      newValues: {
-        username: admin.username,
-        role: admin.roles,
-        designation: admin.designation_name,
-        rememberMe: wantsRemember,
-        timestamp: new Date().toISOString()
-      },
-      ipAddress, userAgent
-    });
 
     res.json({
       success: true,
       token,
       username: admin.username,
-      employeeID: admin.username,
       firstName: admin.first_name,
-      role: admin.roles,
+      role: hasAdminRole ? 'admin' : 'faculty',
       designation: admin.designation_name,
-      mustChangePassword: admin.changed_pass === false
+      mustChangePassword: admin.changed_pass === false,
     });
 
   } catch (err) {
     console.error('Login error:', err);
-    await safeLog({
-      userId: null, targetUserId: null, tableName: 'users', recordId: null,
-      action: 'Login Error', oldValues: null,
-      newValues: { username, error: err.message, timestamp: new Date().toISOString() },
-      ipAddress, userAgent
-    });
     res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 };
