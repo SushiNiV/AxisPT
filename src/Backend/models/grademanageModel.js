@@ -595,7 +595,9 @@ class GradeManageModel {
       SELECT DISTINCT ON (ss.student_id)
         ss.student_id, ss.probation_status
       FROM student_status ss
-      JOIN academic_year ay ON ay.year_id = ss.year_id AND ay.is_active = true
+      JOIN academic_year ay ON ay.year_id = ss.year_id
+        AND ay.is_active = true
+        AND ss.semester_id = ay.current_sem
       WHERE ss.verified_by_id IS NOT NULL
       ORDER BY ss.student_id, ss.verification_date DESC NULLS LAST, ss.status_id DESC
     `);

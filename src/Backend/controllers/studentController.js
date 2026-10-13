@@ -8,6 +8,9 @@ const getIpAddress = (req) => req.ip || req.connection.remoteAddress || req.sock
 // STUDENT MANAGEMENT
 // ==========================================
 
+const PROBATION_OPTIONS = ['Automatic', 'None', 'Warning', 'Probationary 1', 'Probationary 2'];
+const STANDING_OPTIONS = ['Regular', 'Irregular'];
+
 exports.getStudentMasterlist = async (req, res) => {
   try {
     const { search, programId, limit, offset, includeArchived } = req.query;
@@ -39,7 +42,18 @@ exports.getStudentById = async (req, res) => {
     const { id } = req.params;
     const student = await StudentManageModel.getById(id);
     if (!student) return res.status(404).json({ success: false, message: "Student record not found." });
-    res.status(200).json({ success: true, data: student });
+
+    const standingMap = await GradeManageModel.getAcademicStandingMap();
+    const probation = standingMap.get(student.student_id);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...student,
+        academic_status: probation?.status || 'None',
+        academic_status_overridden: probation?.isOverridden || false
+      }
+    });
   } catch (error) {
     console.error("Error fetching student details:", error);
     res.status(500).json({ success: false, message: "Internal server error." });
@@ -77,6 +91,68 @@ exports.updateStudent = async (req, res) => {
   } catch (error) {
     console.error("Error updating student:", error);
     return res.status(500).json({ success: false, message: "Internal server error.", error: error.message });
+  }
+};
+
+exports.updateStudentStatus = async (req, res) => {
+  const { id } = req.params;
+  const { probation_status, standing, reason } = req.body || {};
+
+  if (!Number.isInteger(Number(id))) {
+    return res.status(400).json({ success: false, message: 'Invalid student ID.' });
+  }
+  if (probation_status === undefined && standing === undefined) {
+    return res.status(400).json({ success: false, message: 'Provide probation_status and/or standing.' });
+  }
+  if (probation_status !== undefined && !PROBATION_OPTIONS.includes(probation_status)) {
+    return res.status(400).json({ success: false, message: 'Invalid probation status.' });
+  }
+  if (standing !== undefined && !STANDING_OPTIONS.includes(standing)) {
+    return res.status(400).json({ success: false, message: 'Invalid standing.' });
+  }
+
+  const cleanReason = typeof reason === 'string' ? reason.trim().slice(0, 200) : '';
+  if (!cleanReason) {
+    return res.status(400).json({ success: false, message: 'A reason is required for manual status changes.' });
+  }
+
+  // verified_by_id references faculties, so the acting account needs a faculty_id
+  const facultyId = req.user?.faculty_id ?? null;
+  if (probation_status !== undefined && probation_status !== 'Automatic' && !facultyId) {
+    return res.status(403).json({
+      success: false,
+      message: "Your account isn't linked to a faculty record, so it can't verify a probation status."
+    });
+  }
+
+  try {
+    const { studentUserId, before, after } = await StudentManageModel.updateStatus(id, {
+      probationStatus: probation_status,
+      standing,
+      facultyId
+    });
+
+    await HistoryModel.log({
+      userId: req.user.id,
+      targetUserId: studentUserId,
+      tableName: 'students',
+      recordId: Number(id),
+      action: 'STUDENT_STATUS_CHANGED',
+      oldValues: before,
+      newValues: { ...after, student_id: Number(id), reason: cleanReason },
+      ipAddress: getIpAddress(req),
+      userAgent: req.headers['user-agent']
+    });
+
+    res.json({ success: true, message: 'Student status updated.' });
+  } catch (error) {
+    console.error('Error updating student status:', error);
+    const expected = ['Student not found.', 'There is no active academic term.'];
+    const isExpected = expected.includes(error.message);
+    res.status(isExpected ? 400 : 500).json({
+      success: false,
+      message: isExpected ? error.message : 'Internal server error.'
+    });
   }
 };
 

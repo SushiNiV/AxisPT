@@ -593,6 +593,7 @@ function Masterlist() {
                   <th>Year Level</th>
                   <th>Section</th>
                   <th>Email</th>
+                  <th style={{ width: '100px' }}>Standing</th>
                   <th>Probation</th>
                   <th>Actions</th>
                 </tr>
@@ -631,6 +632,17 @@ function Masterlist() {
                     <td>{std.year_level ? `${std.year_level}` : '-'}</td>
                     <td>{std.section_name || '-'}</td>
                     <td>{std.personal_email}</td>
+                    <td>
+                      <span
+                        className={
+                          std.standing === 'Irregular'
+                            ? 'statusBadge inactive-bg'
+                            : 'statusBadge active-bg'
+                        }
+                      >
+                        {std.standing || 'Regular'}
+                      </span>
+                    </td>
                     <td>
                       <span {...getStandingBadgeProps(std.academic_status)}>
                         {std.academic_status || 'None'}

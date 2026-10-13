@@ -882,6 +882,85 @@ class StudentManageModel {
     }
   }
 
+  static async updateStatus(studentId, { probationStatus, standing, facultyId = null }) {
+    const client = db.getClient ? await db.getClient() : db;
+    const isDedicatedClient = Boolean(db.getClient);
+
+    try {
+      if (isDedicatedClient) await client.query('BEGIN');
+
+      const studentRes = await client.query(
+        `SELECT user_id, standing FROM students WHERE student_id = $1 FOR UPDATE`,
+        [studentId]
+      );
+      if (studentRes.rows.length === 0) throw new Error('Student not found.');
+      const { user_id: studentUserId, standing: currentStanding } = studentRes.rows[0];
+
+      const term = await StudentManageModel.getActiveAcademicTerm(client);
+      const termKnown = term.year_id != null && term.current_sem != null;
+
+      // Current manual probation override for this term, if any
+      let currentProbation = 'Automatic';
+      if (termKnown) {
+        const rowRes = await client.query(
+          `SELECT probation_status, verified_by_id FROM student_status
+           WHERE student_id = $1 AND year_id = $2 AND semester_id = $3`,
+          [studentId, term.year_id, term.current_sem]
+        );
+        const row = rowRes.rows[0];
+        if (row && row.verified_by_id != null) currentProbation = row.probation_status || 'None';
+      }
+
+      let newProbation = currentProbation;
+      if (probationStatus !== undefined) {
+        if (!termKnown) throw new Error('There is no active academic term.');
+
+        if (probationStatus === 'Automatic') {
+          // Keep the row (it may hold residency data); just drop the override.
+          await client.query(`
+            UPDATE student_status
+            SET probation_status = NULL, verified_by_id = NULL,
+                verification_date = NULL, updated_at = NOW()
+            WHERE student_id = $1 AND year_id = $2 AND semester_id = $3
+          `, [studentId, term.year_id, term.current_sem]);
+        } else {
+          await client.query(`
+            INSERT INTO student_status
+              (student_id, year_id, semester_id, probation_status, verified_by_id, verification_date)
+            VALUES ($1, $2, $3, $4::probation_status_type, $5, CURRENT_DATE)
+            ON CONFLICT (student_id, year_id, semester_id) DO UPDATE SET
+              probation_status  = EXCLUDED.probation_status,
+              verified_by_id    = EXCLUDED.verified_by_id,
+              verification_date = EXCLUDED.verification_date,
+              updated_at        = NOW()
+          `, [studentId, term.year_id, term.current_sem, probationStatus, facultyId]);
+        }
+        newProbation = probationStatus;
+      }
+
+      let newStanding = currentStanding;
+      if (standing !== undefined) {
+        await client.query(
+          `UPDATE students SET standing = $1::standing_type, updated_at = NOW() WHERE student_id = $2`,
+          [standing, studentId]
+        );
+        newStanding = standing;
+      }
+
+      if (isDedicatedClient) await client.query('COMMIT');
+      return {
+        studentUserId,
+        before: { probation: currentProbation, standing: currentStanding },
+        after: { probation: newProbation, standing: newStanding }
+      };
+    } catch (error) {
+      if (isDedicatedClient) await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      if (isDedicatedClient && client.release) client.release();
+    }
+  }
+
   static async bulkUpdateEducation(studentIds, { yearLevel = null, sectionId = null } = {}) {
     let assignmentId = null;
     if (sectionId) {

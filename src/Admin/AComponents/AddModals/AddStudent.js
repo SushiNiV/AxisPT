@@ -23,6 +23,11 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     email: '',
     accountStatus: true,
 
+    // Manual status (edit mode only)
+    probationStatus: 'Automatic',
+    standing: 'Regular',
+    statusReason: '',
+
     // Personal Information
     firstName: '',
     middleName: '',
@@ -203,6 +208,9 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         lastName: studentData.last_name || studentData.lastname || studentData.lastName || '',
         suffix: studentData.suffix || '',
         sex: studentData.sex || 'Male',
+        probationStatus: studentData.academic_status_overridden ? studentData.academic_status : 'Automatic',
+        standing: studentData.standing || 'Regular',
+        statusReason: '',
         birthDate: studentData.birth_date ? studentData.birth_date.split('T')[0] : (studentData.birthDate || ''),
         placeOfBirth: studentData.place_of_birth || studentData.placeOfBirth || '',
         phoneNumber: studentData.mobile_no || studentData.phoneNumber || studentData.phone_number || '',
@@ -279,6 +287,28 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     }
   }, [studentData]);
 
+    
+  const originalProbation = studentData?.academic_status_overridden ? studentData.academic_status : 'Automatic';
+  const originalStanding = studentData?.standing || 'Regular';
+  const statusChanges = {};
+  if (formData.probationStatus !== originalProbation) statusChanges.probation_status = formData.probationStatus;
+  if (formData.standing !== originalStanding) statusChanges.standing = formData.standing;
+  const hasStatusChanges = isEditMode && Object.keys(statusChanges).length > 0;
+
+  const closeConfirm = () => setConfirmState({ isOpen: false });
+
+  const openAlert = (title, message, variant = 'info') => {
+    setConfirmState({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      isAlert: true,
+      onConfirm: closeConfirm,
+      onCancel: closeConfirm,
+    });
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
@@ -318,10 +348,13 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     e.preventDefault();
 
     if (!formData.firstName || !formData.lastName || !formData.studentNumber || !formData.email || !formData.programId || !formData.yearLevel) {
-      alert("Please fill in all required primary fields.");
+      openAlert('Missing Fields', 'Please fill in all required primary fields.', 'warning');
       return;
     }
-
+    if (hasStatusChanges && !formData.statusReason.trim()) {
+      openAlert('Reason Required', 'Please enter a reason for the status change.', 'warning');
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -472,7 +505,27 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
 
       const data = await response.json();
 
-      if (data.success || response.ok) {
+            if (data.success || response.ok) {
+        if (hasStatusChanges) {
+          const statusRes = await fetch(
+            `${process.env.REACT_APP_API_URL}/admin/students/${studentId}/status`,
+            {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ ...statusChanges, reason: formData.statusReason.trim() })
+            }
+          );
+          const statusData = await statusRes.json();
+          if (!statusData.success) {
+            openAlert(
+              'Status Change Failed',
+              `The student record was saved, but the status change failed: ${statusData.message || 'Unknown error.'}`,
+              'danger'
+            );
+            return; // modal stays open so they can retry
+          }
+        }
+
         setSuccessState({
           isOpen: true,
           title: isEditMode ? 'Student Updated' : 'Student Created',
@@ -482,11 +535,15 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
           variant: 'success',
         });
       } else {
-        alert(data.message || (isEditMode ? "Failed to update student." : "Failed to create student."));
+        openAlert(
+          isEditMode ? 'Update Failed' : 'Creation Failed',
+          data.message || (isEditMode ? "Failed to update student." : "Failed to create student."),
+          'danger'
+        );
       }
     } catch (error) {
       console.error("Error submitting student:", error);
-      alert("An error occurred. Please try again.");
+      openAlert('Connection Error', 'An unexpected error occurred. Please try again.', 'danger');
     } finally {
       setIsSubmitting(false);
     }
@@ -577,7 +634,48 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
               </div>
             </div>
           </div>
-
+                    {isEditMode && (
+            <div className="formSection">
+              <h4 className="sectionHeading">Academic Status</h4>
+              <div className="formRow split2">
+                <div className="formGroup">
+                  <label className="formLabel">PROBATION STATUS</label>
+                  <select name="probationStatus" value={formData.probationStatus} onChange={handleChange}>
+                    <option value="Automatic">Automatic (from grades)</option>
+                    <option value="None">None</option>
+                    <option value="Warning">Warning</option>
+                    <option value="Probationary 1">Probationary 1</option>
+                    <option value="Probationary 2">Probationary 2</option>
+                  </select>
+                  {formData.probationStatus === 'Automatic' && (
+                    <small style={{ fontSize: '0.75rem', color: '#666' }}>
+                      Calculated from grades: {studentData?.academic_status || 'None'}
+                    </small>
+                  )}
+                </div>
+                <div className="formGroup">
+                  <label className="formLabel">STANDING</label>
+                  <select name="standing" value={formData.standing} onChange={handleChange}>
+                    <option value="Regular">Regular</option>
+                    <option value="Irregular">Irregular</option>
+                  </select>
+                </div>
+              </div>
+              {hasStatusChanges && (
+                <div className="formGroup">
+                  <label className="formLabel">REASON FOR CHANGE <span style={{color: 'red'}}>*</span></label>
+                  <input
+                    type="text"
+                    name="statusReason"
+                    value={formData.statusReason}
+                    onChange={handleChange}
+                    maxLength={200}
+                    placeholder="e.g. Cross-enrollee, completed summer retake"
+                  />
+                </div>
+              )}
+            </div>
+          )}
           {/* SECTION 2: ACCORDION TOGGLE BUTTON */}
           <div className="accordionToggleArea">
             <button

@@ -51,7 +51,7 @@ router.put('/students/batch-update', verifyToken, studentController.updateStuden
 router.put('/students/:id', verifyToken, studentController.updateStudent);
 router.delete('/students/:id', verifyToken, studentController.deleteStudent);
 router.post('/students/:id/restore', verifyToken, studentController.restoreStudent);
-
+router.put('/students/:id/status', verifyToken, studentController.updateStudentStatus);
 // ==========================================
 // GRADE MANAGEMENT
 // ==========================================
