@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from 'react-dom';
 import ConfirmationModal from '../ConfirmationModal';
-import '../../../GlobalForm.css';
-import '../../../GlobalOverlay.css';
-import '../../../Global.css';
+import '../../../GlobalStyle/GlobalForm.css';
+import '../../../GlobalStyle/GlobalOverlay.css';
+import '../../../GlobalStyle/Global.css';
 
 
 function AddProgram({ onClose, onSuccess, programToEdit = null }) {

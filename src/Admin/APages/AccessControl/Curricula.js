@@ -3,9 +3,9 @@ import './Curricula.css';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import { BiSearch, BiPlusCircle, BiX, BiBook, BiPencil, BiTrash } from 'react-icons/bi';
 
-import '../../../Global.css';
-import '../../../GlobalCard.css';
-import '../../../GlobalEmpty.css';
+import '../../../GlobalStyle/Global.css';
+import '../../../GlobalStyle/GlobalCard.css';
+import '../../../GlobalStyle/GlobalEmpty.css';
 import AddCurriculum from '../../AComponents/AddModals/AddCurriculum';
 
 function ACurricula() {

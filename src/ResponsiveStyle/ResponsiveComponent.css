@@ -1,0 +1,545 @@
+/* ============================================================================
+   Responsive.css
+   Mobile / tablet overrides for AxisPT.
+
+   - Import LAST (after every Global*.css) so equal-specificity rules win.
+   - Desktop styles are untouched; everything lives in media queries
+     except the dvh fixes and the hidden-by-default mobile elements.
+   - Breakpoints:  <= 1024px tablet  |  <= 768px mobile  |  <= 480px small
+   ============================================================================ */
+
+
+/* ---------- 1. Base fixes (all screen sizes) ---------- */
+
+/* 100vh includes the mobile browser toolbar; dvh tracks the visible area.
+   The vh line stays as a fallback for older browsers. */
+html,
+body,
+#root {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.Container {
+  width: 100%;              /* 100vw adds horizontal overflow when a scrollbar exists */
+  height: 100vh;
+  height: 100dvh;
+}
+
+.MainContainer {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Mobile-only elements: hidden on desktop */
+.MobileMenuBtn,
+.SidebarHandle,
+.SidebarBackdrop {
+  display: none;
+}
+
+
+/* ---------- 2. Tablet (<= 1024px) ---------- */
+
+@media (max-width: 1024px) {
+  .PageContent {
+    padding: 0 0.75rem;
+  }
+
+  .HeaderTitle {
+    font-size: 1.9rem;
+  }
+}
+
+
+/* ---------- 3. Mobile (<= 768px) ---------- */
+
+@media (max-width: 768px) {
+
+  /* --- Sidebar becomes an off-canvas drawer --- */
+
+  .SidebarContainer,
+  .SidebarContainer.collapsed {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100vh;
+    height: 100dvh;
+    width: min(250px, 78vw);
+    background-color: #f2f4f6;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: none;
+    z-index: 1000;
+  }
+
+  .SidebarContainer.mobileOpen {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .SidebarBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+
+  /* Desktop collapse toggle has no purpose in the drawer */
+  .collapseBtnArea {
+    display: none;
+  }
+
+  /* Compact drawer contents */
+  .SidebarArea {
+    padding: 0.75rem;
+  }
+
+  .Sidebar.LogoArea {
+    margin-bottom: 2rem;
+  }
+
+
+  .LogoText {
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+  }
+
+  .navLink {
+    padding: 0.8rem 0.65rem !important;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .linkIcon {
+    margin-right: 10px;
+  }
+
+  /* Edge handle: sits on the drawer's right edge, vertically centered.
+     Lives outside the sidebar (which clips overflow), so it tracks the
+     drawer width with the same expression. */
+ .SidebarHandle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 50%;
+    left: min(250px, 78vw);
+    transform: translate(calc(-1 * (min(250px, 78vw) + 22px)), -50%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    width: 22px;
+    height: 72px;
+    padding: 0;
+    border: none;
+    border-radius: 0 12px 12px 0;
+    background: #f2f4f6;
+    color: #3d1616;
+    font-size: 1.4rem;
+    cursor: pointer;
+    z-index: 1001;
+  }
+
+  .SidebarHandle.open {
+    transform: translate(0, -50%);
+    pointer-events: auto;
+  }
+
+  .MobileMenuBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    margin-right: 0.5rem;
+    border: none;
+    border-radius: 8px;
+    background: #fff;
+    color: #3d1616;
+    font-size: 1.4rem;
+    cursor: pointer;
+  }
+
+  /* --- Header --- */
+
+  .HeaderContainer {
+    min-height: 60px;
+    padding: 0.75rem 0.25rem;
+    gap: 0.5rem;
+  }
+
+  .HeaderTitle {
+    font-size: 1.35rem;
+  }
+
+  .SubHeaderTitle {
+    font-size: 0.8rem;
+  }
+
+  .HeaderRight {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  /* Title takes the leftover space and truncates instead of overlapping icons */
+  .HeaderLeft {
+    flex: 1;
+    min-width: 0;
+    margin-right: 0;
+  }
+
+  .HeaderTitle {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* Logout becomes an icon-only button, same size as the bell and profile */
+  .logoutBtn {
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 50%;
+    border: none;
+  }
+
+  .logoutText {
+    display: none;
+  }
+
+  .logoutIconMar {
+    margin-right: 0;
+  }
+
+  /* Subheader tabs scroll sideways instead of overflowing the page */
+  .SubheaderContainer {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-right: 28px;          /* lets the last tab scroll clear of the fade */
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Fades are toggled by ASubheader.js based on scroll position */
+  .SubheaderContainer.fadeRight {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+
+  .SubheaderContainer.fadeLeft {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 28px);
+    mask-image: linear-gradient(to right, transparent, #000 28px);
+  }
+
+  .SubheaderContainer.fadeLeft.fadeRight {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+  }
+
+  .SubheaderContainer::-webkit-scrollbar {
+    display: none;
+  }
+
+  .SubheaderBlob,
+  .SubheaderBlob.active {
+    flex-shrink: 0;
+    width: auto;
+    min-width: 0;
+    margin-right: 0.5rem;
+    padding: 10px 16px;
+    white-space: nowrap;
+  }
+
+  /* --- Page content --- */
+
+  .PageContent {
+    padding: 0 0.5rem;
+  }
+
+  /* Search takes its own row; buttons wrap beneath */
+  .TopSection {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .TopSection .SearchWrapper {
+    flex: 1 1 100%;
+  }
+
+  .TopbarBtnContainer {
+    margin-left: 0;
+  }
+
+  .TopbarBtn {
+    padding: 8px 12px;
+  }
+
+  /* Filter dropdown becomes a bottom sheet */
+  .FilterDropdown {
+    position: fixed;
+    top: auto;
+    right: 0.5rem;
+    left: 0.5rem;
+    bottom: 0.5rem;
+    width: auto;
+    max-height: 70dvh;
+    overflow-y: auto;
+    z-index: 1100;
+  }
+
+  /* --- Tables (keep horizontal scroll, ease touch use) --- */
+
+  .TableContainer {
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Table: keep desktop width, no wrapping, swipe sideways */
+  .Table {
+    min-width: 900px;
+    font-size: 0.875rem;
+  }
+
+  .Table th,
+  .Table td {
+    white-space: nowrap;
+  }
+
+  /* Page scrolls as a whole; table gets a fixed, usable height */
+  .PageContent {
+    overflow-y: auto;
+    padding-bottom: 88px; /* clears the Ask AI button */
+  }
+
+  .InnerContainer {
+    height: auto;
+    flex: none;
+    overflow: visible;
+  }
+
+  .TableContainer {
+    flex: none;
+    height: 65dvh;
+  }
+
+  .CardsContainer {
+    flex: none;
+  }
+
+  /* --- Pagination --- */
+
+  .PaginationContainer {
+    padding: 10px;
+  }
+
+  .PaginationControls {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .PageBtn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .PaginationInfo {
+    font-size: 0.85rem;
+    margin-left: 0;
+  }
+
+  /* --- Cards --- */
+
+  .Card {
+    padding: 12px;
+  }
+
+  .CardMain {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .CardAction {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .actionBtn {
+    padding: 8px 12px;
+  }
+
+  /* --- Program / Section detail header and toolbars --- */
+
+  .ProgDetailHeader {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  .ProgDetailTitle h2 {
+    font-size: 1.2rem;
+  }
+
+  .ProgDetailActions {
+    flex-wrap: wrap;
+  }
+
+  .SectionToolbar {
+    flex-wrap: wrap;
+  }
+
+  .SectionToolbar .SearchWrapper {
+    flex: 1 1 100%;
+  }
+
+  /* --- Modals --- */
+
+  .modalOverlay {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .modalContainer {
+    width: calc(100% - 1rem);
+    max-height: 92vh;
+    max-height: 92dvh;
+  }
+
+  .modalHeader {
+    padding: 0.75rem 1rem;
+  }
+
+  .modalTitle {
+    font-size: 1rem;
+  }
+
+  .modalScrollArea {
+    padding: 1rem;
+  }
+
+  .sectionHeading {
+    font-size: 1.15rem;
+  }
+
+  /* Multi-column form grids collapse to a single column */
+  .formRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .split2,
+  .split3 {
+    grid-template-columns: 1fr;
+  }
+
+  .span2 {
+    grid-column: auto;
+  }
+
+  .subTier {
+    margin-left: 1rem;
+  }
+
+  .AddBtn {
+    align-self: stretch;
+  }
+
+  /* Footer buttons stack, primary action on top */
+  .modalFooter {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+
+  .cancelBtn,
+  .submitBtn {
+    width: 100%;
+    padding: 0.85rem 1rem;
+  }
+
+  .PopUpCard {
+    padding: 0 1rem;
+  }
+
+  .PopUpCard input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* 16px prevents iOS Safari from zooming the page on input focus */
+  .formGroup input,
+  .formGroup textarea,
+  .formGroup select,
+  .custom-multiselect .select-display,
+  .SearchInput,
+  .CurrentPageInput,
+  .FilterGroup select {
+    font-size: 16px;
+  }
+
+  /* --- Floating action bars --- */
+
+  .BulkActionBar,
+  .bottomPopupContainer {
+    box-sizing: border-box;
+    width: calc(100% - 1rem);
+    min-width: 0;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .BulkActionBar {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 8px 8px 16px;
+    border-radius: 20px;
+  }
+
+  .BulkActionBar .TopbarBtn,
+  .BulkActionBar .tableDeleteBtn,
+  .BulkActionBar .ClearSelectionBtn {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+
+  .bottomPopupRow {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .bpopupLeft {
+    padding-right: 0;
+    border-right: none;
+  }
+}
+
+
+/* ---------- 4. Small phones (<= 480px) ---------- */
+
+@media (max-width: 480px) {
+  .HeaderTitle {
+    font-size: 1.15rem;
+  }
+
+  .SubHeaderTitle {
+    display: none;
+  }
+
+  .MasterlistStanding {
+    font-size: 0.75rem;
+  }
+
+  .modalContainer {
+    width: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+}

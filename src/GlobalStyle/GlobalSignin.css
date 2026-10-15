@@ -2,7 +2,7 @@
   flex: 1;
   background-image: 
     linear-gradient(rgba(54, 20, 20, 0.75), rgba(54, 20, 20, 0.75), rgba(54, 20, 20, 1)), 
-    url('../src/assets/olfu.jpg');
+    url('../../src/assets/olfu.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

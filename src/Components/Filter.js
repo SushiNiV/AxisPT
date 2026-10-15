@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { BiFilterAlt } from 'react-icons/bi';
-import '../GlobalHistory.css';
-import '../Global.css';
+import '../GlobalStyle/GlobalHistory.css';
+import '../GlobalStyle/Global.css';
 
 function Filter({ 
   isOpen, 

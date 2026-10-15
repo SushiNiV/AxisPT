@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import ReactDOM from 'react-dom';
 import ConfirmationModal from '../ConfirmationModal';
 
-import '../../../GlobalForm.css';
-import '../../../GlobalOverlay.css';
-import '../../../Global.css';
+import '../../../GlobalStyle/GlobalForm.css';
+import '../../../GlobalStyle/GlobalOverlay.css';
+import '../../../GlobalStyle/Global.css';
 
 
 function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {

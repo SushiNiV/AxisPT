@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { BiX } from 'react-icons/bi';
 import { HiSparkles } from 'react-icons/hi';
 import AssistantPanel from './AssistantPanel';
-import '../../../Assistant.css';
+import '../../../GlobalStyle/Assistant.css';
 
 const NUDGE_KEY = 'axispt_assistant_nudge_seen';
 const NUDGE_DELAY_MS = 1500;   // wait after page load before showing

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { BiSearch, BiX, BiPrinter, BiFullscreen, BiChevronDown } from 'react-icons/bi';
 import Filter from '../../../Components/Filter';
-import '../../../Global.css';
-import '../../../Documents.css';
+import '../../../GlobalStyle/Global.css';
+import '../../../GlobalStyle/Documents.css';
 import TermGrade from '../../AComponents/StudentDocuments/TermGrade';
 
 const DEFAULT_PREVIEW_SCALE = 1;

@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash } from 'react-icons/bi';
 import Filter from '../../../Components/Filter';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
-import '../../../GlobalHistory.css';
-import '../../../Global.css';
-import '../../../GlobalEmpty.css';
+import '../../../GlobalStyle/GlobalHistory.css';
+import '../../../GlobalStyle/Global.css';
+import '../../../GlobalStyle/GlobalEmpty.css';
 import AddCourse from '../../AComponents/AddModals/AddCourse';
 
 function ACourses() {

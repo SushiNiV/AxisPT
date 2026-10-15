@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { BiSearch, BiX, BiPrinter, BiFullscreen, BiDocument } from 'react-icons/bi';
 import Filter from '../../../Components/Filter';
-import '../../../Global.css';
-import '../../../Documents.css';
+import '../../../GlobalStyle/Global.css';
+import '../../../GlobalStyle/Documents.css';
 import StudentForm from '../../AComponents/StudentDocuments/StudentForm'; 
 
 /**

@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { BiInfoCircle } from 'react-icons/bi';
 import PopupOverlay from '../Components/PopupOverlay';
 
-import '../GlobalSignin.css';
-import '../Global.css';
+import '../GlobalStyle/GlobalSignin.css';
+import '../GlobalStyle/Global.css';
+import '../ResponsiveStyle/ResponsiveSignin.css';
 
 function SignIn() {
     const navigate = useNavigate();

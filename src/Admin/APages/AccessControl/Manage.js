@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { BiSearch, BiFilterAlt, BiPlusCircle, BiX, BiPencil, BiTrash } from 'react-icons/bi';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
-import '../../../GlobalHistory.css';
-import '../../../Global.css';
-import '../../../GlobalEmpty.css';
+import '../../../GlobalStyle/GlobalHistory.css';
+import '../../../GlobalStyle/Global.css';
+import '../../../GlobalStyle/GlobalEmpty.css';
 import AddFaculty from '../../AComponents/AddModals/AddFaculty';
 
 function AManage() {

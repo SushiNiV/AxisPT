@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BiSearch, BiX, BiUndo } from 'react-icons/bi';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
-import '../../../Global.css';
-import '../../../GlobalEmpty.css';
+import '../../../GlobalStyle/Global.css';
+import '../../../GlobalStyle/GlobalEmpty.css';
 
 function ArchivedPrograms() {
   const [programs, setPrograms] = useState([]);

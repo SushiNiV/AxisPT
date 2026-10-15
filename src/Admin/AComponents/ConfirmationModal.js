@@ -1,8 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import '../../GlobalOverlay.css';
-import '../../GlobalForm.css';
-import './Confirmation.css';
+import '../../GlobalStyle/GlobalOverlay.css';
+import '../../GlobalStyle/GlobalForm.css';
+import '../../GlobalStyle/Confirmation.css';
 /**
  * Reusable confirmation / alert modal.
  *

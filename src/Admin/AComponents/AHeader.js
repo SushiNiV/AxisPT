@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { BiPowerOff, BiBell, BiUserCircle, BiInfoCircle } from 'react-icons/bi';
+import { BiPowerOff, BiBell, BiUserCircle, BiMenu, BiInfoCircle } from 'react-icons/bi';
 import PopupOverlay from '../../Components/PopupOverlay';
 
-import '../../Global.css'
-import '../../GlobalHeader.css'
+import '../../GlobalStyle/Global.css';
+import '../../GlobalStyle/GlobalHeader.css'
 
-function AHeader({ user }) {
+function AHeader({ user, onMenuClick }) {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const profilePic = user?.profileUrl;
   const location = useLocation();
@@ -33,6 +33,9 @@ localStorage.clear();
 
   return (
     <div className="HeaderContainer">
+      <button className="MobileMenuBtn" aria-label="Open menu" onClick={onMenuClick}>
+        <BiMenu />
+      </button>
       <div className="HeaderLeft">
         <span className="HeaderTitle">{getHeaderTitle()}</span>
         <p className="SubHeaderTitle">
@@ -53,8 +56,9 @@ localStorage.clear();
           )}
         </div>
 
-        <div className="logoutBtn" onClick={() => setIsLogoutModalOpen(true)}>
-          <BiPowerOff className="linkIcon logoutIconMar" /> Log out
+        <div className="logoutBtn" role="button" aria-label="Log out" onClick={() => setIsLogoutModalOpen(true)}>
+          <BiPowerOff className="linkIcon logoutIconMar" />
+          <span className="logoutText">Log out</span>
         </div>
       </div>
 

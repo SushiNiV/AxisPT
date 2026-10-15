@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import cptLogo from '../../assets/cpt-logo.png';
-import { BiGridAlt, BiUser, BiBookAlt, BiGroup, BiBriefcase, BiCheckShield, BiFile, BiBell, BiHistory, BiArchive, BiSun, BiMoon, BiChevronLeft, BiChevronRight } from 'react-icons/bi';
+import { BiGridAlt, BiUser, BiBookAlt, BiFile, BiBell, BiHistory, BiArchive, BiSun, BiMoon, BiChevronLeft, BiChevronRight } from 'react-icons/bi';
 
-import '../../GlobalSidebar.css';
-import '../../Global.css';
+import '../../GlobalStyle/GlobalSidebar.css';
+import '../../GlobalStyle/Global.css';
 
-function ASideBar() {
+function ASideBar({ isMobile, mobileNavOpen, closeNav }) {
+  
   const location = useLocation();
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [collapsedPref, setCollapsedPref] = useState(false);
+
+  const isCollapsed = collapsedPref && !isMobile;
 
   const role = sessionStorage.getItem('role') || localStorage.getItem('role');
   const isAdmin = role === 'admin' || role === 'superadmin';
@@ -20,11 +23,23 @@ function ASideBar() {
   };
 
   const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
+    setCollapsedPref(!collapsedPref);
+  };
+
+  const touchStartX = useRef(null);
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current !== null && touchStartX.current - e.changedTouches[0].clientX > 60) {
+      closeNav();
+    }
+    touchStartX.current = null;
   };
 
   return (
-    <div className={`SidebarContainer ${isCollapsed ? 'collapsed' : ''}`}>
+    <div 
+    className={`SidebarContainer ${isCollapsed ? 'collapsed' : ''} ${mobileNavOpen ? 'mobileOpen' : ''}`}
+    onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+    onTouchEnd={handleTouchEnd}
+    >
       <div className="SidebarArea">  
       <div className='Sidebar LogoArea'>
         <img src={cptLogo} alt='CPT Logo' className='Logo'/>
@@ -34,9 +49,18 @@ function ASideBar() {
             <p className='LogoText'>Axis CPT Portal</p>
           </div>
         )}
+        <div className='collapseBtnArea'>
+          <button
+            className="collapseBtn"
+            onClick={toggleCollapse}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? <BiChevronRight /> : <BiChevronLeft />}
+          </button>
+        </div>
       </div>
 
-      <nav className='NavContainer'>
+      <nav className='NavContainer' onClick={closeNav}>
           <NavLink to="/admin/dashboard" className={({ isActive }) => `navLink ${isActive ? 'activeLink' : ''}`}>
             <BiGridAlt className="linkIcon" /> {!isCollapsed && <span>Dashboard</span>}
           </NavLink>
@@ -83,12 +107,6 @@ function ASideBar() {
         </nav>
 
       <div className="SidebarFooter">
-        <div className='collapseBtnArea'>
-        <button className="collapseBtn" onClick={toggleCollapse}>
-          {isCollapsed ? <BiChevronRight /> : <BiChevronLeft />}
-        </button>
-      </div>
-
         <div className="themeToggleArea">
           <label className="themeSwitch">
             <input type="checkbox" onChange={toggleTheme} checked={isDarkMode} />

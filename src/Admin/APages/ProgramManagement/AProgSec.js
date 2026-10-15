@@ -5,10 +5,10 @@ import {
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import AddProgram from '../../AComponents/AddModals/AddProgram';
 import AddSection from '../../AComponents/AddModals/AddSection';
-import '../../../Global.css';
-import '../../../GlobalCard.css';
-import '../../../ProgSec.css';
-import '../../../GlobalEmpty.css';
+import '../../../GlobalStyle/Global.css';
+import '../../../GlobalStyle/GlobalCard.css';
+import '../../../GlobalStyle/ProgSec.css';
+import '../../../GlobalStyle/GlobalEmpty.css';
 
 function AProgSec() {
   const [programs, setPrograms] = useState([]);

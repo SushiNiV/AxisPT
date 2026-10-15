@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import ConfirmationModal from '../ConfirmationModal';
-import '../../../GlobalForm.css';
-import '../../../GlobalOverlay.css';
-import '../../../Global.css';
+import '../../../GlobalStyle/GlobalForm.css';
+import '../../../GlobalStyle/GlobalOverlay.css';
+import '../../../GlobalStyle/Global.css';
 
 
 const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = null }) => {

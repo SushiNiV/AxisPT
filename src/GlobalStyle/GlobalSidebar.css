@@ -7,7 +7,7 @@
   top: 0;
   left: 0;
   z-index: 1000;    
-  overflow: hidden;
+  overflow: visible;
   padding: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -44,7 +44,7 @@
   margin: 0 0 0 0.5rem;
   font-family: 'Times New Roman', Times, serif;
   text-transform: uppercase;
-  font-size: 1.25rem;
+  font-size: 1.20rem;
   text-align: left;
   color: #3d1616;
 }
@@ -123,13 +123,15 @@
 
 .themeToggleArea {
   margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .themeSwitch {
   position: relative;
   display: inline-block;
-  width: 40px;
-  height: 70px;
+  width: 70px;
+  height: 40px;
   display: flex;
 }
 
@@ -182,17 +184,17 @@
 }
 
 input:checked + .slider:before {
-  transform: translateY(-26px);
+  transform: translateX(26px);
 }
 
 input:checked + .slider .icon-sun {
   opacity: 0;
-  transform: translateY(-26px);
+  transform: translateX(26px);
 }
 
 input:checked + .slider .icon-moon {
   opacity: 1;
-  transform: translateY(-26px);
+  transform: translateX(26px);
 }
 
 input:checked + .slider {
@@ -209,7 +211,7 @@ input:checked + .slider {
   top: 0;
   left: 0;
   z-index: 1000;    
-  overflow: hidden;
+  overflow: visible;
   padding: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -298,4 +300,64 @@ input:checked + .slider {
 
 .collapsed input:checked + .slider {
   background-color: black;
+}
+
+.collapsed .themeSwitch {
+  width: 40px;
+  height: 70px;
+}
+
+.collapsed input:checked + .slider:before {
+  transform: translateY(-26px);
+}
+
+.collapsed input:checked + .slider .icon-sun,
+.collapsed input:checked + .slider .icon-moon {
+  transform: translateY(-26px);
+}
+
+/* ==========================================================================
+   DESKTOP: collapse button on the sidebar's right edge
+   Mobile (<= 768px) keeps the drawer + handle from Responsive.css.
+   ========================================================================== */
+
+@media (min-width: 769px) {
+  /* Taken out of the logo row; positioned against .SidebarContainer (sticky) */
+  .SidebarContainer .collapseBtnArea {
+    position: absolute;
+    top: 30px;
+    right: -6px;          /* centers the circle on the white card's edge */
+    z-index: 1;
+  }
+
+  /* Expanded: maroon button, white icon */
+  .SidebarContainer .collapseBtn {
+    width: 28px;
+    height: 28px;
+    background-color: #3d1616;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  }
+
+  .SidebarContainer .collapseBtn:hover {
+    background-color: #fff;
+    color: #3d1616;
+    transform: scale(1.1);
+  }
+
+  /* Collapsed: swapped, white button, maroon icon */
+  .SidebarContainer.collapsed .collapseBtn {
+    background-color: #fff;
+    color: #3d1616;
+  }
+
+  .SidebarContainer.collapsed .collapseBtn:hover {
+    background-color: #fff;
+    color: #3d1616;
+    transform: scale(1.1);
+  }
+
+  .SidebarContainer .collapseBtn svg {
+    font-size: 1.1rem;
+  }
 }

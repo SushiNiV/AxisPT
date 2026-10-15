@@ -3,9 +3,9 @@ import AddYear from '../../AComponents/AddModals/AddYear';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import { BiSearch, BiPlusCircle, BiCalendar, BiX, BiPencil, BiTrash } from 'react-icons/bi';
 
-import '../../../Global.css';
-import '../../../GlobalCard.css';
-import '../../../GlobalEmpty.css';
+import '../../../GlobalStyle/Global.css';
+import '../../../GlobalStyle/GlobalCard.css';
+import '../../../GlobalStyle/GlobalEmpty.css';
 
 function AAcadYear() {
   const [academicYears, setAcademicYears] = useState([]);
