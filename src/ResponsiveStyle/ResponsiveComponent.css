@@ -57,6 +57,11 @@ body,
 @media (max-width: 768px) {
 
   /* --- Sidebar becomes an off-canvas drawer --- */
+    /* Hide the Ask AI button while the bulk action bar is showing */
+  body:has(.BulkActionBar) .AssistantWrap,
+  body:has(.bottomPopupContainer) .AssistantWrap {
+    display: none;
+  }
 
   .SidebarContainer,
   .SidebarContainer.collapsed {
@@ -508,6 +513,22 @@ body,
   .BulkActionBar .ClearSelectionBtn {
     padding: 8px 12px;
     font-size: 0.85rem;
+  }
+  
+  .BulkLabelExtra {
+    display: none;
+  }
+
+  .BulkActionCount {
+    font-size: 0.9rem;
+  }
+
+  .BulkActionButtons {
+    gap: 4px;
+  }
+
+  .BulkActionBar .ClearSelectionBtn {
+    padding: 8px 10px;
   }
 
   .bottomPopupRow {

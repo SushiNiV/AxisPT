@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash, BiListCheck } from 'react-icons/bi';
+import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash, BiListCheck, BiDotsVerticalRounded } from 'react-icons/bi';
+import useMediaQuery from '../../../Components/useMediaQuery';
 import Filter from '../../../Components/Filter';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import '../../../GlobalStyle/GlobalHistory.css';
 import '../../../GlobalStyle/Global.css';
 import '../../../GlobalStyle/GlobalEmpty.css';
+import '../../../ResponsiveStyle/ResponsiveTable.css';
 import AddStudent from '../../AComponents/AddModals/AddStudent';
 import AddGrade from '../../AComponents/AddModals/AddGrade';
 import BulkStudent from '../../AComponents/BulkModals/BulkStudent';
+
 
 const ARCHIVE_REASON_OPTIONS = [
   'Transferred out',
@@ -17,8 +20,6 @@ const ARCHIVE_REASON_OPTIONS = [
   'Deceased',
   'Others',
 ];
-
-
 
 const OTHERS = 'Others';
 
@@ -40,9 +41,9 @@ function Masterlist() {
   const [viewingGradesFor, setViewingGradesFor] = useState(null);
   const [confirmState, setConfirmState] = useState({ isOpen: false });
 
+  const [, setArchiveReasonCategory] = useState('');
+  const [, setArchiveReasonOther] = useState('');
   const [archiveReason, setArchiveReason] = useState('');
-  const [archiveReasonCategory, setArchiveReasonCategory] = useState('');
-  const [archiveReasonOther, setArchiveReasonOther] = useState('');
 
   const [selectedProgram, setSelectedProgram] = useState("");
   const [selectedYearLevel, setSelectedYearLevel] = useState("");
@@ -110,8 +111,6 @@ function Masterlist() {
     fetchStudents();
   }, [fetchPrograms, fetchStudents]);
 
-  const closeConfirm = () => setConfirmState({ isOpen: false });
-
   const openConfirm = (config) => {
     setConfirmState({
       isOpen: true,
@@ -137,9 +136,9 @@ function Masterlist() {
   };
 
   const filters = [
-    { name: "program",   label: "PROGRAM",             value: tempProgram,   options: programOptions,  placeholder: "ALL PROGRAMS" },
-    { name: "yearLevel", label: "YEAR LEVEL",          value: tempYearLevel, options: yearLevelOptions, placeholder: "ALL YEARS" },
-    { name: "status",    label: "PROBATIONARY STATUS", value: tempStatus,    options: statusOptions,   placeholder: "ALL STANDINGS" },
+    { name: "program", label: "PROGRAM", value: tempProgram, options: programOptions, placeholder: "ALL PROGRAMS" },
+    { name: "yearLevel", label: "YEAR LEVEL", value: tempYearLevel, options: yearLevelOptions, placeholder: "ALL YEARS" },
+    { name: "status", label: "PROBATIONARY STATUS", value: tempStatus, options: statusOptions, placeholder: "ALL STANDINGS" },
   ];
 
   const handleFilterChange = (name, value) => {
@@ -243,6 +242,9 @@ function Masterlist() {
 
   const handleViewGrades = (student) => setViewingGradesFor(student);
 
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const [menuStudentId, setMenuStudentId] = useState(null);
+
   const getStandingBadgeProps = (status) => {
     switch (status) {
       case "None":
@@ -261,7 +263,7 @@ function Masterlist() {
   const handleDelete = (student) => {
     const studentName = `${student.last_name}, ${student.first_name}`;
     resetArchiveReason();
-    archiveSelectionRef.current = { category: '', other: '' }; // reset live selection
+    archiveSelectionRef.current = { category: '', other: '' };
 
     openConfirm({
       title: 'Delete Student Record',
@@ -282,7 +284,7 @@ function Masterlist() {
       selectOptions: ARCHIVE_REASON_OPTIONS,
       selectRequired: true,
       onSelectChange: (value) => {
-        archiveSelectionRef.current.category = value;   // ← always current
+        archiveSelectionRef.current.category = value;
         if (value !== OTHERS) archiveSelectionRef.current.other = '';
         setArchiveReasonCategory(value);
         setConfirmState((s) => ({
@@ -298,13 +300,13 @@ function Masterlist() {
       inputValue: '',
       inputRequired: true,
       onInputChange: (value) => {
-        archiveSelectionRef.current.other = value;       // ← always current
+        archiveSelectionRef.current.other = value;
         setArchiveReasonOther(value);
         setConfirmState((s) => ({ ...s, inputValue: value }));
       },
 
       onConfirm: async () => {
-        const { category, other } = archiveSelectionRef.current; // ← live, not stale
+        const { category, other } = archiveSelectionRef.current;
         const finalReason = category === OTHERS ? other.trim() : category;
 
         if (!finalReason) {
@@ -367,12 +369,10 @@ function Masterlist() {
       title: 'Delete Students',
       summary: <>Delete <strong>{selectedIds.length}</strong> selected student record(s)?</>,
       message: (
-        <> 
         <span>
           Their accounts will be deactivated and they will be hidden from the
           default Masterlist. All data is preserved and can be restored later.
         </span>
-        </>
       ),
       variant: 'danger',
       confirmLabel: 'DELETE',
@@ -384,8 +384,6 @@ function Masterlist() {
       inputRequired: true,
 
       onConfirm: async () => {
-        const category = confirmState.selectValue;
-        const other = confirmState.inputValue || '';
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
           const token = sessionStorage.getItem('token') || localStorage.getItem('token');
@@ -497,7 +495,6 @@ function Masterlist() {
         onConfirm={confirmState.onConfirm}
         onCancel={confirmState.onCancel}
 
-        /* Dropdown */
         selectLabel={confirmState.selectLabel}
         selectPlaceholder={confirmState.selectPlaceholder}
         selectValue={confirmState.selectValue}
@@ -505,7 +502,6 @@ function Masterlist() {
         onSelectChange={confirmState.onSelectChange}
         selectRequired={confirmState.selectRequired}
 
-        /* Textarea */
         showInput={confirmState.showInput}
         inputLabel={confirmState.inputLabel}
         inputPlaceholder={confirmState.inputPlaceholder}
@@ -575,98 +571,178 @@ function Masterlist() {
               <span className="MasterlistStanding probationary">Probationary {standingCounts.probationary}</span>
             </div>
           </div>
+          {isMobile ? (
+            <div className="CardsContainer MasterlistCards">
+              <label className="MasterlistSelectAll">
+                <input
+                  type="checkbox"
+                  checked={currentItems.length > 0 && selectedIds.length === currentItems.length}
+                  onChange={toggleSelectAll}
+                />
+                Select all on this page
+              </label>
 
-          <div className="TableContainer">
-            <table className="Table">
-              <thead>
-                <tr>
-                  <th style={{ width: '40px' }}>
-                    <input
-                      type="checkbox"
-                      checked={currentItems.length > 0 && selectedIds.length === currentItems.length}
-                      onChange={toggleSelectAll}
-                    />
-                  </th>
-                  <th>Student No.</th>
-                  <th>Full Name</th>
-                  <th>Program</th>
-                  <th>Year Level</th>
-                  <th>Section</th>
-                  <th>Email</th>
-                  <th style={{ width: '100px' }}>Standing</th>
-                  <th>Probation</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentItems.map((std) => (
-                  <tr key={std.student_id}>
-                    <td>
+              {currentItems.map((std) => {
+                const isSelected = selectedIds.includes(std.student_id);
+                return (
+                  <div
+                    key={std.student_id}
+                    className={`Card StudentCard${isSelected ? ' selected' : ''}`}
+                    onClick={() => handleEdit(std)}
+                  >
+                    <div className="CardMain">
+                      <div className="cardCheckbox" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectOne(std.student_id)}
+                        />
+                      </div>
+
+                      <div className="cardContent">
+                        <div className="cardHeader">
+                          <span className="cardTitle">{`${std.last_name}, ${std.first_name}`}</span>
+                        </div>
+                        <span className="StudentCardNumber">{std.student_number}</span>
+                        <div className="CardDetails">
+                          <span className="detailBadge">{std.program_abbr || std.program_name || '-'}</span>
+                          {std.year_level && <span className="detailBadge">Year {std.year_level}</span>}
+                          {std.section_name && <span className="detailBadge">{std.section_name}</span>}
+                          {std.archived_at && <span className="detailBadge">Archived</span>}
+                          <span className={std.standing === 'Irregular' ? 'statusBadge inactive-bg' : 'statusBadge active-bg'}>
+                            {std.standing || 'Regular'}
+                          </span>
+                          <span {...getStandingBadgeProps(std.academic_status)}>
+                            {std.academic_status || 'None'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        className="StudentMenuBtn"
+                        aria-label="Student actions"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuStudentId(menuStudentId === std.student_id ? null : std.student_id);
+                        }}
+                      >
+                        <BiDotsVerticalRounded />
+                      </button>
+                    </div>
+
+                    {menuStudentId === std.student_id && (
+                      <>
+                        <div
+                          className="CardMenuBackdrop"
+                          onClick={(e) => { e.stopPropagation(); setMenuStudentId(null); }}
+                        />
+                        <div className="CardMenu" onClick={(e) => e.stopPropagation()}>
+                          <button onClick={() => { setMenuStudentId(null); handleViewGrades(std); }}>
+                            <BiListCheck /> Grades
+                          </button>
+                          <button onClick={() => { setMenuStudentId(null); handleEdit(std); }}>
+                            <BiPencil /> Edit
+                          </button>
+                          <button className="danger" onClick={() => { setMenuStudentId(null); handleDelete(std); }}>
+                            <BiTrash /> Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="TableContainer">
+              <table className="Table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '40px' }}>
                       <input
                         type="checkbox"
-                        checked={selectedIds.includes(std.student_id)}
-                        onChange={() => toggleSelectOne(std.student_id)}
+                        checked={currentItems.length > 0 && selectedIds.length === currentItems.length}
+                        onChange={toggleSelectAll}
                       />
-                    </td>
-                    <td>{std.student_number}</td>
-                    <td>
-                      {`${std.last_name}, ${std.first_name}`}
-                      {std.archived_at && (
-                        <sup
-                          title="Deleted"
-                          style={{
-                            marginLeft: '4px',
-                            fontSize: '0.65rem',
-                            color: '#666',
-                            fontWeight: 600,
-                            padding: '1px 4px',
-                            background: '#f0f0f0',
-                            borderRadius: '4px',
-                          }}
+                    </th>
+                    <th>Student No.</th>
+                    <th>Full Name</th>
+                    <th>Program</th>
+                    <th>Year Level</th>
+                    <th>Section</th>
+                    <th>Email</th>
+                    <th style={{ width: '100px' }}>Standing</th>
+                    <th>Probation</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentItems.map((std) => (
+                    <tr key={std.student_id}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(std.student_id)}
+                          onChange={() => toggleSelectOne(std.student_id)}
+                        />
+                      </td>
+                      <td>{std.student_number}</td>
+                      <td>
+                        {`${std.last_name}, ${std.first_name}`}
+                        {std.archived_at && (
+                          <sup
+                            title="Deleted"
+                            style={{
+                              marginLeft: '4px',
+                              fontSize: '0.65rem',
+                              color: '#666',
+                              fontWeight: 600,
+                              padding: '1px 4px',
+                              background: '#f0f0f0',
+                              borderRadius: '4px',
+                            }}
+                          >
+                            Archived
+                          </sup>
+                        )}
+                      </td>
+                      <td>{std.program_abbr || std.program_name || '-'}</td>
+                      <td>{std.year_level ? `${std.year_level}` : '-'}</td>
+                      <td>{std.section_name || '-'}</td>
+                      <td>{std.personal_email}</td>
+                      <td>
+                        <span
+                          className={
+                            std.standing === 'Irregular'
+                              ? 'statusBadge inactive-bg'
+                              : 'statusBadge active-bg'
+                          }
                         >
-                          Archived
-                        </sup>
-                      )}
-                    </td>
-                    <td>{std.program_abbr || std.program_name || '-'}</td>
-                    <td>{std.year_level ? `${std.year_level}` : '-'}</td>
-                    <td>{std.section_name || '-'}</td>
-                    <td>{std.personal_email}</td>
-                    <td>
-                      <span
-                        className={
-                          std.standing === 'Irregular'
-                            ? 'statusBadge inactive-bg'
-                            : 'statusBadge active-bg'
-                        }
-                      >
-                        {std.standing || 'Regular'}
-                      </span>
-                    </td>
-                    <td>
-                      <span {...getStandingBadgeProps(std.academic_status)}>
-                        {std.academic_status || 'None'}
-                      </span>
-                    </td>
-                    <td className="tableActions">
-                      <button className="tableEditBtn" onClick={() => handleViewGrades(std)}>
-                        <BiListCheck /> Grades
-                      </button>
-
-                      <>
+                          {std.standing || 'Regular'}
+                        </span>
+                      </td>
+                      <td>
+                        <span {...getStandingBadgeProps(std.academic_status)}>
+                          {std.academic_status || 'None'}
+                        </span>
+                      </td>
+                      <td className="tableActions">
+                        <button className="tableEditBtn" onClick={() => handleViewGrades(std)}>
+                          <BiListCheck /> Grades
+                        </button>
                         <button className="tableEditBtn" onClick={() => handleEdit(std)}>
                           <BiPencil /> Edit
                         </button>
                         <button className="tableDeleteBtn" onClick={() => handleDelete(std)}>
                           <BiTrash /> Delete
                         </button>
-                      </>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           <div className="PaginationContainer">
             <div className="PaginationControls">
@@ -677,7 +753,7 @@ function Masterlist() {
                   type="number"
                   value={currentPage}
                   onChange={(e) => {
-                    const val = parseInt(e.target.value);
+                    const val = parseInt(e.target.value, 10);
                     if (val > 0 && val <= totalPages) setCurrentPage(val);
                   }}
                   className="CurrentPageInput"
@@ -698,13 +774,13 @@ function Masterlist() {
           <span className="BulkActionCount">{selectedIds.length} selected</span>
           <div className="BulkActionButtons">
             <button className="TopbarBtn" onClick={() => setShowBulkEdit(true)}>
-              <BiPencil className="linkIcon" /> Edit Selected
+              <BiPencil className="linkIcon" /> Edit <span className="BulkLabelExtra">Selected</span>
             </button>
             <button className="tableDeleteBtn" onClick={handleBulkDelete}>
-              <BiTrash /> Delete Selected
+              <BiTrash /> Delete <span className="BulkLabelExtra">Selected</span>
             </button>
-            <button className="ClearSelectionBtn" onClick={clearSelection}>
-              <BiX /> Clear
+            <button className="ClearSelectionBtn" onClick={clearSelection} aria-label="Clear selection">
+              <BiX /> <span className="BulkLabelExtra">Clear</span>
             </button>
           </div>
         </div>

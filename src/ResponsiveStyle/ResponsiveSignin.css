@@ -15,14 +15,17 @@
 
   .SigninFormCard {
     flex: 1 0 auto;
+    min-width: 0;
     margin: 0.5rem;
     justify-content: flex-start;
   }
 
   .SigninTopbar.Left,
   .SigninTopbar.Right {
+    order: 1;                 
+    margin-top: auto;        
     justify-content: center;
-    padding: 0.75rem 0.5rem;
+    padding: 0.75rem 0.5rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
     text-align: center;
   }
 
@@ -54,6 +57,7 @@
 
   .PrivacyText {
     width: 100%;
+    font-size: 0.75rem;
   }
 
   .Button {

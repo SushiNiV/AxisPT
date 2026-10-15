@@ -1,0 +1,113 @@
+/* ---------- Masterlist student cards (mobile) ---------- */
+
+.MasterlistCards {
+  overflow: visible;
+  padding-right: 0;
+}
+
+.MasterlistSelectAll {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 8px;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.MasterlistSelectAll input,
+.StudentCard .cardCheckbox input {
+  accent-color: #3d1616;
+}
+
+.StudentCard {
+  position: relative;
+  padding: 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.StudentCard.selected {
+  border-color: #3d1616;
+  background: #fbf6f6;
+}
+
+.StudentCard .CardMain {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+.StudentCard .cardCheckbox {
+  padding: 4px 4px 4px 0;
+}
+
+.StudentCard .cardHeader {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  margin-bottom: 2px;
+}
+
+.StudentCardNumber {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.StudentMenuBtn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #555;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+.StudentMenuBtn:active {
+  background: #f0f0f0;
+}
+
+.CardMenuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+
+.CardMenu {
+  position: absolute;
+  top: 44px;
+  right: 8px;
+  z-index: 2;
+  min-width: 150px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.CardMenu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #333;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.CardMenu button:active {
+  background: #f2f4f6;
+}
+
+.CardMenu button.danger {
+  color: #c62828;
+}

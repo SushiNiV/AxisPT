@@ -78,7 +78,7 @@ function SignIn() {
     };
 
   return (
-    <div className="Container NoScroll">
+    <div className="Container NoScroll SigninPage">
       <div className="SigninFormCard">
         <div className="SigninTopbar Right">
           <p className="SigninText">

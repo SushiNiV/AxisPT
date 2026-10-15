@@ -537,7 +537,7 @@ p, h1, h3, td, tr {
   bottom: 28px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1000;
+  z-index: 900;
 
   display: flex;
   align-items: center;

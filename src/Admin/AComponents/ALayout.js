@@ -41,7 +41,9 @@ function ALayout() {
           <Outlet />
         </main>
       </div>
-      <AssistantWidget />
+      <div className="AssistantWrap">
+        <AssistantWidget />
+      </div>
     </div>
   );
 }
