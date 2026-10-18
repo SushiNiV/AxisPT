@@ -5,9 +5,9 @@
   justify-content: center;
   text-align: center;
   padding: 60px 20px;
-  background: white;
+  background: var(--bg-card);
   border-radius: 6px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-light);
 }
 
 .emptyStateIcon {
@@ -19,13 +19,13 @@
 .emptyStateTitle {
   font-size: 20px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
 
 .emptyStateText {
   font-size: 14px;
-  color: #888;
+  color: var(--text-secondary);
   margin-bottom: 24px;
 }
 
@@ -33,8 +33,8 @@
   display: inline-flex;
   align-items: center;
   padding: 10px 20px;
-  background: #3D1616;
-  color: white;
+  background: var(--branding-maroon);
+  color: var(--text-inverse);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -44,5 +44,5 @@
 }
 
 .emptyStateBtn:hover {
-  background: #5a2020;
+  filter: brightness(1.2);
 }

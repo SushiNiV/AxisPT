@@ -19,21 +19,21 @@
 .StatusTag.login-success,
 .StatusTag.password-changed,
 .StatusTag.bulk-accept {
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: var(--status-success-bg);
+  color: var(--status-success-text);
 }
 
 .StatusTag.login-failed,
 .StatusTag.password-change-failed,
 .StatusTag.bulk-reject {
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: var(--status-danger-bg);
+  color: var(--status-danger-text);
 }
 
 .StatusTag.login-error,
 .StatusTag.password-change-error {
-  background-color: #fff3e0;
-  color: #e65100;
+  background-color: var(--status-warning-bg);
+  color: var(--status-warning-text);
 }
 
 .StatusTag.bulk-accept {
@@ -45,4 +45,3 @@
   background-color: #fff9c4;
   color: #f57f17;
 }
-

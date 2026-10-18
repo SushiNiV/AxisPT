@@ -19,7 +19,7 @@
 
 .HeaderTitle {
   font-size: 2.25rem;
-  color: #3d1616;
+  color: var(--text-brand); /* Changed */
   font-weight: bold;
   line-height: 1.15;
   margin: 0;
@@ -27,10 +27,11 @@
 
 .SubHeaderTitle {
   font-size: 1rem;
-  color: #666;
+  color: var(--text-secondary);
   margin: 2px 0 0 0;
   line-height: 1.2;
 }
+
 .HeaderRight {
   display: flex;
   align-items: center;
@@ -39,27 +40,14 @@
 
 .HeaderIcon {
   font-size: 1.5rem;
-  color: #3d1616;
+  color: var(--text-brand); /* Changed */
 }
 
-.notificationBtn {
-  background-color: #fff;
-  border: none;
-  color: #000;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
+.notificationBtn,
 .profileBtn {
-  background-color: #fff;
-  border: none;
-  color: #000;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
   border-radius: 50%;
   width: 40px;
   height: 40px;
@@ -68,14 +56,19 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.notificationBtn:hover,
+.profileBtn:hover {
+  background-color: var(--bg-hover);
 }
 
 .logoutBtn {
   display: flex;
   align-items: center;
   background-color: transparent;
-  border: 1px solid #3d1616;
-  color: #3d1616;
+  border: 1px solid var(--text-brand); /* Changed */
+  color: var(--text-brand); /* Changed */
   padding: 0 15px;
   height: 35px;
   border-radius: 8px;
@@ -83,14 +76,12 @@
   transition: all 0.2s ease;
 }
 
-.logoutIconMar {
-  margin-right: 8px;
-}
+.logoutIconMar { margin-right: 8px; }
 
 .logoutBtn:hover {
-  background-color: #d32f2f;
-  border: 1px solid #d32f2f;
-  color: white;
+  background-color: var(--branding-pink);
+  border: 1px solid var(--branding-pink);
+  color: var(--text-inverse);
 }
 
 /* Subheader */
@@ -107,8 +98,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #fff;
-  color: #3d1616;
+  background-color: var(--bg-input);
+  color: var(--text-brand); /* Changed */
   padding: 10px 15px;
   margin-right: 0.75rem;
   width: 175px;
@@ -118,24 +109,25 @@
   font-size: 0.875rem;
   font-weight: 500;
   box-sizing: border-box;
+  border: 1px solid var(--border-light);
 }
 
 .SubheaderBlob.active {
-  background-color: #3d1616;
-  color: #fff;
+  background-color: var(--branding-maroon);
+  color: var(--text-inverse);
   font-weight: bold;
   padding: 10px 15px;
+  border-color: var(--branding-maroon);
 }
 
 .SubheaderBlob:hover {
-  background-color: #3D161625;
-  color: #555;
-  padding: 10px 15px;
+  background-color: var(--bg-hover);
+  color: var(--text-secondary);
 }
 
 .SubheaderBlob.active:hover {
-  background-color: #3d1616;
-  color: #fff;
+  background-color: var(--branding-maroon);
+  color: var(--text-inverse);
   font-weight: bold;
   padding: 10px 15px;
 }

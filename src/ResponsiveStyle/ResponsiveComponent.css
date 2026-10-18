@@ -1,10 +1,4 @@
-/* ============================================================================
-   Responsive.css
-   ============================================================================ */
-
-html,
-body,
-#root {
+html, body, #root {
   height: 100vh;
   height: 100dvh;
 }
@@ -20,31 +14,22 @@ body,
   height: 100dvh;
 }
 
-.MobileMenuBtn,
-.SidebarHandle,
-.SidebarBackdrop {
+.MobileMenuBtn, .SidebarHandle, .SidebarBackdrop {
   display: none;
 }
 
 @media (max-width: 1024px) {
-  .PageContent {
-    padding: 0 0.75rem;
-  }
-
-  .HeaderTitle {
-    font-size: 1.9rem;
-  }
+  .PageContent { padding: 0 0.75rem; }
+  .HeaderTitle { font-size: 1.9rem; }
 }
 
 @media (max-width: 768px) {
-
   body:has(.BulkActionBar) .AssistantWrap,
   body:has(.bottomPopupContainer) .AssistantWrap {
     display: none;
   }
 
-  .SidebarContainer,
-  .SidebarContainer.collapsed {
+  .SidebarContainer, .SidebarContainer.collapsed {
     position: fixed;
     top: 0;
     left: 0;
@@ -52,7 +37,7 @@ body,
     height: 100vh;
     height: 100dvh;
     width: min(250px, 78vw);
-    background-color: #f2f4f6;
+    background-color: var(--bg-secondary);
     transform: translateX(-100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: none;
@@ -72,17 +57,9 @@ body,
     z-index: 999;
   }
 
-  .collapseBtnArea {
-    display: none;
-  }
-
-  .SidebarArea {
-    padding: 0.75rem;
-  }
-
-  .Sidebar.LogoArea {
-    margin-bottom: 2rem;
-  }
+  .collapseBtnArea { display: none; }
+  .SidebarArea { padding: 0.75rem; }
+  .Sidebar.LogoArea { margin-bottom: 2rem; }
 
   .LogoText {
     font-size: 1rem;
@@ -97,11 +74,9 @@ body,
     white-space: nowrap;
   }
 
-  .linkIcon {
-    margin-right: 10px;
-  }
+  .linkIcon { margin-right: 10px; }
 
- .SidebarHandle {
+  .SidebarHandle {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -116,8 +91,8 @@ body,
     padding: 0;
     border: none;
     border-radius: 0 12px 12px 0;
-    background: #f2f4f6;
-    color: #3d1616;
+    background: var(--bg-secondary);
+    color: var(--branding-maroon);
     font-size: 1.4rem;
     cursor: pointer;
     z-index: 1001;
@@ -138,8 +113,8 @@ body,
     margin-right: 0.5rem;
     border: none;
     border-radius: 8px;
-    background: #fff;
-    color: #3d1616;
+    background: var(--bg-card);
+    color: var(--branding-maroon);
     font-size: 1.4rem;
     cursor: pointer;
   }
@@ -150,13 +125,8 @@ body,
     gap: 0.5rem;
   }
 
-  .HeaderTitle {
-    font-size: 1.35rem;
-  }
-
-  .SubHeaderTitle {
-    font-size: 0.8rem;
-  }
+  .HeaderTitle { font-size: 1.35rem; }
+  .SubHeaderTitle { font-size: 0.8rem; }
 
   .HeaderRight {
     gap: 6px;
@@ -185,13 +155,8 @@ body,
     border: none;
   }
 
-  .logoutText {
-    display: none;
-  }
-
-  .logoutIconMar {
-    margin-right: 0;
-  }
+  .logoutText { display: none; }
+  .logoutIconMar { margin-right: 0; }
 
   .SubheaderContainer {
     overflow-x: auto;
@@ -216,12 +181,9 @@ body,
     mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
   }
 
-  .SubheaderContainer::-webkit-scrollbar {
-    display: none;
-  }
+  .SubheaderContainer::-webkit-scrollbar { display: none; }
 
-  .SubheaderBlob,
-  .SubheaderBlob.active {
+  .SubheaderBlob, .SubheaderBlob.active {
     flex-shrink: 0;
     width: auto;
     min-width: 0;
@@ -230,8 +192,6 @@ body,
     white-space: nowrap;
   }
 
-  /* === LAYOUT === */
-  
   .PageContent {
     padding: 0 0.5rem;
     overflow-y: auto;        
@@ -254,14 +214,13 @@ body,
   .PaginationContainer {
     margin-top: auto;        
     flex-shrink: 0;
-    background: #fff;
-    border-top: 1px solid #eee;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-light);
     padding: 10px;
     margin-bottom: 90px;     
   }
 
-  .CardsContainer,
-  .RecordCards {
+  .CardsContainer, .RecordCards {
     display: flex;
     flex-direction: column;
     flex: none;              
@@ -277,10 +236,7 @@ body,
     z-index: 1000;
   }
 
-  .TopSection,
-  .MasterlistSummary {
-    flex-shrink: 0;
-  }
+  .TopSection, .MasterlistSummary { flex-shrink: 0; }
 
   .TopSection .SearchWrapper {
     flex: 1 1 0;
@@ -300,13 +256,8 @@ body,
     font-size: 0;
   }
 
-  .TopSection .TopbarBtn svg {
-    font-size: 1.25rem;
-  }
-
-  .TopSection .TopbarBtn .linkIcon {
-    margin: 0;
-  }
+  .TopSection .TopbarBtn svg { font-size: 1.25rem; }
+  .TopSection .TopbarBtn .linkIcon { margin: 0; }
   
   .FilterDropdown {
     position: fixed;
@@ -318,6 +269,7 @@ body,
     max-height: calc(100dvh - 8rem);
     overflow-y: auto;
     z-index: 1100;
+    background-color: var(--bg-card);
   }
 
   .TableContainer {
@@ -332,10 +284,7 @@ body,
     font-size: 0.875rem;
   }
 
-  .Table th,
-  .Table td {
-    white-space: nowrap;
-  }
+  .Table th, .Table td { white-space: nowrap; }
 
   .PaginationControls {
     flex-wrap: wrap;
@@ -353,9 +302,7 @@ body,
     margin-left: 0;
   }
 
-  .Card {
-    padding: 12px;
-  }
+  .Card { padding: 12px; }
 
   .CardMain {
     flex-wrap: wrap;
@@ -368,9 +315,7 @@ body,
     flex-wrap: wrap;
   }
 
-  .actionBtn {
-    padding: 8px 12px;
-  }
+  .actionBtn { padding: 8px 12px; }
 
   .ProgDetailHeader {
     flex-direction: column;
@@ -378,21 +323,13 @@ body,
     padding: 12px;
   }
 
-  .ProgDetailTitle h2 {
-    font-size: 1.2rem;
-  }
+  .ProgDetailTitle h2 { font-size: 1.2rem; }
 
-  .ProgDetailActions {
-    flex-wrap: wrap;
-  }
+  .ProgDetailActions { flex-wrap: wrap; }
 
-  .SectionToolbar {
-    flex-wrap: wrap;
-  }
+  .SectionToolbar { flex-wrap: wrap; }
 
-  .SectionToolbar .SearchWrapper {
-    flex: 1 1 100%;
-  }
+  .SectionToolbar .SearchWrapper { flex: 1 1 100%; }
 
   .modalOverlay {
     width: 100%;
@@ -406,21 +343,10 @@ body,
     max-height: 92dvh;
   }
 
-  .modalHeader {
-    padding: 0.75rem 1rem;
-  }
-
-  .modalTitle {
-    font-size: 1rem;
-  }
-
-  .modalScrollArea {
-    padding: 1rem;
-  }
-
-  .sectionHeading {
-    font-size: 1.15rem;
-  }
+  .modalHeader { padding: 0.75rem 1rem; }
+  .modalTitle { font-size: 1rem; }
+  .modalScrollArea { padding: 1rem; }
+  .sectionHeading { font-size: 1.15rem; }
 
   .formRow {
     flex-direction: column;
@@ -428,38 +354,22 @@ body,
     gap: 0.75rem;
   }
 
-  .split2,
-  .split3 {
-    grid-template-columns: 1fr;
-  }
-
-  .span2 {
-    grid-column: auto;
-  }
-
-  .subTier {
-    margin-left: 1rem;
-  }
-
-  .AddBtn {
-    align-self: stretch;
-  }
+  .split2, .split3 { grid-template-columns: 1fr; }
+  .span2 { grid-column: auto; }
+  .subTier { margin-left: 1rem; }
+  .AddBtn { align-self: stretch; }
 
   .modalFooter {
     flex-direction: column-reverse;
     gap: 0.5rem;
   }
 
-  .cancelBtn,
-  .submitBtn {
+  .cancelBtn, .submitBtn {
     width: 100%;
     padding: 0.85rem 1rem;
   }
 
-  .PopUpCard {
-    padding: 0 1rem;
-  }
-
+  .PopUpCard { padding: 0 1rem; }
   .PopUpCard input {
     width: 100%;
     box-sizing: border-box;
@@ -475,8 +385,7 @@ body,
     font-size: 16px;
   }
 
-  .BulkActionBar,
-  .bottomPopupContainer {
+  .BulkActionBar, .bottomPopupContainer {
     box-sizing: border-box;
     width: calc(100% - 1rem);
     min-width: 0;
@@ -498,21 +407,10 @@ body,
     font-size: 0.85rem;
   }
   
-  .BulkLabelExtra {
-    display: none;
-  }
-
-  .BulkActionCount {
-    font-size: 0.9rem;
-  }
-
-  .BulkActionButtons {
-    gap: 4px;
-  }
-
-  .BulkActionBar .ClearSelectionBtn {
-    padding: 8px 10px;
-  }
+  .BulkLabelExtra { display: none; }
+  .BulkActionCount { font-size: 0.9rem; }
+  .BulkActionButtons { gap: 4px; }
+  .BulkActionBar .ClearSelectionBtn { padding: 8px 10px; }
 
   .bottomPopupRow {
     flex-wrap: wrap;
@@ -526,17 +424,9 @@ body,
 }
 
 @media (max-width: 480px) {
-  .HeaderTitle {
-    font-size: 1.15rem;
-  }
-
-  .SubHeaderTitle {
-    display: none;
-  }
-
-  .MasterlistStanding {
-    font-size: 0.75rem;
-  }
+  .HeaderTitle { font-size: 1.15rem; }
+  .SubHeaderTitle { display: none; }
+  .MasterlistStanding { font-size: 0.75rem; }
 
   .modalContainer {
     width: 100%;

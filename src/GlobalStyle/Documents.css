@@ -1,14 +1,6 @@
 /* ============================================================================
    DocumentsSplitView.css
-   Shared by DocumentsStudentForm.js, DocumentsTermGrade.js, and
-   DocumentsCourseCurriculum.js. Uses the CSS variables already defined in
-   Global.css (--branding-maroon, --border-light, --text-secondary, etc.)
-   so these pages stay visually consistent with the rest of the admin
-   portal without redefining the palette.
    ============================================================================ */
-
-/* ---- Top action row (Print / Download) - tabs now live in ASubheader,
-   so each page just needs its own actions, right-aligned. ---- */
 
 .DocPageActions {
   display: flex;
@@ -24,25 +16,23 @@
 }
 
 .DocPageActions .TopbarBtn:disabled:hover {
-  background-color: #fff;
-  color: var(--branding-maroon);
-  border-color: #ccc;
+  background-color: var(--bg-input);
+  color: var(--text-brand);
+  border-color: var(--border-medium);
 }
 
 /* ---- Split view shell ---- */
-
 .DocSplitView {
   display: flex;
   flex: 1;
   min-height: 0;
-  background-color: #fff;
+  background-color: var(--bg-card);
   border-radius: 5px;
   overflow: hidden;
   border: 1px solid var(--border-light);
 }
 
-/* ---- Left panel: list (students, or curricula/programs) ---- */
-
+/* ---- Left panel ---- */
 .DocListPanel {
   width: 30%;
   min-width: 360px;
@@ -51,6 +41,7 @@
   flex-direction: column;
   border-right: 1px solid var(--border-light);
   min-height: 0;
+  background-color: var(--bg-card);
 }
 
 .DocListTop .SearchWrapper {
@@ -68,7 +59,6 @@
   border-bottom: 1px solid var(--border-light);
   flex-shrink: 0;
 }
-
 
 .DocListTop .TopbarBtn {
   font-size: 0.875rem;
@@ -108,7 +98,7 @@
 }
 
 .DocStudentList::-webkit-scrollbar-thumb {
-  background: #3d1616aa;
+  background: rgba(61, 22, 22, 0.4);
 }
 
 .DocListMessage {
@@ -129,7 +119,7 @@
 }
 
 .DocStudentRow.Selected {
-  background-color: rgba(61, 22, 22, 0.04);
+  background-color: var(--bg-hover);
 }
 
 .DocStudentCheckbox {
@@ -148,11 +138,11 @@
 }
 
 .DocStudentRow:hover {
-  background-color: #f8f9fa;
+  background-color: var(--bg-hover);
 }
 
 .DocStudentRow.Active {
-  background-color: rgba(61, 22, 22, 0.08);
+  background-color: var(--bg-hover);
 }
 
 .DocStudentName {
@@ -174,12 +164,11 @@
 
 .DocPrintError {
   margin: 0 0 0.5rem;
-  color: #c62828;
+  color: var(--status-danger-text);
   font-size: 0.875rem;
 }
 
 /* ---- Right panel: preview canvas ---- */
-
 .DocPreviewPanel {
   position: relative;
   flex: 1;
@@ -200,8 +189,6 @@
   text-align: right;
 }
 
-/* Floating zoom widget - its own corner overlay, distinct from
-   DocPreviewActions (Print button), matching a map-style zoom control. */
 .DocPreviewZoomControls {
   position: absolute;
   bottom: 1rem;
@@ -209,7 +196,7 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--bg-card);
   border: 1px solid var(--border-medium);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -222,12 +209,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
+  background: var(--bg-card);
   border: none;
   border-bottom: 1px solid var(--border-light);
   cursor: pointer;
   font-size: 1rem;
-  color: var(--branding-maroon);
+  color: var(--text-brand);
   padding: 0;
 }
 
@@ -236,7 +223,7 @@
 }
 
 .DocPreviewZoomButton:hover:not(:disabled) {
-  background-color: #f8f9fa;
+  background-color: var(--bg-hover);
 }
 
 .DocPreviewZoomButton:disabled {
@@ -251,16 +238,14 @@
   font-size: 0.9rem;
 }
 
-
 .DocPreviewOuter {
   overflow: hidden;
   flex-shrink: 0;
-  background: #fff;
+  /* The paper background MUST be white, even in dark mode */
+  background: #ffffff;
   border: 1px solid var(--border-medium);
 }
 
-/* The inner element stays at true physical size and is scaled down;
-   the actual document component renders inside this at full size. */
 .DocPreviewScaler {
   transform-origin: top left;
 }
@@ -270,7 +255,6 @@
 }
 
 /* ---- Action row: period selectors + print button ---- */
-
 .DocPreviewActions {
   position: absolute;
   top: 1rem;
@@ -293,18 +277,18 @@
   display: inline-flex;
   align-items: center;
 }
+
 .DocPeriodSelect {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-
   display: flex;
   align-items: center;
-  background-color: #fff;
+  background-color: var(--bg-input);
   padding: 8px 32px 8px 20px;
   border-radius: 5px;
   cursor: pointer;
-  color: #3d1616;
+  color: var(--text-brand);
   font-weight: 500;
   font-size: 0.875rem;
   font-family: inherit;
@@ -312,20 +296,21 @@
   white-space: nowrap;
   min-width: fit-content;
   outline: none;
+  border: 1px solid var(--border-light);
 }
 
 .DocPeriodSelect:hover:not(:disabled) {
-  background-color: #3d1616;
-  color: #fff;
-  border-color: #3d1616;
+  background-color: var(--branding-maroon);
+  color: var(--text-inverse);
+  border-color: var(--branding-maroon);
 }
 
 .DocPeriodSelect:hover:not(:disabled) + .DocPeriodSelectChevron {
-  color: #fff;
+  color: var(--text-inverse);
 }
 
 .DocPeriodSelect:focus {
-  border-color: #3d1616;
+  border-color: var(--branding-maroon);
 }
 
 .DocPeriodSelect:disabled {
@@ -334,8 +319,8 @@
 }
 
 .DocPeriodSelect option {
-  color: #222;
-  background: #fff;
+  color: var(--text-primary);
+  background: var(--bg-card);
 }
 
 .DocPeriodSelectChevron {
@@ -345,19 +330,17 @@
   transform: translateY(-50%);
   pointer-events: none;
   font-size: 1rem;
-  color: #3d1616;
+  color: var(--text-brand);
   transition: color 0.3s ease;
 }
 
-/* ---------- Mobile (<= 768px): list + print only, no preview ---------- */
-
+/* ---------- Mobile ---------- */
 .DocMobilePrintBar,
 .DocMobilePeriod {
   display: none;
 }
 
 @media (max-width: 768px) {
-  /* Full-width list; the page scrolls instead of an inner box */
   .DocSplitView {
     display: block;
     flex: none;
@@ -370,7 +353,7 @@
   .DocListPanel {
     width: 100%;
     min-width: 0;
-    background: #fff;
+    background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: 5px;
   }
@@ -389,7 +372,6 @@
     height: 20px;
   }
 
-  /* Search + icon-only filter on one row */
   .DocListTop {
     flex-wrap: nowrap;
   }
@@ -419,7 +401,6 @@
     max-width: none !important;
   }
 
-  /* Term Grade: year/semester selectors above the list */
   .DocMobilePeriod {
     display: block;
     padding: 8px 10px;
@@ -437,11 +418,10 @@
 
   .DocMobilePeriod .DocPeriodSelect {
     width: 100%;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-medium);
     font-size: 16px;
   }
 
-  /* Floating "N selected · Print" pill */
   .DocMobilePrintBar {
     display: flex;
     flex-wrap: wrap;
@@ -454,8 +434,8 @@
     bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
     z-index: 900;
     padding: 8px 8px 8px 16px;
-    background: #3d1616;
-    color: #fff;
+    background: var(--branding-maroon);
+    color: var(--text-inverse);
     border-radius: 20px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
     font-size: 0.9rem;
@@ -466,19 +446,39 @@
     padding: 8px 16px;
     border: none;
     border-radius: 999px;
-    background: #fff;
-    color: #3d1616;
+    background: var(--bg-card);
+    color: var(--text-brand);
   }
 
   .DocMobilePrintBar .DocPrintError {
     flex-basis: 100%;
     margin: 0;
-    color: #ffb4b4;
+    color: var(--status-danger-text);
   }
 }
 
-/* ---- Print handling ----
-   Only selected forms reach paper/PDF; each form starts on a new page. */
+/* ============================================================================
+   DOCUMENT PREVIEW ISOLATION
+   This forces the actual paper document to render in "print mode"
+   (black text on white paper) regardless of the theme.
+   ============================================================================ */
+.DocPreviewOuter,
+.DocPreviewOuter * {
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+.DocPreviewOuter {
+  background-color: #ffffff !important;
+}
+
+/* The batch print area also needs to stay black-on-white for printing */
+.DocBatchPrintForm,
+.DocBatchPrintForm * {
+  color: #000000 !important;
+}
+
+/* ---- Print handling ---- */
 @media print {
   body * {
     visibility: hidden;

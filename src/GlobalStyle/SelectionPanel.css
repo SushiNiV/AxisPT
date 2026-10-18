@@ -3,8 +3,8 @@
   bottom: 50px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: #3d1616;
-  color: white;
+  background-color: var(--branding-maroon);
+  color: var(--text-inverse);
   padding: 8px 16px;
   border-radius: 8px;
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
@@ -25,7 +25,7 @@
   align-items: center;
   gap: 12px;
   padding-right: 15px;
-  border-right: 1px solid #aaa;
+  border-right: 1px solid rgba(255,255,255,0.3);
 }
 
 .bpopupLeft p {
@@ -41,8 +41,8 @@
 }
 
 .bpopupRight button {
-  background: white;
-  color: #1a1a1a;
+  background: var(--bg-card);
+  color: var(--text-primary);
   border: none;
   padding: 6px 16px;
   border-radius: 8px;
@@ -56,16 +56,16 @@
 }
 
 .bpopupRight button:hover {
-  background: #e2e2e2;
+  background: var(--border-light);
 }
 
 .bpopupRight button.deleteBtn {
-  background-color: #EF3F3F;
-  color: white;
+  background-color: var(--status-danger-text);
+  color: var(--text-inverse);
 }
 
 .bpopupRight button.deleteBtn:hover {
-  background-color: #d03333;
+  filter: brightness(0.9);
 }
 
 @keyframes slideUp {

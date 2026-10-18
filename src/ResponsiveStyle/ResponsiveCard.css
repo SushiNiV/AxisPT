@@ -1,48 +1,24 @@
-/* ==========================================================================
-   ResponsiveCard.css
-   Extracted inline styles and mobile responsive helpers for Card components
-   ========================================================================== */
-
-/* --- Mobile Card: Expanded Section Wrapper --- */
-.ExpandedDetailsWrapper {
-  margin-bottom: 1rem;
-  margin-top: 0.5rem;
-}
-
-.ExpandedSection {
-  margin-bottom: 8px;
-}
+.ExpandedDetailsWrapper { margin-bottom: 1rem; margin-top: 0.5rem; }
+.ExpandedSection { margin-bottom: 8px; }
 
 .ExpandedLabel {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #666;
+  color: var(--text-secondary);
   display: block;
   margin-bottom: 4px;
 }
 
 .ExpandedText {
   font-size: 0.875rem;
-  color: #333;
+  color: var(--text-primary);
 }
 
-/* --- Chevron Animation (Handles rotate based on parent .expanded class) --- */
-.RecordChevron .ChevronIcon {
-  transition: transform 0.2s ease;
-}
+.RecordChevron .ChevronIcon { transition: transform 0.2s ease; }
+.Card.RecordCard.expanded .RecordChevron .ChevronIcon { transform: rotate(180deg); }
 
-.Card.RecordCard.expanded .RecordChevron .ChevronIcon {
-  transform: rotate(180deg);
-}
+.PillsContainer { display: flex; flex-wrap: wrap; gap: 4px; }
 
-/* --- Assignment Pills Container --- */
-.PillsContainer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-/* --- Small Pill variant for assignments (Desktop & Mobile) --- */
 .detailBadge.PillSm {
   font-size: 0.75rem;
   white-space: nowrap;
@@ -50,46 +26,34 @@
   margin: 0;
 }
 
-/* --- Desktop: "No assignments" text fallback --- */
 .NoAssignmentsText {
   font-size: 0.8rem;
-  color: #999;
+  color: var(--text-muted);
 }
 
+.Card.RecordCard { cursor: pointer; }
 
-/* ==========================================================================
-   Mobile History Cards
-   ========================================================================== */
-
-.Card.RecordCard {
-  cursor: pointer;
-}
-
-/* Plain text action heading - replaces the pill */
 .HistoryMobileActionTitle {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #3d1616; /* Brand maroon */
+  color: var(--branding-maroon);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
   text-align: left;
 }
 
-/* The row with Name, Role, and Timestamp */
-
-
 .HistoryMobileBadgeRow .StatusTag {
   background: transparent !important;
   border: none !important;
   padding: 0 !important;
   border-radius: 0 !important;
-  
   font-size: 0.85rem !important;
   font-weight: 700 !important;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
 .HistoryMobileInfoRow {
   display: flex;
   justify-content: space-between;
@@ -105,49 +69,45 @@
 
 .HistoryMobileName {
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   font-size: 0.875rem;
   margin: 0;
 }
 
 .HistoryMobileRole {
   font-size: 0.75rem;
-  color: #666;
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
 .HistoryMobileTime {
   font-size: 0.75rem;
-  color: #666;
+  color: var(--text-secondary);
   text-align: right;
   white-space: nowrap;
 }
 
-/* --- Expanded Content --- */
 .HistoryMobileExpanded {
   margin-top: 15px;
   padding-top: 15px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.HistoryDetailBlock {
-  display: flex;
-  flex-direction: column;
-}
+.HistoryDetailBlock { display: flex; flex-direction: column; }
 
 .HistoryDetailLabel {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #888;
+  color: var(--text-muted);
   margin-bottom: 2px;
 }
 
 .HistoryDetailText {
   margin: 0;
   font-size: 0.85rem;
-  color: #333;
+  color: var(--text-primary);
   line-height: 1.4;
 }

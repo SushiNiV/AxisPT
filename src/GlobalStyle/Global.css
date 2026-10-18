@@ -1,22 +1,55 @@
 :root {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --bg-tertiary: #f2f4f6;
-  
-  --text-primary: #1e293b;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
-  
-  --border-light: #e2e8f0;
-  --border-medium: #cbd5e1;
-  
-  --accent-primary: #2563eb;
-  --accent-success: #10b981;
-  --accent-warning: #f59e0b;
-  --accent-danger: #ef4444;
-
+  /* --- Brand Colors (Fixed) --- */
   --branding-maroon: #3d1616;
   --branding-pink: #d32f2f;
+
+  /* --- Light Mode Palette --- */
+  --bg-primary: #ffffff;       
+  --bg-secondary: #f2f4f6;     
+  --bg-tertiary: #f8f9fa;
+  --bg-card: #ffffff;          
+  --bg-input: #ffffff;
+  --bg-hover: #f8f9fa;
+  --bg-table-header: #3d1616;
+  
+  --text-primary: #1e293b;     
+  --text-secondary: #475569;   
+  --text-muted: #888888;       
+  --text-inverse: #ffffff;
+  --text-brand: #3d1616; /* Maroon in light mode */
+
+  --border-light: #e2e8f0;     
+  --border-medium: #ccc;       
+  --border-dark: #ddd;
+  
+  /* Status Colors */
+  --status-success-bg: #e8f5e9;
+  --status-success-text: #2e7d32;
+  --status-warning-bg: #fff3cd;
+  --status-warning-text: #8a6512;
+  --status-danger-bg: #ffebee;
+  --status-danger-text: #c62828;
+}
+
+.dark {
+  /* --- Dark Mode Palette --- */
+  --bg-primary: #121212;       
+  --bg-secondary: #0a0a0a;     
+  --bg-tertiary: #1a1a1a;
+  --bg-card: #1e1e1e;          
+  --bg-input: #2a2a2a;
+  --bg-hover: #2a2a2a;
+  --bg-table-header: #3d1616;  /* Keep maroon headers */
+  
+  --text-primary: #f3f4f6;     
+  --text-secondary: #9ca3af;   
+  --text-muted: #6b7280;       
+  --text-inverse: #ffffff;
+  --text-brand: #ffffff; /* WHITE in dark mode */
+  
+  --border-light: #333333;     
+  --border-medium: #444444;       
+  --border-dark: #444444;
 }
 
 html, 
@@ -26,6 +59,9 @@ body,
   margin: 0;
   padding: 0;
   overflow: hidden;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: background-color 0.2s, color 0.2s;
 }
 
 p, h1, h3, td, tr {
@@ -37,7 +73,7 @@ p, h1, h3, td, tr {
   display: flex;
   height: 100vh;
   width: 100vw;
-  background-color: #F2F4F6;
+  background-color: var(--bg-secondary);
 }
 
 .ContentContainer {
@@ -60,8 +96,6 @@ p, h1, h3, td, tr {
   min-width: 0;
   overflow: hidden;
   box-sizing: border-box;
-  
-  /* ADD THIS LINE */
   padding: 0.3rem 0.3rem 0.3rem 0; 
 }
 
@@ -102,13 +136,13 @@ p, h1, h3, td, tr {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.25rem 0;
-  color: #555;
+  color: var(--text-brand); /* Now adapts to white in dark mode */
   font-size: 0.875rem;
 }
 
 .MasterlistResultCount {
   font-weight: 600;
-  color: #3d1616;
+  color: var(--text-brand); /* Now adapts to white in dark mode */
 }
 
 .MasterlistStandingCounts {
@@ -126,18 +160,18 @@ p, h1, h3, td, tr {
 }
 
 .MasterlistStanding.None {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: var(--status-success-bg);
+  color: var(--status-success-text);
 }
 
 .MasterlistStanding.warning {
-  background: #fff3cd;
-  color: #8a6512;
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
 }
 
 .MasterlistStanding.probationary {
-  background: #ffebee;
-  color: #c62828;
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
 }
 
 @media (max-width: 720px) {
@@ -150,8 +184,8 @@ p, h1, h3, td, tr {
 .SearchWrapper {
   display: flex;
   align-items: center;
-  background-color: #fff;
-  border: 1px solid #ccc;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-medium);
   border-radius: 5px;
   padding: 8px 15px;
   width: 100%;
@@ -160,11 +194,11 @@ p, h1, h3, td, tr {
 }
 
 .SearchWrapper:focus-within {
-  border-color: #3d1616;
+  border-color: var(--text-brand);
 }
 
 .SearchIcon {
-  color: #888;
+  color: var(--text-muted);
   font-size: 1.2rem;
   margin-right: 10px;
 }
@@ -175,10 +209,11 @@ p, h1, h3, td, tr {
   width: 100%;
   font-size: 0.875rem;
   background: transparent;
+  color: var(--text-primary);
 }
 
 .ClearSearchIcon {
-  color: #888;
+  color: var(--text-muted);
   font-size: 1.2rem;
   cursor: pointer;
   transition: color 0.3s ease;
@@ -186,7 +221,7 @@ p, h1, h3, td, tr {
 }
 
 .ClearSearchIcon:hover {
-  color: #3d1616;
+  color: var(--text-brand);
 }
 
 .TopbarBtnContainer {
@@ -197,12 +232,12 @@ p, h1, h3, td, tr {
 .TopbarBtn {
   display: flex;
   align-items: center;
-  background-color: #fff;
-  border: 1px solid #ccc;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-medium);
   padding: 8px 20px;
   border-radius: 5px;
   cursor: pointer;
-  color: #3d1616;
+  color: var(--text-brand); 
   font-weight: 500;
   font-size: 0.875rem;
   transition: all 0.3s ease;
@@ -212,36 +247,35 @@ p, h1, h3, td, tr {
 
 .TopbarBtn:hover,
 .TopbarBtn.Active {
-  background-color: #3d1616;
-  color: #fff;
-  border-color: #3d1616;
+  background-color: var(--branding-maroon); /* Keep maroon background on hover/active */
+  color: var(--text-inverse);
+  border-color: var(--branding-maroon);
 }
 
 .TopbarBtn.FilterActive {
-  background-color: #3d1616;
-  color: white;
-  border-color: #3d1616;
+  background-color: var(--branding-maroon);
+  color: var(--text-inverse);
+  border-color: var(--branding-maroon);
 }
 
 .TopbarBtn.FilterActive .linkIcon {
-  color: white;
+  color: var(--text-inverse);
 }
 
 .linkIcon {
   margin-right: 5px;
 }
 
-
 .FilterDropdown {
   position: absolute;
   top: 48px;
   right: 0;
-  background-color: #fff;
-  border: 1px solid #ddd;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: 12px;
   padding: 20px;
   width: 250px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
   z-index: 100;
   display: flex;
   flex-direction: column;
@@ -257,14 +291,16 @@ p, h1, h3, td, tr {
 .FilterGroup label {
   font-size: 0.875rem;
   font-weight: bold;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .FilterGroup select {
   padding: 8px;
   border-radius: 5px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   outline: none;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
 }
 
 .BtnsContainer {
@@ -275,8 +311,8 @@ p, h1, h3, td, tr {
 
 .ApplyFilterBtn {
   flex: 1;
-  background-color: #3D1616;
-  color: white;
+  background-color: var(--branding-maroon);
+  color: var(--text-inverse);
   border: none;
   padding: 10px;
   border-radius: 6px;
@@ -286,8 +322,9 @@ p, h1, h3, td, tr {
 
 .ResetFilterBtn {
   flex: 1;
-  background-color: #f0f0f0;
-  border: none;
+  background-color: var(--bg-hover);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
   padding: 10px;
   border-radius: 6px;
   font-weight: 600;
@@ -299,9 +336,9 @@ p, h1, h3, td, tr {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #fff;
+  background-color: var(--bg-card);
   padding: 12px 15px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-light);
   border-radius: 0 0 5px 5px;         
   margin-top: auto; 
   flex-shrink: 0;    
@@ -314,8 +351,8 @@ p, h1, h3, td, tr {
 }
 
 .PageBtn {
-  background-color: #fff;
-  border: 1px solid #ddd;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: 5px;
   width: 30px;
   height: 30px;
@@ -324,13 +361,13 @@ p, h1, h3, td, tr {
   align-items: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .PageBtn:hover:not(:disabled) {
-  background-color: #3d161625;
-  border-color: #3d1616;
-  color: #3d1616;
+  background-color: var(--bg-hover);
+  border-color: var(--text-brand);
+  color: var(--text-brand);
 }
 
 .PageBtn:disabled {
@@ -347,15 +384,17 @@ p, h1, h3, td, tr {
   width: 50px;
   height: 30px;
   text-align: center;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 6px;
   font-weight: bold;
   outline: none;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
 }
 
 .CurrentPageInput:active,
 .CurrentPageInput:focus {
-  border-color: #3D1616;
+  border-color: var(--text-brand);
 }
 
 .CurrentPageInput::-webkit-outer-spin-button,
@@ -369,56 +408,51 @@ p, h1, h3, td, tr {
   align-items: center;
   justify-content: center;
   font-size: 1rem;
-  color: #666;
+  color: var(--text-brand); 
   margin-left: 0;           
 }
 
 .PaginationInfo span {
   font-weight: bold;
-  color: #3d1616;
+  color: var(--text-brand); /* Now adapts to white in dark mode */
   margin: 0 0 0 4px;        
 }
 
 /* Table Styles */
-
 .TableContainer {
   flex: 1 1 auto;
   min-height: 0;
-  min-width: 0;                 /* prevents flex overflow */
+  min-width: 0;                 
   overflow-y: auto;
-  overflow-x: auto;             /* was implicit; now explicit */
-  background-color: #fff;
+  overflow-x: auto;             
+  background-color: var(--bg-card);
   border-radius: 5px 5px 0 0;
   margin-bottom: 0;
   width: 100%;
   box-sizing: border-box;
 }
 
-/* Replace your existing TableContainer scrollbar CSS with this */
-
 .TableContainer::-webkit-scrollbar {
-  height: 8px;  /* Matched from GlobalCard */
-  width: 8px;   /* Matched from GlobalCard */
+  height: 8px;  
+  width: 8px;   
 }
 
-/* Optional: I removed the white background track. This makes the scrollbar look 
-   like it floats over the table, matching the DesktopCourseList exactly. */
 .TableContainer::-webkit-scrollbar-track {
   background: transparent; 
 }
 
 .TableContainer::-webkit-scrollbar-thumb {
-  background: rgba(61, 22, 22, 0.2); /* The exact subtle maroon from GlobalCard */
-  border-radius: 4px; /* Rounded edges */
+  background: rgba(61, 22, 22, 0.2); 
+  border-radius: 4px; 
 }
 
 .TableContainer::-webkit-scrollbar-thumb:hover {
-  background: rgba(61, 22, 22, 0.4); /* The darker maroon on hover */
+  background: rgba(61, 22, 22, 0.4); 
 }
 
 .Table {
   width: 100%;
-  min-width: 900px;              /* gives the Actions column room so it doesn't collapse */
+  min-width: 900px;              
   border-collapse: collapse;
   text-align: left;
   font-size: 1rem;
@@ -426,11 +460,11 @@ p, h1, h3, td, tr {
 }
 
 .Table th {
-  background-color: #3d1616;
+  background-color: var(--bg-table-header);
   padding: 7.5px;
-  color: #ffffff;
+  color: var(--text-inverse);
   font-weight: 700;
-  border-bottom: 2px solid #eee;
+  border-bottom: 2px solid var(--border-light);
   position: sticky;
   top: 0;
   text-transform: uppercase;
@@ -446,29 +480,24 @@ p, h1, h3, td, tr {
 
 .Table td {
   padding: 7.5px;
-  border-bottom: 1px solid #eee;
-  color: #444;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
 }
-
 
 .Table tr {
   transition: background-color 0.2s ease;
 }
 
-
 .Table tr:hover {
-  background-color: #4441; 
+  background-color: var(--bg-hover); 
 }
-
 
 .Table tr.row-selected {
-  background-color: #f5f3f3!important; 
+  background-color: var(--bg-hover) !important; 
 }
 
-
-
 .Table input[type="checkbox"] {
-  accent-color: #3d1616;
+  accent-color: var(--branding-maroon);
   width: 16px;
   height: 16px;
   cursor: pointer;
@@ -484,21 +513,21 @@ p, h1, h3, td, tr {
 }
 
 .tableStatusBtn.activate {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: var(--status-success-bg);
+  color: var(--status-success-text);
 }
 
 .tableStatusBtn.activate:hover {
-  background: #c8e6c9;
+  filter: brightness(0.9);
 }
 
 .tableStatusBtn.deactivate {
-  background: #ffebee;
-  color: #c62828;
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
 }
 
 .tableStatusBtn.deactivate:hover {
-  background: #ffcdd2;
+  filter: brightness(0.9);
 }
 
 .statusBadge {
@@ -510,13 +539,13 @@ p, h1, h3, td, tr {
 }
 
 .statusBadge.active-bg {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: var(--status-success-bg);
+  color: var(--status-success-text);
 }
 
 .statusBadge.inactive-bg {
-  background: #ffebee;
-  color: #c62828;
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
 }
 
 .PopUpCard {
@@ -530,7 +559,7 @@ p, h1, h3, td, tr {
 .PopUpCard label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #3d1616;
+  color: var(--text-brand); /* Now adapts to white in dark mode */
   margin-bottom: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -538,43 +567,40 @@ p, h1, h3, td, tr {
 
 .PopUpCard input {
   padding: 0.8rem;
-  border: 1px solid #c2c6cb;
+  border: 1px solid var(--border-medium);
   border-radius: 6px;
   font-size: 0.875rem;
   outline: none;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
   width: 20rem;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
 }
 
 .PopUpCard input:focus {
-  border-color: #ff5f5f;
+  border-color: var(--branding-pink);
   box-shadow: 0 0 0 3px rgba(255, 95, 95, 0.1); 
 }
 
 .PopUpCard input::placeholder {
-  color: #c2c6cb;
+  color: var(--text-muted);
 }
 
-/* ============================================
-   Bulk Action Bar — floating Material-3-style pill
-   ============================================ */
+/* Bulk Action Bar */
 .BulkActionBar {
   position: fixed;
   bottom: 28px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 900;
-
   display: flex;
   align-items: center;
   gap: 20px;
-
-  background-color: #3D1616; /* brand maroon surface */
-  color: #ffffff;
+  background-color: var(--branding-maroon);
+  color: var(--text-inverse);
   border-radius: 999px;
   padding: 10px 12px 10px 24px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.15);
-
   animation: BulkActionBarRise 0.2s ease-out;
 }
 
@@ -593,7 +619,7 @@ p, h1, h3, td, tr {
   font-size: 1rem;
   font-weight: 600;
   white-space: nowrap;
-  color: #ffffff;
+  color: var(--text-inverse);
   opacity: 0.9;
 }
 
@@ -602,7 +628,6 @@ p, h1, h3, td, tr {
   align-items: center;
   gap: 6px;
 }
-
 
 .BulkActionBar .TopbarBtn,
 .BulkActionBar .tableDeleteBtn,
@@ -622,18 +647,18 @@ p, h1, h3, td, tr {
 
 .BulkActionBar .TopbarBtn {
   background-color: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
+  color: var(--text-inverse);
 }
 .BulkActionBar .TopbarBtn:hover {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
 .BulkActionBar .tableDeleteBtn {
-  background-color: #ffffff;
-  color: #c62828;
+  background-color: var(--bg-card);
+  color: var(--status-danger-text);
 }
 .BulkActionBar .tableDeleteBtn:hover {
-  background-color: #ffe5e5;
+  background-color: var(--status-danger-bg);
 }
 
 .BulkActionBar .ClearSelectionBtn {
@@ -642,7 +667,7 @@ p, h1, h3, td, tr {
   padding: 10px 14px;
 }
 .BulkActionBar .ClearSelectionBtn:hover {
-  color: #ffffff;
+  color: var(--text-inverse);
   background-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -650,19 +675,16 @@ p, h1, h3, td, tr {
   transform: scale(0.96);
 }
 
-
 .BulkActionBar svg {
   font-size: 1rem;
 }
 
 @media (max-width: 768px) {
-
   ::-webkit-scrollbar {
     display: none !important;
     width: 0 !important;
     height: 0 !important;
   }
-
 
   * {
     -ms-overflow-style: none !important;  

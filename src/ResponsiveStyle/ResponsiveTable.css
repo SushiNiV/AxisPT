@@ -1,12 +1,9 @@
-/* ---------- Masterlist student cards (mobile) ---------- */
-
 .RecordCards {
-  /* Remove overflow: visible; it breaks the flex scrolling */
   display: flex;
-  flex-direction: column; /* Ensure vertical stacking */
+  flex-direction: column; 
   flex: 1 1 0%;
   min-height: 0;
-  overflow-y: auto;       /* Let the cards scroll here */
+  overflow-y: auto;       
   padding-right: 4px;
 }
 
@@ -23,13 +20,11 @@
   gap: 8px;
   padding: 4px 4px 8px;
   font-size: 0.85rem;
-  color: #555;
+  color: var(--text-secondary);
 }
 
 .MasterlistSelectAll input,
-.RecordCard .cardCheckbox input {
-  accent-color: #3d1616;
-}
+.RecordCard .cardCheckbox input { accent-color: var(--branding-maroon); }
 
 .RecordCard {
   position: relative;
@@ -39,8 +34,8 @@
 }
 
 .RecordCard.selected {
-  border-color: #3d1616;
-  background: #fbf6f6;
+  border-color: var(--branding-maroon);
+  background: var(--bg-hover);
 }
 
 .RecordCard .CardMain {
@@ -48,9 +43,7 @@
   align-items: flex-start;
 }
 
-.RecordCard .cardCheckbox {
-  padding: 4px 4px 4px 0;
-}
+.RecordCard .cardCheckbox { padding: 4px 4px 4px 0; }
 
 .RecordCard .cardHeader {
   flex-wrap: nowrap;
@@ -60,7 +53,7 @@
 
 .RecordCardSub {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .RecordMenuBtn {
@@ -73,20 +66,14 @@
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: #555;
+  color: var(--text-secondary);
   font-size: 1.3rem;
   cursor: pointer;
 }
 
-.RecordMenuBtn:active {
-  background: #f0f0f0;
-}
+.RecordMenuBtn:active { background: var(--bg-hover); }
 
-.CardMenuBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-}
+.CardMenuBackdrop { position: fixed; inset: 0; z-index: 1; }
 
 .CardMenu {
   position: absolute;
@@ -95,10 +82,10 @@
   z-index: 2;
   min-width: 150px;
   padding: 4px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 .CardMenu button {
@@ -110,16 +97,11 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: #333;
+  color: var(--text-primary);
   font-size: 0.9rem;
   text-align: left;
   cursor: pointer;
 }
 
-.CardMenu button:active {
-  background: #f2f4f6;
-}
-
-.CardMenu button.danger {
-  color: #c62828;
-}
+.CardMenu button:active { background: var(--bg-hover); }
+.CardMenu button.danger { color: var(--status-danger-text); }

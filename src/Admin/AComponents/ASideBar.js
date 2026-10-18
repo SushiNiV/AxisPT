@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import cptLogo from '../../assets/cpt-logo.png';
 import { BiGridAlt, BiUser, BiBookAlt, BiFile, BiBell, BiHistory, BiArchive, BiSun, BiMoon, BiChevronLeft, BiChevronRight } from 'react-icons/bi';
@@ -9,7 +9,12 @@ import '../../GlobalStyle/Global.css';
 function ASideBar({ isMobile, mobileNavOpen, closeNav }) {
   
   const location = useLocation();
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  
+  // Initialize from localStorage so the theme persists on reload
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return localStorage.getItem('theme') === 'dark';
+  });
+  
   const [collapsedPref, setCollapsedPref] = useState(false);
 
   const isCollapsed = collapsedPref && !isMobile;
@@ -17,9 +22,19 @@ function ASideBar({ isMobile, mobileNavOpen, closeNav }) {
   const role = sessionStorage.getItem('role') || localStorage.getItem('role');
   const isAdmin = role === 'admin' || role === 'superadmin';
 
+  // Apply theme class on mount and whenever isDarkMode changes
+  useEffect(() => {
+    if (isDarkMode) {
+      document.body.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.body.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
   const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-    document.body.classList.toggle('dark-mode');
+    setIsDarkMode(prev => !prev);
   };
 
   const toggleCollapse = () => {

@@ -24,7 +24,7 @@
 .formLabel {
   font-size: 0.8rem;
   font-weight: 800;
-  color: #555;
+  color: var(--text-secondary);
   text-transform: uppercase;
   margin-left: 0.75rem;
 }
@@ -34,12 +34,13 @@
 .formGroup select,
 .custom-multiselect .select-display {
   padding: 12px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-medium);
   border-radius: 8px;
   font-size: 0.875rem;
   width: 100%;
   box-sizing: border-box;
-  background-color: white;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
   font-family: inherit;
   cursor: pointer;
   resize: none;
@@ -55,7 +56,6 @@
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 16px;
@@ -80,7 +80,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #333;
+  color: var(--text-primary);
   font-size: 0.875rem;
 }
 
@@ -89,8 +89,8 @@
   top: 100%;
   left: 0;
   right: 0;
-  background: white;
-  border: 1px solid #ccc;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
   overflow-y: auto;
   z-index: 1000;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -107,7 +107,7 @@
 }
 
 .custom-multiselect .dropdown-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--bg-hover);
 }
 
 .custom-multiselect .dropdown-item input {
@@ -115,49 +115,33 @@
   height: 16px;
   margin: 0;
   cursor: pointer;
-  accent-color: #3D1616;
+  accent-color: var(--branding-maroon);
 }
 
 .custom-multiselect .dropdown-item span {
   font-size: 0.875rem;
   flex: 1;
-  color: #333;
+  color: var(--text-primary);
   font-weight: normal !important;
 }
 
-.formGroup select {
-  max-height: 200px;
-}
-
-.formGroup select option {
-  padding: 10px 12px;
-  font-size: 0.875rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-select:focus option {
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-select[size] {
-  max-height: 200px;
-}
+.formGroup select { max-height: 200px; }
+.formGroup select option { padding: 10px 12px; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+select:focus option { max-height: 200px; overflow-y: auto; }
+select[size] { max-height: 200px; }
 
 .formGroup input:focus,
 .formGroup textarea:focus,
 .formGroup select:focus,
 .custom-multiselect .select-display:focus {
-  border-color: #ff5f5f;
+  border-color: var(--branding-pink);
   outline: none;
   box-shadow: 0 0 0 3px rgba(255, 95, 95, 0.1);
 }
 
 .formGroup select:disabled,
 .custom-multiselect .select-display.disabled {
-  background-color: #f5f5f5;
+  background-color: var(--bg-hover);
   cursor: not-allowed;
 }
 
@@ -172,7 +156,7 @@ select[size] {
   margin: 0 !important;
   display: inline-block;
   user-select: none;
-  color: #555;
+  color: var(--text-secondary);
   font-size: 0.875rem;
 }
 
@@ -185,11 +169,11 @@ select[size] {
 }
 
 .rowItem:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--bg-hover);
 }
 
 .rowItem span {
-  color: #555;
+  color: var(--text-secondary);
   font-size: 0.875rem;
   text-transform: uppercase;
 }
@@ -197,7 +181,7 @@ select[size] {
 .rowItem input[type="checkbox"] {
   width: 18px;
   height: 18px;
-  accent-color: #000;
+  accent-color: var(--branding-maroon);
   cursor: pointer;
 }
 
@@ -207,8 +191,8 @@ select[size] {
 
 .AddBtn {
   padding: 0 20px;
-  background-color: #3D1616;
-  color: white;
+  background-color: var(--branding-maroon);
+  color: var(--text-inverse);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -219,12 +203,12 @@ select[size] {
 }
 
 .AddBtn:hover {
-  background-color: #5a2020;
+  filter: brightness(1.2);
 }
 
 .assignmentList {
   margin-top: 0.5rem;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-light);
   border-radius: 6px;
   max-height: 150px;
   overflow-y: auto;
@@ -235,7 +219,7 @@ select[size] {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border-light);
   font-size: 0.875rem;
 }
 
@@ -244,8 +228,8 @@ select[size] {
 }
 
 .RemoveBtn {
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: var(--status-danger-bg);
+  color: var(--status-danger-text);
   border: none;
   padding: 4px 12px;
   border-radius: 4px;
@@ -254,10 +238,9 @@ select[size] {
 }
 
 .RemoveBtn:hover {
-  background-color: #ffcdd2;
+  filter: brightness(0.9);
 }
 
-/* ===== Prerequisite Tags ===== */
 .tags-container {
   display: flex;
   flex-wrap: wrap;
@@ -266,12 +249,12 @@ select[size] {
 }
 
 .tags {
-  background: #3D1616;
-  color: white;
+  background: var(--branding-maroon);
+  color: var(--text-inverse);
   border-radius: 4px;
   padding: 2px 12px;
   font-size: 0.875rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-medium);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -281,18 +264,17 @@ select[size] {
   background: none;
   border: none;
   cursor: pointer;
-  color: white;
+  color: var(--text-inverse);
   font-size: 0.9rem;
   padding: 0 2px;
   line-height: 1;
 }
 
 .tags .remove-btn:hover {
-  color: #b71c1c;
+  color: var(--status-danger-text);
   transform: scale(1.2);
 }
 
-/* ===== Confirmation Modal ===== */
 .confirmBody {
   display: flex;
   gap: 14px;
@@ -307,7 +289,7 @@ select[size] {
 
 .confirmMessage {
   font-size: 0.9rem;
-  color: #333;
+  color: var(--text-primary);
   line-height: 1.5;
   padding-top: 4px;
 }
@@ -319,16 +301,16 @@ select[size] {
 
 .formGroup select::-webkit-scrollbar-track,
 .custom-multiselect .dropdown-menu::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--bg-hover);
   border-radius: 4px;
 }
 
 .formGroup select::-webkit-scrollbar-thumb,
 .custom-multiselect .dropdown-menu::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--border-medium);
 }
 
 .formGroup select::-webkit-scrollbar-thumb:hover,
 .custom-multiselect .dropdown-menu::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--text-muted);
 }
