@@ -10,14 +10,14 @@ const getIpAddress = (req) => req.ip || req.connection.remoteAddress || req.sock
 
 exports.getFaculties = async (req, res) => {
   try {
-    const faculties = await FacultyModel.getAll();
+    const includeInactive = req.query.includeInactive === 'true';
+    const faculties = await FacultyModel.getAll(includeInactive);
     res.json({ success: true, data: faculties });
   } catch (error) {
     console.error("Error fetching faculties:", error);
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 };
-
 exports.getFacultyById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -228,5 +228,87 @@ exports.updateFaculty = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error." });
   } finally {
     if (isDedicatedClient && client.release) client.release();
+  }
+};
+
+exports.deleteFaculty = async (req, res) => {
+  const { id: userId } = req.params; // The ID from the URL (user_id)
+  const callerId = req.user?.id || null;
+  const ipAddress = getIpAddress(req);
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    // 1. Optional: Get the faculty details first for the history log
+    const facultyToDelete = await FacultyModel.getByUserId(userId);
+    
+    if (!facultyToDelete) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    // 2. Perform the soft delete
+    const deletedFaculty = await FacultyModel.deleteByUserId(userId);
+
+    // 3. Log the action
+    await HistoryModel.log({
+      userId: callerId, 
+      targetUserId: userId, 
+      tableName: 'faculties',
+      recordId: facultyToDelete.faculty_id,
+      action: 'FACULTY_DELETED', 
+      oldValues: {
+        user_id: userId,
+        last_name: facultyToDelete.last_name,
+        first_name: facultyToDelete.first_name,
+        is_active: true,
+      },
+      newValues: { is_active: false, timestamp: new Date().toISOString() },
+      ipAddress, 
+      userAgent,
+    });
+
+    res.json({
+      success: true,
+      message: 'User deleted successfully.',
+      data: deletedFaculty,
+    });
+  } catch (error) {
+    console.error("Error deleting faculty:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.restoreFaculty = async (req, res) => {
+  const { id: userId } = req.params;
+  const callerId = req.user?.id || null;
+  const ipAddress = getIpAddress(req);
+  const userAgent = req.headers['user-agent'];
+  try {
+
+    const facultyToRestore = await FacultyModel.getByUserId(userId);
+    if (!facultyToRestore) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+    await FacultyModel.restoreByUserId(userId);
+
+
+    await HistoryModel.log({
+      userId: callerId,
+      targetUserId: userId,
+      tableName: 'faculties',
+      recordId: facultyToRestore.faculty_id,
+      action: 'FACULTY_RESTORED',
+      oldValues: { is_active: false },
+      newValues: { is_active: true, timestamp: new Date().toISOString() },
+      ipAddress,
+      userAgent,
+    });
+
+    res.json({
+      success: true,
+      message: 'User restored successfully.',
+    });
+  } catch (error) {
+    console.error("Error restoring faculty:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
   }
 };

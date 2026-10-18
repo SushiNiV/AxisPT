@@ -60,15 +60,18 @@ p, h1, h3, td, tr {
   min-width: 0;
   overflow: hidden;
   box-sizing: border-box;
+  
+  /* ADD THIS LINE */
+  padding: 0.3rem 0.3rem 0.3rem 0; 
 }
 
 .PageContent {
   display: flex;
   flex: 1;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto; 
   height: 100%;
-  padding: 0 1rem;              /* symmetric — was: 0 1rem 0 0.5rem */
+  padding: 0 1rem;              
   box-sizing: border-box;
   min-width: 0;
 }
@@ -81,6 +84,7 @@ p, h1, h3, td, tr {
   min-height: 0; 
   overflow: hidden;
   box-sizing: border-box;
+  justify-content: space-between; 
 }
 
 .TopSection {
@@ -227,11 +231,6 @@ p, h1, h3, td, tr {
   margin-right: 5px;
 }
 
-.BottomBuffer {
-  flex-shrink: 0;
-  height: 0.5rem;
-  width: 100%;
-}
 
 .FilterDropdown {
   position: absolute;
@@ -303,8 +302,8 @@ p, h1, h3, td, tr {
   background-color: #fff;
   padding: 12px 15px;
   border-top: 1px solid #eee;
-  border-radius: 0 0 5px 5px;
-  margin: 0;           
+  border-radius: 0 0 5px 5px;         
+  margin-top: auto; 
   flex-shrink: 0;    
 }
 
@@ -371,14 +370,16 @@ p, h1, h3, td, tr {
   justify-content: center;
   font-size: 1rem;
   color: #666;
-  margin-left: 8px;
+  margin-left: 0;           
 }
 
 .PaginationInfo span {
   font-weight: bold;
   color: #3d1616;
-  margin: 0 4px;
+  margin: 0 0 0 4px;        
 }
+
+/* Table Styles */
 
 .TableContainer {
   flex: 1 1 auto;
@@ -393,21 +394,26 @@ p, h1, h3, td, tr {
   box-sizing: border-box;
 }
 
+/* Replace your existing TableContainer scrollbar CSS with this */
+
 .TableContainer::-webkit-scrollbar {
-  height: 6px;
-  width: 4px;
+  height: 8px;  /* Matched from GlobalCard */
+  width: 8px;   /* Matched from GlobalCard */
 }
 
+/* Optional: I removed the white background track. This makes the scrollbar look 
+   like it floats over the table, matching the DesktopCourseList exactly. */
 .TableContainer::-webkit-scrollbar-track {
-  background: #ffffff;
+  background: transparent; 
 }
 
 .TableContainer::-webkit-scrollbar-thumb {
-  background: #3d1616aa;
+  background: rgba(61, 22, 22, 0.2); /* The exact subtle maroon from GlobalCard */
+  border-radius: 4px; /* Rounded edges */
 }
 
 .TableContainer::-webkit-scrollbar-thumb:hover {
-  background: #3d1616;
+  background: rgba(61, 22, 22, 0.4); /* The darker maroon on hover */
 }
 
 .Table {
@@ -444,8 +450,28 @@ p, h1, h3, td, tr {
   color: #444;
 }
 
+
+.Table tr {
+  transition: background-color 0.2s ease;
+}
+
+
 .Table tr:hover {
-  background-color: #fdfdfd;
+  background-color: #4441; 
+}
+
+
+.Table tr.row-selected {
+  background-color: #f5f3f3!important; 
+}
+
+
+
+.Table input[type="checkbox"] {
+  accent-color: #3d1616;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 .tableStatusBtn {
@@ -627,4 +653,19 @@ p, h1, h3, td, tr {
 
 .BulkActionBar svg {
   font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+
+  ::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+
+  * {
+    -ms-overflow-style: none !important;  
+    scrollbar-width: none !important;
+  }
 }

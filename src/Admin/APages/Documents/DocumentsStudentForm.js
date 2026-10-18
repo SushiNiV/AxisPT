@@ -4,18 +4,7 @@ import Filter from '../../../Components/Filter';
 import '../../../GlobalStyle/Global.css';
 import '../../../GlobalStyle/Documents.css';
 import StudentForm from '../../AComponents/StudentDocuments/StudentForm'; 
-
-/**
- * ============================================================================
- * DocumentsStudentForm
- * ============================================================================
- * Routed under ADocuments (the "Student Form" tab). Browse students on the
- * left, preview their generated STAMP form on the right at a reduced scale -
- * the underlying document is built for physical paper dimensions via
- * StudentForm.css, so it's rendered at full size and scaled down for
- * on-screen viewing rather than reflowed.
- * ============================================================================
- */
+import useMediaQuery from '../../../Components/useMediaQuery';
 
 const DEFAULT_PREVIEW_SCALE = 1;
 const MIN_PREVIEW_SCALE = 0.3;
@@ -26,6 +15,7 @@ const PAGE_HEIGHT_MM = 330.2;
 const STUDENTS_PER_PAGE = 15;
 
 function DocumentsStudentForm() {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -271,7 +261,7 @@ function DocumentsStudentForm() {
                   key={std.student_id}
                   className={`DocStudentRow ${selectedStudentId === std.student_id ? 'Active' : ''} ${selectedStudentIdSet.has(std.student_id) ? 'Selected' : ''}`}
                   onClick={() => {
-                    setSelectedStudentId(std.student_id);
+                    if (!isMobile) setSelectedStudentId(std.student_id);
                     toggleStudentSelection(std.student_id);
                   }}
                 >
@@ -318,6 +308,7 @@ function DocumentsStudentForm() {
           )}
         </div>
 
+        {!isMobile && (
         <div className="DocPreviewPanel">
           <div className="DocPreviewActions">
             <button className="TopbarBtn" onClick={handlePrint} disabled={selectedStudentIds.length === 0 || isPreparingPrint}>
@@ -385,9 +376,17 @@ function DocumentsStudentForm() {
             </div>
           )}
         </div>
-
+        )}
       </div>
-
+      {isMobile && selectedStudentIds.length > 0 && (
+        <div className="DocMobilePrintBar">
+          <span>{selectedStudentIds.length} selected</span>
+          <button className="TopbarBtn" onClick={handlePrint} disabled={isPreparingPrint}>
+            <BiPrinter className="linkIcon" /> {isPreparingPrint ? 'Preparing…' : 'Print'}
+          </button>
+          {printError && <p className="DocPrintError" role="alert">{printError}</p>}
+        </div>
+      )}
       <div className="DocBatchPrintArea">
         {printForms.map(({ studentId, data }) => (
           <div className="DocBatchPrintForm" key={studentId}>

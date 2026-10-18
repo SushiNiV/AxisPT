@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash, BiUndo, BiBook
+  BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash, BiUndo, BiBook, BiDotsVerticalRounded
 } from 'react-icons/bi';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import AddProgram from '../../AComponents/AddModals/AddProgram';
 import AddSection from '../../AComponents/AddModals/AddSection';
+import useMediaQuery from '../../../Components/useMediaQuery';
 import '../../../GlobalStyle/Global.css';
 import '../../../GlobalStyle/GlobalCard.css';
 import '../../../GlobalStyle/ProgSec.css';
 import '../../../GlobalStyle/GlobalEmpty.css';
+import '../../../ResponsiveStyle/ResponsiveTable.css';
+import '../../../GlobalStyle/GlobalCard.css';
 
 function AProgSec() {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [programs, setPrograms] = useState([]);
   const [sections, setSections] = useState([]);
   const [selectedProgram, setSelectedProgram] = useState(null);
@@ -29,6 +33,7 @@ function AProgSec() {
   const role = sessionStorage.getItem('role') || localStorage.getItem('role');
   const isAdmin = role === 'admin' || role === 'superadmin';
   const closeConfirm = () => setConfirmState({ isOpen: false });
+  const [menuSectionId, setMenuSectionId] = useState(null);
 
   const openConfirm = (config) => {
     setConfirmState({
@@ -288,8 +293,38 @@ function AProgSec() {
           programId={selectedProgram?.program_id}
         />
       )}
-
+      {isMobile && (
+        <div className="ProgPickerRow">
+          <select
+            className="ProgPicker"
+            value={selectedProgram?.program_id ?? ''}
+            onChange={(e) => {
+              const p = programs.find((x) => String(x.program_id) === e.target.value);
+              setSelectedProgram(p || null);
+            }}
+            disabled={loadingPrograms}
+          >
+            <option value="" disabled>{loadingPrograms ? 'Loading…' : 'Select a program'}</option>
+            {programs.map((p) => (
+              <option key={p.program_id} value={p.program_id}>
+                {p.program_abbr}{p.program_status === false ? ' (Archived)' : ''}
+              </option>
+            ))}
+          </select>
+          {isAdmin && (
+            <button
+              className="TopbarBtn ProgAddBtn"
+              aria-label="Add program"
+              onClick={() => { setEditingProgram(null); setShowAddProgram(true); }}
+            >
+              <BiPlusCircle className="linkIcon" />
+              Program
+            </button>
+          )}
+        </div>
+      )}
       <div className="ProgSecSplit DocSplitView">
+        {!isMobile && (
         <aside className="ProgSidebar DocListPanel">
           <div className="ProgSidebarHeader">
             <div className="SearchWrapper">
@@ -315,32 +350,38 @@ function AProgSec() {
             )}
           </div>
 
-          <ul className="ProgList">
+          <div className="DocStudentList">
             {loadingPrograms ? (
-              <li className="ProgListItemEmpty">Loading…</li>
+              <p className="DocListMessage">Loading…</p>
             ) : filteredPrograms.length === 0 ? (
-              <li className="ProgListItemEmpty">No programs found</li>
+              <p className="DocListMessage">No programs found</p>
             ) : (
               filteredPrograms.map((p) => {
                 const selected = selectedProgram?.program_id === p.program_id;
                 const archived = p.program_status === false;
                 return (
-                  <li
+                  <div
                     key={p.program_id}
-                    className={`ProgListItem ${selected ? 'selected' : ''} ${archived ? 'archived' : ''}`}
+                    className={`DocStudentRow ${selected ? 'Active' : ''}`}
                     onClick={() => setSelectedProgram(p)}
+                    style={{ opacity: archived && !selected ? 0.6 : 1 }}
                   >
-                    <div className="ProgItemTitle">{p.program_name}</div>
-                    <div className="ProgItemSub">
-                      {p.program_abbr} &middot; {p.total_year} years
-                      {archived && <span className="ArchivedTag">Archived</span>}
+                    <div className="DocStudentRowContent">
+                      <p className="DocStudentName">
+                        {p.program_name}
+                        {archived && <span className="ArchivedTag">Archived</span>}
+                      </p>
+                      <p className="DocStudentMeta">
+                        {p.program_abbr} &middot; {p.total_year} years
+                      </p>
                     </div>
-                  </li>
+                  </div>
                 );
               })
             )}
-          </ul>
+          </div>
         </aside>
+        )}
 
         <main className="ProgDetail">
           {!selectedProgram ? (
@@ -406,7 +447,70 @@ function AProgSec() {
                   </button>
                 )}
               </div>
+              {isMobile ? (
+                <div className="CardsContainer RecordCards">
+                  {loadingSections ? (
+                    <p className="DocListMessage">Loading sections…</p>
+                  ) : filteredSections.length === 0 ? (
+                    <p className="DocListMessage">
+                      {searchSection ? `No sections matching "${searchSection}"` : 'No sections yet.'}
+                    </p>
+                  ) : (
+                    filteredSections.map((sec) => {
+                      const archived = sec.is_active === false;
+                      return (
+                        <div key={sec.assignment_id} className={`Card RecordCard${archived ? ' archived' : ''}`}>
+                          <div className="CardMain">
+                            <div className="cardContent">
+                              <div className="cardHeader">
+                                <span className="cardTitle">{sec.section_name}</span>
+                              </div>
+                              <div className="CardDetails">
+                                <span className="detailBadge">{sec.year_level}</span>
+                                <span className="detailBadge">{sec.semester_label}</span>
+                                <span className="detailBadge">{sec.student_count ?? 0} students</span>
+                                {archived && <span className="detailBadge">Archived</span>}
+                              </div>
+                            </div>
 
+                            {isAdmin && (
+                              <button
+                                className="RecordMenuBtn"
+                                aria-label="Section actions"
+                                onClick={() => setMenuSectionId(menuSectionId === sec.assignment_id ? null : sec.assignment_id)}
+                              >
+                                <BiDotsVerticalRounded />
+                              </button>
+                            )}
+                          </div>
+
+                          {isAdmin && menuSectionId === sec.assignment_id && (
+                            <>
+                              <div className="CardMenuBackdrop" onClick={() => setMenuSectionId(null)} />
+                              <div className="CardMenu">
+                                {archived ? (
+                                  <button onClick={() => { setMenuSectionId(null); handleRestoreSection(sec); }}>
+                                    <BiUndo /> Restore
+                                  </button>
+                                ) : (
+                                  <>
+                                    <button onClick={() => { setMenuSectionId(null); setEditingSection(sec); setShowAddSection(true); }}>
+                                      <BiPencil /> Edit
+                                    </button>
+                                    <button className="danger" onClick={() => { setMenuSectionId(null); handleArchiveSection(sec); }}>
+                                      <BiTrash /> Archive
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              ) : (
               <div className="TableContainer">
                 <table className="Table">
                   <thead>
@@ -472,6 +576,7 @@ function AProgSec() {
                   </tbody>
                 </table>
               </div>
+            )}
             </>
           )}
         </main>

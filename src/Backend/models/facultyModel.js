@@ -1,8 +1,9 @@
 const db = require('../config/db');
 
 class FacultyModel {
-  static async getAll() {
-    const result = await db.query(`
+    static async getAll(includeInactive = false) {
+    // Base query
+    let query = `
       SELECT 
         f.faculty_id,
         f.user_id,
@@ -22,9 +23,16 @@ class FacultyModel {
       FROM faculties f
       LEFT JOIN designations d ON f.designation = d.designation_id
       LEFT JOIN users u ON f.user_id = u.user_id
-      WHERE f.account_status = true
-      ORDER BY f.last_name ASC
-    `);
+    `;
+
+    // Only filter by active if we are NOT including inactive
+    if (!includeInactive) {
+      query += ` WHERE f.account_status = true `;
+    }
+    
+    query += ` ORDER BY f.last_name ASC `;
+
+    const result = await db.query(query);
     return result.rows;
   }
 
@@ -114,6 +122,42 @@ class FacultyModel {
 
     return result.rows[0] || null;
   }
+
+    static async deleteByUserId(userId) {
+    await db.query(`
+      UPDATE users 
+      SET is_active = false, updated_at = NOW()
+      WHERE user_id = $1
+    `, [userId]);
+
+    // Soft delete: deactivate the faculty record
+    const result = await db.query(`
+      UPDATE faculties 
+      SET account_status = false, updated_at = NOW()
+      WHERE user_id = $1
+      RETURNING *
+    `, [userId]);
+
+    return result.rows[0] || null;
+  }
+
+    static async restoreByUserId(userId) {
+    await db.query(`
+      UPDATE users 
+      SET is_active = true, updated_at = NOW()
+      WHERE user_id = $1
+    `, [userId]);
+
+    const result = await db.query(`
+      UPDATE faculties 
+      SET account_status = true, updated_at = NOW()
+      WHERE user_id = $1
+      RETURNING *
+    `, [userId]);
+
+    return result.rows[0] || null;
+  }
 }
+
 
 module.exports = FacultyModel;

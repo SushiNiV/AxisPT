@@ -10,7 +10,9 @@ const getIpAddress = (req) => req.ip || req.connection.remoteAddress || req.sock
 
 exports.getCourses = async (req, res) => {
   try {
-    const courses = await CourseModel.getAll();
+    // Support ?includeArchived=true so the Archive page can fetch them
+    const includeArchived = req.query.includeArchived === 'true';
+    const courses = await CourseModel.getAll(includeArchived);
     res.json({ success: true, data: courses });
   } catch (error) {
     console.error("Error fetching courses:", error);
@@ -186,23 +188,48 @@ exports.deleteCourse = async (req, res) => {
     const existingCourse = await CourseModel.getById(id);
     if (!existingCourse) return res.status(404).json({ success: false, message: "Course not found." });
 
-    await CourseModel.delete(id);
+    // Soft delete: mark as archived, never actually remove from the table.
+    // This avoids FK violations from curriculum_courses / grades and lets us restore later.
+    await CourseModel.archive(id);
 
     await HistoryModel.log({
       userId, targetUserId: userId, tableName: 'courses', recordId: id,
-      action: 'COURSE_DELETED', oldValues: existingCourse, newValues: null,
+      action: 'COURSE_ARCHIVED',
+      oldValues: { is_archived: false },
+      newValues: { is_archived: true, timestamp: new Date().toISOString() },
       ipAddress, userAgent
     });
 
-    res.json({ success: true, message: "Course deleted successfully." });
+    res.json({ success: true, message: "Course archived successfully." });
   } catch (error) {
-    if (error.code === '23503') {
-      return res.status(409).json({
-        success: false,
-        message: "This course can't be deleted because it's already referenced by a curriculum, grades, or other records."
-      });
-    }
-    console.error("Error deleting course:", error);
+    console.error("Error archiving course:", error);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.restoreCourse = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+  const ipAddress = getIpAddress(req);
+  const userAgent = req.headers['user-agent'];
+
+  try {
+    const existingCourse = await CourseModel.getById(id);
+    if (!existingCourse) return res.status(404).json({ success: false, message: "Course not found." });
+
+    await CourseModel.restore(id);
+
+    await HistoryModel.log({
+      userId, targetUserId: userId, tableName: 'courses', recordId: id,
+      action: 'COURSE_RESTORED',
+      oldValues: { is_archived: true },
+      newValues: { is_archived: false, timestamp: new Date().toISOString() },
+      ipAddress, userAgent
+    });
+
+    res.json({ success: true, message: "Course restored successfully." });
+  } catch (error) {
+    console.error("Error restoring course:", error);
     res.status(500).json({ success: false, message: "Internal server error." });
   }
 };

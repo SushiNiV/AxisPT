@@ -312,3 +312,94 @@
 .rowArchived td {
   opacity: 0.8;
 }
+
+/* ---------- Mobile (<= 768px) ---------- */
+
+@media (max-width: 768px) {
+  
+  /* Program picker */
+  .ProgPickerRow {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .ProgSecSplit.DocSplitView {
+    display: block;
+    flex: none;
+    height: auto;
+    overflow: visible;
+  }
+
+  .ProgPicker {
+    flex: 1;
+    min-width: 0;
+    height: 40px;
+    padding: 0 2.25rem 0 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #fff;
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    -webkit-appearance: none;
+    appearance: none;
+    color: #3d1616;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .ProgAddBtn,
+  .ProgSecSplit .SectionToolbar .TopbarBtn {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+    font-size: 0;               /* hides the label, keeps the icon */
+  }
+
+  .ProgAddBtn svg,
+  .ProgSecSplit .SectionToolbar .TopbarBtn svg {
+    font-size: 1.25rem;
+  }
+
+  .ProgAddBtn .linkIcon,
+  .ProgSecSplit .SectionToolbar .TopbarBtn .linkIcon {
+    margin: 0;
+  }
+
+  /* Only the detail panel remains in the split view */
+  .ProgSecSplit.DocSplitView {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+
+  .ProgSecSplit .ProgDetail {
+    overflow: visible;
+    border-radius: 6px;
+  }
+
+  /* Section toolbar: search + add on one row */
+  .ProgSecSplit .SectionToolbar {
+    flex-wrap: nowrap;
+  }
+
+  .ProgSecSplit .SectionToolbar .SearchWrapper {
+    flex: 1 1 0;
+  }
+
+  /* Cards sit inside the white detail panel */
+  .ProgSecSplit .RecordCards {
+    padding: 8px;
+  }
+
+  .ProgSecSplit .RecordCard {
+    border-color: #e2e8f0;
+  }
+
+  .ProgSecSplit .RecordCard.archived {
+    opacity: 0.7;
+  }
+}

@@ -5,6 +5,16 @@
   height: 2.5rem !important;
   border-radius: 5px;
   margin-bottom: 0.5rem;
+  
+  /* ADDED STICKY PROPERTIES */
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  
+  /* Ensure content scrolling underneath is hidden */
+  background-color: #F2F4F6; /* Matches your main background color */
+  padding-top: 0.5rem; /* Gives space above the pills when scrolled */
+  box-sizing: content-box; /* Keeps the height exact while adding padding */
 }
 
 .SubheaderBlob {
@@ -22,6 +32,7 @@
   font-size: 0.875rem;
   font-weight: 500;
   box-sizing: border-box;
+  flex-shrink: 0; /* Prevents tabs from squishing on mobile */
 }
 
 .SubheaderBlob.active {

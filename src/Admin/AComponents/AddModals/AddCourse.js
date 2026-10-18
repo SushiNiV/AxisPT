@@ -216,22 +216,27 @@
     };
 
     // --- Assignment handlers ---
+        // --- Assignment handlers ---
     const addAssignment = () => {
       if (!tempCurriculum || !tempYear || !tempSemester) {
         openAlert('Missing Selection', 'Please select Curriculum, Year, and Semester.', 'warning');
         return;
       }
-      const curriculum = curricula.find(c => c.curriculum_id === parseInt(tempCurriculum));
-      const program = programs.find(p => p.program_id === curriculum?.program_id);
-      const existing = assignments.find(a =>
-        a.curriculum_id === parseInt(tempCurriculum) &&
-        a.year_level === parseInt(tempYear) &&
-        a.semester_id === parseInt(tempSemester)
-      );
+      
+      // STRICT CHECK: A course can only appear ONCE per curriculum in the DB.
+      const existing = assignments.find(a => a.curriculum_id === parseInt(tempCurriculum));
       if (existing) {
-        openAlert('Duplicate Assignment', 'This assignment already exists.', 'warning');
+        openAlert(
+          'Duplicate Assignment', 
+          'This curriculum is already assigned. Please remove the existing assignment first if you want to change the year or semester.', 
+          'warning'
+        );
         return;
       }
+
+      const curriculum = curricula.find(c => c.curriculum_id === parseInt(tempCurriculum));
+      const program = programs.find(p => p.program_id === curriculum?.program_id);
+      
       const newAssignment = {
         curriculum_id: parseInt(tempCurriculum),
         curriculum_name: program?.program_abbr || program?.program_name || curriculum?.version_name || "Unknown",
@@ -242,6 +247,7 @@
         year_level: parseInt(tempYear),
         semester_id: parseInt(tempSemester)
       };
+      
       setAssignments([...assignments, newAssignment]);
       setTempProgram("");
       setTempCurriculum("");
@@ -463,11 +469,18 @@ const handleSubmit = async () => {
                   <label className="formLabel">Curriculum</label>
                   <select value={tempCurriculum} onChange={(e) => setTempCurriculum(e.target.value)} className="formSelect" disabled={!tempProgram}>
                     <option value="">Select Curriculum</option>
-                    {filteredCurricula.map(cur => (
-                      <option key={cur.curriculum_id} value={cur.curriculum_id}>
-                        {cur.version_name} ({cur.start_year})
-                      </option>
-                    ))}
+                    {filteredCurricula.map(cur => {
+                      const isAlreadyAssigned = assignments.some(a => a.curriculum_id === cur.curriculum_id);
+                      return (
+                        <option 
+                          key={cur.curriculum_id} 
+                          value={cur.curriculum_id}
+                          disabled={isAlreadyAssigned}
+                        >
+                          {cur.version_name} ({cur.start_year}) {isAlreadyAssigned ? ' - Already Assigned' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               </div>

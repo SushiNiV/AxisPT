@@ -2,6 +2,8 @@ import React, { useRef, useEffect } from 'react';
 import { BiFilterAlt } from 'react-icons/bi';
 import '../GlobalStyle/GlobalHistory.css';
 import '../GlobalStyle/Global.css';
+import useMediaQuery from './useMediaQuery';
+
 
 function Filter({ 
   isOpen, 
@@ -13,6 +15,7 @@ function Filter({
   onApply 
 }) {
   const filterRef = useRef(null);
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -47,9 +50,11 @@ function Filter({
                 onChange={(e) => onFilterChange(filter.name, e.target.value)}
               >
                 <option value="">{filter.placeholder || `ALL ${filter.label}`}</option>
-                {filter.options.map(option => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
+                {filter.options.map(option => {
+                  const value = typeof option === 'object' ? option.value : option;
+                  const label = typeof option === 'object' ? option.label : option;
+                  return <option key={value} value={value}>{label}</option>;
+                })}
               </select>
             </div>
           ))}

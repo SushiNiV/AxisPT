@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash } from 'react-icons/bi';
+import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash, BiChevronDown, BiDotsVerticalRounded } from 'react-icons/bi';
+import useMediaQuery from '../../../Components/useMediaQuery';
+import '../../../ResponsiveStyle/ResponsiveTable.css';
+import '../../../ResponsiveStyle/ResponsiveCard.css';
+import '../../../GlobalStyle/GlobalCard.css';
 import Filter from '../../../Components/Filter';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import '../../../GlobalStyle/GlobalHistory.css';
@@ -13,7 +17,6 @@ function ACourses() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(50);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState("");
@@ -30,11 +33,41 @@ function ACourses() {
   const [yearLevelOptions] = useState(["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"]);
   const [semesterOptions] = useState(["1st Semester", "2nd Semester", "Summer"]);
 
-  // Role-based UI gate — faculty can view but not mutate
   const role = sessionStorage.getItem('role') || localStorage.getItem('role');
   const isAdmin = role === 'admin' || role === 'superadmin';
 
   const hasActiveFilters = selectedProgram !== "" || selectedYearLevel !== "" || selectedSemester !== "";
+
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const rowsPerPage = isMobile ? 10 : 50;
+  
+  const [expandedCourseId, setExpandedCourseId] = useState(null);
+  const [menuCourseId, setMenuCourseId] = useState(null);
+
+  const unitsOf = (c) => c.total_units || c.lec_units + c.lab_units;
+  const programLabel = (c) => c.program_abbrs?.length ? c.program_abbrs.join(', ') : '-';
+
+  const getUniqueAssignments = (c) => {
+    if (!c.assignments || c.assignments.length === 0) return [];
+    return Array.from(
+      new Set(c.assignments.map(a => `${a.year_level} Yr - ${a.semester_label}`))
+    );
+  };
+
+  const getAssignmentPills = (c) => {
+    const unique = getUniqueAssignments(c);
+    if (unique.length === 0) return '-';
+    
+    return (
+      <div className="PillsContainer">
+        {unique.map((pair, idx) => (
+          <span key={idx} className="detailBadge PillSm">{pair}</span>
+        ))}
+      </div>
+    );
+  };
+
+  useEffect(() => { setCurrentPage(1); }, [isMobile]);
 
   useEffect(() => {
     if (isFilterOpen) {
@@ -114,27 +147,9 @@ function ACourses() {
   }, [fetchPrograms, fetchCourses]);
 
   const filters = [
-    {
-      name: "program",
-      label: "PROGRAM",
-      value: tempProgram,
-      options: programOptions,
-      placeholder: "ALL PROGRAMS"
-    },
-    {
-      name: "yearLevel",
-      label: "YEAR LEVEL",
-      value: tempYearLevel,
-      options: yearLevelOptions,
-      placeholder: "ALL YEARS"
-    },
-    {
-      name: "semester",
-      label: "SEMESTER",
-      value: tempSemester,
-      options: semesterOptions,
-      placeholder: "ALL SEMESTERS"
-    }
+    { name: "program", label: "PROGRAM", value: tempProgram, options: programOptions, placeholder: "ALL PROGRAMS" },
+    { name: "yearLevel", label: "YEAR LEVEL", value: tempYearLevel, options: yearLevelOptions, placeholder: "ALL YEARS" },
+    { name: "semester", label: "SEMESTER", value: tempSemester, options: semesterOptions, placeholder: "ALL SEMESTERS" }
   ];
 
   const handleFilterChange = (name, value) => {
@@ -168,14 +183,13 @@ function ACourses() {
       course.course_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesProgram = !selectedProgram ||
-      (course.program_abbrs || []).some(abbr => abbr === selectedProgram) ||
-      (course.program_names || []).some(name => name === selectedProgram);
+      (course.program_abbrs || []).some(abbr => abbr === selectedProgram);
 
     const matchesYearLevel = !selectedYearLevel ||
-      (course.year_levels || []).some(yl => yl?.toString() === selectedYearLevel.charAt(0));
+      (course.assignments || []).some(a => a.year_level?.toString() === selectedYearLevel.charAt(0));
 
     const matchesSemester = !selectedSemester ||
-      (course.semester_labels || []).some(sem => sem === selectedSemester);
+      (course.assignments || []).some(a => a.semester_label === selectedSemester);
 
     return matchesSearch && matchesProgram && matchesYearLevel && matchesSemester;
   });
@@ -216,20 +230,19 @@ function ACourses() {
 
   const handleDelete = (course) => {
     openConfirm({
-      title: 'Delete Course',
+      title: 'Archive Course',
       summary: (
-        <>Delete <strong>{course.course_code}</strong> — {course.course_name}?</>
+        <>Archive <strong>{course.course_code}</strong> — {course.course_name}?</>
       ),
       message: (
-        <>
-        <span style={{ color: '#c62828', fontSize: '0.75rem' }}>
-          This action cannot be undone. If the course is referenced by a
-          curriculum, grades, or other records, the deletion will be blocked.
+        <span style={{ color: '#c62828', fontSize: '0.85rem' }}>
+          The course will be hidden from all lists and pickers. Existing grades,
+          curricula, and student records stay intact. You can restore it later
+          from the Archive page.
         </span>
-        </>
       ),
       variant: 'danger',
-      confirmLabel: 'DELETE',
+      confirmLabel: 'ARCHIVE',
       onConfirm: async () => {
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
@@ -246,10 +259,10 @@ function ACourses() {
           if (data.success) {
             fetchCourses();
           } else {
-            openAlert('Delete Failed', data.message || 'Failed to delete course.', 'danger');
+            openAlert('Archive Failed', data.message || 'Failed to archive course.', 'danger');
           }
         } catch (err) {
-          console.error("Error deleting course:", err);
+          console.error("Error archiving course:", err);
           setConfirmState({ isOpen: false });
           openAlert('Error', 'An unexpected error occurred.', 'danger');
         }
@@ -341,7 +354,7 @@ function ACourses() {
 
         {isAdmin && (
           <div className="TopbarBtnContainer">
-            <button className="TopbarBtn" onClick={() => setShowAddCourse(true)}>
+            <button className="TopbarBtn" aria-label="Add course" onClick={() => setShowAddCourse(true)}>
               <BiPlusCircle className="linkIcon" />
               Course
             </button>
@@ -377,48 +390,140 @@ function ACourses() {
         )
       ) : (
         <>
-          <div className="TableContainer">
-            <table className="Table">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Course Name</th>
-                  <th>Program</th>
-                  <th>Year & Semester</th>
-                  <th>Units</th>
-                  <th>Prerequisites</th>
-                  {isAdmin && <th>Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {currentItems.map((course) => (
-                  <tr key={course.course_id}>
-                    <td>{course.course_code}</td>
-                    <td>{course.course_name}</td>
-                    <td>{course.program_abbrs?.length ? course.program_abbrs.join(', ') : course.program_names?.[0] || '-'}</td>
-                    <td>
-                      {course.year_levels?.length > 1
-                        ? 'Multiple'
-                        : `${course.year_level || ''} Year - ${course.semester_label || ''}`}
-                    </td>
-                    <td>{course.total_units || course.lec_units + course.lab_units}</td>
-                    <td>{course.prerequisite_codes || 'None'}</td>
+          {isMobile ? (
+            <div className="CardsContainer RecordCards">
+              {currentItems.map((course) => {
+                const isExpanded = expandedCourseId === course.course_id;
+                
+                return (
+                  <div
+                    key={course.course_id}
+                    className={`Card RecordCard ${isExpanded ? 'expanded' : ''}`}
+                    onClick={() => setExpandedCourseId(isExpanded ? null : course.course_id)}
+                  >
+                    <div className="CardMain">
+                      <div className="cardContent">
+                        <div className="cardHeader">
+                          <span className="cardTitle">{course.course_code}</span>
+                        </div>
+                        <span className="RecordCardSub">{course.course_name}</span>
+                        
+                        <div className="CardDetails">
+                          <span className="detailBadge">{unitsOf(course)} units</span>
+                        </div>
+                      </div>
+
+                      <div className="RecordChevron">
+                        <BiChevronDown className="ChevronIcon" />
+                      </div>
+
+                      {isAdmin && (
+                        <button
+                          className="RecordMenuBtn"
+                          aria-label="Course actions"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuCourseId(menuCourseId === course.course_id ? null : course.course_id);
+                          }}
+                        >
+                          <BiDotsVerticalRounded />
+                        </button>
+                      )}
+                    </div>
+
+                    {isExpanded && (
+                      <div className="CardExpandedContent" onClick={(e) => e.stopPropagation()}>
+                        <div className="ExpandedDetailsWrapper">
+                          
+                          {course.prerequisite_codes && (
+                            <div className="ExpandedSection">
+                              <span className="ExpandedLabel">Prerequisites:</span>
+                              <span className="detailBadge">{course.prerequisite_codes}</span>
+                            </div>
+                          )}
+
+                          <div className="ExpandedSection">
+                            <span className="ExpandedLabel">Programs:</span>
+                            <span className="ExpandedText">{programLabel(course)}</span>
+                          </div>
+                          
+                          <div className="ExpandedSection">
+                            <span className="ExpandedLabel">Assignments:</span>
+                            {getAssignmentPills(course)}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {isAdmin && menuCourseId === course.course_id && (
+                      <>
+                        <div
+                          className="CardMenuBackdrop"
+                          onClick={(e) => { e.stopPropagation(); setMenuCourseId(null); }}
+                        />
+                        <div className="CardMenu" onClick={(e) => e.stopPropagation()}>
+                          <button onClick={() => { setMenuCourseId(null); handleEdit(course); }}>
+                            <BiPencil /> Edit
+                          </button>
+                          <button className="danger" onClick={() => { setMenuCourseId(null); handleDelete(course); }}>
+                            <BiTrash /> Archive
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="DesktopCourseList">
+              {currentItems.map((course) => {
+                const uniqueAssignments = getUniqueAssignments(course);
+                
+                return (
+                  <div key={course.course_id} className="DesktopCourseRow">
+                    
+                    <div className="CourseRowMain">
+                      <div className="CourseRowCode">{course.course_code}</div>
+                      <div className="CourseRowName" title={course.course_name}>
+                        {course.course_name}
+                      </div>
+                      <div className="CourseRowMeta">
+                        <span><strong>Units:</strong> {unitsOf(course)}</span>
+                        <span><strong>Prerequisite:</strong> {course.prerequisite_codes || 'None'}</span>
+                      </div>
+                    </div>
+
+                    <div className="CourseRowAssignments">
+                      <div className="CourseRowPrograms">
+                        {programLabel(course)}
+                      </div>
+                      {uniqueAssignments.length > 0 ? (
+                        uniqueAssignments.map((pair, idx) => (
+                          <span key={idx} className="detailBadge PillSm" style={{ alignSelf: 'flex-start', margin: 0 }}>
+                            {pair}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="NoAssignmentsText">No assignments</span>
+                      )}
+                    </div>
 
                     {isAdmin && (
-                      <td className="tableActions">
+                      <div className="CourseRowActions">
                         <button className="tableEditBtn" onClick={() => handleEdit(course)}>
                           <BiPencil /> Edit
                         </button>
                         <button className="tableDeleteBtn" onClick={() => handleDelete(course)}>
-                          <BiTrash /> Delete
+                          <BiTrash /> Archive
                         </button>
-                      </td>
+                      </div>
                     )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="PaginationContainer">
             <div className="PaginationControls">

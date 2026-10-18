@@ -1,30 +1,42 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { BiSearch, BiFilterAlt, BiPlusCircle, BiX, BiPencil, BiTrash } from 'react-icons/bi';
+import { BiSearch, BiFilterAlt, BiPlusCircle, BiX, BiPencil, BiTrash, BiDotsVerticalRounded } from 'react-icons/bi';
+import useMediaQuery from '../../../Components/useMediaQuery'; 
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import '../../../GlobalStyle/GlobalHistory.css';
 import '../../../GlobalStyle/Global.css';
 import '../../../GlobalStyle/GlobalEmpty.css';
+import '../../../GlobalStyle/GlobalCard.css'; 
+import '../../../ResponsiveStyle/ResponsiveTable.css'; 
 import AddFaculty from '../../AComponents/AddModals/AddFaculty';
 
 function AManage() {
+  const isMobile = useMediaQuery('(max-width: 768px)'); 
+  
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(50);
+  
+  const rowsPerPage = isMobile ? 10 : 50; 
+  
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [showAddFaculty, setShowAddFaculty] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState(null);
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
+  
+  const [menuUserId, setMenuUserId] = useState(null); 
 
   const [confirmState, setConfirmState] = useState({ isOpen: false });
 
   const filterRef = useRef(null);
 
-  const [roleOptions, setRoleOptions] = useState([]);
+  // Dynamic roles list
+  const [rolesList, setRolesList] = useState([]);
   const [statusOptions] = useState(["Active", "Inactive"]);
+
+  useEffect(() => { setCurrentPage(1); }, [isMobile]);
 
   const closeConfirm = () => setConfirmState({ isOpen: false });
 
@@ -52,10 +64,10 @@ function AManage() {
     });
   };
 
-  const formatRoleName = (role) => {
-    if (role === 'SUPERADMIN') return 'Super Admin';
-    if (role === 'ADMIN') return 'Admin';
-    return role;
+  const formatRoleName = (roleId) => {
+    if (!roleId) return '—';
+    const role = rolesList.find(r => r.role_id === roleId);
+    return role ? role.role_name : '—';
   };
 
   const hasActiveFilters = selectedRole !== "" || selectedStatus !== "";
@@ -66,11 +78,27 @@ function AManage() {
         setIsFilterOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
+  }, []);
+
+  // Fetch Roles Mapping
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/admin/roles`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) setRolesList(data.data);
+      } catch (err) {
+        console.error("Error fetching roles:", err);
+      }
+    };
+    fetchRoles();
   }, []);
 
   const fetchUsers = useCallback(async () => {
@@ -78,14 +106,12 @@ function AManage() {
     setError(null);
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/users`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/faculties`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
       if (data.success) {
         setUsers(data.data);
-        const uniqueRoles = [...new Set(data.data.flatMap(u => u.roles?.split(', ') || []))];
-        setRoleOptions(uniqueRoles);
       } else {
         setError(data.message || "Failed to fetch users");
       }
@@ -112,21 +138,21 @@ function AManage() {
     setShowAddFaculty(true);
   };
 
-  const handleDelete = (user) => {
+  const handleArchive = (user) => {
     const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
     openConfirm({
-      title: 'Delete User',
+      title: 'Archive User',
       summary: (
-        <>Delete <strong>{user.username}</strong>{fullName ? ` (${fullName})` : ''}?</>
+        <>Archive <strong>{user.username}</strong>{fullName ? ` (${fullName})` : ''}?</>
       ),
       message: (
         <>
-          This action cannot be undone. All associated data for this user will
-          be permanently removed from the system.
+          The user account will be deactivated and hidden from the main list. 
+          Their data is preserved and can be restored from the Archive page.
         </>
       ),
       variant: 'danger',
-      confirmLabel: 'DELETE',
+      confirmLabel: 'ARCHIVE',
       onConfirm: async () => {
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
@@ -143,10 +169,10 @@ function AManage() {
           if (data.success) {
             fetchUsers();
           } else {
-            openAlert('Delete Failed', data.message || 'Failed to delete user.', 'danger');
+            openAlert('Archive Failed', data.message || 'Failed to archive user.', 'danger');
           }
         } catch (error) {
-          console.error("Error deleting user:", error);
+          console.error("Error archiving user:", error);
           setConfirmState({ isOpen: false });
           openAlert('Error', 'An unexpected error occurred.', 'danger');
         }
@@ -161,10 +187,9 @@ function AManage() {
       user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.designations?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.roles?.toLowerCase().includes(searchTerm.toLowerCase());
+      user.designation_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesRole = !selectedRole || (user.roles && user.roles.includes(selectedRole));
+    const matchesRole = !selectedRole || user.role_id === parseInt(selectedRole);
     const matchesStatus = !selectedStatus || (selectedStatus === "Active" ? user.is_active : !user.is_active);
 
     return matchesSearch && matchesRole && matchesStatus;
@@ -291,9 +316,9 @@ function AManage() {
                   }}
                 >
                   <option value="">ALL ROLES</option>
-                  {roleOptions.map(role => (
-                    <option key={role} value={role}>
-                      {formatRoleName(role)}
+                  {rolesList.map(role => (
+                    <option key={role.role_id} value={role.role_id}>
+                      {role.role_name}
                     </option>
                   ))}
                 </select>
@@ -353,50 +378,108 @@ function AManage() {
         )
       ) : (
         <>
-          <div className="TableContainer">
-            <table className="Table">
-              <thead>
-                <tr>
-                  <th style={{ width: '40px' }}>
-                    <input type="checkbox" />
-                  </th>
-                  <th>Username</th>
-                  <th>Full Name</th>
-                  <th>Role</th>
-                  <th>Designation</th>
-                  <th> School Email</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentItems.map((user) => (
-                  <tr key={user.user_id}>
-                    <td><input type="checkbox" /></td>
-                    <td>{user.username}</td>
-                    <td>{user.first_name} {user.last_name || ''}</td>
-                    <td>{formatRoleName(user.roles)}</td>
-                    <td>{user.designations || '—'}</td>
-                    <td>{user.email || '—'}</td>
-                    <td>
-                      <span className={`statusBadge ${user.is_active ? 'active-bg' : 'inactive-bg'}`}>
-                        {user.is_active ? 'Active' : 'Inactive'}
+          {/* --- MOBILE VIEW --- */}
+          {isMobile ? (
+            <div className="CardsContainer RecordCards">
+              {currentItems.map((user) => (
+                <div className="Card RecordCard" key={user.user_id}>
+                  <div className="CardMain">
+                    <div className="cardContent">
+                      <div className="cardHeader">
+                        <span className="cardTitle">{user.username}</span>
+                      </div>
+                      <span className="RecordCardSub">
+                        {user.first_name} {user.last_name || ''} 
+                        <span style={{ fontWeight: 400, color: '#666', margin: '0 6px' }}>—</span> 
+                        {user.email || 'No email'}
                       </span>
-                    </td>
-                    <td className="tableActions">
-                      <button className="tableEditBtn" onClick={() => handleEdit(user)}>
-                        <BiPencil /> Edit
-                      </button>
-                      <button className="tableDeleteBtn" onClick={() => handleDelete(user)}>
-                        <BiTrash /> Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <div className="CardDetails">
+                        <span className="detailBadge">{formatRoleName(user.role_id)}</span>
+                        {user.designation_name && <span className="detailBadge">{user.designation_name}</span>}
+                        <span className={`statusBadge ${user.is_active ? 'active-bg' : 'inactive-bg'}`}>
+                          {user.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </div>
 
+                    <button
+                      className="RecordMenuBtn"
+                      aria-label="User actions"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuUserId(menuUserId === user.user_id ? null : user.user_id);
+                      }}
+                    >
+                      <BiDotsVerticalRounded />
+                    </button>
+                  </div>
+
+                  {menuUserId === user.user_id && (
+                    <>
+                      <div
+                        className="CardMenuBackdrop"
+                        onClick={(e) => { e.stopPropagation(); setMenuUserId(null); }}
+                      />
+                      <div className="CardMenu" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => { setMenuUserId(null); handleEdit(user); }}>
+                          <BiPencil /> Edit
+                        </button>
+                        <button className="danger" onClick={() => { setMenuUserId(null); handleArchive(user); }}>
+                          <BiTrash /> Archive
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="TableContainer">
+              <table className="Table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '40px' }}>
+                      <input type="checkbox" />
+                    </th>
+                    <th>Username</th>
+                    <th>Full Name</th>
+                    <th>Role</th>
+                    <th>Designation</th>
+                    <th> School Email</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentItems.map((user) => (
+                    <tr key={user.user_id}>
+                      <td><input type="checkbox" /></td>
+                      <td>{user.username}</td>
+                      <td>{user.first_name} {user.last_name || ''}</td>
+                      <td>{formatRoleName(user.role_id)}</td>
+                      <td>{user.designation_name || '—'}</td>
+                      <td>{user.email || '—'}</td>
+                      <td>
+                        <span className={`statusBadge ${user.is_active ? 'active-bg' : 'inactive-bg'}`}>
+                          {user.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="tableActions">
+                        <button className="tableEditBtn" onClick={() => handleEdit(user)}>
+                          <BiPencil /> Edit
+                        </button>
+                        <button className="tableDeleteBtn" onClick={() => handleArchive(user)}>
+                          <BiTrash /> Archive
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* --- PAGINATION --- */}
           <div className="PaginationContainer">
             <div className="PaginationControls">
               <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>

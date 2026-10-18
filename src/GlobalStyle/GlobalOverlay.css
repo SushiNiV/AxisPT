@@ -84,17 +84,24 @@
   box-sizing: border-box;
 }
 
+
 .modalScrollArea::-webkit-scrollbar {
-  height: 6px;
-  width: 4px;
+  height: 8px;
+  width: 8px;
+}
+
+
+.modalScrollArea::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .modalScrollArea::-webkit-scrollbar-thumb {
-  background: #3d1616aa;
-}
+  background: rgba(61, 22, 22, 0.2); 
+  border-radius: 4px;            
+}    
 
 .modalScrollArea::-webkit-scrollbar-thumb:hover {
-  background: #3d1616;
+  background: rgba(61, 22, 22, 0.4); 
 }
 
 .statusToggleContainer {

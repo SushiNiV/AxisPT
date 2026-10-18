@@ -1,19 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './Curricula.css';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
-import { BiSearch, BiPlusCircle, BiX, BiBook, BiPencil, BiTrash } from 'react-icons/bi';
-
+import { BiSearch, BiPlusCircle, BiX, BiBook, BiPencil, BiDotsVerticalRounded } from 'react-icons/bi';
+import useMediaQuery from '../../../Components/useMediaQuery';
 import '../../../GlobalStyle/Global.css';
 import '../../../GlobalStyle/GlobalCard.css';
 import '../../../GlobalStyle/GlobalEmpty.css';
 import AddCurriculum from '../../AComponents/AddModals/AddCurriculum';
 
 function ACurricula() {
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
   const [curricula, setCurricula] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [editingCurriculum, setEditingCurriculum] = useState(null);
+  const [menuCurriculumId, setMenuCurriculumId] = useState(null); 
+
+  // --- PAGINATION STATE ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = isMobile ? 10 : 15; 
 
   const [confirmState, setConfirmState] = useState({ isOpen: false });
 
@@ -61,6 +68,9 @@ function ACurricula() {
 
   useEffect(() => { fetchCurricula(); }, [fetchCurricula]);
 
+  // Reset to page 1 when searching or switching layouts
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, isMobile]);
+
   const handleAddSuccess = () => {
     setShowAdd(false);
     setEditingCurriculum(null);
@@ -70,51 +80,6 @@ function ACurricula() {
   const handleEdit = (curriculum) => {
     setEditingCurriculum(curriculum);
     setShowAdd(true);
-  };
-
-  const handleDelete = (curriculum) => {
-    openConfirm({
-      title: 'Delete Curriculum',
-      summary: (
-        <>
-          Delete <strong>{curriculum.program_name}</strong> — {curriculum.version_name}?
-        </>
-      ),
-      message: (
-        <>
-          This action cannot be undone. All courses assigned to this curriculum
-          will be unlinked. If it's already referenced by student enrollment,
-          the deletion will be blocked.
-        </>
-      ),
-      variant: 'danger',
-      confirmLabel: 'DELETE',
-      onConfirm: async () => {
-        setConfirmState((s) => ({ ...s, loading: true }));
-        try {
-          const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-          const response = await fetch(
-            `${process.env.REACT_APP_API_URL}/admin/curricula/${curriculum.curriculum_id}`,
-            {
-              method: 'DELETE',
-              headers: { 'Authorization': `Bearer ${token}` }
-            }
-          );
-          const data = await response.json();
-          setConfirmState({ isOpen: false });
-          if (data.success) {
-            fetchCurricula();
-          } else {
-            openAlert('Delete Failed', data.message || 'Failed to delete curriculum.', 'danger');
-          }
-        } catch (error) {
-          console.error("Error deleting curriculum:", error);
-          setConfirmState({ isOpen: false });
-          openAlert('Error', 'An unexpected error occurred.', 'danger');
-        }
-      },
-      onCancel: closeConfirm,
-    });
   };
 
   const getCurriculumStatus = (isActive) => {
@@ -143,6 +108,15 @@ function ACurricula() {
     c.start_year?.toString().includes(searchTerm.toLowerCase()) ||
     c.version_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // --- PAGINATION LOGIC ---
+  const totalPages = Math.ceil(filteredCurricula.length / rowsPerPage) || 1;
+  const indexOfLastItem = currentPage * rowsPerPage;
+  const indexOfFirstItem = indexOfLastItem - rowsPerPage;
+  const currentItems = filteredCurricula.slice(indexOfFirstItem, indexOfLastItem);
+
+  const goToNextPage = () => { if (currentPage < totalPages) setCurrentPage(p => p + 1); };
+  const goToPrevPage = () => { if (currentPage > 1) setCurrentPage(p => p - 1); };
 
   const hasSearchResults = searchTerm && filteredCurricula.length === 0 && curricula.length > 0;
 
@@ -203,40 +177,87 @@ function ACurricula() {
             <p className="emptyStateText">Please wait while we fetch the data...</p>
           </div>
         ) : filteredCurricula.length > 0 ? (
-          filteredCurricula.map((curriculum) => {
+          currentItems.map((curriculum) => {
             const status = getCurriculumStatus(curriculum.is_active);
             const statusLabel = getStatusLabel(status);
             const statusClass = getStatusClass(status);
-            const academicYear = `${curriculum.start_year} - ${curriculum.start_year + 1}`;
 
             return (
-              <div className="Card" key={curriculum.curriculum_id}>
-                <div className="CardMain">
-                  <div className={`cardIcon ${status === 'current' ? 'active' : 'inactive'}`}>
-                    <BiBook />
-                  </div>
-                  <div className="cardContent">
-                    <div className="cardHeader">
-                      <span className={`statusBadge ${statusClass}`}>
-                        {statusLabel}
-                      </span>
+              <div className="Card RecordCard" key={curriculum.curriculum_id}>
+                {isMobile ? (
+                  /* --- MOBILE LAYOUT --- */
+                  <div className="CardMain" style={{ alignItems: 'flex-start' }}>
+                    <div className="cardContent">
+                      
+                      <div className="cardHeader" style={{ marginBottom: '8px' }}>
+                        <span className="cardTitle" style={{ margin: 0 }}>
+                          {curriculum.program_name}
+                        </span>
+                        <span className={`statusBadge ${statusClass}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                      
+                      <div className="CardDetails" style={{ marginTop: 0 }}>
+                        <span className="detailBadge">From: {curriculum.start_year}</span>
+                        <span className="detailBadge">Version: {curriculum.version_name}</span>
+                        <span className="detailBadge">Courses: {curriculum.course_count || 0}</span>
+                      </div>
                     </div>
-                    <h3 className="cardTitle">{curriculum.program_name}</h3>
-                    <div className="CardDetails">
-                      <span className="detailBadge">From: {curriculum.start_year}</span>
-                      <span className="detailBadge">Version: {curriculum.version_name}</span>
-                      <span className="detailBadge">Courses: {curriculum.course_count || 0}</span>
+
+                    <button
+                      className="RecordMenuBtn"
+                      aria-label="Curriculum actions"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuCurriculumId(menuCurriculumId === curriculum.curriculum_id ? null : curriculum.curriculum_id);
+                      }}
+                    >
+                      <BiDotsVerticalRounded />
+                    </button>
+
+                    {menuCurriculumId === curriculum.curriculum_id && (
+                      <>
+                        <div
+                          className="CardMenuBackdrop"
+                          onClick={(e) => { e.stopPropagation(); setMenuCurriculumId(null); }}
+                        />
+                        <div className="CardMenu" onClick={(e) => e.stopPropagation()}>
+                          <button onClick={() => { setMenuCurriculumId(null); handleEdit(curriculum); }}>
+                            <BiPencil /> Edit
+                          </button>
+                          {/* DELETE BUTTON REMOVED */}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  /* --- DESKTOP LAYOUT --- */
+                  <div className="CardMain">
+                    <div className={`cardIcon ${status === 'current' ? 'active' : 'inactive'}`}>
+                      <BiBook />
+                    </div>
+                    <div className="cardContent">
+                      <div className="cardHeader">
+                        <span className={`statusBadge ${statusClass}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                      <h3 className="cardTitle">{curriculum.program_name}</h3>
+                      <div className="CardDetails">
+                        <span className="detailBadge">From: {curriculum.start_year}</span>
+                        <span className="detailBadge">Version: {curriculum.version_name}</span>
+                        <span className="detailBadge">Courses: {curriculum.course_count || 0}</span>
+                      </div>
+                    </div>
+                    <div className="CardAction">
+                      <button className="actionBtn editBtn" onClick={() => handleEdit(curriculum)}>
+                        <BiPencil /> Edit
+                      </button>
+                      {/* DELETE BUTTON REMOVED */}
                     </div>
                   </div>
-                  <div className="CardAction">
-                    <button className="actionBtn editBtn" onClick={() => handleEdit(curriculum)}>
-                      <BiPencil /> Edit
-                    </button>
-                    <button className="actionBtn deleteBtn" onClick={() => handleDelete(curriculum)}>
-                      <BiTrash /> Delete
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
             );
           })
@@ -261,7 +282,32 @@ function ACurricula() {
         )}
       </div>
 
-      <div className="BottomBuffer"></div>
+      {/* --- PAGINATION CONTROLS --- */}
+      {!loading && filteredCurricula.length > 0 && (
+        <div className="PaginationContainer">
+          <div className="PaginationControls">
+            <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
+            <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
+            <div className="CurrentPageInputWrapper">
+              <input
+                type="number"
+                value={currentPage}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (val > 0 && val <= totalPages) setCurrentPage(val);
+                }}
+                className="CurrentPageInput"
+              />
+            </div>
+            <div className="PaginationInfo">
+              out of <span>{totalPages}</span>
+            </div>
+            <button className="PageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
+            <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

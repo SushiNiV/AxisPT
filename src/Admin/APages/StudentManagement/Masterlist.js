@@ -24,12 +24,14 @@ const ARCHIVE_REASON_OPTIONS = [
 const OTHERS = 'Others';
 
 function Masterlist() {
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(30);
+  const [menuStudentId, setMenuStudentId] = useState(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const [showAddStudent, setShowAddStudent] = useState(false);
@@ -54,13 +56,16 @@ function Masterlist() {
 
   const [programOptions, setProgramOptions] = useState([]);
   const [yearLevelOptions] = useState(["1st Year", "2nd Year", "3rd Year", "4th Year"]);
-  const [statusOptions] = useState(["None", "Warning", "Probationary 1", "Probationary 2"]);
+  const [statusOptions] = useState(["No Probationary", "Warning", "Probationary 1", "Probationary 2"]);
 
   const hasActiveFilters =
     selectedProgram !== "" || selectedYearLevel !== "" || selectedStatus !== "";
 
   const archiveSelectionRef = useRef({ category: '', other: '' });
   
+
+  const rowsPerPage = isMobile ? 10 : 30;
+
   useEffect(() => {
     if (isFilterOpen) {
       setTempProgram(selectedProgram);
@@ -77,7 +82,12 @@ function Masterlist() {
       });
       const data = await response.json();
       if (data.success) {
-        setProgramOptions(data.data.map(p => p.program_name));
+        setProgramOptions(
+          data.data.map(p => ({
+            value: p.program_name,                    // what the filter matches on
+            label: p.program_abbr || p.program_name   // what the user sees
+          }))
+        );
       }
     } catch (err) {
       console.error("Error fetching programs:", err);
@@ -94,7 +104,15 @@ function Masterlist() {
       });
       const data = await response.json();
       if (data.success) {
-        setStudents(data.data);
+        // Older records may store "None"; normalize to the current label
+        setStudents(
+          data.data.map(s => ({
+            ...s,
+            academic_status: !s.academic_status || s.academic_status === 'None'
+              ? 'No Probationary'
+              : s.academic_status
+          }))
+        );
       } else {
         setError(data.message || "Failed to fetch student masterlist");
       }
@@ -195,8 +213,8 @@ function Masterlist() {
 
   const standingCounts = filteredStudents.reduce(
     (counts, student) => {
-      const status = student.academic_status || 'None';
-      if (status === 'None') counts.none += 1;
+      const status = student.academic_status || 'No Probationary';
+      if (status === 'No Probationary') counts.none += 1;
       else if (status === 'Warning') counts.warning += 1;
       else if (status.startsWith('Probationary')) counts.probationary += 1;
       return counts;
@@ -242,12 +260,10 @@ function Masterlist() {
 
   const handleViewGrades = (student) => setViewingGradesFor(student);
 
-  const isMobile = useMediaQuery('(max-width: 768px)');
-  const [menuStudentId, setMenuStudentId] = useState(null);
 
   const getStandingBadgeProps = (status) => {
     switch (status) {
-      case "None":
+      case "No Probationary":
         return { className: "statusBadge active-bg" };
       case "Warning":
         return { className: "statusBadge", style: { backgroundColor: "#fff3cd", color: "#8a6512" } };
@@ -534,7 +550,11 @@ function Masterlist() {
         />
 
         <div className="TopbarBtnContainer">
-          <button className="TopbarBtn" onClick={() => { setEditingStudent(null); setShowAddStudent(true); }}>
+          <button
+            className="TopbarBtn"
+            aria-label="Add student"
+            onClick={() => { setEditingStudent(null); setShowAddStudent(true); }}
+          >
             <BiPlusCircle className="linkIcon" />
             Student
           </button>
@@ -566,13 +586,14 @@ function Masterlist() {
               Showing {visibleStart}–{visibleEnd} of {filteredStudents.length} students
             </span>
             <div className="MasterlistStandingCounts" aria-label="Academic standing summary">
-              <span className="MasterlistStanding None">None {standingCounts.none}</span>
+              <span className="MasterlistStanding None">No Probationary {standingCounts.none}</span>
               <span className="MasterlistStanding warning">Warning {standingCounts.warning}</span>
               <span className="MasterlistStanding probationary">Probationary {standingCounts.probationary}</span>
             </div>
           </div>
+
           {isMobile ? (
-            <div className="CardsContainer MasterlistCards">
+            <div className="CardsContainer RecordCards">
               <label className="MasterlistSelectAll">
                 <input
                   type="checkbox"
@@ -582,13 +603,13 @@ function Masterlist() {
                 Select all on this page
               </label>
 
-              {currentItems.map((std) => {
+                            {currentItems.map((std) => {
                 const isSelected = selectedIds.includes(std.student_id);
                 return (
                   <div
                     key={std.student_id}
-                    className={`Card StudentCard${isSelected ? ' selected' : ''}`}
-                    onClick={() => handleEdit(std)}
+                    className={`Card RecordCard${isSelected ? ' selected' : ''}`}
+                    onClick={() => toggleSelectOne(std.student_id)} // Clicking anywhere on the card selects it
                   >
                     <div className="CardMain">
                       <div className="cardCheckbox" onClick={(e) => e.stopPropagation()}>
@@ -603,7 +624,7 @@ function Masterlist() {
                         <div className="cardHeader">
                           <span className="cardTitle">{`${std.last_name}, ${std.first_name}`}</span>
                         </div>
-                        <span className="StudentCardNumber">{std.student_number}</span>
+                        <span className="RecordCardSub">{std.student_number}</span>
                         <div className="CardDetails">
                           <span className="detailBadge">{std.program_abbr || std.program_name || '-'}</span>
                           {std.year_level && <span className="detailBadge">Year {std.year_level}</span>}
@@ -613,16 +634,16 @@ function Masterlist() {
                             {std.standing || 'Regular'}
                           </span>
                           <span {...getStandingBadgeProps(std.academic_status)}>
-                            {std.academic_status || 'None'}
+                            {std.academic_status || 'No Probationary'}
                           </span>
                         </div>
                       </div>
 
                       <button
-                        className="StudentMenuBtn"
+                        className="RecordMenuBtn"
                         aria-label="Student actions"
                         onClick={(e) => {
-                          e.stopPropagation();
+                          e.stopPropagation(); // Prevents card selection when opening the menu
                           setMenuStudentId(menuStudentId === std.student_id ? null : std.student_id);
                         }}
                       >
@@ -677,73 +698,83 @@ function Masterlist() {
                   </tr>
                 </thead>
                 <tbody>
-                  {currentItems.map((std) => (
-                    <tr key={std.student_id}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(std.student_id)}
-                          onChange={() => toggleSelectOne(std.student_id)}
-                        />
-                      </td>
-                      <td>{std.student_number}</td>
-                      <td>
-                        {`${std.last_name}, ${std.first_name}`}
-                        {std.archived_at && (
-                          <sup
-                            title="Deleted"
-                            style={{
-                              marginLeft: '4px',
-                              fontSize: '0.65rem',
-                              color: '#666',
-                              fontWeight: 600,
-                              padding: '1px 4px',
-                              background: '#f0f0f0',
-                              borderRadius: '4px',
-                            }}
+                  {currentItems.map((std) => {
+                    const isSelected = selectedIds.includes(std.student_id);
+                    return (
+                      <tr 
+                        key={std.student_id} 
+                        className={isSelected ? 'row-selected' : ''} 
+                        onClick={() => toggleSelectOne(std.student_id)} // <--- ADDED: Makes the whole row clickable
+                        style={{ cursor: 'pointer' }} // <--- ADDED: Changes the mouse to a pointer
+                      >
+                        <td>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectOne(std.student_id)}
+                            onClick={(e) => e.stopPropagation()} // <--- ADDED: Prevents double-toggling when clicking the checkbox
+                          />
+                        </td>
+                        <td>{std.student_number}</td>
+                        <td>
+                          {`${std.last_name}, ${std.first_name}`}
+                          {std.archived_at && (
+                            <sup
+                              title="Deleted"
+                              style={{
+                                marginLeft: '4px',
+                                fontSize: '0.65rem',
+                                color: '#666',
+                                fontWeight: 600,
+                                padding: '1px 4px',
+                                background: '#f0f0f0',
+                                borderRadius: '4px',
+                              }}
+                            >
+                              Archived
+                            </sup>
+                          )}
+                        </td>
+                        <td>{std.program_abbr || std.program_name || '-'}</td>
+                        <td>{std.year_level ? `${std.year_level}` : '-'}</td>
+                        <td>{std.section_name || '-'}</td>
+                        <td>{std.personal_email}</td>
+                        <td>
+                          <span
+                            className={
+                              std.standing === 'Irregular'
+                                ? 'statusBadge inactive-bg'
+                                : 'statusBadge active-bg'
+                            }
                           >
-                            Archived
-                          </sup>
-                        )}
-                      </td>
-                      <td>{std.program_abbr || std.program_name || '-'}</td>
-                      <td>{std.year_level ? `${std.year_level}` : '-'}</td>
-                      <td>{std.section_name || '-'}</td>
-                      <td>{std.personal_email}</td>
-                      <td>
-                        <span
-                          className={
-                            std.standing === 'Irregular'
-                              ? 'statusBadge inactive-bg'
-                              : 'statusBadge active-bg'
-                          }
-                        >
-                          {std.standing || 'Regular'}
-                        </span>
-                      </td>
-                      <td>
-                        <span {...getStandingBadgeProps(std.academic_status)}>
-                          {std.academic_status || 'None'}
-                        </span>
-                      </td>
-                      <td className="tableActions">
-                        <button className="tableEditBtn" onClick={() => handleViewGrades(std)}>
-                          <BiListCheck /> Grades
-                        </button>
-                        <button className="tableEditBtn" onClick={() => handleEdit(std)}>
-                          <BiPencil /> Edit
-                        </button>
-                        <button className="tableDeleteBtn" onClick={() => handleDelete(std)}>
-                          <BiTrash /> Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                            {std.standing || 'Regular'}
+                          </span>
+                        </td>
+                        <td>
+                          <span {...getStandingBadgeProps(std.academic_status)}>
+                            {std.academic_status || 'No Probationary'}
+                          </span>
+                        </td>
+                        <td className="tableActions">
+                          {/* ADDED e.stopPropagation() to these buttons so clicking them doesn't select the row */}
+                          <button className="tableEditBtn" onClick={(e) => { e.stopPropagation(); handleViewGrades(std); }}>
+                            <BiListCheck /> Grades
+                          </button>
+                          <button className="tableEditBtn" onClick={(e) => { e.stopPropagation(); handleEdit(std); }}>
+                            <BiPencil /> Edit
+                          </button>
+                          <button className="tableDeleteBtn" onClick={(e) => { e.stopPropagation(); handleDelete(std); }}>
+                            <BiTrash /> Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
-
+        
           <div className="PaginationContainer">
             <div className="PaginationControls">
               <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>

@@ -1,8 +1,20 @@
 /* ---------- Masterlist student cards (mobile) ---------- */
 
-.MasterlistCards {
-  overflow: visible;
-  padding-right: 0;
+.RecordCards {
+  /* Remove overflow: visible; it breaks the flex scrolling */
+  display: flex;
+  flex-direction: column; /* Ensure vertical stacking */
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;       /* Let the cards scroll here */
+  padding-right: 4px;
+}
+
+@media (max-width: 768px) {
+  .RecordCards {
+    padding-right: 4px;
+    padding-bottom: 16px;
+  }
 }
 
 .MasterlistSelectAll {
@@ -15,43 +27,43 @@
 }
 
 .MasterlistSelectAll input,
-.StudentCard .cardCheckbox input {
+.RecordCard .cardCheckbox input {
   accent-color: #3d1616;
 }
 
-.StudentCard {
+.RecordCard {
   position: relative;
   padding: 12px;
   border: 1px solid transparent;
   cursor: pointer;
 }
 
-.StudentCard.selected {
+.RecordCard.selected {
   border-color: #3d1616;
   background: #fbf6f6;
 }
 
-.StudentCard .CardMain {
+.RecordCard .CardMain {
   flex-wrap: nowrap;
   align-items: flex-start;
 }
 
-.StudentCard .cardCheckbox {
+.RecordCard .cardCheckbox {
   padding: 4px 4px 4px 0;
 }
 
-.StudentCard .cardHeader {
+.RecordCard .cardHeader {
   flex-wrap: nowrap;
   align-items: flex-start;
   margin-bottom: 2px;
 }
 
-.StudentCardNumber {
+.RecordCardSub {
   font-size: 0.8rem;
   color: #666;
 }
 
-.StudentMenuBtn {
+.RecordMenuBtn {
   flex-shrink: 0;
   width: 36px;
   height: 36px;
@@ -66,7 +78,7 @@
   cursor: pointer;
 }
 
-.StudentMenuBtn:active {
+.RecordMenuBtn:active {
   background: #f0f0f0;
 }
 

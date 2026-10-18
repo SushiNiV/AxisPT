@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { BiSearch, BiX } from 'react-icons/bi';
+import { BiSearch, BiX, BiChevronDown } from 'react-icons/bi';
+import useMediaQuery from '../../Components/useMediaQuery';
 import Filter from '../../Components/Filter';
 import '../../GlobalStyle/GlobalHistory.css';
 import '../../GlobalStyle/Global.css';
+import '../../GlobalStyle/GlobalCard.css';
 import '../../GlobalStyle/GlobalEmpty.css';
+import '../../ResponsiveStyle/ResponsiveTable.css';
+import '../../ResponsiveStyle/ResponsiveCard.css';
 
 function AHistory() {
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  
   const [historyData, setHistoryData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(50);
+  const rowsPerPage = isMobile ? 10 : 50; 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedDesignation, setSelectedDesignation] = useState("");
   const [selectedAction, setSelectedAction] = useState("");
@@ -21,6 +27,8 @@ function AHistory() {
   const [designationOptions, setDesignationOptions] = useState([]);
   const [actionOptions, setActionOptions] = useState([]);
 
+  const [expandedLogId, setExpandedLogId] = useState(null);
+
   const hasActiveFilters = selectedDesignation !== "" || selectedAction !== "";
 
   useEffect(() => {
@@ -29,6 +37,8 @@ function AHistory() {
       setTempAction(selectedAction);
     }
   }, [isFilterOpen, selectedDesignation, selectedAction]);
+
+  useEffect(() => { setCurrentPage(1); }, [isMobile, searchTerm]);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -97,11 +107,8 @@ function AHistory() {
   ];
 
   const handleFilterChange = (name, value) => {
-    if (name === "designation") {
-      setTempDesignation(value);
-    } else if (name === "action") {
-      setTempAction(value);
-    }
+    if (name === "designation") setTempDesignation(value);
+    else if (name === "action") setTempAction(value);
   };
 
   const resetFilters = () => {
@@ -154,13 +161,8 @@ function AHistory() {
     setCurrentPage(1);
   };
 
-  const goToNextPage = () => { 
-    if (currentPage < totalPages) setCurrentPage(p => p + 1); 
-  };
-  
-  const goToPrevPage = () => { 
-    if (currentPage > 1) setCurrentPage(p => p - 1); 
-  };
+  const goToNextPage = () => { if (currentPage < totalPages) setCurrentPage(p => p + 1); };
+  const goToPrevPage = () => { if (currentPage > 1) setCurrentPage(p => p - 1); };
 
   const hasNoData = filteredHistory.length === 0;
 
@@ -201,12 +203,7 @@ function AHistory() {
             value={searchTerm}
             onChange={handleSearch}
           />
-          {searchTerm && (
-            <BiX 
-              className="ClearSearchIcon" 
-              onClick={clearSearch}
-            />
-          )}
+          {searchTerm && <BiX className="ClearSearchIcon" onClick={clearSearch} />}
         </div>
         
         <Filter
@@ -226,9 +223,7 @@ function AHistory() {
             <div className="emptyStateIcon">🔍</div>
             <h3 className="emptyStateTitle">No matching results</h3>
             <p className="emptyStateText">No history records found matching "{searchTerm}"</p>
-            <button className="emptyStateBtn" onClick={clearSearch}>
-              Clear Search
-            </button>
+            <button className="emptyStateBtn" onClick={clearSearch}>Clear Search</button>
           </div>
         ) : (
           <div className="emptyState">
@@ -239,38 +234,94 @@ function AHistory() {
         )
       ) : (
         <>
-          <div className="TableContainer History">
-            <table className="Table">
-              <thead>
-                <tr>
-                  <th>No.</th>
-                  <th>User ID</th>
-                  <th>Designation</th>
-                  <th>Action</th>
-                  <th>Target ID</th>
-                  <th>Details</th>
-                  <th>Timestamp</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentItems.map((item, index) => (
-                  <tr key={item.id}>
-                    <td>{indexOfFirstItem + index + 1}</td>
-                    <td>{item.userId}</td>
-                    <td>{item.designation}</td>
-                    <td>
-                      <span className={`StatusTag ${safeString(item.action).toLowerCase().replace(/ /g, '-')}`}>
-                        {item.action}
-                      </span>
-                    </td>
-                    <td>{item.targetId || "—"}</td>
-                    <td>{item.details}</td>
-                    <td>{item.timestamp}</td>
+          {isMobile ? (
+            /* --- MOBILE EXPANDABLE CARDS --- */
+            <div className="CardsContainer RecordCards">
+              {currentItems.map((item) => {
+                const isExpanded = expandedLogId === item.id;
+                
+                return (
+                  <div
+                    key={item.id}
+                    className={`Card RecordCard ${isExpanded ? 'expanded' : ''}`}
+                    onClick={() => setExpandedLogId(isExpanded ? null : item.id)}
+                  >
+                    <div className="CardMain">
+                      <div className="cardContent">
+                        
+                        {/* Action Text (Matches Pill Colors) */}
+                        <div className="HistoryMobileBadgeRow">
+                          <span className={`StatusTag ${safeString(item.action).toLowerCase().replace(/ /g, '-')}`}>
+                            {item.action}
+                          </span>
+                        </div>
+                        
+                        <div className="HistoryMobileInfoRow">
+                          <div className="HistoryMobileUser">
+                            <span className="HistoryMobileName">{item.userId}</span>
+                            <span className="HistoryMobileRole">{item.designation}</span>
+                          </div>
+                          <span className="HistoryMobileTime">{item.timestamp}</span>
+                        </div>
+                      </div>
+
+                      <div className="RecordChevron">
+                        <BiChevronDown className="ChevronIcon" />
+                      </div>
+                    </div>
+
+                    {/* Expanded Details */}
+                    {isExpanded && (
+                      <div className="CardExpandedContent HistoryMobileExpanded" onClick={(e) => e.stopPropagation()}>
+                        <div className="HistoryDetailBlock">
+                          <span className="HistoryDetailLabel">TARGET:</span>
+                          <p className="HistoryDetailText">{item.targetId || '—'}</p>
+                        </div>
+                        <div className="HistoryDetailBlock">
+                          <span className="HistoryDetailLabel">DETAILS:</span>
+                          <p className="HistoryDetailText">{item.details}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* --- DESKTOP TABLE --- */
+            <div className="TableContainer History">
+              <table className="Table">
+                <thead>
+                  <tr>
+                    <th>No.</th>
+                    <th>User ID</th>
+                    <th>Designation</th>
+                    <th>Action</th>
+                    <th>Target ID</th>
+                    <th>Details</th>
+                    <th>Timestamp</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {currentItems.map((item, index) => (
+                    <tr key={item.id}>
+                      <td>{indexOfFirstItem + index + 1}</td>
+                      <td>{item.userId}</td>
+                      <td>{item.designation}</td>
+                      <td>
+                        <span className={`StatusTag ${safeString(item.action).toLowerCase().replace(/ /g, '-')}`}>
+                          {item.action}
+                        </span>
+                      </td>
+                      <td>{item.targetId || "—"}</td>
+                      <td>{item.details}</td>
+                      <td>{item.timestamp}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           <div className="PaginationContainer">
             <div className="PaginationControls">

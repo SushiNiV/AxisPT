@@ -1,3 +1,103 @@
+/* Desktop Course List Layout */
+.DesktopCourseList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 0;
+  
+  /* CHANGED: Let flexbox fill the space between TopSection and Pagination */
+  flex: 1; 
+  min-height: 0; 
+  
+  overflow-y: auto; 
+  padding-right: 8px;
+}
+
+.DesktopCourseList::-webkit-scrollbar {
+  width: 8px;
+}
+.DesktopCourseList::-webkit-scrollbar-thumb {
+  background: rgba(61, 22, 22, 0.2);
+  border-radius: 4px;
+}
+.DesktopCourseList::-webkit-scrollbar-thumb:hover {
+  background: rgba(61, 22, 22, 0.4);
+}
+
+.DesktopCourseRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  transition: box-shadow 0.2s;
+}
+
+.DesktopCourseRow:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.CourseRowMain {
+  flex: 1;
+  min-width: 0; /* Prevents flex children from overflowing */
+}
+
+.CourseRowCode {
+  font-weight: 700;
+  color: #3d1616;
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.CourseRowName {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.CourseRowMeta {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.CourseRowAssignments {
+  flex: 1;
+  padding: 0 24px;
+  border-left: 1px solid #edf2f7;
+  border-right: 1px solid #edf2f7;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.CourseRowPrograms {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 4px;
+}
+
+.CourseRowActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: 150px;
+  justify-content: flex-end;
+}
+
+
+/* ==========================================================================
+   Cards Container & Layout
+   ========================================================================== */
+
 .CardsContainer {
   flex: 1 1 0%;
   min-height: 0;
@@ -7,6 +107,14 @@
   gap: 0.5rem;
   padding-right: 4px;
   box-sizing: border-box;
+}
+
+/* 
+ * THE FIX: When a dropdown menu is open inside a card, this prevents 
+ * the container from clipping the menu. 
+ */
+.CardsContainer:has(.CardMenu) {
+  overflow-y: visible !important;
 }
 
 .CardsContainer::-webkit-scrollbar {
@@ -107,7 +215,6 @@
 .cardTitle {
   font-size: 1rem;
   font-weight: 600;
-  color: #333;
 }
 
 .CardDetails {
@@ -120,11 +227,20 @@
 
 .detailBadge {
   padding: 4px 10px;
-  background: #f5f5f5;
+  background: #3d1616; 
   border-radius: 6px;
   font-size: 0.75rem;
-  color: #666;
+  color: #ffffff; 
   display: inline-block;
+}
+
+.detailBadge.current-bg, 
+.detailBadge.future-bg, 
+.detailBadge.past-bg,
+.detailBadge.active-semester,
+.detailBadge.inactive-semester {
+  background: #3d1616; 
+  color: #ffffff;
 }
 
 .detailBadge.current-bg {
@@ -294,3 +410,21 @@
 }
 
 
+/* ==========================================================================
+   Floating Dropdown Menu (Triple Dot)
+   ========================================================================== */
+
+/* Ensure the menu floats above all cards and layout elements */
+.CardMenu {
+  position: absolute;
+  z-index: 1000;
+}
+
+.CardMenuBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999; /* Sits just behind the menu */
+}

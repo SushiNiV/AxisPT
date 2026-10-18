@@ -4,6 +4,7 @@ import Filter from '../../../Components/Filter';
 import '../../../GlobalStyle/Global.css';
 import '../../../GlobalStyle/Documents.css';
 import CourseOutline from '../../AComponents/StudentDocuments/CourseOutline';
+import useMediaQuery from '../../../Components/useMediaQuery';
 
 const DEFAULT_PREVIEW_SCALE = 1;
 const MIN_PREVIEW_SCALE = 0.3;
@@ -13,6 +14,7 @@ const PAGE_WIDTH_MM = 215.9;
 const PAGE_HEIGHT_MM = 330.2;
 
 function DocumentsCourseOutline() {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [students, setStudents] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -175,7 +177,6 @@ useEffect(() => {
   return (
     <>
       <div className="DocSplitView">
-        {/* Left: curriculum list */}
         <div className="DocListPanel">
           <div className="DocListTop">
             <div className="SearchWrapper">
@@ -215,7 +216,7 @@ useEffect(() => {
                 key={stu.student_id}
                 className={`DocStudentRow ${selectedStudentId === stu.student_id ? 'Active' : ''} ${selectedIdSet.has(stu.student_id) ? 'Selected' : ''}`}
                 onClick={() => {
-                  setSelectedStudentId(stu.student_id);
+                  if (!isMobile) setSelectedStudentId(stu.student_id);
                   toggleSelection(stu.student_id);
                 }}
               >
@@ -241,6 +242,7 @@ useEffect(() => {
         </div>
 
         {/* Right: preview */}
+        {!isMobile && (
         <div className="DocPreviewPanel">
           <div className="DocPreviewActions">
             <button className="TopbarBtn" onClick={handlePrint} disabled={selectedIds.length === 0 || isPreparingPrint}>
@@ -277,9 +279,17 @@ useEffect(() => {
             </div>
           )}
         </div>
+        )}
       </div>
-
-      {/* Batch print area */}
+      {isMobile && selectedIds.length > 0 && (
+        <div className="DocMobilePrintBar">
+          <span>{selectedIds.length} selected</span>
+          <button className="TopbarBtn" onClick={handlePrint} disabled={isPreparingPrint}>
+            <BiPrinter className="linkIcon" /> {isPreparingPrint ? 'Preparing…' : 'Print'}
+          </button>
+          {printError && <p className="DocPrintError" role="alert">{printError}</p>}
+        </div>
+      )}
       <div className="DocBatchPrintArea">
         {printForms.map(({ studentId, data }) => (
           <div className="DocBatchPrintForm" key={studentId}>

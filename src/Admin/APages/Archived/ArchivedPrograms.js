@@ -1,14 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BiSearch, BiX, BiUndo } from 'react-icons/bi';
+import { BiSearch, BiX, BiUndo, BiDotsVerticalRounded } from 'react-icons/bi';
+import useMediaQuery from '../../../Components/useMediaQuery';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import '../../../GlobalStyle/Global.css';
+import '../../../GlobalStyle/GlobalCard.css';
 import '../../../GlobalStyle/GlobalEmpty.css';
+import '../../../ResponsiveStyle/ResponsiveTable.css';
 
 function ArchivedPrograms() {
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = isMobile ? 10 : 50;
+
+  // Menu state for mobile
+  const [menuProgramId, setMenuProgramId] = useState(null);
 
   const [confirmState, setConfirmState] = useState({ isOpen: false });
 
@@ -59,6 +71,7 @@ function ArchivedPrograms() {
   }, []);
 
   useEffect(() => { fetchPrograms(); }, [fetchPrograms]);
+  useEffect(() => { setCurrentPage(1); }, [isMobile, searchTerm]);
 
   const filteredPrograms = programs.filter((p) => {
     const term = searchTerm.toLowerCase();
@@ -68,6 +81,15 @@ function ArchivedPrograms() {
       p.program_abbr?.toLowerCase().includes(term)
     );
   });
+
+  // Pagination Logic
+  const totalPages = Math.ceil(filteredPrograms.length / rowsPerPage) || 1;
+  const indexOfLastItem = currentPage * rowsPerPage;
+  const indexOfFirstItem = indexOfLastItem - rowsPerPage;
+  const currentItems = filteredPrograms.slice(indexOfFirstItem, indexOfLastItem);
+
+  const goToNextPage = () => { if (currentPage < totalPages) setCurrentPage(p => p + 1); };
+  const goToPrevPage = () => { if (currentPage > 1) setCurrentPage(p => p - 1); };
 
   const handleRestore = (program) => {
     openConfirm({
@@ -125,7 +147,7 @@ function ArchivedPrograms() {
   const hasNoData = filteredPrograms.length === 0;
 
   return (
-    <>
+    <div className="InnerContainer">
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}
@@ -172,34 +194,110 @@ function ArchivedPrograms() {
           </div>
         )
       ) : (
-        <div className="TableContainer">
-          <table className="Table">
-            <thead>
-              <tr>
-                <th>Program</th>
-                <th>Abbreviation</th>
-                <th>Total Years</th>
-                <th style={{ width: '120px' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPrograms.map((p) => (
-                <tr key={p.program_id}>
-                  <td>{p.program_name}</td>
-                  <td>{p.program_abbr}</td>
-                  <td>{p.total_year}</td>
-                  <td className="tableActions">
-                    <button className="tableEditBtn" onClick={() => handleRestore(p)}>
-                      <BiUndo /> Restore
+        <>
+          {isMobile ? (
+            /* --- MOBILE CARD VIEW --- */
+            <div className="CardsContainer RecordCards">
+              {currentItems.map((p) => (
+                <div className="Card RecordCard" key={p.program_id}>
+                  <div className="CardMain">
+                    <div className="cardContent">
+                      <div className="cardHeader">
+                        <span className="cardTitle">{p.program_name}</span>
+                      </div>
+                      
+                      <div className="CardDetails" style={{ marginTop: 0 }}>
+                        <span className="detailBadge">{p.program_abbr}</span>
+                        <span className="detailBadge" style={{ background: '#f0f0f0', color: '#555' }}>
+                          {p.total_year} Years
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      className="RecordMenuBtn"
+                      aria-label="Program actions"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuProgramId(menuProgramId === p.program_id ? null : p.program_id);
+                      }}
+                    >
+                      <BiDotsVerticalRounded />
                     </button>
-                  </td>
-                </tr>
+
+                    {menuProgramId === p.program_id && (
+                      <>
+                        <div
+                          className="CardMenuBackdrop"
+                          onClick={(e) => { e.stopPropagation(); setMenuProgramId(null); }}
+                        />
+                        <div className="CardMenu" onClick={(e) => e.stopPropagation()}>
+                          <button onClick={() => { setMenuProgramId(null); handleRestore(p); }}>
+                            <BiUndo /> Restore
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          ) : (
+            /* --- DESKTOP TABLE VIEW --- */
+            <div className="TableContainer">
+              <table className="Table">
+                <thead>
+                  <tr>
+                    <th>Program</th>
+                    <th>Abbreviation</th>
+                    <th>Total Years</th>
+                    <th style={{ width: '120px' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentItems.map((p) => (
+                    <tr key={p.program_id}>
+                      <td>{p.program_name}</td>
+                      <td>{p.program_abbr}</td>
+                      <td>{p.total_year}</td>
+                      <td className="tableActions">
+                        <button className="tableEditBtn" onClick={() => handleRestore(p)}>
+                          <BiUndo /> Restore
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* --- PAGINATION --- */}
+          <div className="PaginationContainer">
+            <div className="PaginationControls">
+              <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
+              <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
+              <div className="CurrentPageInputWrapper">
+                <input
+                  type="number"
+                  value={currentPage}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    if (val > 0 && val <= totalPages) setCurrentPage(val);
+                  }}
+                  className="CurrentPageInput"
+                />
+              </div>
+              <div className="PaginationInfo">
+                out of <span>{totalPages}</span>
+              </div>
+              <button className="PageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
+              <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
+            </div>
+          </div>
+        </>
       )}
-    </>
+    </div>
   );
 }
 

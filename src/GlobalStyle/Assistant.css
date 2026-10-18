@@ -6,7 +6,7 @@
   position: fixed;
   bottom: 0;
   right: 0;
-  z-index: 9990; /* below ConfirmationModal's 9999 */
+  z-index: 899; /* below ConfirmationModal's 9999 */
   pointer-events: none; /* children re-enable */
 }
 
@@ -528,7 +528,7 @@
 
 /* ---------- Mobile ---------- */
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .AssistantFloatingPanel {
     bottom: 0;
     right: 0;
@@ -541,8 +541,22 @@
   .AssistantLauncherBtn {
     bottom: 16px;
     right: 16px;
-    height: 54px;
-    font-size: 0.95rem;
+    height: 48px;
+    width: 48px;
+    padding: 0;
+    border-radius: 50%;
+    justify-content: center;
+  }
+
+  .AssistantLauncherIcon {
+    width: 48px;
+    height: 48px;
+    font-size: 1.3rem;
+  }
+
+  /* Hide the "Ask AI" / "Close" text, keep the icon only */
+  .AssistantLauncherLabel {
+    display: none;
   }
 
   .AssistantLauncherBtn--open {
@@ -550,7 +564,7 @@
   }
 
   .AssistantNudge {
-    bottom: 82px;
+    bottom: 76px;
     right: 16px;
   }
 }

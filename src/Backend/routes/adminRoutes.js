@@ -102,12 +102,22 @@ router.put('/courses/:id',      verifyToken, requireRole('admin'), courseControl
 router.delete('/courses/:id',   verifyToken, requireRole('admin'), courseController.deleteCourse);
 
 // ==========================================
-// FACULTY — GET both roles; mutations admin only
+// USER / FACULTY MANAGEMENT — ADMIN ONLY
 // ==========================================
-router.get('/faculties',        verifyToken, requireRole('admin', 'faculty'), facultyController.getFaculties);
-router.get('/users/:id',        verifyToken, requireRole('admin'), facultyController.getFacultyById);
-router.post('/users',           verifyToken, requireRole('admin'), facultyController.addFaculty);
-router.put('/users/:id',        verifyToken, requireRole('admin'), facultyController.updateFaculty);
+// Use facultyController for all /users routes (it handles faculty+users tables together)
+router.get('/users',              verifyToken, requireRole('admin'), facultyController.getFaculties);
+router.get('/users/:id',          verifyToken, requireRole('admin'), facultyController.getFacultyById);
+router.post('/users',             verifyToken, requireRole('admin'), facultyController.addFaculty);
+router.put('/users/:id',          verifyToken, requireRole('admin'), facultyController.updateFaculty);
+router.delete('/users/:id',       verifyToken, requireRole('admin'), facultyController.deleteFaculty);
+router.post('/users/:id/restore', verifyToken, requireRole('admin'), facultyController.restoreFaculty);
+
+// Keep /faculties as alias if needed elsewhere
+router.get('/faculties', verifyToken, requireRole('admin', 'faculty'), facultyController.getFaculties);
+
+// Roles & designations from authController (separate concern)
+router.get('/roles',              verifyToken, requireRole('admin'), authController.getRoles);
+router.get('/designations',       verifyToken, requireRole('admin'), authController.getDesignations);
 
 // ==========================================
 // SECTION — GET both roles; mutations & archived admin only

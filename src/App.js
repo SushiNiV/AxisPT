@@ -32,6 +32,8 @@ import AArchive from './Admin/APages/Archived/AArchive';
 import ArchivedStudents from './Admin/APages/Archived/ArchivedStudents';
 import ArchivedPrograms from './Admin/APages/Archived/ArchivedPrograms';
 import ArchivedSections from './Admin/APages/Archived/ArchivedSections';
+import ArchivedUsers from './Admin/APages/Archived/ArchivedUsers';
+
 
 import ProtectedRoute from './Components/ProtectedRoute';
 import ALayout from './Admin/AComponents/ALayout';
@@ -163,42 +165,20 @@ function AppContent() {
                 path="/admin/history"
                 element={<ProtectedRoute allowedRoles={ADMIN_ONLY} />}
               >
-                <Route element={<AHistory />} />
+                <Route index element={<AHistory />} />
               </Route>
 
-              {/* Archive — both roles for the parent, students only for faculty */}
               <Route
                 path="/admin/archive"
                 element={<ProtectedRoute allowedRoles={ADMIN_AND_FACULTY} />}
               >
                 <Route element={<AArchive />}>
-                  <Route
-                    index
-                    element={
-                      <Navigate
-                        to={sessionStorage.getItem('role') === 'faculty' ? 'students' : 'students'}
-                        replace
-                      />
-                    }
-                  />
+                  <Route index element={<Navigate to="students" replace />} />
+                  
                   <Route path="students" element={<ArchivedStudents />} />
-                  {/* Programs & Sections archives — admin only */}
-                  <Route
-                    path="programs"
-                    element={
-                      <ProtectedRoute allowedRoles={ADMIN_ONLY}>
-                        <ArchivedPrograms />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="sections"
-                    element={
-                      <ProtectedRoute allowedRoles={ADMIN_ONLY}>
-                        <ArchivedSections />
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="programs" element={<ArchivedPrograms />} />
+                  <Route path="sections" element={<ArchivedSections />} />
+                  <Route path="users" element={<ArchivedUsers />} />
                 </Route>
               </Route>
 

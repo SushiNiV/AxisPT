@@ -4,24 +4,27 @@ import ASubheader from '../../AComponents/ASubheader';
 import '../../../GlobalStyle/Global.css';
 
 function AArchive() {
-  const role = sessionStorage.getItem('role') || localStorage.getItem('role');
-  const isAdmin = role === 'admin' || role === 'superadmin';
+  const role = (sessionStorage.getItem('role') || localStorage.getItem('role') || '').toLowerCase();
+  const isAdmin = role === 'admin';
 
-  const allTabs = [
-    { label: 'Students', path: '/admin/archive/students' },
-    { label: 'Programs', path: '/admin/archive/programs' },
-    { label: 'Sections', path: '/admin/archive/sections' },
+  const archiveTabs = [
+    { label: 'Students', path: 'students' }, // Relative path
   ];
 
-  // Faculty only see Students; Programs/Sections archives are admin-only.
-  const archiveTabs = isAdmin
-    ? allTabs
-    : allTabs.filter((tab) => tab.path === '/admin/archive/students');
+  if (isAdmin) {
+    archiveTabs.push(
+      { label: 'Programs', path: 'programs' },       // Relative path
+      { label: 'Sections', path: 'sections' },       // Relative path
+      { label: 'Users', path: 'users' }
+    );
+  }
 
   return (
-    <div className="ContentContainer">
+    <div className="InnerContainer">
       <ASubheader tabs={archiveTabs} />
-      <Outlet />
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <Outlet />
+      </div>
     </div>
   );
 }

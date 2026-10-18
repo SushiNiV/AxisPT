@@ -4,6 +4,7 @@ import Filter from '../../../Components/Filter';
 import '../../../GlobalStyle/Global.css';
 import '../../../GlobalStyle/Documents.css';
 import TermGrade from '../../AComponents/StudentDocuments/TermGrade';
+import useMediaQuery from '../../../Components/useMediaQuery';
 
 const DEFAULT_PREVIEW_SCALE = 1;
 const MIN_PREVIEW_SCALE = 0.3;
@@ -14,6 +15,7 @@ const PAGE_HEIGHT_MM = 330.2;
 const STUDENTS_PER_PAGE = 15;
 
 function DocumentsTermGrade() {
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -283,7 +285,49 @@ function DocumentsTermGrade() {
   const semesterOptions = selectedYearLevel
     ? (academicPeriods.find((yb) => yb.yearLevel === selectedYearLevel)?.semesters || [])
     : [];
+    const periodSelectors = academicPeriods.length > 0 && (
+    <div className="DocPeriodSelector">
+      <div className="DocPeriodSelectWrap">
+        <select
+          className="DocPeriodSelect"
+          value={selectedYearLevel || ''}
+          onChange={(e) => {
+            const yl = e.target.value ? Number(e.target.value) : null;
+            setSelectedYearLevel(yl);
+            setSelectedSemesterId(null);
+          }}
+        >
+          <option value="">Current Year</option>
+          {academicPeriods.map((yb) => (
+            <option key={yb.yearLevel} value={yb.yearLevel}>
+              Year {yb.yearLevel}
+            </option>
+          ))}
+        </select>
+        <BiChevronDown className="DocPeriodSelectChevron" />
+      </div>
 
+      <div className="DocPeriodSelectWrap">
+        <select
+          className="DocPeriodSelect"
+          value={selectedSemesterId || ''}
+          onChange={(e) => setSelectedSemesterId(e.target.value ? Number(e.target.value) : null)}
+          disabled={!selectedYearLevel}
+        >
+          <option value="">
+            {selectedYearLevel ? '-- Semester --' : 'Semester'}
+          </option>
+          {semesterOptions.map((sem) => (
+            <option key={sem.semesterId} value={sem.semesterId}>
+              {sem.semesterLabel}
+            </option>
+          ))}
+        </select>
+        <BiChevronDown className="DocPeriodSelectChevron" />
+      </div>
+    </div>
+  );
+  
   return (
     <>
       <div className="DocSplitView">
@@ -315,6 +359,10 @@ function DocumentsTermGrade() {
               onApply={applyFilters}
             />
           </div>
+
+          {isMobile && periodSelectors && (
+            <div className="DocMobilePeriod">{periodSelectors}</div>
+          )}
           <div className="DocListSelectionInfo">
             {selectedStudentIds.length} selected for printing
           </div>
@@ -331,7 +379,7 @@ function DocumentsTermGrade() {
                   key={std.student_id}
                   className={`DocStudentRow ${selectedStudentId === std.student_id ? 'Active' : ''} ${selectedStudentIdSet.has(std.student_id) ? 'Selected' : ''}`}
                   onClick={() => {
-                    setSelectedStudentId(std.student_id);
+                    if (!isMobile)setSelectedStudentId(std.student_id);
                     toggleStudentSelection(std.student_id);
                   }}
                 >
@@ -377,52 +425,10 @@ function DocumentsTermGrade() {
             </div>
           )}
         </div>
-
+        {!isMobile && (
         <div className="DocPreviewPanel">
           <div className="DocPreviewActions">
-            {academicPeriods.length > 0 && (
-              <div className="DocPeriodSelector">
-                <div className="DocPeriodSelectWrap">
-                  <select
-                    className="DocPeriodSelect"
-                    value={selectedYearLevel || ''}
-                    onChange={(e) => {
-                      const yl = e.target.value ? Number(e.target.value) : null;
-                      setSelectedYearLevel(yl);
-                      setSelectedSemesterId(null);
-                    }}
-                  >
-                    <option value="">Current Year</option>
-                    {academicPeriods.map((yb) => (
-                      <option key={yb.yearLevel} value={yb.yearLevel}>
-                        Year {yb.yearLevel}
-                      </option>
-                    ))}
-                  </select>
-                  <BiChevronDown className="DocPeriodSelectChevron" />
-                </div>
-
-                <div className="DocPeriodSelectWrap">
-                  <select
-                    className="DocPeriodSelect"
-                    value={selectedSemesterId || ''}
-                    onChange={(e) => setSelectedSemesterId(e.target.value ? Number(e.target.value) : null)}
-                    disabled={!selectedYearLevel}
-                  >
-                    <option value="">
-                      {selectedYearLevel ? '-- Semester --' : 'Semester'}
-                    </option>
-                    {semesterOptions.map((sem) => (
-                      <option key={sem.semesterId} value={sem.semesterId}>
-                        {sem.semesterLabel}
-                      </option>
-                    ))}
-                  </select>
-                  <BiChevronDown className="DocPeriodSelectChevron" />
-                </div>
-              </div>
-            )}
-
+            {periodSelectors}
             <button
               className="TopbarBtn"
               onClick={handlePrint}
@@ -500,8 +506,17 @@ function DocumentsTermGrade() {
             </div>
           )}
         </div>
+        )}
       </div>
-
+      {isMobile && selectedStudentIds.length > 0 && (
+        <div className="DocMobilePrintBar">
+          <span>{selectedStudentIds.length} selected</span>
+          <button className="TopbarBtn" onClick={handlePrint} disabled={isPreparingPrint}>
+            <BiPrinter className="linkIcon" /> {isPreparingPrint ? 'Preparing…' : 'Print'}
+          </button>
+          {printError && <p className="DocPrintError" role="alert">{printError}</p>}
+        </div>
+      )}
       <div className="DocBatchPrintArea">
         {printForms.map(({ studentId, data }) => (
           <div className="DocBatchPrintForm" key={studentId}>
