@@ -13,8 +13,9 @@ function AArchive() {
 
   if (isAdmin) {
     archiveTabs.push(
-      { label: 'Programs', path: 'programs' },       // Relative path
-      { label: 'Sections', path: 'sections' },       // Relative path
+      { label: 'Programs', path: 'programs' },       
+      { label: 'Sections', path: 'sections' },      
+      { label: 'Courses', path: 'courses' }, 
       { label: 'Users', path: 'users' }
     );
   }

@@ -1,15 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { BiSearch, BiX, BiUndo } from 'react-icons/bi';
+import useMediaQuery from '../../../Components/useMediaQuery';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import '../../../GlobalStyle/Global.css';
+import '../../../GlobalStyle/GlobalCard.css';
 import '../../../GlobalStyle/GlobalEmpty.css';
+import '../../../ResponsiveStyle/ResponsiveTable.css';
 
 function ArchivedCourses() {
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = isMobile ? 10 : 50;
 
   const [confirmState, setConfirmState] = useState({ isOpen: false });
 
@@ -50,7 +57,6 @@ function ArchivedCourses() {
       );
       const data = await res.json();
       if (data.success) {
-        // Only show the archived ones on this page
         setCourses(data.data.filter(c => c.is_archived === true));
       } else {
         setError(data.message || 'Failed to fetch archived courses.');
@@ -64,6 +70,7 @@ function ArchivedCourses() {
   }, []);
 
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
+  useEffect(() => { setCurrentPage(1); }, [isMobile, searchTerm]);
 
   const filteredCourses = courses.filter((c) => {
     const term = searchTerm.toLowerCase();
@@ -73,6 +80,14 @@ function ArchivedCourses() {
       c.course_name?.toLowerCase().includes(term)
     );
   });
+
+  const totalPages = Math.ceil(filteredCourses.length / rowsPerPage) || 1;
+  const indexOfLastItem = currentPage * rowsPerPage;
+  const indexOfFirstItem = indexOfLastItem - rowsPerPage;
+  const currentItems = filteredCourses.slice(indexOfFirstItem, indexOfLastItem);
+
+  const goToNextPage = () => { if (currentPage < totalPages) setCurrentPage(p => p + 1); };
+  const goToPrevPage = () => { if (currentPage > 1) setCurrentPage(p => p - 1); };
 
   const handleRestore = (course) => {
     openConfirm({
@@ -136,7 +151,7 @@ function ArchivedCourses() {
   const hasNoData = filteredCourses.length === 0;
 
   return (
-    <>
+    <div className="InnerContainer">
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}
@@ -183,34 +198,90 @@ function ArchivedCourses() {
           </div>
         )
       ) : (
-        <div className="TableContainer">
-          <table className="Table">
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>Course Name</th>
-                <th>Units</th>
-                <th style={{ width: '120px' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCourses.map((c) => (
-                <tr key={c.course_id}>
-                  <td><strong>{c.course_code}</strong></td>
-                  <td>{c.course_name}</td>
-                  <td>{c.total_units || c.lec_units + c.lab_units}</td>
-                  <td className="tableActions">
-                    <button className="tableEditBtn" onClick={() => handleRestore(c)}>
+        <>
+          {isMobile ? (
+            <div className="CardsContainer RecordCards">
+              {currentItems.map((c) => (
+                <div className="Card RecordCard" key={c.course_id}>
+                  <div className="CardMain">
+                    <div className="cardContent">
+                      <div className="cardHeader">
+                        <span className="cardTitle">{c.course_code}</span>
+                      </div>
+                      <span className="RecordCardSub">{c.course_name}</span>
+                      
+                      <div className="CardDetails" style={{ marginTop: '8px' }}>
+                        <span className="detailBadge">
+                          {c.total_units || c.lec_units + c.lab_units} units
+                        </span>
+                      </div>
+                    </div>
+
+                    <button 
+                      className="tableEditBtn" 
+                      onClick={() => handleRestore(c)}
+                      style={{ marginLeft: '10px' }}
+                    >
                       <BiUndo /> Restore
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          ) : (
+            <div className="TableContainer">
+              <table className="Table">
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Course Name</th>
+                    <th>Units</th>
+                    <th style={{ width: '120px' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentItems.map((c) => (
+                    <tr key={c.course_id}>
+                      <td><strong>{c.course_code}</strong></td>
+                      <td>{c.course_name}</td>
+                      <td>{c.total_units || c.lec_units + c.lab_units}</td>
+                      <td className="tableActions">
+                        <button className="tableEditBtn" onClick={() => handleRestore(c)}>
+                          <BiUndo /> Restore
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="PaginationContainer">
+            <div className="PaginationControls">
+              <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
+              <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
+              <div className="CurrentPageInputWrapper">
+                <input
+                  type="number"
+                  value={currentPage}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    if (val > 0 && val <= totalPages) setCurrentPage(val);
+                  }}
+                  className="CurrentPageInput"
+                />
+              </div>
+              <div className="PaginationInfo">
+                out of <span>{totalPages}</span>
+              </div>
+              <button className="PageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
+              <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
+            </div>
+          </div>
+        </>
       )}
-    </>
+    </div>
   );
 }
 

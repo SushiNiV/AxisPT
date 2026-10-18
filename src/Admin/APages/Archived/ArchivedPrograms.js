@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BiSearch, BiX, BiUndo, BiDotsVerticalRounded } from 'react-icons/bi';
+import { BiSearch, BiX, BiUndo } from 'react-icons/bi';
 import useMediaQuery from '../../../Components/useMediaQuery';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import '../../../GlobalStyle/Global.css';
@@ -18,9 +18,6 @@ function ArchivedPrograms() {
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = isMobile ? 10 : 50;
-
-  // Menu state for mobile
-  const [menuProgramId, setMenuProgramId] = useState(null);
 
   const [confirmState, setConfirmState] = useState({ isOpen: false });
 
@@ -214,30 +211,13 @@ function ArchivedPrograms() {
                       </div>
                     </div>
 
-                    <button
-                      className="RecordMenuBtn"
-                      aria-label="Program actions"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuProgramId(menuProgramId === p.program_id ? null : p.program_id);
-                      }}
+                    <button 
+                      className="tableEditBtn" 
+                      onClick={() => handleRestore(p)}
+                      style={{ marginLeft: '10px' }}
                     >
-                      <BiDotsVerticalRounded />
+                      <BiUndo /> Restore
                     </button>
-
-                    {menuProgramId === p.program_id && (
-                      <>
-                        <div
-                          className="CardMenuBackdrop"
-                          onClick={(e) => { e.stopPropagation(); setMenuProgramId(null); }}
-                        />
-                        <div className="CardMenu" onClick={(e) => e.stopPropagation()}>
-                          <button onClick={() => { setMenuProgramId(null); handleRestore(p); }}>
-                            <BiUndo /> Restore
-                          </button>
-                        </div>
-                      </>
-                    )}
                   </div>
                 </div>
               ))}

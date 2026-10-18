@@ -1,14 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BiSearch, BiX, BiUndo } from 'react-icons/bi';
+import useMediaQuery from '../../../Components/useMediaQuery';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import '../../../GlobalStyle/Global.css';
+import '../../../GlobalStyle/GlobalCard.css';
 import '../../../GlobalStyle/GlobalEmpty.css';
+import '../../../ResponsiveStyle/ResponsiveTable.css';
 
 function ArchivedStudents() {
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = isMobile ? 10 : 50;
 
   const [confirmState, setConfirmState] = useState({ isOpen: false });
 
@@ -62,6 +69,7 @@ function ArchivedStudents() {
   }, []);
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
+  useEffect(() => { setCurrentPage(1); }, [isMobile, searchTerm]);
 
   const filteredStudents = students.filter((s) => {
     const term = searchTerm.toLowerCase();
@@ -69,6 +77,14 @@ function ArchivedStudents() {
     const reason = (s.archive_reason || '').toLowerCase();
     return !term || label.includes(term) || reason.includes(term);
   });
+
+  const totalPages = Math.ceil(filteredStudents.length / rowsPerPage) || 1;
+  const indexOfLastItem = currentPage * rowsPerPage;
+  const indexOfFirstItem = indexOfLastItem - rowsPerPage;
+  const currentItems = filteredStudents.slice(indexOfFirstItem, indexOfLastItem);
+
+  const goToNextPage = () => { if (currentPage < totalPages) setCurrentPage(p => p + 1); };
+  const goToPrevPage = () => { if (currentPage > 1) setCurrentPage(p => p - 1); };
 
   const handleRestore = (student) => {
     openConfirm({
@@ -126,7 +142,7 @@ function ArchivedStudents() {
   const hasNoData = filteredStudents.length === 0;
 
   return (
-    <>
+    <div className="InnerContainer">
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}
@@ -173,42 +189,103 @@ function ArchivedStudents() {
           </div>
         )
       ) : (
-        <div className="TableContainer">
-          <table className="Table">
-            <thead>
-              <tr>
-                <th>Student No.</th>
-                <th>Full Name</th>
-                <th>Program</th>
-                <th>Year Level</th>
-                <th>Section</th>
-                <th>Remarks</th>
-                <th style={{ width: '120px' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStudents.map((std) => (
-                <tr key={std.student_id}>
-                  <td>{std.student_number}</td>
-                  <td>{`${std.last_name}, ${std.first_name}`}</td>
-                  <td>{std.program_abbr || std.program_name || '-'}</td>
-                  <td>{std.year_level || '-'}</td>
-                  <td>{std.section_name || '-'}</td>
-                  <td style={{ fontSize: '0.8rem', color: '#666', maxWidth: '200px', wordBreak: 'break-word' }}>
-                    {std.archive_reason || ''}
-                  </td>
-                  <td className="tableActions">
-                    <button className="tableEditBtn" onClick={() => handleRestore(std)}>
+        <>
+          {isMobile ? (
+            <div className="CardsContainer RecordCards">
+              {currentItems.map((std) => (
+                <div className="Card RecordCard" key={std.student_id}>
+                  <div className="CardMain">
+                    <div className="cardContent">
+                      <div className="cardHeader">
+                        <span className="cardTitle">{std.last_name}, {std.first_name}</span>
+                      </div>
+                      <span className="RecordCardSub">{std.student_number}</span>
+                      
+                      <div className="CardDetails" style={{ marginTop: '8px' }}>
+                        <span className="detailBadge">{std.program_abbr || std.program_name || '-'}</span>
+                        {std.year_level && <span className="detailBadge">Year {std.year_level}</span>}
+                        {std.section_name && <span className="detailBadge">{std.section_name}</span>}
+                        {std.archive_reason && (
+                          <span className="detailBadge" style={{ background: '#f0f0f0', color: '#555' }}>
+                            {std.archive_reason}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <button 
+                      className="tableEditBtn" 
+                      onClick={() => handleRestore(std)}
+                      style={{ marginLeft: '10px' }}
+                    >
                       <BiUndo /> Restore
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          ) : (
+            <div className="TableContainer">
+              <table className="Table">
+                <thead>
+                  <tr>
+                    <th>Student No.</th>
+                    <th>Full Name</th>
+                    <th>Program</th>
+                    <th>Year Level</th>
+                    <th>Section</th>
+                    <th>Remarks</th>
+                    <th style={{ width: '120px' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentItems.map((std) => (
+                    <tr key={std.student_id}>
+                      <td>{std.student_number}</td>
+                      <td>{`${std.last_name}, ${std.first_name}`}</td>
+                      <td>{std.program_abbr || std.program_name || '-'}</td>
+                      <td>{std.year_level || '-'}</td>
+                      <td>{std.section_name || '-'}</td>
+                      <td style={{ fontSize: '0.8rem', color: '#666', maxWidth: '200px', wordBreak: 'break-word' }}>
+                        {std.archive_reason || ''}
+                      </td>
+                      <td className="tableActions">
+                        <button className="tableEditBtn" onClick={() => handleRestore(std)}>
+                          <BiUndo /> Restore
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="PaginationContainer">
+            <div className="PaginationControls">
+              <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
+              <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
+              <div className="CurrentPageInputWrapper">
+                <input
+                  type="number"
+                  value={currentPage}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    if (val > 0 && val <= totalPages) setCurrentPage(val);
+                  }}
+                  className="CurrentPageInput"
+                />
+              </div>
+              <div className="PaginationInfo">
+                out of <span>{totalPages}</span>
+              </div>
+              <button className="PageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
+              <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
+            </div>
+          </div>
+        </>
       )}
-    </>
+    </div>
   );
 }
 

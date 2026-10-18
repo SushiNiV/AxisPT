@@ -11,7 +11,6 @@ import '../../../GlobalStyle/GlobalCard.css';
 import '../../../GlobalStyle/ProgSec.css';
 import '../../../GlobalStyle/GlobalEmpty.css';
 import '../../../ResponsiveStyle/ResponsiveTable.css';
-import '../../../GlobalStyle/GlobalCard.css';
 
 function AProgSec() {
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -34,6 +33,13 @@ function AProgSec() {
   const isAdmin = role === 'admin' || role === 'superadmin';
   const closeConfirm = () => setConfirmState({ isOpen: false });
   const [menuSectionId, setMenuSectionId] = useState(null);
+
+  // --- PAGINATION STATE ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = isMobile ? 5 : 10;
+
+  // Reset page on search or when program changes
+  useEffect(() => { setCurrentPage(1); }, [searchSection, selectedProgram, isMobile]);
 
   const openConfirm = (config) => {
     setConfirmState({
@@ -261,6 +267,15 @@ function AProgSec() {
     );
   }, [sections, searchSection]);
 
+  // --- PAGINATION LOGIC ---
+  const totalPages = Math.ceil(filteredSections.length / rowsPerPage) || 1;
+  const indexOfLastItem = currentPage * rowsPerPage;
+  const indexOfFirstItem = indexOfLastItem - rowsPerPage;
+  const currentItems = filteredSections.slice(indexOfFirstItem, indexOfLastItem);
+
+  const goToNextPage = () => { if (currentPage < totalPages) setCurrentPage(p => p + 1); };
+  const goToPrevPage = () => { if (currentPage > 1) setCurrentPage(p => p - 1); };
+
   return (
     <div className="InnerContainer">
       <ConfirmationModal
@@ -456,7 +471,7 @@ function AProgSec() {
                       {searchSection ? `No sections matching "${searchSection}"` : 'No sections yet.'}
                     </p>
                   ) : (
-                    filteredSections.map((sec) => {
+                    currentItems.map((sec) => {
                       const archived = sec.is_active === false;
                       return (
                         <div key={sec.assignment_id} className={`Card RecordCard${archived ? ' archived' : ''}`}>
@@ -540,7 +555,7 @@ function AProgSec() {
                         </td>
                       </tr>
                     ) : (
-                      filteredSections.map((sec) => {
+                      currentItems.map((sec) => {
                         const archived = sec.is_active === false;
                         return (
                           <tr key={sec.assignment_id} className={archived ? 'rowArchived' : ''}>
@@ -551,7 +566,7 @@ function AProgSec() {
                             <td>{sec.year_level}</td>
                             <td>{sec.semester_label}</td>
                             <td>{sec.student_count ?? 0}</td>
-                                                        {isAdmin && (
+                            {isAdmin && (
                               <td className="tableActions">
                                 {archived ? (
                                   <button className="tableEditBtn" onClick={() => handleRestoreSection(sec)}>
@@ -575,6 +590,32 @@ function AProgSec() {
                     )}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* --- PAGINATION CONTROLS --- */}
+            {!loadingSections && filteredSections.length > 0 && (
+              <div className="PaginationContainer">
+                <div className="PaginationControls">
+                  <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
+                  <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
+                  <div className="CurrentPageInputWrapper">
+                    <input
+                      type="number"
+                      value={currentPage}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (val > 0 && val <= totalPages) setCurrentPage(val);
+                      }}
+                      className="CurrentPageInput"
+                    />
+                  </div>
+                  <div className="PaginationInfo">
+                    out of <span>{totalPages}</span>
+                  </div>
+                  <button className="PageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
+                  <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
+                </div>
               </div>
             )}
             </>

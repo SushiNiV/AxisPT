@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash, BiChevronDown, BiDotsVerticalRounded } from 'react-icons/bi';
 import useMediaQuery from '../../../Components/useMediaQuery';
 import '../../../ResponsiveStyle/ResponsiveTable.css';
-import '../../../ResponsiveStyle/ResponsiveCard.css';
 import '../../../GlobalStyle/GlobalCard.css';
 import Filter from '../../../Components/Filter';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
@@ -47,21 +46,30 @@ function ACourses() {
   const unitsOf = (c) => c.total_units || c.lec_units + c.lab_units;
   const programLabel = (c) => c.program_abbrs?.length ? c.program_abbrs.join(', ') : '-';
 
+  // Helper specifically for the new desktop list layout
   const getUniqueAssignments = (c) => {
     if (!c.assignments || c.assignments.length === 0) return [];
+    // Deduplicate so we don't show the same year/semester twice
     return Array.from(
       new Set(c.assignments.map(a => `${a.year_level} Yr - ${a.semester_label}`))
     );
   };
 
+  // Helper for the mobile accordion pills
   const getAssignmentPills = (c) => {
     const unique = getUniqueAssignments(c);
     if (unique.length === 0) return '-';
     
     return (
-      <div className="PillsContainer">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
         {unique.map((pair, idx) => (
-          <span key={idx} className="detailBadge PillSm">{pair}</span>
+          <span 
+            key={idx} 
+            className="detailBadge" 
+            style={{ fontSize: '0.75rem', whiteSpace: 'nowrap', padding: '2px 8px', margin: 0 }}
+          >
+            {pair}
+          </span>
         ))}
       </div>
     );
@@ -363,31 +371,33 @@ function ACourses() {
       </div>
 
       {hasNoData ? (
-        searchTerm ? (
-          <div className="emptyState">
-            <div className="emptyStateIcon">🔍</div>
-            <h3 className="emptyStateTitle">No matching results</h3>
-            <p className="emptyStateText">No courses found matching "{searchTerm}"</p>
-            <button className="emptyStateBtn" onClick={clearSearch}>
-              Clear Search
-            </button>
-          </div>
-        ) : isAdmin ? (
-          <div className="emptyState">
-            <div className="emptyStateIcon">📚</div>
-            <h3 className="emptyStateTitle">No Courses Yet</h3>
-            <p className="emptyStateText">Get started by creating your first course.</p>
-            <button className="emptyStateBtn" onClick={() => setShowAddCourse(true)}>
-              <BiPlusCircle className="linkIcon"/> Create Course
-            </button>
-          </div>
-        ) : (
-          <div className="emptyState">
-            <div className="emptyStateIcon">📚</div>
-            <h3 className="emptyStateTitle">No Courses Yet</h3>
-            <p className="emptyStateText">There are no courses to display.</p>
-          </div>
-        )
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {searchTerm ? (
+            <div className="emptyState">
+              <div className="emptyStateIcon">🔍</div>
+              <h3 className="emptyStateTitle">No matching results</h3>
+              <p className="emptyStateText">No courses found matching "{searchTerm}"</p>
+              <button className="emptyStateBtn" onClick={clearSearch}>
+                Clear Search
+              </button>
+            </div>
+          ) : isAdmin ? (
+            <div className="emptyState">
+              <div className="emptyStateIcon">📚</div>
+              <h3 className="emptyStateTitle">No Courses Yet</h3>
+              <p className="emptyStateText">Get started by creating your first course.</p>
+              <button className="emptyStateBtn" onClick={() => setShowAddCourse(true)}>
+                <BiPlusCircle className="linkIcon"/> Create Course
+              </button>
+            </div>
+          ) : (
+            <div className="emptyState">
+              <div className="emptyStateIcon">📚</div>
+              <h3 className="emptyStateTitle">No Courses Yet</h3>
+              <p className="emptyStateText">There are no courses to display.</p>
+            </div>
+          )}
+        </div>
       ) : (
         <>
           {isMobile ? (
@@ -408,13 +418,14 @@ function ACourses() {
                         </div>
                         <span className="RecordCardSub">{course.course_name}</span>
                         
+                        {/* COLLAPSED STATE: Only Units are shown here now */}
                         <div className="CardDetails">
                           <span className="detailBadge">{unitsOf(course)} units</span>
                         </div>
                       </div>
 
                       <div className="RecordChevron">
-                        <BiChevronDown className="ChevronIcon" />
+                        <BiChevronDown style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
                       </div>
 
                       {isAdmin && (
@@ -431,26 +442,28 @@ function ACourses() {
                       )}
                     </div>
 
+                    {/* EXPANDED STATE: Prerequisites and Assignments are shown here */}
                     {isExpanded && (
                       <div className="CardExpandedContent" onClick={(e) => e.stopPropagation()}>
-                        <div className="ExpandedDetailsWrapper">
+                        <div style={{ marginBottom: '1rem', marginTop: '0.5rem' }}>
                           
+                          {/* Prerequisites */}
                           {course.prerequisite_codes && (
-                            <div className="ExpandedSection">
-                              <span className="ExpandedLabel">Prerequisites:</span>
+                            <div style={{ marginBottom: '8px' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '4px' }}>
+                                Prerequisites:
+                              </span>
                               <span className="detailBadge">{course.prerequisite_codes}</span>
                             </div>
                           )}
 
-                          <div className="ExpandedSection">
-                            <span className="ExpandedLabel">Programs:</span>
-                            <span className="ExpandedText">{programLabel(course)}</span>
-                          </div>
+                          {/* Programs */}
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', display: 'block', marginBottom: '4px' }}>
+                            Programs: {programLabel(course)}
+                          </span>
                           
-                          <div className="ExpandedSection">
-                            <span className="ExpandedLabel">Assignments:</span>
-                            {getAssignmentPills(course)}
-                          </div>
+                          {/* Assignments */}
+                          {getAssignmentPills(course)}
                         </div>
                       </div>
                     )}
@@ -500,12 +513,12 @@ function ACourses() {
                       </div>
                       {uniqueAssignments.length > 0 ? (
                         uniqueAssignments.map((pair, idx) => (
-                          <span key={idx} className="detailBadge PillSm" style={{ alignSelf: 'flex-start', margin: 0 }}>
+                          <span key={idx} className="detailBadge" style={{ alignSelf: 'flex-start', margin: 0, fontSize: '0.75rem' }}>
                             {pair}
                           </span>
                         ))
                       ) : (
-                        <span className="NoAssignmentsText">No assignments</span>
+                        <span style={{ fontSize: '0.8rem', color: '#999' }}>No assignments</span>
                       )}
                     </div>
 

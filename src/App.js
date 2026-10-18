@@ -33,7 +33,7 @@ import ArchivedStudents from './Admin/APages/Archived/ArchivedStudents';
 import ArchivedPrograms from './Admin/APages/Archived/ArchivedPrograms';
 import ArchivedSections from './Admin/APages/Archived/ArchivedSections';
 import ArchivedUsers from './Admin/APages/Archived/ArchivedUsers';
-
+import ArchivedCourses from './Admin/APages/Archived/ArchivedCourses';
 
 import ProtectedRoute from './Components/ProtectedRoute';
 import ALayout from './Admin/AComponents/ALayout';
@@ -177,6 +177,7 @@ function AppContent() {
                   
                   <Route path="students" element={<ArchivedStudents />} />
                   <Route path="programs" element={<ArchivedPrograms />} />
+                  <Route path="courses" element={<ArchivedCourses />} />
                   <Route path="sections" element={<ArchivedSections />} />
                   <Route path="users" element={<ArchivedUsers />} />
                 </Route>
