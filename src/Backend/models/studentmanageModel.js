@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const bcrypt = require('bcrypt'); // <-- Added bcrypt
 
 class StudentManageModel {
 
@@ -249,18 +250,23 @@ class StudentManageModel {
       const firstName = data.first_name || data.firstName;
       const lastName = data.last_name || data.lastName;
       const middleName = data.middle_name || data.middleName || null;
+      
+      const safeLast = (lastName || 'student').toLowerCase().replace(/\s+/g, '');
+      const defaultPassword = data.password_hash || `axis-cpt-${safeLast}`;
+      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
-      // 1. Create User
       const userRes = await client.query(`
-        INSERT INTO users (username, password_hash, school_email, is_active)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO users (username, password_hash, school_email, is_active, changed_pass)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING user_id
       `, [
         studentNumber,
-        data.password_hash || null,
+        hashedPassword,
         schoolEmail || null,
-        data.account_status !== undefined ? Boolean(data.account_status) : true
+        data.account_status !== undefined ? Boolean(data.account_status) : true,
+        false 
       ]);
+
       const userId = userRes.rows[0].user_id;
 
       // Assign Student Role

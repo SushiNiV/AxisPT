@@ -12,6 +12,10 @@
   overflow-y: auto;
 }
 
+.InnerContainer.DashboardContainer {
+  justify-content: flex-start;
+}
+
 .DashboardContainer::-webkit-scrollbar {
   width: 6px;
 }

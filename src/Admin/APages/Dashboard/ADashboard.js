@@ -7,7 +7,7 @@ import {
 import { BiUser, BiBook, BiBookOpen, BiGroup, BiTrendingUp } from 'react-icons/bi';
 import '../../../GlobalStyle/Global.css';
 import '../../../GlobalStyle/GlobalCard.css';
-import './Dashboard.css';
+import '../../../GlobalStyle/Dashboard.css';
 
 const PROGRAM_COLORS = ['#3d1616', '#7a2e2e', '#a84d4d', '#c97a7a', '#e5b4b4'];
 const YEAR_COLORS = ['#3d1616', '#7a2e2e', '#a84d4d', '#c97a7a', '#e5b4b4'];

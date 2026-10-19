@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BiInfoCircle } from 'react-icons/bi';
-import PopupOverlay from '../Components/PopupOverlay';
+import ConfirmationModal from '../Admin/AComponents/ConfirmationModal'; 
 
 import '../GlobalStyle/GlobalSignin.css';
-import '../GlobalStyle/Global.css'
+import '../GlobalStyle/Global.css';
 import '../ResponsiveStyle/ResponsiveSignin.css';
 
-function ASignIn() {
+function SignIn() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
 
-  const [popupStatus, setPopupStatus] = useState(null);
+  // Modal State
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   
   const [formData, setFormData] = useState({
@@ -30,10 +30,11 @@ function ASignIn() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setPopupStatus(null);
+    setIsErrorModalOpen(false);
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/login`, {
+      // Unified login endpoint
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -43,7 +44,7 @@ function ASignIn() {
       if (!contentType.includes('application/json')) {
         console.error('Non-JSON response:', response.status);
         setErrorMessage('Server returned an unexpected response. Please contact the administrator.');
-        setPopupStatus('error');
+        setIsErrorModalOpen(true);
         return;
       }
 
@@ -53,33 +54,40 @@ function ASignIn() {
         const storage = formData.rememberMe ? localStorage : sessionStorage;
         storage.setItem('token', data.token);
         storage.setItem('username', data.username);
-        storage.setItem('role', data.role || '');
+        storage.setItem('role', (data.role || '').toLowerCase());
         sessionStorage.setItem('email', data.email || '—');
         
         if (data.designation) storage.setItem('designation', data.designation);
+        
         try {
           const payload = JSON.parse(atob(data.token.split('.')[1]));
           if (payload.id != null) storage.setItem('user_id', String(payload.id));
+          if (payload.student_id != null) storage.setItem('student_id', String(payload.student_id));
           if (payload.faculty_id != null) storage.setItem('faculty_id', String(payload.faculty_id));
         } catch (decodeErr) {
-          console.warn('Could not decode JWT for user_id:', decodeErr);
+          console.warn('Could not decode JWT for IDs:', decodeErr);
         }
 
         if (data.mustChangePassword === true) {
           navigate('/change-password');
         } else {
-          navigate('/admin/dashboard');
+          // Route based on role
+          if (data.role?.toLowerCase() === 'student') {
+            navigate('/student/dashboard');
+          } else {
+            navigate('/admin/dashboard');
+          }
         }
         return;
       }
 
       setErrorMessage(data.message || 'Invalid Username or Password.');
-      setPopupStatus('error');
+      setIsErrorModalOpen(true);
 
     } catch (error) {
       console.error('Login Error:', error);
       setErrorMessage('Unable to connect to the server. Please try again later.');
-      setPopupStatus('error');
+      setIsErrorModalOpen(true);
     }
   };
 
@@ -98,8 +106,8 @@ function ASignIn() {
         </div>
 
         <form className="SigninForm" onSubmit={handleLogin}>
-          <p className="SigninTitle">Administrative</p>
           <p className="SigninTitle">Axis Portal</p>
+          <p className="SigninTitle">Sign In</p>
           
           <div className="Signin FormColumn">
             <div className="Signin Column">
@@ -161,25 +169,23 @@ function ASignIn() {
         </form>
       </div>
 
-      {popupStatus === 'error' && (
-        <PopupOverlay 
-          isOpen={true} 
-          onClose={() => setPopupStatus(null)} 
-          title="ACCESS DENIED"
-          icon={<BiInfoCircle />}
-        >
-          <p>{errorMessage}</p>
-          <button 
-            style={{ backgroundColor: '#3d1616  ' }} 
-            onClick={() => setPopupStatus(null)}
-          >
-            RETRY
-          </button>
-        </PopupOverlay>
-      )}
+      {/* ERROR MODAL */}
+      <ConfirmationModal
+        isOpen={isErrorModalOpen}
+        onClose={() => setIsErrorModalOpen(false)}
+        title="ACCESS DENIED"
+        variant="danger"
+        confirmLabel="RETRY"
+        isAlert={true} // Hides the cancel button
+        onConfirm={() => setIsErrorModalOpen(false)}
+      >
+        <p style={{ fontSize: '0.9rem', color: '#555', marginTop: '10px' }}>
+          {errorMessage}
+        </p>
+      </ConfirmationModal>
 
     </div>
   );
 }
 
-export default ASignIn;
+export default SignIn;

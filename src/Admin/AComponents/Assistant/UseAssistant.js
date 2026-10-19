@@ -109,6 +109,8 @@ export default function useAssistant() {   // ← lowercase 'use'
           role: 'assistant',
           text: data.data.answer,
           sources: data.data.sources || [],
+          refused: !!data.data.refused,
+          liveData: data.data.liveData,
           createdAt: Date.now(),
         },
       ]);

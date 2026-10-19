@@ -3,9 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import './utils/api';
 import SessionExpired from './Components/SessionExpire';
 
-import ASignIn from './Admin/ASignIn';
 import AChangePass from './Admin/AChangePass';
-
 import ADashboard from './Admin/APages/Dashboard/ADashboard';
 
 import AStudentManage from './Admin/APages/StudentManagement/AStudentManage';
@@ -37,25 +35,40 @@ import ArchivedCourses from './Admin/APages/Archived/ArchivedCourses';
 
 import ProtectedRoute from './Components/ProtectedRoute';
 import ALayout from './Admin/AComponents/ALayout';
-
-import SSignIn from './Student/SignIn';
-
 import AssistantWidget from './Admin/AComponents/Assistant/AssistantWidget';
+
+// Unified Sign In
+import SignIn from './Components/SignIn';
+
+// Student Imports
+import SLayout from './Student/SComponents/SLayout';
+import SDashboard from './Student/SPages/SDashboard';
+import SGrades from './Student/SPages/SGrades';
+import SSubjects from './Student/SPages/SSubjects';
+import SProfile from './Student/SPages/SProfile';
 
 const ADMIN_AND_FACULTY = ['admin', 'faculty'];
 const ADMIN_ONLY = ['admin'];
+const STUDENT_ONLY = ['student'];
 
 // --- Auth-aware helper for public routes ---
-
 function PublicOnlyRoute({ children }) {
   const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-  if (token) return <Navigate to="/admin/dashboard" replace />;
+  if (token) {
+    const role = sessionStorage.getItem('role') || localStorage.getItem('role');
+    if (role === 'student') return <Navigate to="/student/dashboard" replace />;
+    return <Navigate to="/admin/dashboard" replace />;
+  }
   return children;
 }
 
 function RootRedirect() {
   const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-  return <Navigate to={token ? '/admin/dashboard' : '/admin/signin'} replace />;
+  const role = sessionStorage.getItem('role') || localStorage.getItem('role');
+  
+  if (!token) return <Navigate to="/signin" replace />;
+  if (role === 'student') return <Navigate to="/student/dashboard" replace />;
+  return <Navigate to="/admin/dashboard" replace />;
 }
 
 function AppContent() {
@@ -66,7 +79,7 @@ function AppContent() {
     sessionStorage.clear();
     localStorage.clear();
     setShowSessionExpired(false);
-    navigate('/admin/signin');
+    navigate('/signin');
   };
 
   useEffect(() => {
@@ -90,21 +103,25 @@ function AppContent() {
         {/* Root: token-aware redirect */}
         <Route path="/" element={<RootRedirect />} />
 
-        {/* ADMIN SIGN-IN: if already logged in, bounce to dashboard */}
+        {/* UNIFIED SIGN-IN */}
         <Route
-          path="/admin/signin"
+          path="/signin"
           element={
             <PublicOnlyRoute>
-              <ASignIn />
+              <SignIn />
             </PublicOnlyRoute>
           }
         />
 
-        {/* Authenticated area — any role with a valid token */}
+        {/* Optional: Add redirects for old sign-in links */}
+        <Route path="/admin/signin" element={<Navigate to="/signin" replace />} />
+        <Route path="/student/signin" element={<Navigate to="/signin" replace />} />
+
+        {/* AUTHENTICATED AREA */}
         <Route element={<ProtectedRoute />}>
           <Route path="/change-password" element={<AChangePass />} />
 
-          {/* Admin + faculty shell */}
+          {/* --- ADMIN & FACULTY SHELL --- */}
           <Route element={<ProtectedRoute allowedRoles={ADMIN_AND_FACULTY} />}>
             <Route element={<ALayout />}>
 
@@ -123,7 +140,7 @@ function AppContent() {
                 </Route>
               </Route>
 
-              {/* Academics — both roles (faculty is view-only, enforced in-page) */}
+              {/* Academics — both roles */}
               <Route
                 path="/admin/academics"
                 element={<ProtectedRoute allowedRoles={ADMIN_AND_FACULTY} />}
@@ -168,13 +185,13 @@ function AppContent() {
                 <Route index element={<AHistory />} />
               </Route>
 
+              {/* Archive — admin & faculty */}
               <Route
                 path="/admin/archive"
                 element={<ProtectedRoute allowedRoles={ADMIN_AND_FACULTY} />}
               >
                 <Route element={<AArchive />}>
                   <Route index element={<Navigate to="students" replace />} />
-                  
                   <Route path="students" element={<ArchivedStudents />} />
                   <Route path="programs" element={<ArchivedPrograms />} />
                   <Route path="courses" element={<ArchivedCourses />} />
@@ -185,10 +202,18 @@ function AppContent() {
 
             </Route>
           </Route>
-        </Route>
 
-        {/* STUDENT */}
-        <Route path="/student/signin" element={<SSignIn />} />
+          {/* --- STUDENT SHELL --- */}
+          <Route element={<ProtectedRoute allowedRoles={STUDENT_ONLY} />}>
+            <Route element={<SLayout />}>
+              <Route path="/student/dashboard" element={<SDashboard />} />
+              <Route path="/student/grades" element={<SGrades />} />
+              <Route path="/student/subjects" element={<SSubjects />} />
+              <Route path="/student/profile" element={<SProfile />} />
+            </Route>
+          </Route>
+
+        </Route>
       </Routes>
     </>
   );

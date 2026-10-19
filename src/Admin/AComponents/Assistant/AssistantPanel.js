@@ -6,10 +6,16 @@ import AssistantInput from './AssistantInput';
 
 function AssistantPanel({ onClose }) {
   const { messages, isAsking, error, ask, clearHistory } = useAssistant();
+  const lastLive = [...messages].reverse().find((m) => m.role === 'assistant' && m.liveData)?.liveData;
 
   return (
     <>
       <div className="AssistantPanelHeader">
+        {lastLive && (
+          <div className="AssistantLiveStatus">
+            {lastLive === 'ok' ? '🟢 Using live dashboard data' : '⚪ Live data unavailable'}
+          </div>
+        )}
         <span className="AssistantPanelTitle">ACADEMIC POLICY ASSISTANT</span>
         <div className="AssistantPanelActions">
           <button

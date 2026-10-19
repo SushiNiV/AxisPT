@@ -5,9 +5,9 @@ const studentPortalController = require('../controllers/studentPortalController'
 
 router.use(verifyToken, requireRole('student'));
 
-router.get('/grades', studentPortalController.getMyGrades);
-router.get('/subjects', studentPortalController.getMySubjects);
-router.get('/profile', studentPortalController.getMyProfile);
-router.put('/profile', studentPortalController.updateMyProfile);
+router.get('/grades',  verifyToken, studentPortalController.getMyGrades);
+router.get('/subjects',  verifyToken, studentPortalController.getMySubjects);
+router.get('/profile',  verifyToken, studentPortalController.getMyProfile);
+router.put('/profile',  verifyToken, studentPortalController.updateMyProfile);
 
 module.exports = router;

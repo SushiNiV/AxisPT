@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import '../../../Global.css';
+import '../../GlobalStyle/Global.css';
 
 function SSubjects() {
   const [data, setData] = useState({ enrolled: [], education: null });
@@ -19,8 +19,6 @@ function SSubjects() {
 
   return (
     <div className="InnerContainer">
-      <h2 className="PageHeading">Current Subjects</h2>
-
       {data.enrolled.length === 0 ? (
         <div className="emptyState">
           <h3 className="emptyStateTitle">No Enrolled Subjects</h3>

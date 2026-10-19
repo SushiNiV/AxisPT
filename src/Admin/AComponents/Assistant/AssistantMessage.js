@@ -5,8 +5,7 @@ import AssistantSources from './AssistantSources';
 
 function AssistantMessage({ message }) {
   const isUser = message.role === 'user';
-  const isRefusal =
-    !isUser && Array.isArray(message.sources) && message.sources.length === 0;
+  const isRefusal = !isUser && (message.refused ?? (Array.isArray(message.sources) && message.sources.length === 0));
 
   if (isUser) {
     return (

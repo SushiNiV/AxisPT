@@ -2,6 +2,7 @@ const originalFetch = window.fetch;
 
 // Endpoints where a 401/403 means "bad credentials", NOT "session expired"
 const PUBLIC_ENDPOINTS = [
+  '/auth/login',
   '/admin/login',
   '/admin/forgot-password',
   '/admin/reset-password',

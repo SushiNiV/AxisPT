@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import '../../../Global.css';
+import '../../GlobalStyle/Global.css';
 
 function SGrades() {
   const [grades, setGrades] = useState([]);
@@ -22,8 +22,6 @@ function SGrades() {
 
   return (
     <div className="InnerContainer">
-      <h2 className="PageHeading">My Grades</h2>
-
       {grades.length === 0 ? (
         <div className="emptyState">
           <h3 className="emptyStateTitle">No Grades Yet</h3>

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BiX, BiUserCircle, BiLockAlt } from 'react-icons/bi';
-import './ProfileDrawer.css';
+import '../GlobalStyle/ProfileDrawer.css';
 
 function ProfileDrawer({ isOpen, onClose, user }) {
   const navigate = useNavigate();

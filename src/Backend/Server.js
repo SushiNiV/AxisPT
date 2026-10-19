@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const adminRoutes = require('./routes/adminRoutes');
 const studentRoutes = require('./routes/studentRoutes');
+const authController = require('./controllers/authController');
 
 const helmet = require('helmet');
 const compression = require('compression');
@@ -38,6 +39,10 @@ const logRoutes = (prefix, router) => {
     }
   });
 };
+
+app.post('/api/auth/login', authController.login);
+console.log('\nMounted routes for /api/auth:');
+console.log('  POST /api/auth/login');
 
 app.use('/api/admin', adminRoutes);
 logRoutes('/api/admin', adminRoutes);
