@@ -1,7 +1,7 @@
 /* ============================================================================
    Dashboard
-   Uses the same tokens as Global.css (maroon #3d1616, soft grays, card row
-   style from GlobalCard.css) so it blends with the rest of the admin portal.
+   Uses the same tokens as Global.css so it blends with the rest of the admin
+   portal and supports dark mode automatically.
    ============================================================================ */
 
 .DashboardContainer {
@@ -17,11 +17,9 @@
 }
 
 .DashboardContainer::-webkit-scrollbar-thumb {
-  background: #3d1616aa;
+  background: rgba(61, 22, 22, 0.4);
   border-radius: 3px;
 }
-
-
 
 /* ---------- KPI Grid ---------- */
 .DashboardKPIGrid {
@@ -35,9 +33,9 @@
   align-items: center;
   gap: 1rem;
   padding: 1.15rem 1.25rem;
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 8px;
-  border: 1px solid #eee;
+  border: 1px solid var(--border-light);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -54,8 +52,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f5ecec;
-  color: #3d1616;
+  background: var(--bg-hover);
+  color: var(--text-brand);
   border-radius: 12px;
   font-size: 1.5rem;
 }
@@ -70,7 +68,7 @@
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #888;
+  color: var(--text-muted);
   font-weight: 600;
   margin: 0;
 }
@@ -78,14 +76,14 @@
 .DashboardKPIValue {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #3d1616;
+  color: var(--text-brand);
   margin: 0.15rem 0 0;
   line-height: 1.1;
 }
 
 .DashboardKPISub {
   font-size: 0.7rem;
-  color: #999;
+  color: var(--text-muted);
   margin: 0.15rem 0 0;
 }
 
@@ -104,9 +102,9 @@
 
 /* ---------- Cards ---------- */
 .DashboardCard {
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 8px;
-  border: 1px solid #eee;
+  border: 1px solid var(--border-light);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   padding: 1rem 1.25rem 1.25rem;
   display: flex;
@@ -125,13 +123,13 @@
   gap: 0.75rem;
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .DashboardCardHeader h3 {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #3d1616;
+  color: var(--text-brand);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 0;
@@ -139,7 +137,7 @@
 
 .DashboardCardHint {
   font-size: 0.7rem;
-  color: #aaa;
+  color: var(--text-muted);
 }
 
 .DashboardChartBody,
@@ -150,7 +148,7 @@
 
 .DashboardEmpty {
   font-size: 0.85rem;
-  color: #999;
+  color: var(--text-muted);
   font-style: italic;
   text-align: center;
   padding: 3rem 0;
@@ -171,7 +169,7 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.65rem 0;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .DashboardRecentItem:last-child {
@@ -185,8 +183,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #3d1616;
-  color: #fff;
+  background: var(--branding-maroon);
+  color: var(--text-inverse);
   font-weight: 700;
   font-size: 0.9rem;
   border-radius: 50%;
@@ -200,7 +198,7 @@
 .DashboardRecentName {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -209,12 +207,12 @@
 
 .DashboardRecentMeta {
   font-size: 0.7rem;
-  color: #999;
+  color: var(--text-secondary);
   margin: 0.15rem 0 0;
 }
 
 .DashboardRecentDate {
   font-size: 0.7rem;
-  color: #aaa;
+  color: var(--text-muted);
   flex-shrink: 0;
 }

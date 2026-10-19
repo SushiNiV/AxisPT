@@ -306,7 +306,7 @@ function ACourses() {
   const hasNoData = filteredCourses.length === 0;
 
   return (
-    <div className="InnerContainer">
+    <div className="InnerContainer CourseContainer">
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}
@@ -538,6 +538,7 @@ function ACourses() {
             </div>
           )}
 
+          {(!isMobile || totalPages > 1) && (
           <div className="PaginationContainer">
             <div className="PaginationControls">
               <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
@@ -560,6 +561,7 @@ function ACourses() {
               <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
             </div>
           </div>
+          )}
         </>
       )}
     </div>

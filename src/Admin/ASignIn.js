@@ -51,17 +51,12 @@ function ASignIn() {
 
       if (data.success) {
         const storage = formData.rememberMe ? localStorage : sessionStorage;
-
-        // Core session
         storage.setItem('token', data.token);
         storage.setItem('username', data.username);
-
-        // Role-based access — REQUIRED. ProtectedRoute reads this to gate pages.
         storage.setItem('role', data.role || '');
+        sessionStorage.setItem('email', data.email || '—');
+        
         if (data.designation) storage.setItem('designation', data.designation);
-
-        // user_id — used for ownership checks (e.g. "only restore ones you archived").
-        // The login response doesn't return it directly, so we decode the JWT.
         try {
           const payload = JSON.parse(atob(data.token.split('.')[1]));
           if (payload.id != null) storage.setItem('user_id', String(payload.id));

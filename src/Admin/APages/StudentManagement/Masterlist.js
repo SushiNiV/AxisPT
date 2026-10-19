@@ -471,7 +471,7 @@ function Masterlist() {
   const hasNoData = filteredStudents.length === 0;
 
   return (
-    <div className="InnerContainer">
+    <div className="InnerContainer MasterlistContainer">
       {showAddStudent && (
         <AddStudent
           isOpen={showAddStudent}
@@ -775,6 +775,7 @@ function Masterlist() {
             </div>
           )}
         
+          {(!isMobile || totalPages > 1) && (
           <div className="PaginationContainer">
             <div className="PaginationControls">
               <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
@@ -784,7 +785,7 @@ function Masterlist() {
                   type="number"
                   value={currentPage}
                   onChange={(e) => {
-                    const val = parseInt(e.target.value, 10);
+                    const val = parseInt(e.target.value);
                     if (val > 0 && val <= totalPages) setCurrentPage(val);
                   }}
                   className="CurrentPageInput"
@@ -797,6 +798,7 @@ function Masterlist() {
               <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
             </div>
           </div>
+          )}
         </>
       )}
 

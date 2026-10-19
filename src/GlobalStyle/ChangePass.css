@@ -1,0 +1,295 @@
+/* ==========================================================================
+   ChangePass.css
+   ========================================================================== */
+
+.ChangePassContainer {
+  width: 100%;
+  height: 100vh;
+  background-color: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: background-color 0.2s;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* --- Desktop Elements --- */
+.ChangePassTopBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.ChangePassLogoArea {
+  display: flex;
+  align-items: center;
+}
+
+.ChangePassLogoArea img { height: 2rem; }
+
+.ChangePassLogoArea p {
+  color: var(--text-brand);
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-left: 0.5rem;
+}
+
+.ChangePassReturnBtn {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.ChangePassReturnBtn:hover { color: var(--text-brand); }
+
+.ChangePassCard {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.ChangePassTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-brand);
+}
+
+.ChangePassSubtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0 0 2rem 0;
+  line-height: 1.4;
+}
+
+.ChangePassInputGroup {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 1.25rem;
+}
+
+.ChangePassInputGroup label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ChangePassInputGroup label span { color: var(--status-danger-text); }
+
+.ChangePassPasswordWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.ChangePassPasswordWrapper input {
+  padding: 0.85rem 2.5rem 0.85rem 1rem;
+  border: 1px solid var(--border-medium);
+  border-radius: 8px; /* Slightly rounder for a softer look */
+  font-size: 0.95rem;
+  outline: none;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ChangePassPasswordWrapper input:focus {
+  border-color: var(--branding-maroon);
+  box-shadow: 0 0 0 2px rgba(61, 22, 22, 0.1);
+}
+
+.ChangePassPasswordWrapper input::placeholder {
+  color: var(--text-muted);
+}
+
+.ChangePassEyeIcon {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  font-size: 1.25rem;
+  transition: color 0.2s;
+}
+
+.ChangePassEyeIcon:hover { color: var(--text-brand); }
+
+/* --- Submit Button (Signature Maroon) --- */
+.ChangePassSubmitBtn {
+  background-color: var(--branding-maroon);
+  color: var(--text-inverse);
+  border: none;
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 700;
+  transition: opacity 0.2s;
+}
+
+.ChangePassSubmitBtn:hover { opacity: 0.9; }
+
+.ChangePassBottomBar {
+  width: 100%;
+  padding: 1rem;
+  display: flex;
+  justify-content: center;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  box-sizing: border-box;
+}
+
+.ChangePassBottomBar p {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin: 0;
+  text-align: center;
+}
+
+
+.ChangePassMobileHeader,
+.ChangePassMobileIntro {
+  display: none;
+}
+
+/* ==========================================================================
+   MOBILE VIEW 
+   ========================================================================== */
+@media (max-width: 768px) {
+  .ChangePassContainer {
+    justify-content: flex-start;
+    background-color: var(--bg-secondary); 
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+  }
+
+  
+  .ChangePassTopBar,
+  .ChangePassBottomBar,
+  .ChangePassDesktopTitles { display: none; }
+
+
+  .ChangePassMobileHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; 
+    width: 100%;
+    padding: 1rem 1.25rem;
+    box-sizing: border-box;
+    color: var(--text-brand)
+  }
+
+  .ChangePassMobileBack {
+    background: var(--bg-card);
+    color: var(--text-brand);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+  }
+
+  /* Mobile Title Area */
+  .ChangePassMobileIntro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 1rem 0 2rem 0;
+    width: 100%;
+  }
+
+.ChangePassMobileIcon{
+  font-size: 50px;
+  color: var(--branding-maroon);
+}
+
+  .ChangePassMobileTitle {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-primary); /* Dark text like the sign in */
+    text-align: center;
+    line-height: 1.2;
+    margin: 0;
+  }
+
+  /* Remove the Desktop Card styling for mobile */
+  .ChangePassCard {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0 1.5rem;
+    max-width: 100%;
+  }
+
+  /* Mobile Inputs */
+  .ChangePassInputGroup {
+    margin-bottom: 1.25rem;
+  }
+
+  .ChangePassInputGroup label {
+    text-transform: uppercase; /* Keep the uppercase for consistency */
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+
+  .ChangePassInputGroup label span { color: var(--status-danger-text); }
+
+  .ChangePassPasswordWrapper input {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 8px; /* Matches the sign-in inputs */
+    padding: 0.85rem 2.5rem 0.85rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  /* Mobile Button */
+  .ChangePassSubmitBtn {
+    background-color: var(--branding-maroon);
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 1rem;
+    margin-top: 1.5rem;
+  }
+}

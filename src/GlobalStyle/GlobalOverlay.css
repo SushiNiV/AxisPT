@@ -13,7 +13,7 @@
 }
 
 .modalContainer {
-  background: var(--bg-card);
+  background: var(--bg-card); /* Adapts to dark mode */
   width: 90%;
   max-width: 1000px;
   height: fit-content;
@@ -52,7 +52,7 @@
   font-weight: 600;
   font-size: 0.75rem;
   margin-left: 0.25rem;
-  color: var(--text-secondary);
+  color: var(--text-secondary); /* Adapts to dark mode */
 }
 
 .CloseBtnArea {
@@ -72,7 +72,9 @@
   transition: opacity 0.2s ease;
 }
 
-.CloseBtn:hover { opacity: 0.75; }
+.CloseBtn:hover {
+  opacity: 0.75;
+}
 
 .modalScrollArea {
   flex: 1;
@@ -81,13 +83,27 @@
   min-height: 0;
   overflow-y: auto;
   box-sizing: border-box;
-  background-color: var(--bg-card);
+  background-color: var(--bg-card); /* Adapts to dark mode */
+  color: var(--text-primary); /* White text in dark mode */
 }
 
-.modalScrollArea::-webkit-scrollbar { height: 8px; width: 8px; }
-.modalScrollArea::-webkit-scrollbar-track { background: transparent; }
-.modalScrollArea::-webkit-scrollbar-thumb { background: rgba(61, 22, 22, 0.2); border-radius: 4px; }    
-.modalScrollArea::-webkit-scrollbar-thumb:hover { background: rgba(61, 22, 22, 0.4); }
+.modalScrollArea::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.modalScrollArea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modalScrollArea::-webkit-scrollbar-thumb {
+  background: rgba(61, 22, 22, 0.2); 
+  border-radius: 4px;            
+}    
+
+.modalScrollArea::-webkit-scrollbar-thumb:hover {
+  background: rgba(61, 22, 22, 0.4); 
+}
 
 .statusToggleContainer {
   cursor: pointer;
@@ -106,8 +122,13 @@
   transition: background-color 0.3s ease;
 }
 
-.statusSwitch.active { background-color: #4caf50; }
-.statusSwitch.inactive { background-color: #f44336; }
+.statusSwitch.active {
+  background-color: #4caf50;
+}
+
+.statusSwitch.inactive {
+  background-color: #f44336;
+}
 
 .switchHandle {
   width: 18px;
@@ -120,12 +141,21 @@
   transition: transform 0.3s ease;
 }
 
-.active .switchHandle { transform: translateX(26px); }
+.active .switchHandle {
+  transform: translateX(26px);
+}
 
-.statusLabel { font-weight: 600; font-size: 0.75rem; }
+.statusLabel {
+  font-weight: 600;
+  font-size: 0.75rem;
+}
 
 .text-active { color: #4caf50; }
 .text-inactive { color: #f44336; }
+
+/* ==========================================================================
+   ADDITIONAL INFORMATION PORTION
+   ========================================================================== */
 
 .formSection {
   display: flex;
@@ -137,7 +167,7 @@
 .sectionHeading {
   font-size: 1.5rem;
   text-transform: uppercase;
-  color: var(--branding-maroon);
+  color: var(--text-brand); /* Maroon in light, White in dark */
   font-weight: 700;
   letter-spacing: 0.5px;
   margin: 0.5rem 0;
@@ -148,16 +178,19 @@
 .subSectionHeading {
   font-size: 1rem;
   font-weight: 700;
-  color: var(--branding-maroon);
+  color: var(--text-brand); /* Maroon in light, White in dark */
   margin: 0 0 0.25rem;
 }
 
-.formRow { display: grid; gap: 1rem; }
+.formRow {
+  display: grid;
+  gap: 1rem;
+}
 
 .retakeBadge {
   margin-left: 3px;
   font-size: 0.65rem;
-  color: var(--branding-maroon);
+  color: var(--text-brand);
   font-weight: 700;
   cursor: help;
   letter-spacing: 0.5px;
@@ -179,8 +212,8 @@
   border: 1px solid var(--border-medium);
   border-radius: 6px;
   font-size: 0.875rem;
-  background-color: var(--bg-input);
-  color: var(--text-primary);
+  background-color: var(--bg-input); /* Dark input in dark mode */
+  color: var(--text-primary); /* White text */
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
@@ -188,10 +221,11 @@
 .formGroup input:focus, 
 .formGroup textarea:focus,
 .formGroup select:focus {
-  border-color: var(--branding-maroon);
+  border-color: var(--text-brand);
   box-shadow: 0 0 0 2px rgba(61, 22, 22, 0.1);
 }
 
+/* Accordion Dropdown Trigger Button */
 .accordionToggleArea {
   margin: 1.25rem 0;
   display: flex;
@@ -215,10 +249,18 @@
   transition: background-color 0.2s, border-color 0.2s;
 }
 
-.accordionBtn:hover { opacity: 0.9; }
+.accordionBtn:hover {
+  opacity: 0.9;
+}
 
-.arrow { transition: transform 0.3s ease; font-size: 0.75rem; }
-.arrow.open { transform: rotate(180deg); }
+.arrow {
+  transition: transform 0.3s ease;
+  font-size: 0.75rem;
+}
+
+.arrow.open {
+  transform: rotate(180deg);
+}
 
 .detailedInfoContainer {
   background-color: var(--bg-card);
@@ -232,6 +274,7 @@
   animation: fadeIn 0.3s ease-in-out;
 }
 
+/* Modal Footer Action Buttons */
 .modalFooter {
   display: flex;
   justify-content: flex-end;
@@ -249,11 +292,13 @@
   font-weight: 700;
   font-size: 0.85rem;
   cursor: pointer;
-  color: var(--text-primary);
+  color: var(--text-primary); /* White in dark mode */
   transition: background-color 0.2s;
 }
 
-.cancelBtn:hover { background: var(--border-medium); }
+.cancelBtn:hover {
+  background: var(--border-medium);
+}
 
 .submitBtn {
   background: var(--branding-maroon);
@@ -267,7 +312,9 @@
   transition: opacity 0.2s;
 }
 
-.submitBtn:hover { opacity: 0.9; }
+.submitBtn:hover {
+  opacity: 0.9;
+}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-6px); }

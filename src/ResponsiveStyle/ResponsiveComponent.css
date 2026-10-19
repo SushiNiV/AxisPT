@@ -103,22 +103,22 @@ html, body, #root {
     pointer-events: auto;
   }
 
-  .MobileMenuBtn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 40px;
-    height: 40px;
-    margin-right: 0.5rem;
-    border: none;
-    border-radius: 8px;
-    background: var(--bg-card);
-    color: var(--branding-maroon);
-    font-size: 1.4rem;
-    cursor: pointer;
-  }
-
+.MobileMenuBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  margin-right: 0.5rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--bg-input); 
+  color: var(--text-brand); 
+  font-size: 1.4rem;
+  cursor: pointer;
+  border: 1px solid var(--border-light);
+}
   .HeaderContainer {
     min-height: 60px;
     padding: 0.75rem 0.25rem;
@@ -159,12 +159,15 @@ html, body, #root {
   .logoutIconMar { margin-right: 0; }
 
   .SubheaderContainer {
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-right: 28px;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-right: 28px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  
+  flex-shrink: 0;  
+  min-height: 2.5rem; /* Safety net: even if something tries, height stays readable */
+}
 
   .SubheaderContainer.fadeRight {
     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
@@ -207,8 +210,17 @@ html, body, #root {
     flex-direction: column;
     height: auto;
     flex: none;
-    min-height: calc(100dvh - 160px); 
+    min-height: 100%;
     justify-content: flex-start;
+  }
+
+  .InnerContainer .MasterlistContainer, 
+  .InnerContainer .CourseContainer 
+  {
+    height: 100%;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .PaginationContainer {
@@ -217,7 +229,6 @@ html, body, #root {
     background: var(--bg-card);
     border-top: 1px solid var(--border-light);
     padding: 10px;
-    margin-bottom: 90px;     
   }
 
   .CardsContainer, .RecordCards {
@@ -229,11 +240,31 @@ html, body, #root {
     padding-bottom: 0;
   }
 
+.CourseContainer .RecordCards,
+.CourseContainer .DesktopCourseList {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+  .MasterlistContainer .RecordCards {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
   .AssistantWrap {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 1000;
+    transition: opacity 0.2s ease;
+  }
+
+  .AssistantWrap.scrolledDown {
+    opacity: 0;
+  }
+
+ 
+  .AssistantWrap.scrolledDown * {
+    pointer-events: none !important;
   }
 
   .TopSection, .MasterlistSummary { flex-shrink: 0; }

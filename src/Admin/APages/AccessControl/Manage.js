@@ -479,7 +479,7 @@ function AManage() {
             </div>
           )}
 
-          {/* --- PAGINATION --- */}
+          {(!isMobile || totalPages > 1) && (
           <div className="PaginationContainer">
             <div className="PaginationControls">
               <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
@@ -502,6 +502,7 @@ function AManage() {
               <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
             </div>
           </div>
+          )}
         </>
       )}
     </div>

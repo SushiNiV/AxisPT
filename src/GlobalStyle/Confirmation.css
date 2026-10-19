@@ -32,7 +32,7 @@
 .confirmSummary {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #222;
+  color: var(--text-primary); /* Adapts: dark gray in light, off-white in dark */
   line-height: 1.4;
   max-width: 100%;
 }
@@ -41,7 +41,7 @@
 .confirmMessage {
   font-size: 1rem;
   font-weight: 500;
-  color: #c62828 ;
+  color: var(--status-danger-text); /* Maroon-ish red in both modes */
   line-height: 1.5;
   max-width: 100%;
 }
@@ -57,14 +57,14 @@
   display: block;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #555;
+  color: var(--text-secondary); /* Adapts */
   text-transform: uppercase;
   margin-bottom: 6px;
   letter-spacing: 0.03em;
 }
 
 .confirmInputRequired {
-  color: #c62828;
+  color: var(--status-danger-text);
 }
 
 /* ---- Textarea ---- */
@@ -74,7 +74,9 @@
   padding: 10px 12px;
   font-size: 0.9rem;
   border-radius: 6px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-medium);
+  background-color: var(--bg-input);
+  color: var(--text-primary);
   font-family: inherit;
   outline: none;
   box-sizing: border-box;
@@ -82,12 +84,12 @@
 }
 
 .confirmTextarea:focus {
-  border-color: #ff5f5f;
+  border-color: var(--branding-pink);
   box-shadow: 0 0 0 3px rgba(255, 95, 95, 0.1);
 }
 
 .confirmTextarea:disabled {
-  background-color: #f5f5f5;
+  background-color: var(--bg-hover);
   cursor: not-allowed;
 }
 
@@ -97,21 +99,28 @@
   padding: 10px 12px;
   font-size: 0.9rem;
   border-radius: 6px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-medium);
+  background-color: var(--bg-input);
+  color: var(--text-primary);
   font-family: inherit;
   outline: none;
   box-sizing: border-box;
-  background-color: white;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .confirmSelect:focus {
-  border-color: #ff5f5f;
+  border-color: var(--branding-pink);
   box-shadow: 0 0 0 3px rgba(255, 95, 95, 0.1);
 }
 
 .confirmSelect:disabled {
-  background-color: #f5f5f5;
+  background-color: var(--bg-hover);
   cursor: not-allowed;
+}
+
+/* ---- Optional: force text white in dark mode for the modal body ---- */
+body.dark .modalContainer,
+body.dark .modalScrollArea {
+  color: var(--text-primary);
 }

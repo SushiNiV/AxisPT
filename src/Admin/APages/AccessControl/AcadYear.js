@@ -402,8 +402,8 @@ function AAcadYear() {
         )}
       </div>
 
-      {/* --- PAGINATION CONTROLS --- */}
-      {!loading && filteredYears.length > 0 && (
+  
+      {!loading && filteredYears.length > (!isMobile || totalPages > 1) && (
         <div className="PaginationContainer">
           <div className="PaginationControls">
             <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>

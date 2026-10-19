@@ -39,8 +39,8 @@
   font-size: 0.875rem;
   width: 100%;
   box-sizing: border-box;
-  background-color: var(--bg-input);
-  color: var(--text-primary);
+  background-color: var(--bg-input); /* Dark input in dark mode */
+  color: var(--text-primary); /* White text in dark mode */
   font-family: inherit;
   cursor: pointer;
   resize: none;
@@ -56,6 +56,7 @@
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 16px;
@@ -121,14 +122,32 @@
 .custom-multiselect .dropdown-item span {
   font-size: 0.875rem;
   flex: 1;
-  color: var(--text-primary);
+  color: var(--text-primary); /* White in dark mode */
   font-weight: normal !important;
 }
 
-.formGroup select { max-height: 200px; }
-.formGroup select option { padding: 10px 12px; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-select:focus option { max-height: 200px; overflow-y: auto; }
-select[size] { max-height: 200px; }
+.formGroup select {
+  max-height: 200px;
+}
+
+.formGroup select option {
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
+select:focus option {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+select[size] {
+  max-height: 200px;
+}
 
 .formGroup input:focus,
 .formGroup textarea:focus,
@@ -221,6 +240,7 @@ select[size] { max-height: 200px; }
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-light);
   font-size: 0.875rem;
+  color: var(--text-primary);
 }
 
 .assignmentItem:last-child {
@@ -241,6 +261,7 @@ select[size] { max-height: 200px; }
   filter: brightness(0.9);
 }
 
+/* ===== Prerequisite Tags ===== */
 .tags-container {
   display: flex;
   flex-wrap: wrap;
@@ -275,6 +296,7 @@ select[size] { max-height: 200px; }
   transform: scale(1.2);
 }
 
+/* ===== Confirmation Modal ===== */
 .confirmBody {
   display: flex;
   gap: 14px;

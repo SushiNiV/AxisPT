@@ -127,6 +127,7 @@ exports.login = async (req, res) => {
       role: hasAdminRole ? 'admin' : 'faculty',
       designation: admin.designation_name,
       mustChangePassword: admin.changed_pass === false,
+      email: admin.school_email || '—', 
     });
 
   } catch (err) {

@@ -593,8 +593,8 @@ function AProgSec() {
               </div>
             )}
 
-            {/* --- PAGINATION CONTROLS --- */}
-            {!loadingSections && filteredSections.length > 0 && (
+            
+            {!loadingSections && filteredSections.length > (!isMobile || totalPages > 1) && (
               <div className="PaginationContainer">
                 <div className="PaginationControls">
                   <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>

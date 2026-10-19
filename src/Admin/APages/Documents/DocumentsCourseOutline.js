@@ -12,6 +12,7 @@ const MAX_PREVIEW_SCALE = 1;
 const PREVIEW_SCALE_STEP = 0.1;
 const PAGE_WIDTH_MM = 215.9;
 const PAGE_HEIGHT_MM = 330.2;
+const STUDENTS_PER_PAGE = 15;
 
 function DocumentsCourseOutline() {
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -22,6 +23,9 @@ function DocumentsCourseOutline() {
 
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+
+  // PAGINATION STATE
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [outlineData, setOutlineData] = useState(null);
   const [outlineLoading, setOutlineLoading] = useState(false);
@@ -39,8 +43,6 @@ function DocumentsCourseOutline() {
   const [programOptions, setProgramOptions] = useState([]);
   const hasActiveFilters = selectedProgram !== '';
 
-  // --- Fetch programs + curricula on mount ---
-// --- Fetch programs (for filter) + students on mount ---
 useEffect(() => {
   const fetchAll = async () => {
     setLoading(true);
@@ -51,14 +53,14 @@ useEffect(() => {
         fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${process.env.REACT_APP_API_URL}/admin/students`, {   // <-- was /admin/curricula
+        fetch(`${process.env.REACT_APP_API_URL}/admin/students`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
       const programsData = await programsRes.json();
       const studentsData = await studentsRes.json();
       if (programsData.success) setProgramOptions(programsData.data.map((p) => p.program_abbr || p.program_name));
-      if (studentsData.success) setStudents(studentsData.data);      // <-- rename state
+      if (studentsData.success) setStudents(studentsData.data);
       else setError(studentsData.message || 'Failed to load students.');
     } catch (err) {
       console.error('Error loading documents:', err);
@@ -70,8 +72,6 @@ useEffect(() => {
   fetchAll();
 }, []);
 
-
-// --- Fetch outline when a student is selected ---
   useEffect(() => {
     if (!selectedStudentId) {
       setOutlineData(null);
@@ -99,22 +99,31 @@ useEffect(() => {
     fetchOutline();
   }, [selectedStudentId]);
 
-      const filteredStudents = useMemo(() => {
-      const term = searchTerm.toLowerCase();
-      return students.filter((s) => {
-        const label = `${s.first_name || ''} ${s.last_name || ''} ${s.student_number || ''} ${s.program_abbr || ''}`.toLowerCase();
-        const matchesSearch = !term || label.includes(term);
-        const matchesProgram = !selectedProgram || (s.program_abbr || s.program_name) === selectedProgram;
-        return matchesSearch && matchesProgram;
-      });
-    }, [students, searchTerm, selectedProgram]);
+  const filteredStudents = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    return students.filter((s) => {
+      const label = `${s.first_name || ''} ${s.last_name || ''} ${s.student_number || ''} ${s.program_abbr || ''}`.toLowerCase();
+      const matchesSearch = !term || label.includes(term);
+      const matchesProgram = !selectedProgram || (s.program_abbr || s.program_name) === selectedProgram;
+      return matchesSearch && matchesProgram;
+    });
+  }, [students, searchTerm, selectedProgram]);
 
-    const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-    const selectedStudent = students.find((s) => s.student_id === selectedStudentId) || null;
+  // PAGINATION LOGIC
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / STUDENTS_PER_PAGE));
+  const indexOfFirstStudent = (currentPage - 1) * STUDENTS_PER_PAGE;
+  const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfFirstStudent + STUDENTS_PER_PAGE);
 
-    const toggleSelection = (id) => {
-      setSelectedIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
-    };
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const selectedStudent = students.find((s) => s.student_id === selectedStudentId) || null;
+
+  const toggleSelection = (id) => {
+    setSelectedIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  };
 
   const handlePrint = async () => {
     if (selectedIds.length === 0 || isPreparingPrint) return;
@@ -168,10 +177,12 @@ useEffect(() => {
     setTempProgram('');
     setSelectedProgram('');
     setIsFilterOpen(false);
+    setCurrentPage(1);
   };
   const applyFilters = () => {
     setSelectedProgram(tempProgram);
     setIsFilterOpen(false);
+    setCurrentPage(1);
   };
 
   return (
@@ -186,10 +197,13 @@ useEffect(() => {
                 placeholder="Search students..."
                 className="SearchInput"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
               />
               {searchTerm && (
-                <BiX className="ClearSearchIcon" onClick={() => setSearchTerm('')} />
+                <BiX className="ClearSearchIcon" onClick={() => { setSearchTerm(''); setCurrentPage(1); }} />
               )}
             </div>
             <Filter
@@ -205,13 +219,13 @@ useEffect(() => {
           <div className="DocListSelectionInfo">{selectedIds.length} selected for printing</div>
           <div className="DocStudentList">
             {loading ? (
-              <p className="DocListMessage">Loading curricula...</p>
+              <p className="DocListMessage">Loading students...</p>
             ) : error ? (
               <p className="DocListMessage" style={{ color: '#c62828' }}>{error}</p>
             ) : filteredStudents.length === 0 ? (
               <p className="DocListMessage">No students found.</p>
             ) : (
-              filteredStudents.map((stu) => (
+              currentStudents.map((stu) => (
               <div
                 key={stu.student_id}
                 className={`DocStudentRow ${selectedStudentId === stu.student_id ? 'Active' : ''} ${selectedIdSet.has(stu.student_id) ? 'Selected' : ''}`}
@@ -239,9 +253,31 @@ useEffect(() => {
               ))
             )}
           </div>
+          {!loading && !error && filteredStudents.length > 0 && (
+            <div className="PaginationContainer DocListPagination">
+              <div className="PaginationControls">
+                <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
+                <button className="PageBtn" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage === 1}>‹</button>
+                <div className="CurrentPageInputWrapper">
+                  <input
+                    type="number"
+                    value={currentPage}
+                    onChange={(e) => {
+                      const page = Number.parseInt(e.target.value, 10);
+                      if (page >= 1 && page <= totalPages) setCurrentPage(page);
+                    }}
+                    className="CurrentPageInput"
+                    aria-label="Current page"
+                  />
+                </div>
+                <div className="PaginationInfo">out of <span>{totalPages}</span></div>
+                <button className="PageBtn" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={currentPage === totalPages}>›</button>
+                <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Right: preview */}
         {!isMobile && (
         <div className="DocPreviewPanel">
           <div className="DocPreviewActions">

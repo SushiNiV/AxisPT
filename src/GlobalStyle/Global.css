@@ -679,6 +679,25 @@ p, h1, h3, td, tr {
   font-size: 1rem;
 }
 
+
+body.dark .TableContainer::-webkit-scrollbar-thumb,
+body.dark .DesktopCourseList::-webkit-scrollbar-thumb,
+body.dark .CardsContainer::-webkit-scrollbar-thumb,
+body.dark .DocStudentList::-webkit-scrollbar-thumb,
+body.dark .modalScrollArea::-webkit-scrollbar-thumb,
+body.dark .DashboardContainer::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.4); 
+}
+
+body.dark .TableContainer::-webkit-scrollbar-thumb:hover,
+body.dark .DesktopCourseList::-webkit-scrollbar-thumb:hover,
+body.dark .CardsContainer::-webkit-scrollbar-thumb:hover,
+body.dark .DocStudentList::-webkit-scrollbar-thumb:hover,
+body.dark .modalScrollArea::-webkit-scrollbar-thumb:hover,
+body.dark .DashboardContainer::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.6); 
+}
+
 @media (max-width: 768px) {
   ::-webkit-scrollbar {
     display: none !important;
