@@ -460,7 +460,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
 
     return (
       <div key={term} id={`term-${yearLevel}-${semesterId}-${term}`} style={{ marginBottom: '1rem', scrollMarginTop: '12px' }}>
-        <h6 style={{ margin: '0 0 6px', fontSize: '0.8rem', fontWeight: 700, color: '#3d1616', textTransform: 'uppercase' }}>
+        <h6 style={{ margin: '0 0 6px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-brand)', textTransform: 'uppercase' }}>
           {term}
         </h6>
         <table className="Table gradeTermTable">
@@ -629,7 +629,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                       onClick={() => !isFutureYear && toggleYear(yearBlock.yearLevel)}
                       disabled={isFutureYear}
                       style={{
-                        ...(isCurrentYear ? { borderColor: '#3d1616', borderWidth: '2px' } : {}),
+                        ...(isCurrentYear ? { borderColor: 'var(--text-brand)', borderWidth: '2px' } : {}),
                         ...(isFutureYear ? { opacity: 0.45, cursor: 'not-allowed' } : {}),
                       }}
                       title={isFutureYear ? 'Student has not yet reached this year level' : ''}
@@ -682,7 +682,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                                     <a
                                       key={t}
                                       href={`#term-${yearBlock.yearLevel}-${sem.semesterId}-${t}`}
-                                      style={{ fontSize: '0.75rem', color: '#3d1616', fontWeight: 600, textDecoration: 'none' }}
+                                      style={{ fontSize: '0.75rem', color: 'var(--text-brand)', fontWeight: 600, textDecoration: 'none' }}
                                     >
                                       {t}
                                     </a>

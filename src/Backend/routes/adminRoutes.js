@@ -100,7 +100,7 @@ router.get('/courses/:id',      verifyToken, requireRole('admin', 'faculty'), co
 router.post('/courses',         verifyToken, requireRole('admin'), courseController.addCourse);
 router.put('/courses/:id',      verifyToken, requireRole('admin'), courseController.updateCourse);
 router.delete('/courses/:id',   verifyToken, requireRole('admin'), courseController.deleteCourse);
-
+router.post('/courses/:id/restore', verifyToken, requireRole('admin'), courseController.restoreCourse);
 // ==========================================
 // USER / FACULTY MANAGEMENT — ADMIN ONLY
 // ==========================================

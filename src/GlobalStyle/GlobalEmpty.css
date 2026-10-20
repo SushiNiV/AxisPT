@@ -46,3 +46,7 @@
 .emptyStateBtn:hover {
   filter: brightness(1.2);
 }
+
+.ArchiveLayout {
+  justify-content: flex-start !important;
+}

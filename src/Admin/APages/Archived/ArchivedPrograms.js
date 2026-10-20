@@ -119,7 +119,7 @@ function ArchivedPrograms() {
 
   if (loading) {
     return (
-      <div className="InnerContainer">
+      <div className="InnerContainer ArchiveLayout">
         <div className="emptyState">
           <div className="emptyStateIcon">⏳</div>
           <h3 className="emptyStateTitle">Loading Archived Programs</h3>
@@ -131,7 +131,7 @@ function ArchivedPrograms() {
 
   if (error) {
     return (
-      <div className="InnerContainer">
+      <div className="InnerContainer ArchiveLayout">
         <div className="emptyState">
           <div className="emptyStateIcon">⚠️</div>
           <h3 className="emptyStateTitle">Error Loading Archived Programs</h3>
@@ -144,7 +144,7 @@ function ArchivedPrograms() {
   const hasNoData = filteredPrograms.length === 0;
 
   return (
-    <div className="InnerContainer">
+    <div className="InnerContainer ArchiveLayout">
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}

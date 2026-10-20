@@ -710,3 +710,7 @@ body.dark .DashboardContainer::-webkit-scrollbar-thumb:hover {
     scrollbar-width: none !important;
   }
 }
+
+.ArchiveLayout {
+  justify-content: flex-start !important;
+}

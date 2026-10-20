@@ -117,7 +117,7 @@ function ArchivedStudents() {
 
   if (loading) {
     return (
-      <div className="InnerContainer">
+      <div className="InnerContainer ArchiveLayout">
         <div className="emptyState">
           <div className="emptyStateIcon">⏳</div>
           <h3 className="emptyStateTitle">Loading Archived Students</h3>
@@ -129,7 +129,7 @@ function ArchivedStudents() {
 
   if (error) {
     return (
-      <div className="InnerContainer">
+      <div className="InnerContainer ArchiveLayout">
         <div className="emptyState">
           <div className="emptyStateIcon">⚠️</div>
           <h3 className="emptyStateTitle">Error Loading Archived Students</h3>
@@ -142,7 +142,7 @@ function ArchivedStudents() {
   const hasNoData = filteredStudents.length === 0;
 
   return (
-    <div className="InnerContainer">
+    <div className="InnerContainer ArchiveLayout">
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}

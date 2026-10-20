@@ -117,7 +117,7 @@ function ArchivedSections() {
 
   if (loading) {
     return (
-      <div className="InnerContainer">
+      <div className="InnerContainer ArchiveLayout">
         <div className="emptyState">
           <div className="emptyStateIcon">⏳</div>
           <h3 className="emptyStateTitle">Loading Archived Sections</h3>
@@ -129,7 +129,7 @@ function ArchivedSections() {
 
   if (error) {
     return (
-      <div className="InnerContainer">
+      <div className="InnerContainer ArchiveLayout">
         <div className="emptyState">
           <div className="emptyStateIcon">⚠️</div>
           <h3 className="emptyStateTitle">Error Loading Archived Sections</h3>
@@ -142,7 +142,7 @@ function ArchivedSections() {
   const hasNoData = filteredSections.length === 0;
 
   return (
-    <div className="InnerContainer">
+    <div className="InnerContainer ArchiveLayout">
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}
