@@ -18,15 +18,24 @@ function ProfileDrawer({ isOpen, onClose, user }) {
     return () => document.removeEventListener('keydown', onKey);
   }, [isOpen, onClose]);
 
-  const displayName = user?.name || [user?.first_name, user?.last_name].filter(Boolean).join(' ') || 'Administrator';
+  // Handle both Admin and Student data structures
+  const displayName = user?.name 
+    || [user?.firstName || user?.first_name, user?.lastName || user?.last_name].filter(Boolean).join(' ') 
+    || 'User';
+    
   const initial = displayName !== '—' ? displayName.charAt(0).toUpperCase() : '';
   
-  const role = user?.role || 'Administrator';
+  const role = user?.role || 'User';
   const email = user?.email || '—';
+  const studentNumber = user?.studentNumber || user?.username;
 
   const handleGoToChangePassword = () => {
     onClose();
-    navigate('/change-password');
+    if (role.toLowerCase() === 'student') {
+      navigate('/student/change-password'); // We will create this route
+    } else {
+      navigate('/change-password');
+    }
   };
 
   return (
@@ -73,13 +82,22 @@ function ProfileDrawer({ isOpen, onClose, user }) {
               <dt>Name</dt>
               <dd>{displayName}</dd>
             </div>
+            
+            {/* Show Student Number if it exists */}
+            {studentNumber && (
+              <div className="ProfileDetailRow">
+                <dt>Student No.</dt>
+                <dd>{studentNumber}</dd>
+              </div>
+            )}
+
             <div className="ProfileDetailRow">
               <dt>Email</dt>
               <dd>{email}</dd>
             </div>
             <div className="ProfileDetailRow">
               <dt>Role</dt>
-              <dd>{role}</dd>
+              <dd style={{ textTransform: 'capitalize' }}>{role}</dd>
             </div>
           </div>
         </div>

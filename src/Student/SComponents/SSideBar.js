@@ -5,7 +5,7 @@ import {
   BiGridAlt, BiBookAlt, BiUser, BiPowerOff, 
   BiSun, BiMoon, BiChevronLeft, BiChevronRight 
 } from 'react-icons/bi';
-import ConfirmationModal from '../../Admin/AComponents/ConfirmationModal'; // Adjust path if necessary
+import ConfirmationModal from '../../Admin/AComponents/ConfirmationModal';
 
 import '../../GlobalStyle/GlobalSidebar.css';
 import '../../GlobalStyle/Global.css';
@@ -16,7 +16,6 @@ function SSideBar({ isMobile, mobileNavOpen, closeNav }) {
   
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
   const [collapsedPref, setCollapsedPref] = useState(false);
-  
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const isCollapsed = collapsedPref && !isMobile;
@@ -51,6 +50,14 @@ function SSideBar({ isMobile, mobileNavOpen, closeNav }) {
 
   return (
     <>
+      {/* The backdrop overlay - will show up on mobile when the sidebar is open */}
+      {isMobile && mobileNavOpen && (
+        <div 
+          className="SidebarBackdrop" 
+          onClick={closeNav}
+        />
+      )}
+
       <div 
         className={`SidebarContainer ${isCollapsed ? 'collapsed' : ''} ${mobileNavOpen ? 'mobileOpen' : ''}`}
         onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
@@ -95,7 +102,6 @@ function SSideBar({ isMobile, mobileNavOpen, closeNav }) {
           </nav>
 
           <div className="SidebarFooter">
-            {/* Theme Toggle */}
             <div className="themeToggleRow" onClick={toggleTheme}>
               {!isCollapsed && (
                 <div className="themeLabel">
@@ -112,7 +118,6 @@ function SSideBar({ isMobile, mobileNavOpen, closeNav }) {
               </label>
             </div>
 
-            {/* Logout Button */}
             <button 
               className="logoutSidebarBtn" 
               onClick={() => setIsLogoutModalOpen(true)}

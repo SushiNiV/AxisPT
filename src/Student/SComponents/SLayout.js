@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import SSideBar from './SSideBar';
 import SHeader from './SHeader';
-import useMediaQuery from '../../Components/useMediaQuery'; // Ensure this path is correct
+import AssistantWidget from '../../Admin/AComponents/Assistant/AssistantWidget';
+import useMediaQuery from '../../Components/useMediaQuery';
 import '../../GlobalStyle/Global.css';
+import '../../ResponsiveStyle/ResponsiveComponent.css'; // Ensure this is imported
 
 function SLayout() {
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -24,13 +26,14 @@ function SLayout() {
         </main>
       </div>
 
-      {/* Mobile Backdrop Overlay */}
       {isMobile && mobileNavOpen && (
         <div 
-          className="SidebarOverlay" 
+          className="SidebarBackdrop" 
           onClick={() => setMobileNavOpen(false)}
         />
       )}
+
+      <AssistantWidget />
     </div>
   );
 }

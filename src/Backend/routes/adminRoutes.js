@@ -32,8 +32,8 @@ router.get('/designations',       verifyToken, requireRole('admin'), authControl
 // ==========================================
 // AI — BOTH ROLES (also fixes previously unauthenticated route)
 // ==========================================
-router.post('/assistant/ask', verifyToken, requireRole('admin', 'faculty'), assistantController.ask);
-
+// Update this line in adminRoutes.js
+router.post('/assistant/ask', verifyToken, requireRole('admin', 'faculty', 'student'), assistantController.ask);
 // ==========================================
 // DASHBOARD — BOTH ROLES
 // ==========================================
