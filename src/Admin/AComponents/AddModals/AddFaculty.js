@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import ReactDOM from 'react-dom';
 import ConfirmationModal from '../ConfirmationModal';
+import Dropdown from '../../../Components/Dropdown'; // <-- Import Dropdown
 import '../../../GlobalStyle/GlobalForm.css';
 import '../../../GlobalStyle/GlobalOverlay.css';
 import '../../../GlobalStyle/Global.css';
@@ -72,24 +73,24 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
     fetchData();
   }, []);
 
-useEffect(() => {
-  if (isEditMode && facultyToEdit) {
-    setFormData({
-      last_name: facultyToEdit.last_name || "",
-      first_name: facultyToEdit.first_name || "",
-      middle_name: facultyToEdit.middle_name || "",
-      suffix: facultyToEdit.suffix || "",
-      username: facultyToEdit.username || "",
-      email: facultyToEdit.email || "",
-      role_id: facultyToEdit.role_id != null ? String(facultyToEdit.role_id) : "",
-      designation_id: facultyToEdit.designation_id != null ? String(facultyToEdit.designation_id) : "",
-      new_designation_name: "",
-      is_active: facultyToEdit.is_active !== undefined ? facultyToEdit.is_active : true
-    });
-    setIsActive(facultyToEdit.is_active !== undefined ? facultyToEdit.is_active : true);
-    setIsNewDesignation(false);
-  }
-}, [isEditMode, facultyToEdit]);
+  useEffect(() => {
+    if (isEditMode && facultyToEdit) {
+      setFormData({
+        last_name: facultyToEdit.last_name || "",
+        first_name: facultyToEdit.first_name || "",
+        middle_name: facultyToEdit.middle_name || "",
+        suffix: facultyToEdit.suffix || "",
+        username: facultyToEdit.username || "",
+        email: facultyToEdit.email || "",
+        role_id: facultyToEdit.role_id != null ? String(facultyToEdit.role_id) : "",
+        designation_id: facultyToEdit.designation_id != null ? String(facultyToEdit.designation_id) : "",
+        new_designation_name: "",
+        is_active: facultyToEdit.is_active !== undefined ? facultyToEdit.is_active : true
+      });
+      setIsActive(facultyToEdit.is_active !== undefined ? facultyToEdit.is_active : true);
+      setIsNewDesignation(false);
+    }
+  }, [isEditMode, facultyToEdit]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -164,7 +165,6 @@ useEffect(() => {
       const data = await response.json();
 
       if (data.success) {
-        // Show success; include temporary password if this was a new user.
         showSuccess(
           isEditMode ? 'User Updated' : 'User Created',
           data.password
@@ -185,6 +185,21 @@ useEffect(() => {
       setIsSubmitting(false);
     }
   };
+
+  // Prepare options for Dropdown
+  const roleOptions = [
+    { value: "", label: "Select Role" },
+    ...roles.map(role => ({ 
+      value: role.role_id, 
+      label: role.role_name === 'SUPERADMIN' ? 'Super Admin' : role.role_name 
+    }))
+  ];
+
+  const designationOptions = [
+    { value: "", label: "Select Designation" },
+    ...designations.map(d => ({ value: d.designation_id, label: d.designation_name })),
+    { value: "new", label: "Add New Designation" }
+  ];
 
   const modalContent = (
     <div className="modalOverlay">
@@ -235,18 +250,18 @@ useEffect(() => {
               </div>
               <div className="formGroup">
                 <label className="formLabel">SUFFIX</label>
-                <select
-                  name="suffix"
+                <Dropdown
+                  options={[
+                    { value: "", label: "Select Suffix" },
+                    { value: "Jr.", label: "Jr." },
+                    { value: "Sr.", label: "Sr." },
+                    { value: "III", label: "III" },
+                    { value: "IV", label: "IV" }
+                  ]}
                   value={formData.suffix}
-                  onChange={handleChange}
-                  className="formSelect"
-                >
-                  <option value="">Select Suffix</option>
-                  <option value="Jr.">Jr.</option>
-                  <option value="Sr.">Sr.</option>
-                  <option value="III">III</option>
-                  <option value="IV">IV</option>
-                </select>
+                  onChange={(val) => handleChange({ target: { name: 'suffix', value: val } })}
+                  placeholder="Select Suffix"
+                />
               </div>
             </div>
 
@@ -277,36 +292,21 @@ useEffect(() => {
             <div className="formRow">
               <div className="formGroup">
                 <label className="formLabel">ROLE <span style={{ color: 'red' }}>*</span></label>
-                <select
-                  name="role_id"
+                <Dropdown
+                  options={roleOptions}
                   value={formData.role_id}
-                  onChange={handleChange}
-                  className="formSelect"
-                >
-                  <option value="">Select Role</option>
-                  {roles.map(role => (
-                    <option key={role.role_id} value={role.role_id}>
-                      {role.role_name === 'SUPERADMIN' ? 'Super Admin' : role.role_name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => handleChange({ target: { name: 'role_id', value: val } })}
+                  placeholder="Select Role"
+                />
               </div>
               <div className="formGroup">
                 <label className="formLabel">DESIGNATION <span style={{ color: 'red' }}>*</span></label>
-                <select
-                  name="designation_id"
+                <Dropdown
+                  options={designationOptions}
                   value={formData.designation_id}
-                  onChange={handleChange}
-                  className="formSelect"
-                >
-                  <option value="">Select Designation</option>
-                  {designations.map(designation => (
-                    <option key={designation.designation_id} value={designation.designation_id}>
-                      {designation.designation_name}
-                    </option>
-                  ))}
-                  <option value="new">Add New Designation</option>
-                </select>
+                  onChange={(val) => handleChange({ target: { name: 'designation_id', value: val } })}
+                  placeholder="Select Designation"
+                />
               </div>
             </div>
 
@@ -345,7 +345,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Success modal */}
       <ConfirmationModal
         isOpen={successState.isOpen}
         title={successState.title}
@@ -362,7 +361,6 @@ useEffect(() => {
         }}
       />
 
-      {/* Alert / error modal */}
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import ConfirmationModal from '../ConfirmationModal';
+import Dropdown from '../../../Components/Dropdown'; // <-- Import Dropdown
 import '../../../GlobalStyle/GlobalForm.css';
 import '../../../GlobalStyle/GlobalOverlay.css';
 import '../../../GlobalStyle/Global.css';
-
 
 const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = null }) => {
   const [showDetailedInfo, setShowDetailedInfo] = useState(false);
@@ -133,10 +133,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
   }, []);
 
   useEffect(() => {
-    // Clear immediately so we never show the previous program's sections
-    // while the new fetch is in-flight.
     setRawSections([]);
-
     if (!formData.programId) return;
 
     let cancelled = false;
@@ -162,13 +159,10 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     return () => { cancelled = true; };
   }, [formData.programId, formData.yearLevel]);
   
-    const sections = useMemo(() => {
+  const sections = useMemo(() => {
     const yl = String(formData.yearLevel || '');
     let list = rawSections.filter((s) => !yl || String(s.year_level) === yl);
 
-    // Only inject the student's current section if we're still looking at
-    // their original program — otherwise it would belong to a program the
-    // user just switched away from.
     const programUnchanged =
       isEditMode &&
       String(studentData?.program_id || studentData?.curriculum_id || '') === String(formData.programId || '');
@@ -287,7 +281,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     }
   }, [studentData]);
 
-    
   const originalProbation = studentData?.academic_status_overridden ? studentData.academic_status : 'Automatic';
   const originalStanding = studentData?.standing || 'Regular';
   const statusChanges = {};
@@ -366,10 +359,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
 
       const method = isEditMode && studentId ? 'PUT' : 'POST';
 
-      // Resolve the picked section from the merged list (which includes the
-      // student's current section in edit mode), then derive year_id and
-      // semester_id from the section itself so the backend stores the exact
-      // term the section belongs to.
       const pickedSection = sections.find(
         (s) => String(s.section_id) === String(formData.sectionId)
       );
@@ -505,7 +494,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
 
       const data = await response.json();
 
-            if (data.success || response.ok) {
+      if (data.success || response.ok) {
         if (hasStatusChanges) {
           const statusRes = await fetch(
             `${process.env.REACT_APP_API_URL}/admin/students/${studentId}/status`,
@@ -522,7 +511,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
               `The student record was saved, but the status change failed: ${statusData.message || 'Unknown error.'}`,
               'danger'
             );
-            return; // modal stays open so they can retry
+            return; 
           }
         }
 
@@ -548,6 +537,36 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
       setIsSubmitting(false);
     }
   };
+
+  // --- Dropdown Options ---
+  const programChoices = [
+    { value: "", label: "Select Program" },
+    ...programs.map(prog => ({
+      value: prog.program_id,
+      label: prog.program_abbr || prog.program_code || prog.program_name
+    }))
+  ];
+
+  const sectionChoices = [
+    { value: "", label: "Unassigned" },
+    ...sections.map(sec => ({
+      value: sec.section_id,
+      label: sec.section_name
+    }))
+  ];
+
+  const probationChoices = [
+    { value: "Automatic", label: "Automatic (from grades)" },
+    { value: "None", label: "None" },
+    { value: "Warning", label: "Warning" },
+    { value: "Probationary 1", label: "Probationary 1" },
+    { value: "Probationary 2", label: "Probationary 2" }
+  ];
+
+  const standingChoices = [
+    { value: "Regular", label: "Regular" },
+    { value: "Irregular", label: "Irregular" }
+  ];
 
   const modalContent = (
     <div className="modalOverlay">
@@ -603,62 +622,65 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
             <div className="formRow split3">
               <div className="formGroup">
                 <label className="formLabel">PROGRAM <span style={{color: 'red'}}>*</span></label>
-                <select name="programId" value={formData.programId} onChange={handleChange} required>
-                  <option value="">Select Program</option>
-                  {programs.map(prog => (
-                    <option key={prog.program_id} value={prog.program_id}>
-                      {prog.program_abbr || prog.program_code || prog.program_name}
-                    </option>
-                  ))}
-                </select>
+                <Dropdown
+                  options={programChoices}
+                  value={formData.programId}
+                  onChange={(val) => handleChange({ target: { name: 'programId', value: val } })}
+                  placeholder="Select Program"
+                />
               </div>
               <div className="formGroup">
                 <label className="formLabel">YEAR LEVEL <span style={{color: 'red'}}>*</span></label>
-                <select name="yearLevel" value={formData.yearLevel} onChange={handleChange} required>
-                  <option value="1">1st Year</option>
-                  <option value="2">2nd Year</option>
-                  <option value="3">3rd Year</option>
-                  <option value="4">4th Year</option>
-                </select>
+                <Dropdown
+                  options={[
+                    { value: "1", label: "1st Year" },
+                    { value: "2", label: "2nd Year" },
+                    { value: "3", label: "3rd Year" },
+                    { value: "4", label: "4th Year" }
+                  ]}
+                  value={formData.yearLevel}
+                  onChange={(val) => handleChange({ target: { name: 'yearLevel', value: val } })}
+                  placeholder="Select Year Level"
+                />
               </div>
               <div className="formGroup">
                 <label className="formLabel">SECTION</label>
-                <select name="sectionId" value={formData.sectionId} onChange={handleChange}>
-                  <option value="">Unassigned</option>
-                  {sections.map(sec => (
-                    <option key={sec.assignment_id || sec.section_id} value={sec.section_id}>
-                      {sec.section_name}
-                    </option>
-                  ))}
-                </select>
+                <Dropdown
+                  options={sectionChoices}
+                  value={formData.sectionId}
+                  onChange={(val) => handleChange({ target: { name: 'sectionId', value: val } })}
+                  placeholder="Unassigned"
+                />
               </div>
             </div>
           </div>
-                    {isEditMode && (
+
+          {isEditMode && (
             <div className="formSection">
               <h4 className="sectionHeading">Academic Status</h4>
               <div className="formRow split2">
                 <div className="formGroup">
                   <label className="formLabel">PROBATION STATUS</label>
-                  <select name="probationStatus" value={formData.probationStatus} onChange={handleChange}>
-                    <option value="Automatic">Automatic (from grades)</option>
-                    <option value="None">None</option>
-                    <option value="Warning">Warning</option>
-                    <option value="Probationary 1">Probationary 1</option>
-                    <option value="Probationary 2">Probationary 2</option>
-                  </select>
+                  <Dropdown
+                    options={probationChoices}
+                    value={formData.probationStatus}
+                    onChange={(val) => handleChange({ target: { name: 'probationStatus', value: val } })}
+                    placeholder="Select Probation Status"
+                  />
                   {formData.probationStatus === 'Automatic' && (
-                    <small style={{ fontSize: '0.75rem', color: '#666' }}>
+                    <small style={{ fontSize: '0.75rem', color: '#666', marginTop: '4px' }}>
                       Calculated from grades: {studentData?.academic_status || 'None'}
                     </small>
                   )}
                 </div>
                 <div className="formGroup">
                   <label className="formLabel">STANDING</label>
-                  <select name="standing" value={formData.standing} onChange={handleChange}>
-                    <option value="Regular">Regular</option>
-                    <option value="Irregular">Irregular</option>
-                  </select>
+                  <Dropdown
+                    options={standingChoices}
+                    value={formData.standing}
+                    onChange={(val) => handleChange({ target: { name: 'standing', value: val } })}
+                    placeholder="Select Standing"
+                  />
                 </div>
               </div>
               {hasStatusChanges && (
@@ -676,6 +698,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
               )}
             </div>
           )}
+
           {/* SECTION 2: ACCORDION TOGGLE BUTTON */}
           <div className="accordionToggleArea">
             <button
@@ -696,10 +719,12 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
               <div className="formRow split3">
                 <div className="formGroup">
                   <label className="formLabel">SEX</label>
-                  <select name="sex" value={formData.sex} onChange={handleChange}>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
+                  <Dropdown
+                    options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]}
+                    value={formData.sex}
+                    onChange={(val) => handleChange({ target: { name: 'sex', value: val } })}
+                    placeholder="Select Sex"
+                  />
                 </div>
                 <div className="formGroup">
                   <label className="formLabel">DATE OF BIRTH</label>
@@ -722,12 +747,17 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </div>
                 <div className="formGroup">
                   <label className="formLabel">CIVIL STATUS</label>
-                  <select name="civilStatus" value={formData.civilStatus} onChange={handleChange}>
-                    <option value="Single">Single</option>
-                    <option value="Married">Married</option>
-                    <option value="Widowed">Widowed</option>
-                    <option value="Separated">Separated</option>
-                  </select>
+                  <Dropdown
+                    options={[
+                      { value: "Single", label: "Single" },
+                      { value: "Married", label: "Married" },
+                      { value: "Widowed", label: "Widowed" },
+                      { value: "Separated", label: "Separated" }
+                    ]}
+                    value={formData.civilStatus}
+                    onChange={(val) => handleChange({ target: { name: 'civilStatus', value: val } })}
+                    placeholder="Select Civil Status"
+                  />
                 </div>
               </div>
 
@@ -833,20 +863,27 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
               <div className="formRow split2">
                 <div className="formGroup">
                   <label className="formLabel">CLASSIFICATION</label>
-                  <select name="classification" value={formData.classification} onChange={handleChange}>
-                  <option value="New">New</option>
-                  <option value="Continuing">Continuing</option>
-                  <option value="Returnee">Returnee</option>
-                  <option value="Shiftee">Shiftee</option>
-                  <option value="Transferee">Transferee</option>
-                </select>
+                  <Dropdown
+                    options={[
+                      { value: "New", label: "New" },
+                      { value: "Continuing", label: "Continuing" },
+                      { value: "Returnee", label: "Returnee" },
+                      { value: "Shiftee", label: "Shiftee" },
+                      { value: "Transferee", label: "Transferee" }
+                    ]}
+                    value={formData.classification}
+                    onChange={(val) => handleChange({ target: { name: 'classification', value: val } })}
+                    placeholder="Select Classification"
+                  />
                 </div>
                 <div className="formGroup">
                   <label className="formLabel">PRIVATE OR PUBLIC</label>
-                  <select name="pubprivHS" value={formData.pubprivHS} onChange={handleChange}>
-                    <option value="Public">Public</option>
-                    <option value="Private">Private</option>
-                  </select>
+                  <Dropdown
+                    options={[{ value: "Public", label: "Public" }, { value: "Private", label: "Private" }]}
+                    value={formData.pubprivHS}
+                    onChange={(val) => handleChange({ target: { name: 'pubprivHS', value: val } })}
+                    placeholder="Select Type"
+                  />
                 </div>
               </div>
 
@@ -892,10 +929,12 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </div>
                 <div className="formGroup">
                   <label className="formLabel">Status</label>
-                  <select name="fatherStatus" value={formData.fatherStatus} onChange={handleChange}>
-                    <option value="Living">Living</option>
-                    <option value="Deceased">Deceased</option>
-                  </select>
+                  <Dropdown
+                    options={[{ value: "Living", label: "Living" }, { value: "Deceased", label: "Deceased" }]}
+                    value={formData.fatherStatus}
+                    onChange={(val) => handleChange({ target: { name: 'fatherStatus', value: val } })}
+                    placeholder="Select Status"
+                  />
                 </div>
               </div>
               <div className="formRow split2">
@@ -931,10 +970,12 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </div>
                 <div className="formGroup">
                   <label className="formLabel">Status</label>
-                  <select name="motherStatus" value={formData.motherStatus} onChange={handleChange}>
-                    <option value="Living">Living</option>
-                    <option value="Deceased">Deceased</option>
-                  </select>
+                  <Dropdown
+                    options={[{ value: "Living", label: "Living" }, { value: "Deceased", label: "Deceased" }]}
+                    value={formData.motherStatus}
+                    onChange={(val) => handleChange({ target: { name: 'motherStatus', value: val } })}
+                    placeholder="Select Status"
+                  />
                 </div>
               </div>
               <div className="formRow split2">
@@ -984,45 +1025,65 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
               <div className="formRow split3">
                 <div className="formGroup">
                   <label className="formLabel">WHO SUPPORTS YOUR EDUCATION?</label>
-                  <select name="support" value={formData.support} onChange={handleChange}>
-                    <option value="">-- Select --</option>
-                    <option value="Parents">Parents</option>
-                    <option value="Relatives">Relatives</option>
-                    <option value="Brother or Sister">Brother or Sister</option>
-                    <option value="Benefactors">Benefactors</option>
-                    <option value="Scholarship">Scholarship</option>
-                  </select>
+                  <Dropdown
+                    options={[
+                      { value: "", label: "-- Select --" },
+                      { value: "Parents", label: "Parents" },
+                      { value: "Relatives", label: "Relatives" },
+                      { value: "Brother or Sister", label: "Brother or Sister" },
+                      { value: "Benefactors", label: "Benefactors" },
+                      { value: "Scholarship", label: "Scholarship" }
+                    ]}
+                    value={formData.support}
+                    onChange={(val) => handleChange({ target: { name: 'support', value: val } })}
+                    placeholder="-- Select --"
+                  />
                 </div>
                 <div className="formGroup">
                   <label className="formLabel">PARENTS' JOINT MONTHLY INCOME</label>
-                  <select name="parentsIncome" value={formData.parentsIncome} onChange={handleChange}>
-                    <option value="">-- Select --</option>
-                    <option value="Below P20K">Below P20K</option>
-                    <option value="P21K to P40K">P21K to P40K</option>
-                    <option value="P41K to P60K">P41K to P60K</option>
-                    <option value="Above P80K">Above P80K</option>
-                  </select>
+                  <Dropdown
+                    options={[
+                      { value: "", label: "-- Select --" },
+                      { value: "Below P20K", label: "Below P20K" },
+                      { value: "P21K to P40K", label: "P21K to P40K" },
+                      { value: "P41K to P60K", label: "P41K to P60K" },
+                      { value: "Above P80K", label: "Above P80K" }
+                    ]}
+                    value={formData.parentsIncome}
+                    onChange={(val) => handleChange({ target: { name: 'parentsIncome', value: val } })}
+                    placeholder="-- Select --"
+                  />
                 </div>
                 <div className="formGroup">
                   <label className="formLabel">WHILE STUDYING, WILL YOU LIVE IN</label>
-                  <select name="livingIn" value={formData.livingIn} onChange={handleChange}>
-                    <option value="">-- Select --</option>
-                    <option value="Dorm/Boarding House">Dorm/Boarding House</option>
-                    <option value="Parent's House">Parent's House</option>
-                    <option value="Relative's House">Relative's House</option>
-                    <option value="Other">Other</option>
-                  </select>
+                  <Dropdown
+                    options={[
+                      { value: "", label: "-- Select --" },
+                      { value: "Dorm/Boarding House", label: "Dorm/Boarding House" },
+                      { value: "Parent's House", label: "Parent's House" },
+                      { value: "Relative's House", label: "Relative's House" },
+                      { value: "Other", label: "Other" }
+                    ]}
+                    value={formData.livingIn}
+                    onChange={(val) => handleChange({ target: { name: 'livingIn', value: val } })}
+                    placeholder="-- Select --"
+                  />
                 </div>
               </div>
               <div className="formRow split3">
                 <div className="formGroup">
                   <label className="formLabel">DAILY TRANSPORTATION EXPENSE</label>
-                  <select name="dailyTranspoExpense" value={formData.dailyTranspoExpense} onChange={handleChange}>
-                    <option value="">-- Select --</option>
-                    <option value="< P50">Less than P50</option>
-                    <option value="P51-P100">P51 to P100</option>
-                    <option value="> P100">More than P100</option>
-                  </select>
+                  <Dropdown
+                    options={[
+                      { value: "", label: "-- Select --" },
+                      { value: "< P50", label: "Less than P50" },
+                      { value: "P51-P100", label: "P51 to P100" },
+                      { value: "> P100", label: "More than P100" }
+                    ]}
+                    value={formData.dailyTranspoExpense}
+                    onChange={(val) => handleChange({ target: { name: 'dailyTranspoExpense', value: val } })}
+                    placeholder="-- Select --"
+                  />
                 </div>
                 <div className="formGroup">
                   <label className="formLabel">NUMBER OF SIBLINGS</label>
@@ -1030,13 +1091,18 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                 </div>
                 <div className="formGroup">
                   <label className="formLabel">ORDINAL POSITION</label>
-                  <select name="ordinalPosition" value={formData.ordinalPosition} onChange={handleChange}>
-                    <option value="">-- Select --</option>
-                    <option value="Only Child">Only Child</option>
-                    <option value="Eldest Child">Eldest Child</option>
-                    <option value="Middle Child">Middle Child</option>
-                    <option value="Youngest Child">Youngest Child</option>
-                  </select>
+                  <Dropdown
+                    options={[
+                      { value: "", label: "-- Select --" },
+                      { value: "Only Child", label: "Only Child" },
+                      { value: "Eldest Child", label: "Eldest Child" },
+                      { value: "Middle Child", label: "Middle Child" },
+                      { value: "Youngest Child", label: "Youngest Child" }
+                    ]}
+                    value={formData.ordinalPosition}
+                    onChange={(val) => handleChange({ target: { name: 'ordinalPosition', value: val } })}
+                    placeholder="-- Select --"
+                  />
                 </div>
               </div>
 
@@ -1077,7 +1143,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         </div>
 
       </form>
-
 
       <ConfirmationModal
         isOpen={successState.isOpen}

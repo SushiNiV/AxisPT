@@ -1,0 +1,348 @@
+/* ===== Grade Modal Layout ===== */
+.gradeYearAccordion {
+  margin-bottom: 1rem;
+}
+
+.gradeSemesterBlock {
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+  /* Add a subtle dashed line to separate semesters */
+  border-bottom: 1px solid var(--border-medium); 
+}
+
+/* Remove the line and extra spacing from the very last semester in a year */
+.gradeSemesterBlock:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.gradeSemesterHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+/* ===== Term Accordion (Prelim/Midterm/Final) ===== */
+.gradeTermWrapper {
+  margin-bottom: 8px;
+}
+
+.gradeTermBtn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text-brand);
+  text-transform: uppercase;
+  transition: background-color 0.2s ease;
+}
+
+.gradeTermBtn:hover {
+  background-color: var(--bg-hover);
+}
+
+.gradeTermBtn svg {
+  transition: transform 0.2s ease;
+}
+
+.gradeTermBtn.open svg {
+  transform: rotate(180deg);
+}
+
+.gradeTermContent {
+  margin-top: 8px;
+}
+
+/* ===== Desktop Table ===== */
+.gradeTableScrollWrapper {
+  overflow-x: auto;
+  width: 100%;
+  padding-bottom: 8px;
+}
+
+.gradeTermTable {
+  min-width: 900px;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.gradeTermTable th {
+  position: static;
+  top: auto;
+  text-align: left;
+}
+
+.gradeTermTable input[type="number"] {
+  width: 65px;
+  padding: 4px 6px;
+}
+
+.gradeTableRemoveBtn {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.gradeTableRemoveBtn:hover {
+  color: #c62828;
+  background-color: #ffebee;
+}
+
+/* ===== Mobile Grade Cards ===== */
+.MobileGradeCardsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.MobileGradeCard {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.MobileGradeCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.MobileGradeCardCode {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.MobileGradeCardName {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.MobileGradeDeleteBtn {
+  background: none;
+  border: none;
+  color: var(--status-danger-text);
+  font-size: 1.2rem;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.MobileGradeInputsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.MobileGradeInputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.MobileGradeLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.MobileGradeInput {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  box-sizing: border-box; 
+}
+
+.MobileGradeInput:focus {
+  outline: none;
+  border-color: var(--branding-pink);
+}
+
+.MobileGradeFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-light);
+}
+
+.MobileGradeFooterLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.MobileGradeFooterValue {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-brand);
+}
+
+/* ===== Grade table: clean ledger style ===== */
+
+.gradeTableScrollWrapper .gradeTermTable {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.875rem;
+}
+
+/* Header: light, small caps, maroon rule underneath */
+.gradeTableScrollWrapper .gradeTermTable th {
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  color: var(--text-brand);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--branding-maroon);
+}
+
+.gradeTableScrollWrapper .gradeTermTable th:first-child,
+.gradeTableScrollWrapper .gradeTermTable th:last-child {
+  border-radius: 0;
+}
+
+/* Rows: roomy, thin dividers, subtle zebra + hover */
+.gradeTableScrollWrapper .gradeTermTable td {
+  padding: 8px 12px;
+  vertical-align: middle;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.gradeTableScrollWrapper .gradeTermTable tbody tr:nth-child(even) td {
+  background: var(--bg-tertiary);
+}
+
+.gradeTableScrollWrapper .gradeTermTable tbody tr:hover td {
+  background: rgba(61, 22, 22, 0.05);
+}
+
+/* Course code stands out; the name stays regular weight */
+.gradeTableScrollWrapper .gradeTermTable td:first-child {
+  font-weight: 700;
+  color: var(--text-brand);
+  white-space: nowrap;
+}
+
+/* Score, grade and remarks columns: centered */
+.gradeTableScrollWrapper .gradeTermTable th:nth-child(n + 3):nth-child(-n + 8),
+.gradeTableScrollWrapper .gradeTermTable td:nth-child(n + 3):nth-child(-n + 8) {
+  text-align: center;
+}
+
+/* Final grade column */
+.gradeTableScrollWrapper .gradeTermTable td:nth-child(7) {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Inputs: soft filled field, underline on focus (no boxed outline) */
+.gradeTableScrollWrapper .gradeTermTable input[type="number"] {
+  width: 72px;
+  height: 32px;
+  padding: 0 8px;
+  text-align: center;
+  font: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 4px 4px 0 0;
+  outline: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.gradeTableScrollWrapper .gradeTermTable input[type="number"]:hover {
+  border-bottom-color: var(--border-medium);
+}
+
+.gradeTableScrollWrapper .gradeTermTable input[type="number"]:focus {
+  background: var(--bg-card);
+  border-bottom-color: var(--branding-maroon);
+}
+
+.gradeTableScrollWrapper .gradeTermTable input[type="number"]::-webkit-outer-spin-button,
+.gradeTableScrollWrapper .gradeTermTable input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Term accordion (Prelim / Midterm / Final): accent bar instead of a plain box */
+.gradeTermBtn {
+  border-left: 3px solid var(--branding-maroon);
+  background: var(--bg-secondary);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+
+/* ===== Add Course Inline Row ===== */
+.gradeAddCourseRow {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.gradeAddCourseSelect {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.9rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.gradeAddCourseSelect:focus {
+  border-color: var(--branding-pink);
+  box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.1);
+}
+
+.gradeAddCourseActions {
+  display: flex;
+  gap: 8px;
+}
+
+.gradeAddCourseActions button {
+  height: 20px;
+  padding: 0 16px;
+}

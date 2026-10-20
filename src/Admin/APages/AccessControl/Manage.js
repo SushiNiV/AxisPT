@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { BiSearch, BiFilterAlt, BiPlusCircle, BiX, BiPencil, BiTrash, BiDotsVerticalRounded } from 'react-icons/bi';
 import useMediaQuery from '../../../Components/useMediaQuery'; 
+import Dropdown from '../../../Components/Dropdown'; // Ensure this path is correct
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import '../../../GlobalStyle/GlobalHistory.css';
 import '../../../GlobalStyle/Global.css';
@@ -23,8 +24,10 @@ function AManage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [showAddFaculty, setShowAddFaculty] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState(null);
+  
+  // Changed from selectedStatus to selectedDesignation
   const [selectedRole, setSelectedRole] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedDesignation, setSelectedDesignation] = useState("");
   
   const [menuUserId, setMenuUserId] = useState(null); 
 
@@ -34,7 +37,6 @@ function AManage() {
 
   // Dynamic roles list
   const [rolesList, setRolesList] = useState([]);
-  const [statusOptions] = useState(["Active", "Inactive"]);
 
   useEffect(() => { setCurrentPage(1); }, [isMobile]);
 
@@ -70,7 +72,7 @@ function AManage() {
     return role ? role.role_name : '—';
   };
 
-  const hasActiveFilters = selectedRole !== "" || selectedStatus !== "";
+  const hasActiveFilters = selectedRole !== "" || selectedDesignation !== "";
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -190,9 +192,9 @@ function AManage() {
       user.designation_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesRole = !selectedRole || user.role_id === parseInt(selectedRole);
-    const matchesStatus = !selectedStatus || (selectedStatus === "Active" ? user.is_active : !user.is_active);
+    const matchesDesignation = !selectedDesignation || user.designation_name === selectedDesignation;
 
-    return matchesSearch && matchesRole && matchesStatus;
+    return matchesSearch && matchesRole && matchesDesignation;
   });
 
   const totalPages = Math.ceil(filteredUsers.length / rowsPerPage) || 1;
@@ -212,7 +214,7 @@ function AManage() {
 
   const resetFilters = () => {
     setSelectedRole("");
-    setSelectedStatus("");
+    setSelectedDesignation("");
     setCurrentPage(1);
   };
 
@@ -223,6 +225,19 @@ function AManage() {
   const goToPrevPage = () => {
     if (currentPage > 1) setCurrentPage(p => p - 1);
   };
+
+  // Format options for Dropdown
+  const roleOptions = [
+    { value: "", label: "ALL ROLES" },
+    ...rolesList.map(r => ({ value: r.role_id, label: r.role_name }))
+  ];
+
+  // Extract unique designations directly from the fetched users
+  const uniqueDesignations = Array.from(new Set(users.map(u => u.designation_name).filter(Boolean)));
+  const designationOptions = [
+    { value: "", label: "ALL DESIGNATIONS" },
+    ...uniqueDesignations.map(d => ({ value: d, label: d }))
+  ];
 
   if (loading) {
     return (
@@ -308,36 +323,28 @@ function AManage() {
             <div className="FilterDropdown">
               <div className="FilterGroup">
                 <label>ROLE</label>
-                <select
+                <Dropdown
+                  options={roleOptions}
                   value={selectedRole}
-                  onChange={(e) => {
-                    setSelectedRole(e.target.value);
+                  onChange={(val) => {
+                    setSelectedRole(val);
                     setCurrentPage(1);
                   }}
-                >
-                  <option value="">ALL ROLES</option>
-                  {rolesList.map(role => (
-                    <option key={role.role_id} value={role.role_id}>
-                      {role.role_name}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="ALL ROLES"
+                />
               </div>
 
               <div className="FilterGroup">
-                <label>STATUS</label>
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => {
-                    setSelectedStatus(e.target.value);
+                <label>DESIGNATION</label>
+                <Dropdown
+                  options={designationOptions}
+                  value={selectedDesignation}
+                  onChange={(val) => {
+                    setSelectedDesignation(val);
                     setCurrentPage(1);
                   }}
-                >
-                  <option value="">ALL STATUS</option>
-                  {statusOptions.map(status => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
+                  placeholder="ALL DESIGNATIONS"
+                />
               </div>
 
               <div className="BtnsContainer">
@@ -378,7 +385,6 @@ function AManage() {
         )
       ) : (
         <>
-          {/* --- MOBILE VIEW --- */}
           {isMobile ? (
             <div className="CardsContainer RecordCards">
               {currentItems.map((user) => (
@@ -438,10 +444,7 @@ function AManage() {
               <table className="Table">
                 <thead>
                   <tr>
-                    <th style={{ width: '40px' }}>
-                      <input type="checkbox" />
-                    </th>
-                    <th>Username</th>
+                    <th style={{ paddingLeft: '24px' }}>Username</th>
                     <th>Full Name</th>
                     <th>Role</th>
                     <th>Designation</th>
@@ -453,8 +456,7 @@ function AManage() {
                 <tbody>
                   {currentItems.map((user) => (
                     <tr key={user.user_id}>
-                      <td><input type="checkbox" /></td>
-                      <td>{user.username}</td>
+                      <td style={{ paddingLeft: '24px' }}>{user.username}</td>
                       <td>{user.first_name} {user.last_name || ''}</td>
                       <td>{formatRoleName(user.role_id)}</td>
                       <td>{user.designation_name || '—'}</td>

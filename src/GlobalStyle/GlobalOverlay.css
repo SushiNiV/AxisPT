@@ -320,3 +320,221 @@
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ===== Global Overlay & Modal Searchable Dropdown ===== */
+
+/* Fixes the sticky header issue inside modals */
+.gradeTermTable th {
+  position: static !important;
+  top: auto !important;
+}
+
+/* Row container for the Add Course inline form */
+.addCourseRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: flex-start;
+}
+
+@media (max-width: 768px) {
+  .addCourseRow {
+    flex-direction: column;
+  }
+}
+
+/* The Searchable Dropdown Wrapper */
+.searchableSelectWrapper {
+  position: relative;
+  width: 100%;
+  flex: 1;
+}
+
+/* The Input Field - Set to match button height */
+.searchableSelectInput {
+  width: 100%;
+  padding: 0 32px 0 12px; /* Padding top/bottom 0 to rely on height */
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+  
+  height: 36px; /* <--- Standardized Height */
+  box-sizing: border-box;
+}
+
+.searchableSelectInput:focus {
+  border-color: var(--branding-pink);
+  box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.1);
+}
+
+.searchableSelectChevron {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+/* The Dropdown List */
+.searchableSelectDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+}
+
+.searchableSelectOption {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  transition: background-color 0.15s ease;
+}
+
+.searchableSelectOption:hover {
+  background-color: var(--bg-hover);
+}
+
+.searchableSelectOption.selected {
+  background-color: var(--bg-hover);
+  font-weight: 600;
+  color: var(--text-brand);
+}
+
+.searchableSelectEmpty {
+  padding: 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* Button height fixes for the inline form */
+.addCourseRow .submitBtn,
+.addCourseRow .cancelBtn {
+  height: 36px; /* <--- Standardized Height */
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .addCourseRow .submitBtn,
+  .addCourseRow .cancelBtn {
+    flex: 1;
+    width: 100%;
+  }
+}
+
+/* ===== Mobile AddGrade Cards ===== */
+.MobileGradeCardsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.MobileGradeCard {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.MobileGradeCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.MobileGradeCardCode {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.MobileGradeCardName {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.MobileGradeDeleteBtn {
+  background: none;
+  border: none;
+  color: var(--status-danger-text);
+  font-size: 1.2rem;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.MobileGradeInputsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.MobileGradeInputGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.MobileGradeLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.MobileGradeInput {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.MobileGradeInput:focus {
+  outline: none;
+  border-color: var(--branding-pink);
+}
+
+.MobileGradeFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-light);
+}
+
+.MobileGradeFooterLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.MobileGradeFooterValue {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-brand);
+}
+

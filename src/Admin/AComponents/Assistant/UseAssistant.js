@@ -67,7 +67,7 @@ export default function useAssistant() {   // ← lowercase 'use'
     };
   }, []);
 
-  const ask = useCallback(async (question) => {
+const ask = useCallback(async (question) => {
     const text = (question || '').trim();
     if (!text) return;
 
@@ -83,18 +83,20 @@ export default function useAssistant() {   // ← lowercase 'use'
     abortRef.current = controller;
 
     try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/admin/assistant/ask`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${readToken()}`,
-          },
-          body: JSON.stringify({ question: text }),
-          signal: controller.signal,
-        }
-      );
+      const role = sessionStorage.getItem('role') || localStorage.getItem('role');
+      const endpoint = role === 'student' 
+        ? `${process.env.REACT_APP_API_URL}/student/assistant/ask`
+        : `${process.env.REACT_APP_API_URL}/admin/assistant/ask`;
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${readToken()}`,
+        },
+        body: JSON.stringify({ question: text }),
+        signal: controller.signal,
+      });
       const data = await res.json();
 
       if (!res.ok || !data.success) {

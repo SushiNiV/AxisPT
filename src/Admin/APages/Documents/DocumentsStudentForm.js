@@ -54,7 +54,9 @@ function DocumentsStudentForm() {
       });
       const data = await response.json();
       if (data.success) {
-        setProgramOptions(data.data.map((p) => p.program_name));
+       setProgramOptions(
+          data.data.map((p) => p.program_abbr || p.program_name)
+        );
       }
     } catch (err) {
       console.error('Error fetching programs:', err);

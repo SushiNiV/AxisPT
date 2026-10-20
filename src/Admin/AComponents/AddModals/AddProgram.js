@@ -5,7 +5,6 @@ import '../../../GlobalStyle/GlobalForm.css';
 import '../../../GlobalStyle/GlobalOverlay.css';
 import '../../../GlobalStyle/Global.css';
 
-
 function AddProgram({ onClose, onSuccess, programToEdit = null }) {
   const [programName, setProgramName] = useState("");
   const [abbreviation, setAbbreviation] = useState("");

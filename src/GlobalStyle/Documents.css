@@ -243,7 +243,7 @@
   flex-shrink: 0;
   /* The paper background MUST be white, even in dark mode */
   background: #ffffff;
-  border: 1px solid var(--border-medium);
+ 
 }
 
 .DocPreviewScaler {
@@ -284,25 +284,27 @@
   -moz-appearance: none;
   display: flex;
   align-items: center;
-  background-color: var(--bg-input);
-  padding: 8px 32px 8px 20px;
-  border-radius: 5px;
+  background-color: var(--bg-card); 
+  color: var(--text-primary);
+  
+  padding: 8px 32px 8px 16px;
+  border-radius: 6px;
   cursor: pointer;
-  color: var(--text-brand);
   font-weight: 500;
   font-size: 0.875rem;
   font-family: inherit;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   white-space: nowrap;
   min-width: fit-content;
   outline: none;
-  border: 1px solid var(--border-light);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); 
 }
 
-.DocPeriodSelect:hover:not(:disabled) {
-  background-color: var(--branding-maroon);
-  color: var(--text-inverse);
-  border-color: var(--branding-maroon);
+.DocPeriodSelect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--bg-tertiary);
+  box-shadow: none;
 }
 
 .DocPeriodSelect:hover:not(:disabled) + .DocPeriodSelectChevron {
@@ -316,6 +318,8 @@
 .DocPeriodSelect:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  background-color: var(--bg-tertiary);
+  box-shadow: none;
 }
 
 .DocPeriodSelect option {
@@ -465,7 +469,7 @@
 .DocPreviewOuter,
 .DocPreviewOuter * {
   color: #000000 !important;
-  border-color: #000000 !important;
+
 }
 
 .DocPreviewOuter {

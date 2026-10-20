@@ -53,14 +53,16 @@ function AssistantAnswerText({ text, sources, messageId }) {
     <div className="AssistantAnswerBody">
       <ReactMarkdown
         components={{
-          // Render text nodes with citations injected
-          p: ({ children }) => <p>{renderTextWithCitations(children)}</p>,
-          li: ({ children }) => <li>{renderTextWithCitations(children)}</li>,
-          strong: ({ children }) => (
-            <strong>{renderTextWithCitations(children)}</strong>
+          p: ({ children }) => <p style={{ marginBottom: '8px' }}>{renderTextWithCitations(children)}</p>,
+          li: ({ children }) => (
+            <li style={{ marginLeft: '20px', marginBottom: '4px' }}>
+              {renderTextWithCitations(children)}
+            </li>
           ),
+          ul: ({ children }) => <ul style={{ margin: '10px 0', paddingLeft: '20px', listStyleType: 'disc' }}>{children}</ul>,
+          ol: ({ children }) => <ol style={{ margin: '10px 0', paddingLeft: '20px', listStyleType: 'decimal' }}>{children}</ol>,
+          strong: ({ children }) => <strong>{renderTextWithCitations(children)}</strong>,
           em: ({ children }) => <em>{renderTextWithCitations(children)}</em>,
-          // Optional: strip links for safety
           a: ({ children }) => <span>{children}</span>,
         }}
       >

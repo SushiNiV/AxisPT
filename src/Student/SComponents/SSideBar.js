@@ -37,7 +37,7 @@ function SSideBar({ isMobile, mobileNavOpen, closeNav }) {
     document.body.classList.remove('dark');
     sessionStorage.clear();
     localStorage.clear();
-    navigate('/signin');
+    window.location.href = '/signin'; 
   };
 
   const touchStartX = useRef(null);

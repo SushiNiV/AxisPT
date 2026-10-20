@@ -1,0 +1,99 @@
+/* ===== Global Dropdown ===== */
+.dropdownContainer {
+  position: relative;
+  width: 100%;
+  font-family: inherit;
+}
+
+.dropdownTrigger {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.dropdownTrigger:hover {
+  border-color: var(--branding-pink);
+}
+
+.dropdownTrigger.open {
+  border-color: var(--branding-pink);
+  box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.1);
+}
+
+.dropdownTrigger.disabled {
+  background-color: var(--bg-hover);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.dropdownPlaceholder {
+  color: var(--text-muted);
+}
+
+.dropdownChevron {
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.dropdownTrigger.open .dropdownChevron {
+  transform: rotate(180deg);
+}
+
+.dropdownOptions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1050;
+  padding: 4px 0;
+}
+
+.dropdownOption {
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  transition: background-color 0.15s ease;
+}
+
+.dropdownOption:hover {
+  background-color: var(--bg-hover);
+}
+
+.dropdownOption.selected {
+  background-color: rgba(61, 22, 22, 0.05);
+  color: var(--text-brand);
+  font-weight: 600;
+}
+
+body.dark .dropdownOption.selected {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Custom Scrollbar for dropdown */
+.dropdownOptions::-webkit-scrollbar {
+  width: 6px;
+}
+.dropdownOptions::-webkit-scrollbar-thumb {
+  background: rgba(61, 22, 22, 0.3);
+  border-radius: 4px;
+}
+body.dark .dropdownOptions::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+}

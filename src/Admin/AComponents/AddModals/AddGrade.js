@@ -1,55 +1,85 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
+import { BiChevronDown } from 'react-icons/bi';
 import '../../../GlobalStyle/GlobalForm.css';
-import '../../../GlobalStyle/GlobalOverlay.css';
+import '../../../GlobalStyle/GlobalOverlay.css'; // Styles now live here
 import '../../../GlobalStyle/Global.css';
+import './gradeModal.css'; 
 import ConfirmationModal from '../ConfirmationModal';
-
-/**
- * ============================================================================
- * AddGrade
- * ============================================================================
- * Modal for viewing and updating a student's grades, organized the same way
- * their curriculum is: Year Level -> Semester -> [Prelim / Midterm / Final
- * tables]. This mirrors TermGrade.js's layout on purpose - the editor
- * should visually match the document it produces.
- *
- * RETAKES: the same course can appear in more than one (yearLevel, semesterId)
- * slot - e.g. a Y1 S1 fail and a Y2 S1 retake. Editable state is keyed by a
- * composite `courseId-yearLevel-semesterId` so the two attempts keep their
- * own scores and never overwrite each other on save.
- *
- * PREREQUISITES: every row carries prereqEligible + prereqMissing (codes)
- * + prereqMissingIds (course IDs). Ineligible rows show a passive orange ⚠
- * with a tooltip listing the missing prereqs. On save, if any ineligible row
- * would be written, a single confirmation modal lists them. Confirming
- * records the override (rows in grade_prereq_overrides + a history_logs entry).
- *
- * COURSE PICKER: the "+ Add Course" list is filtered per year block:
- *   - Only courses in the student's curriculum
- *   - Curriculum year level must be ≤ the block's year
- *   - Courses already passed by the student are hidden
- *   - Courses already present in this semester's row set are hidden
- *
- * FUTURE-YEAR LOCK: higher year accordions render disabled. Backend also
- * rejects grades for year levels the student hasn't reached.
- * ============================================================================
- */
+import useMediaQuery from '../../../Components/useMediaQuery';
 
 const TERMS = ['Prelim', 'Midterm', 'Final'];
 
 const makeAttemptKey = (courseId, yearLevel, semesterId) =>
   `${courseId}-${yearLevel}-${semesterId}`;
 
-const GRADE_TABLE_STYLE_OVERRIDES = `
-  .gradeTermTable th {
-    position: static;
-    top: auto;
-  }
-`;
+// Inline Component for the Searchable Dropdown
+const LocalSearchableSelect = ({ options, value, onChange, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      const selected = options.find(o => String(o.value) === String(value));
+      setSearchTerm(selected ? selected.label : '');
+    }
+  }, [value, isOpen, options]);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelect = (option) => {
+    onChange(option.value);
+    setSearchTerm(option.label);
+    setIsOpen(false);
+  };
+
+  const filtered = options.filter(o => o.label.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  return (
+    <div className="searchableSelectWrapper" ref={wrapperRef}>
+      <input
+        type="text"
+        className="searchableSelectInput"
+        placeholder={placeholder}
+        value={searchTerm}
+        onChange={(e) => { setSearchTerm(e.target.value); setIsOpen(true); if (!e.target.value) onChange(''); }}
+        onFocus={() => setIsOpen(true)}
+      />
+      <BiChevronDown className="searchableSelectChevron" />
+      
+      {isOpen && (
+        <div className="searchableSelectDropdown">
+          {filtered.length === 0 ? (
+            <div className="searchableSelectEmpty">No courses found</div>
+          ) : (
+            filtered.map(opt => (
+              <div
+                key={opt.value}
+                className={`searchableSelectOption ${String(value) === String(opt.value) ? 'selected' : ''}`}
+                onClick={() => handleSelect(opt)}
+              >
+                {opt.label}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const AddGrade = ({ onClose, onSuccess, student }) => {
   const studentId = student?.student_id;
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,6 +93,9 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   const [gradableCourses, setGradableCourses] = useState([]);
   const [addingToSemesterKey, setAddingToSemesterKey] = useState(null);
   const [courseToAdd, setCourseToAdd] = useState('');
+  
+  // Track open state for Prelim, Midterm, Final using composite keys
+  const [openTerms, setOpenTerms] = useState({});
 
   const [confirmState, setConfirmState] = useState({ isOpen: false });
   const [successState, setSuccessState] = useState({ isOpen: false });
@@ -197,6 +230,10 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     });
   };
 
+  const toggleTerm = (termKey) => {
+    setOpenTerms((prev) => ({ ...prev, [termKey]: !prev[termKey] }));
+  };
+
   const getFieldForTerm = (enterableFields, component, term) => (
     (enterableFields || []).find((f) => f.component === component && (f.term === null || f.term === term)) || null
   );
@@ -281,7 +318,6 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   };
 
   const renderNA = () => <span style={{ color: '#d5d5d5' }}>—</span>;
-
   const renderPending = (label = 'Awaiting scores') => (
     <span style={{ color: '#999', fontStyle: 'italic' }} title={label}>—</span>
   );
@@ -320,11 +356,8 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
 
   const handleAddCourse = (yearLevel, semesterId) => {
     if (!courseToAdd) return;
-
     const course = gradableCourses.find((c) => c.courseId === Number(courseToAdd));
     if (!course) return;
-
-    // No confirmation here anymore — the save-time prompt is the only gate.
     insertCourseRow(course, yearLevel, semesterId);
   };
 
@@ -355,14 +388,11 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     setIsSubmitting(true);
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/admin/students/${studentId}/grades`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ grades: entries })
-        }
-      );
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/students/${studentId}/grades`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ grades: entries })
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -452,135 +482,204 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   const studentLabel = student.full_name || `${student.last_name || ''}, ${student.first_name || ''}`.trim();
 
   const renderTermTable = (yearLevel, semesterId, term, attemptKeys) => {
+    const termKey = `${yearLevel}-${semesterId}-${term}`;
+    const isTermOpen = openTerms[termKey] !== true 
+      ? openTerms[termKey] 
+      : (term === 'Prelim');
+
     const semesterAttempts = attemptKeys.map((k) => gradesMap[k]).filter(Boolean);
     const needsLab = semesterAttempts.some((c) => (c.enterableFields || []).some((f) => f.component === 'Unit Practical Exam'));
     const specialExamField = term === 'Final'
       ? semesterAttempts.map((c) => getFieldForTerm(c.enterableFields, 'Comprehensive Examination', 'Final') || getFieldForTerm(c.enterableFields, 'Revalida Examination', 'Final')).find(Boolean)
       : null;
 
+    const renderInput = (attemptKey, field, component, termScores, isMobileView = false) => {
+      if (!field) return renderNA();
+      return (
+        <input
+          type="number" min="0" max="100" step="0.01"
+          value={termScores[component] ?? ''}
+          onChange={(e) => handleScoreChange(attemptKey, term, component, e.target.value)}
+          className={isMobileView ? "MobileGradeInput" : ""}
+        />
+      );
+    };
+
     return (
-      <div key={term} id={`term-${yearLevel}-${semesterId}-${term}`} style={{ marginBottom: '1rem', scrollMarginTop: '12px' }}>
-        <h6 style={{ margin: '0 0 6px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-brand)', textTransform: 'uppercase' }}>
-          {term}
-        </h6>
-        <table className="Table gradeTermTable">
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Course</th>
-              <th>Quizzes/AT</th>
-              <th>{term} Exam</th>
-              {needsLab && <th>Lab Practical</th>}
-              {needsLab && <th>OSCE/OSPE</th>}
-              {specialExamField && <th>{specialExamField.component}</th>}
-              <th>Grade</th>
-              <th>Remarks</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {attemptKeys.map((attemptKey) => {
-              const entry = gradesMap[attemptKey];
-              if (!entry) return null;
+      <div key={term} className="gradeTermWrapper">
+        
+        <button
+          type="button"
+          onClick={() => toggleTerm(termKey)}
+          className={`gradeTermBtn ${isTermOpen ? 'open' : ''}`}
+        >
+          <span>{term}</span>
+          <BiChevronDown />
+        </button>
 
-              const termScores = entry.scoresByTerm[term] || {};
-              const quizField = getFieldForTerm(entry.enterableFields, 'Quizzes/AT', term);
-              const examField = getFieldForTerm(entry.enterableFields, `${term} Exam`, term);
-              const labField = needsLab ? getFieldForTerm(entry.enterableFields, 'Unit Practical Exam', term) : null;
-              const osceField = needsLab ? getFieldForTerm(entry.enterableFields, `${term} OSCE/OSPE`, term) : null;
-              const ownSpecialField = specialExamField
-                ? getFieldForTerm(entry.enterableFields, specialExamField.component, term)
-                : null;
+        {isTermOpen && (
+          <div className="gradeTermContent">
+            {isMobile ? (
+              <div className="MobileGradeCardsContainer">
+                {attemptKeys.map((attemptKey) => {
+                  const entry = gradesMap[attemptKey];
+                  if (!entry) return null;
+                  const termScores = entry.scoresByTerm[term] || {};
+                  
+                  const quizField = getFieldForTerm(entry.enterableFields, 'Quizzes/AT', term);
+                  const examField = getFieldForTerm(entry.enterableFields, `${term} Exam`, term);
+                  const labField = needsLab ? getFieldForTerm(entry.enterableFields, 'Unit Practical Exam', term) : null;
+                  const osceField = needsLab ? getFieldForTerm(entry.enterableFields, `${term} OSCE/OSPE`, term) : null;
+                  const ownSpecialField = specialExamField ? getFieldForTerm(entry.enterableFields, specialExamField.component, term) : null;
 
-              const { pointGrade } = previewTermGrade(entry.enterableFields, term, entry.scoresByTerm);
-              const cumulative = term === 'Final' ? previewCumulativeGrade(entry.enterableFields, entry.scoresByTerm) : null;
+                  const { pointGrade } = previewTermGrade(entry.enterableFields, term, entry.scoresByTerm);
+                  const cumulative = term === 'Final' ? previewCumulativeGrade(entry.enterableFields, entry.scoresByTerm) : null;
 
-              const renderInput = (field, component) => {
-                if (!field) return renderNA();
-                return (
-                  <input
-                    type="number" min="0" max="100" step="0.01"
-                    value={termScores[component] ?? ''}
-                    onChange={(e) => handleScoreChange(attemptKey, term, component, e.target.value)}
-                    style={{ width: '65px', padding: '4px 6px' }}
-                  />
-                );
-              };
+                  return (
+                    <div key={attemptKey} className="MobileGradeCard">
+                      <div className="MobileGradeCardHeader">
+                        <div>
+                          <div className="MobileGradeCardCode">
+                            {entry.courseCode}
+                            {entry.attemptCount > 1 && <sup style={{color: '#c62828', marginLeft: '4px'}}>×{entry.attemptCount}</sup>}
+                          </div>
+                          <div className="MobileGradeCardName">{entry.courseName}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCourse(yearLevel, semesterId, attemptKey)}
+                          className="MobileGradeDeleteBtn"
+                        >
+                          ✕
+                        </button>
+                      </div>
 
-              return (
-                <tr key={attemptKey}>
-                  <td>
-                    {entry.courseCode}
-                    {entry.attemptCount > 1 && (
-                      <sup
-                        title={`Retake — ${entry.attemptCount} attempts on file`}
-                        style={{
-                          marginLeft: '3px',
-                          fontSize: '0.65rem',
-                          color: '#c62828',
-                          fontWeight: 700,
-                          cursor: 'help',
-                          letterSpacing: '0.5px',
-                        }}
-                      >
-                        ×{entry.attemptCount}
-                      </sup>
-                    )}
-                    {entry.prereqEligible === false && (
-                      <sup
-                        title={`Prerequisite(s) not met: ${entry.prereqMissing.join(', ')}`}
-                        style={{
-                          marginLeft: '3px',
-                          fontSize: '0.75rem',
-                          color: '#e65100',
-                          fontWeight: 700,
-                          cursor: 'help',
-                        }}
-                      >
-                        ⚠
-                      </sup>
-                    )}
-                  </td>
-                  <td>{entry.courseName}</td>
-                  <td>{renderInput(quizField, 'Quizzes/AT')}</td>
-                  <td>{renderInput(examField, `${term} Exam`)}</td>
-                  {needsLab && <td>{renderInput(labField, 'Unit Practical Exam')}</td>}
-                  {needsLab && <td>{renderInput(osceField, `${term} OSCE/OSPE`)}</td>}
-                  {specialExamField && (
-                    <td>{ownSpecialField ? renderInput(ownSpecialField, specialExamField.component) : renderNA()}</td>
-                  )}
-                  <td>
-                    {term === 'Final'
-                      ? (cumulative.finalGrade !== null ? cumulative.finalGrade.toFixed(2) : renderPending('Final grade not yet computed - some scores are still missing'))
-                      : (pointGrade !== null ? pointGrade.toFixed(2) : renderPending('No scores entered for this term yet'))}
-                  </td>
-                  <td>{term === 'Final' ? renderRemarksBadge(cumulative.remarks) : renderPending('Only shown on the Final table')}</td>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveCourse(yearLevel, semesterId, attemptKey)}
-                      title="Remove this course from the sheet"
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#aaa',
-                        cursor: 'pointer',
-                        fontSize: '0.9rem',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        transition: 'color 0.15s ease, background-color 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = '#c62828'; e.currentTarget.style.backgroundColor = '#ffebee'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = '#aaa'; e.currentTarget.style.backgroundColor = 'transparent'; }}
-                    >
-                      ✕
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                      <div className="MobileGradeInputsGrid">
+                        {quizField && (
+                          <div className="MobileGradeInputGroup">
+                            <label className="MobileGradeLabel">Quizzes</label>
+                            {renderInput(attemptKey, quizField, 'Quizzes/AT', termScores, true)}
+                          </div>
+                        )}
+                        {examField && (
+                          <div className="MobileGradeInputGroup">
+                            <label className="MobileGradeLabel">{term} Exam</label>
+                            {renderInput(attemptKey, examField, `${term} Exam`, termScores, true)}
+                          </div>
+                        )}
+                        {needsLab && labField && (
+                          <div className="MobileGradeInputGroup">
+                            <label className="MobileGradeLabel">Lab Practical</label>
+                            {renderInput(attemptKey, labField, 'Unit Practical Exam', termScores, true)}
+                          </div>
+                        )}
+                        {needsLab && osceField && (
+                          <div className="MobileGradeInputGroup">
+                            <label className="MobileGradeLabel">OSCE/OSPE</label>
+                            {renderInput(attemptKey, osceField, `${term} OSCE/OSPE`, termScores, true)}
+                          </div>
+                        )}
+                        {specialExamField && ownSpecialField && (
+                          <div className="MobileGradeInputGroup" style={{ gridColumn: '1 / -1' }}>
+                            <label className="MobileGradeLabel">{specialExamField.component}</label>
+                            {renderInput(attemptKey, ownSpecialField, specialExamField.component, termScores, true)}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="MobileGradeFooter">
+                        <span className="MobileGradeFooterLabel">Grade:</span>
+                        <span className="MobileGradeFooterValue">
+                          {term === 'Final'
+                            ? (cumulative.finalGrade !== null ? cumulative.finalGrade.toFixed(2) : '—')
+                            : (pointGrade !== null ? pointGrade.toFixed(2) : '—')}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="gradeTableScrollWrapper">
+                <table className="Table gradeTermTable">
+                  <thead>
+                    <tr>
+                      <th>Code</th>
+                      <th>Course</th>
+                      <th>Quizzes/AT</th>
+                      <th>{term} Exam</th>
+                      {needsLab && <th>Lab Practical</th>}
+                      {needsLab && <th>OSCE/OSPE</th>}
+                      {specialExamField && <th>{specialExamField.component}</th>}
+                      <th>Grade</th>
+                      <th>Remarks</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attemptKeys.map((attemptKey) => {
+                      const entry = gradesMap[attemptKey];
+                      if (!entry) return null;
+
+                      const termScores = entry.scoresByTerm[term] || {};
+                      const quizField = getFieldForTerm(entry.enterableFields, 'Quizzes/AT', term);
+                      const examField = getFieldForTerm(entry.enterableFields, `${term} Exam`, term);
+                      const labField = needsLab ? getFieldForTerm(entry.enterableFields, 'Unit Practical Exam', term) : null;
+                      const osceField = needsLab ? getFieldForTerm(entry.enterableFields, `${term} OSCE/OSPE`, term) : null;
+                      const ownSpecialField = specialExamField
+                        ? getFieldForTerm(entry.enterableFields, specialExamField.component, term)
+                        : null;
+
+                      const { pointGrade } = previewTermGrade(entry.enterableFields, term, entry.scoresByTerm);
+                      const cumulative = term === 'Final' ? previewCumulativeGrade(entry.enterableFields, entry.scoresByTerm) : null;
+
+                      return (
+                        <tr key={attemptKey}>
+                          <td>
+                            {entry.courseCode}
+                            {entry.attemptCount > 1 && (
+                              <sup title={`Retake`} style={{ marginLeft: '3px', fontSize: '0.65rem', color: '#c62828', fontWeight: 700, cursor: 'help' }}>
+                                ×{entry.attemptCount}
+                              </sup>
+                            )}
+                            {entry.prereqEligible === false && (
+                              <sup title={`Prerequisite(s) not met`} style={{ marginLeft: '3px', fontSize: '0.75rem', color: '#e65100', fontWeight: 700, cursor: 'help' }}>
+                                ⚠
+                              </sup>
+                            )}
+                          </td>
+                          <td>{entry.courseName}</td>
+                          <td>{renderInput(attemptKey, quizField, 'Quizzes/AT', termScores)}</td>
+                          <td>{renderInput(attemptKey, examField, `${term} Exam`, termScores)}</td>
+                          {needsLab && <td>{renderInput(attemptKey, labField, 'Unit Practical Exam', termScores)}</td>}
+                          {needsLab && <td>{renderInput(attemptKey, osceField, `${term} OSCE/OSPE`, termScores)}</td>}
+                          {specialExamField && (
+                            <td>{ownSpecialField ? renderInput(attemptKey, ownSpecialField, specialExamField.component, termScores) : renderNA()}</td>
+                          )}
+                          <td>
+                            {term === 'Final'
+                              ? (cumulative.finalGrade !== null ? cumulative.finalGrade.toFixed(2) : renderPending('Final grade not yet computed - some scores are still missing'))
+                              : (pointGrade !== null ? pointGrade.toFixed(2) : renderPending('No scores entered for this term yet'))}
+                          </td>
+                          <td>{term === 'Final' ? renderRemarksBadge(cumulative.remarks) : renderPending('Only shown on the Final table')}</td>
+                          <td>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCourse(yearLevel, semesterId, attemptKey)}
+                              className="gradeTableRemoveBtn"
+                            >
+                              ✕
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -588,8 +687,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   const modalContent = (
     <div className="modalOverlay">
       <form onSubmit={handleSubmit} className="modalContainer" style={{ display: 'flex', flexDirection: 'column', maxWidth: '1200px' }}>
-        <style>{GRADE_TABLE_STYLE_OVERRIDES}</style>
-
+        
         <div className="modalHeader">
           <h3 className="modalTitle">STUDENT GRADES</h3>
           <div className="CloseBtnArea">
@@ -622,7 +720,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                 const isFutureYear = meta && yearBlock.yearLevel > meta.currentYearLevel;
 
                 return (
-                  <div key={yearBlock.yearLevel} className="accordionToggleArea" style={{ flexDirection: 'column' }}>
+                  <div key={yearBlock.yearLevel} className="accordionToggleArea gradeYearAccordion" style={{ flexDirection: 'column' }}>
                     <button
                       type="button"
                       className="accordionBtn"
@@ -632,14 +730,13 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                         ...(isCurrentYear ? { borderColor: 'var(--text-brand)', borderWidth: '2px' } : {}),
                         ...(isFutureYear ? { opacity: 0.45, cursor: 'not-allowed' } : {}),
                       }}
-                      title={isFutureYear ? 'Student has not yet reached this year level' : ''}
                     >
                       <span>
                         {ordinalYear(yearBlock.yearLevel)}
                         {isCurrentYear ? ' (Current Year Level)' : ''}
                         {isFutureYear ? ' — Not yet enrolled' : ''}
                       </span>
-                      <span className={`arrow ${isYearOpen ? 'open' : ''}`}>&#9660;</span>
+                      <BiChevronDown className={`arrow ${isYearOpen ? 'open' : ''}`} size={20} />
                     </button>
 
                     {isYearOpen && !isFutureYear && (
@@ -661,58 +758,45 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
                           });
 
                           return (
-                            <div key={sem.semesterId} style={{ marginBottom: '1.5rem' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                            <div key={sem.semesterId} className="gradeSemesterBlock">
+                              <div className="gradeSemesterHeader">
                                 <h5 className="subSectionHeading">{sem.semesterLabel}</h5>
                                 <button
                                   type="button"
                                   className="AddBtn"
                                   style={{ height: '30px', fontSize: '0.75rem' }}
                                   onClick={() => setAddingToSemesterKey(addingToSemesterKey === semKey ? null : semKey)}
-                                  title="Adds this course to the Prelim, Midterm, and Final tables below"
                                 >
                                   + Add Course
                                 </button>
                               </div>
-
-                              {attemptKeys.length > 0 && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                                  <span style={{ fontSize: '0.7rem', color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Jump to:</span>
-                                  {TERMS.map((t) => (
-                                    <a
-                                      key={t}
-                                      href={`#term-${yearBlock.yearLevel}-${sem.semesterId}-${t}`}
-                                      style={{ fontSize: '0.75rem', color: 'var(--text-brand)', fontWeight: 600, textDecoration: 'none' }}
-                                    >
-                                      {t}
-                                    </a>
-                                  ))}
-                                  <span style={{ fontSize: '0.7rem', color: '#bbb' }}>· Adding a course applies it to all three terms</span>
-                                </div>
-                              )}
-
+                              
                               {addingToSemesterKey === semKey && (
-                                <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-                                  <select
+                                <div className="addCourseRow">
+                                  <LocalSearchableSelect
+                                    options={addableCourses.map(c => ({ 
+                                      value: c.courseId, 
+                                      label: `${c.courseCode} — ${c.courseName}` 
+                                    }))}
                                     value={courseToAdd}
-                                    onChange={(e) => setCourseToAdd(e.target.value)}
-                                    style={{ flex: 1 }}
-                                  >
-                                    <option value="">-- Select a course to add --</option>
-                                    {addableCourses.map((c) => (
-                                      <option key={c.courseId} value={c.courseId}>
-                                        {c.courseCode} — {c.courseName}
-                                      </option>
-                                    ))}
-                                  </select>
+                                    onChange={setCourseToAdd}
+                                    placeholder="Search or select a course..."
+                                  />
+                                  
                                   <button
                                     type="button"
                                     className="submitBtn"
-                                    style={{ padding: '0 1rem' }}
                                     onClick={() => handleAddCourse(yearBlock.yearLevel, sem.semesterId)}
                                     disabled={!courseToAdd}
                                   >
                                     Add
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="cancelBtn"
+                                    onClick={() => setAddingToSemesterKey(null)}
+                                  >
+                                    Cancel
                                   </button>
                                 </div>
                               )}
@@ -748,14 +832,8 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
         message={successState.message}
         variant={successState.variant}
         isAlert={true}
-        onConfirm={() => {
-          setSuccessState({ isOpen: false });
-          onSuccess();
-        }}
-        onCancel={() => {
-          setSuccessState({ isOpen: false });
-          onSuccess();
-        }}
+        onConfirm={() => { setSuccessState({ isOpen: false }); onSuccess(); }}
+        onCancel={() => { setSuccessState({ isOpen: false }); onSuccess(); }}
       />
 
       <ConfirmationModal

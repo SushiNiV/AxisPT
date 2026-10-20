@@ -5,6 +5,7 @@ import {
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import AddProgram from '../../AComponents/AddModals/AddProgram';
 import AddSection from '../../AComponents/AddModals/AddSection';
+import Dropdown from '../../../Components/Dropdown'; // <-- Import Dropdown
 import useMediaQuery from '../../../Components/useMediaQuery';
 import '../../../GlobalStyle/Global.css';
 import '../../../GlobalStyle/GlobalCard.css';
@@ -276,6 +277,12 @@ function AProgSec() {
   const goToNextPage = () => { if (currentPage < totalPages) setCurrentPage(p => p + 1); };
   const goToPrevPage = () => { if (currentPage > 1) setCurrentPage(p => p - 1); };
 
+  // Prepare options for mobile Dropdown
+  const mobileProgramOptions = programs.map(p => ({
+    value: p.program_id,
+    label: `${p.program_abbr}${p.program_status === false ? ' (Archived)' : ''}`
+  }));
+
   return (
     <div className="InnerContainer">
       <ConfirmationModal
@@ -308,24 +315,19 @@ function AProgSec() {
           programId={selectedProgram?.program_id}
         />
       )}
+      
       {isMobile && (
         <div className="ProgPickerRow">
-          <select
-            className="ProgPicker"
+          <Dropdown
+            options={mobileProgramOptions}
             value={selectedProgram?.program_id ?? ''}
-            onChange={(e) => {
-              const p = programs.find((x) => String(x.program_id) === e.target.value);
+            onChange={(val) => {
+              const p = programs.find((x) => String(x.program_id) === String(val));
               setSelectedProgram(p || null);
             }}
             disabled={loadingPrograms}
-          >
-            <option value="" disabled>{loadingPrograms ? 'Loading…' : 'Select a program'}</option>
-            {programs.map((p) => (
-              <option key={p.program_id} value={p.program_id}>
-                {p.program_abbr}{p.program_status === false ? ' (Archived)' : ''}
-              </option>
-            ))}
-          </select>
+            placeholder={loadingPrograms ? 'Loading…' : 'Select a program'}
+          />
           {isAdmin && (
             <button
               className="TopbarBtn ProgAddBtn"
@@ -338,6 +340,7 @@ function AProgSec() {
           )}
         </div>
       )}
+      
       <div className="ProgSecSplit DocSplitView">
         {!isMobile && (
         <aside className="ProgSidebar DocListPanel">

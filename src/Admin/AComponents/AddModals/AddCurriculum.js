@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import ReactDOM from 'react-dom';
 import ConfirmationModal from '../ConfirmationModal';
+import Dropdown from '../../../Components/Dropdown'; // <-- Import Dropdown
 
 import '../../../GlobalStyle/GlobalForm.css';
 import '../../../GlobalStyle/GlobalOverlay.css';
 import '../../../GlobalStyle/Global.css';
-
 
 function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
   const isEditMode = !!curriculumToEdit;
@@ -141,6 +141,20 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
     }
   };
 
+  // Prepare options for Dropdown
+  const programOptions = [
+    { value: "", label: "Select Program" },
+    ...programs.map(program => ({
+      value: program.program_id,
+      label: `${program.program_name} (${program.program_abbr})`
+    }))
+  ];
+
+  const startYearOptions = yearOptions.map(year => ({
+    value: year,
+    label: String(year)
+  }));
+
   const modalContent = (
     <div className="modalOverlay">
       <div className="modalContainer">
@@ -156,35 +170,22 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
           <div className="FormContent">
             <div className="formGroup">
               <label className="formLabel">Program <span style={{ color: 'red' }}>*</span></label>
-              <select
-                name="program"
+              <Dropdown
+                options={programOptions}
                 value={formData.program}
-                onChange={handleChange}
-                className="formSelect"
-              >
-                <option value="">Select Program</option>
-                {programs.map(program => (
-                  <option key={program.program_id} value={program.program_id}>
-                    {program.program_name} ({program.program_abbr})
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => handleChange({ target: { name: 'program', value: val } })}
+                placeholder="Select Program"
+              />
             </div>
 
             <div className="formGroup">
               <label className="formLabel">Start Year <span style={{ color: 'red' }}>*</span></label>
-              <select
-                name="start_year"
+              <Dropdown
+                options={startYearOptions}
                 value={formData.start_year}
-                onChange={handleChange}
-                className="formSelect"
-              >
-                {yearOptions.map(year => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => handleChange({ target: { name: 'start_year', value: val } })}
+                placeholder="Select Start Year"
+              />
             </div>
 
             <div className="formGroup">

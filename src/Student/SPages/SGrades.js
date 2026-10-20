@@ -58,12 +58,12 @@ function SGrades() {
     if (yearA !== yearB) return yearA - yearB;
     return a.localeCompare(b);
   });
-
   return (
     <div className="InnerContainer" style={{ justifyContent: 'flex-start', overflowY: 'auto' }}>
       <div className="GradesAccordion">
         {sortedGroupKeys.map((groupKey) => {
-          const isExpanded = expandedTerms[groupKey] !== false; 
+          // THIS IS THE FIX: Default to closed unless explicitly toggled open
+          const isExpanded = expandedTerms[groupKey] === true; 
 
           return (
             <div key={groupKey} className="GradesGroup">
@@ -93,7 +93,6 @@ function SGrades() {
                     </thead>
                     <tbody>
                       {groupedGrades[groupKey].map(g => {
-                        // Correctly grouped logic to find the specific exam component
                         const prelim = g.components.find(c => 
                           c.term === 'Prelim' && (c.component_name === 'Prelim Exam' || c.component_name === 'Unit Practical Exam')
                         );
