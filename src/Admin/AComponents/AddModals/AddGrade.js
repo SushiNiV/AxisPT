@@ -483,7 +483,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
 
   const renderTermTable = (yearLevel, semesterId, term, attemptKeys) => {
     const termKey = `${yearLevel}-${semesterId}-${term}`;
-    const isTermOpen = openTerms[termKey] !== true 
+    const isTermOpen = openTerms[termKey] !== undefined 
       ? openTerms[termKey] 
       : (term === 'Prelim');
 

@@ -446,7 +446,7 @@ function Masterlist() {
 
   if (loading) {
     return (
-      <div className="InnerContainer">
+      <div className="InnerContainer ArchiveLayout">
         <div className="emptyState">
           <div className="emptyStateIcon">⏳</div>
           <h3 className="emptyStateTitle">Loading Masterlist</h3>
@@ -458,7 +458,7 @@ function Masterlist() {
 
   if (error) {
     return (
-      <div className="InnerContainer">
+      <div className="InnerContainer ArchiveLayout">
         <div className="emptyState">
           <div className="emptyStateIcon">⚠️</div>
           <h3 className="emptyStateTitle">Error Loading Masterlist</h3>
@@ -471,7 +471,7 @@ function Masterlist() {
   const hasNoData = filteredStudents.length === 0;
 
   return (
-    <div className="InnerContainer MasterlistContainer">
+    <div className="InnerContainer ArchiveLayout">
       {showAddStudent && (
         <AddStudent
           isOpen={showAddStudent}

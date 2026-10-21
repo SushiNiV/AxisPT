@@ -313,6 +313,8 @@ function AProgSec() {
           onSuccess={handleSectionSuccess}
           sectionToEdit={editingSection}
           programId={selectedProgram?.program_id}
+          programName={selectedProgram?.program_name}
+          programAbbr={selectedProgram?.program_abbr}
         />
       )}
       
@@ -424,21 +426,25 @@ function AProgSec() {
                 </div>
                 <div className="ProgDetailActions">
                   {isAdmin && (
-                    selectedProgram.program_status === false ? (
-                      <button className="actionBtn restoreBtn" onClick={() => handleRestoreProgram(selectedProgram)}>
-                        <BiUndo /> Restore
-                      </button>
-                    ) : (
                       <>
-                        <button className="actionBtn editBtn" onClick={() => { setEditingProgram(selectedProgram); setShowAddProgram(true); }}>
+                        <button
+                          className="actionBtn editBtn"
+                          onClick={() => { setEditingProgram(selectedProgram); setShowAddProgram(true); }}
+                        >
                           <BiPencil /> Edit
                         </button>
-                        <button className="actionBtn deleteBtn" onClick={() => handleArchiveProgram(selectedProgram)}>
-                          <BiTrash /> Archive
-                        </button>
+
+                        {selectedProgram.program_status === false ? (
+                          <button className="actionBtn restoreBtn" onClick={() => handleRestoreProgram(selectedProgram)}>
+                            <BiUndo /> Restore
+                          </button>
+                        ) : (
+                          <button className="actionBtn deleteBtn" onClick={() => handleArchiveProgram(selectedProgram)}>
+                            <BiTrash /> Archive
+                          </button>
+                        )}
                       </>
-                    )
-                  )}
+                    )}
                 </div>
               </header>
 

@@ -18,7 +18,7 @@ exports.addProgram = async (req, res) => {
       return res.status(400).json({ success: false, message: "Program name, abbreviation, and total years are required." });
     }
 
-    const existingPrograms = await ProgramModel.getAll({ includeArchived: true });
+    const existingPrograms = await ProgramModel.getAll({ mode: 'all' });
     if (existingPrograms.find(p => p.program_abbr === program_abbr)) {
       return res.status(400).json({ success: false, message: "Program abbreviation already exists." });
     }
@@ -124,13 +124,14 @@ exports.restoreProgram = async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 };
-
 exports.getPrograms = async (req, res) => {
   try {
-    const { mode } = req.query;
-    const programs = await ProgramModel.getAll({
-      mode: ['active', 'archived', 'all'].includes(mode) ? mode : 'active'
-    });
+    const { mode, includeArchived } = req.query;
+    const resolvedMode = ['active', 'archived', 'all'].includes(mode)
+      ? mode
+      : (includeArchived === 'true' ? 'all' : 'active');
+
+    const programs = await ProgramModel.getAll({ mode: resolvedMode });
     res.json({ success: true, data: programs });
   } catch (error) {
     console.error("Error fetching programs:", error);

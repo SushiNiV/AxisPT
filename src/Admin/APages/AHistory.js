@@ -168,7 +168,7 @@ function AHistory() {
 
   if (loading) {
     return (
-      <div className="InnerContainer">
+      <div className="InnerContainer ArchiveLayout">
         <div className="emptyState">
           <div className="emptyStateIcon">⏳</div>
           <h3 className="emptyStateTitle">Loading History</h3>
@@ -180,7 +180,7 @@ function AHistory() {
 
   if (error) {
     return (
-      <div className="InnerContainer">
+      <div className="InnerContainer ArchiveLayout">
         <div className="emptyState">
           <div className="emptyStateIcon">⚠️</div>
           <h3 className="emptyStateTitle">Error Loading History</h3>
@@ -191,7 +191,7 @@ function AHistory() {
   }
 
   return (
-    <div className="InnerContainer">
+    <div className="InnerContainer ArchiveLayout">
 
       <div className="TopSection">
         <div className="SearchWrapper">
