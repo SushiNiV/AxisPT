@@ -111,7 +111,7 @@ function SignIn() {
           
           <div className="Signin FormColumn">
             <div className="Signin Column">
-              <label>Username <span style={{color: 'red'}}>*</span></label>
+              <label>Username / Student ID <span style={{color: 'red'}}>*</span></label>
               <input 
                 type="text" 
                 name="username"
