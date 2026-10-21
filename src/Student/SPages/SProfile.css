@@ -1,0 +1,36 @@
+/* Student profile wizard */
+
+/* Desktop: render the form larger (inputs, dropdowns and text scale together). */
+@media (min-width: 769px) {
+  .SProfileZoom { zoom: 1.15; }
+}
+
+/* Navigation stays in view and clear of the floating "Ask AI" button. */
+.SProfileNav {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding: 0.75rem 11rem 0.75rem 0; /* right gap = width of the Ask AI button */
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-light);
+}
+
+.SProfileNav .cancelBtn,
+.SProfileNav .submitBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 140px;
+}
+
+@media (max-width: 768px) {
+  /* The button sits bottom-right on phones too, so lift the bar above it instead. */
+  .SProfileNav { padding: 0.75rem 0 4.75rem; }
+  .SProfileNav .cancelBtn,
+  .SProfileNav .submitBtn { min-width: 0; }
+}
