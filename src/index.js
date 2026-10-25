@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import './GlobalStyle/Tailwind.css';
 import './index.css';
 import App from './App';
 import './ResponsiveStyle/ResponsiveComponent.css';

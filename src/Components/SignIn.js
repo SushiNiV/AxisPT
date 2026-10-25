@@ -1,50 +1,53 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ConfirmationModal from '../Admin/AComponents/ConfirmationModal'; 
+import { BiShow, BiHide, BiErrorCircle } from 'react-icons/bi';
 
-import '../GlobalStyle/GlobalSignin.css';
+import Button from '../Components/Button';
+import TextField from '../Components/Textfield';
+import Alert from '../Components/Alert';
+
 import '../GlobalStyle/Global.css';
-import '../ResponsiveStyle/ResponsiveSignin.css';
 
+import campus from '../assets/olfu.jpg';
+import logo from '../assets/cpt-logo.png';
 function SignIn() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  // Modal State
-  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  
   const [formData, setFormData] = useState({
-      username: '',  
-      password: '',
-      rememberMe: false
+    username: '',
+    password: '',
+    rememberMe: false,
   });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
     }));
+    if (error) setError('');
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setIsErrorModalOpen(false);
+    setError('');
+    setIsSubmitting(true);
 
     try {
       // Unified login endpoint
       const response = await fetch(`${process.env.REACT_APP_API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
 
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
         console.error('Non-JSON response:', response.status);
-        setErrorMessage('Server returned an unexpected response. Please contact the administrator.');
-        setIsErrorModalOpen(true);
+        setError('Server returned an unexpected response. Please contact the administrator.');
         return;
       }
 
@@ -56,9 +59,9 @@ function SignIn() {
         storage.setItem('username', data.username);
         storage.setItem('role', (data.role || '').toLowerCase());
         sessionStorage.setItem('email', data.email || '—');
-        
+
         if (data.designation) storage.setItem('designation', data.designation);
-        
+
         try {
           const payload = JSON.parse(atob(data.token.split('.')[1]));
           if (payload.id != null) storage.setItem('user_id', String(payload.id));
@@ -70,121 +73,126 @@ function SignIn() {
 
         if (data.mustChangePassword === true) {
           navigate('/change-password');
+        } else if (data.role?.toLowerCase() === 'student') {
+          navigate('/student/dashboard');
         } else {
-          // Route based on role
-          if (data.role?.toLowerCase() === 'student') {
-            navigate('/student/dashboard');
-          } else {
-            navigate('/admin/dashboard');
-          }
+          navigate('/admin/dashboard');
         }
         return;
       }
 
-      setErrorMessage(data.message || 'Invalid Username or Password.');
-      setIsErrorModalOpen(true);
-
-    } catch (error) {
-      console.error('Login Error:', error);
-      setErrorMessage('Unable to connect to the server. Please try again later.');
-      setIsErrorModalOpen(true);
+      setError(data.message || 'Invalid username or password.');
+    } catch (err) {
+      console.error('Login Error:', err);
+      setError('Unable to connect to the server. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="Container SigninPage">
+    <main className="ax h-dvh overflow-y-auto bg-canvas text-ink">
+      <div className="grid min-h-full lg:grid-cols-[1.1fr_1fr]">
+        <aside className="relative m-2 flex h-40 flex-col justify-end overflow-hidden rounded-panel p-5 lg:m-3 lg:h-auto lg:p-10">
+          <img src={campus} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-gradient-to-t from-maroon-950/95 via-maroon-900/75 to-maroon-800/70"
+          />
+          <div className="relative hidden lg:block">
+            <p className="font-display text-4xl font-semibold leading-tight text-white">
+              Our Lady of Fatima University
+            </p>
+            <p className="mt-2 text-lg text-white/75">College of Physical Therapy</p>
+          </div>
+        </aside>
 
-      <div className="SigninCard">
-      </div>
+        {/* Form */}
+        <section className="flex flex-col px-6 pb-8 pt-6 sm:px-12 lg:py-10">
+          <header className="flex items-center gap-3">
+            <img src={logo} alt="" className="h-12 w-12" />
+            <h1 className="font-display text-xl font-semibold text-brand-ink">Axis CPT Portal</h1>
+          </header>
+          <div className="mx-auto my-auto w-full max-w-sm">
+            <h1 className="font-display text-4xl font-semibold text-brand-ink">Sign in</h1>
+            <p className="mt-2 text-ink-2">Use your username or student ID.</p>
+            <form className="mt-8 space-y-5" onSubmit={handleLogin}>
+              {error && (
+                <Alert>
+                  <BiErrorCircle className="mt-0.5 shrink-0 text-lg" aria-hidden="true" />
+                  <span>{error}</span>
+                </Alert>
+              )}
 
-      <div className="SigninFormCard">
-        <div className="SigninTopbar Left">
-          <p className="SigninText">
-            <span>Have Trouble Signing In? </span>
-            <b>Contact CPT Administrator.</b>
-          </p>
-        </div>
-
-        <form className="SigninForm" onSubmit={handleLogin}>
-          <p className="SigninTitle">Axis Portal</p>
-          <p className="SigninTitle">Sign In</p>
-          
-          <div className="Signin FormColumn">
-            <div className="Signin Column">
-              <label>Username / Student ID <span style={{color: 'red'}}>*</span></label>
-              <input 
-                type="text" 
+              <TextField
+                id="username"
                 name="username"
-                placeholder="Enter username" 
+                label="Username or student ID"
+                placeholder="Enter your username"
                 value={formData.username}
                 onChange={handleChange}
-                autoComplete='username'
+                autoComplete="username"
                 required
               />
-            </div>
 
-            <div className="Signin Column">
-              <label>Password <span style={{color: 'red'}}>*</span></label>
-              <div className="PasswordWrapper">
-                <input 
-                  type={showPassword ? "text" : "password"} 
-                  name="password"
-                  placeholder="Enter your password" 
-                  value={formData.password}
-                  onChange={handleChange}
-                  autoComplete='current-password'
-                  required 
-                />
-                <span className="Material-Icon Icon" onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? 'visibility' : 'visibility_off'}
-                </span>
-              </div>
-            </div>
+              <TextField
+                id="password"
+                name="password"
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={handleChange}
+                autoComplete="current-password"
+                required
+                trailing={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showPassword}
+                    className="grid h-10 w-10 place-items-center rounded-ctl text-ink-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                  >
+                    {showPassword ? <BiHide className="text-xl" /> : <BiShow className="text-xl" />}
+                  </button>
+                }
+              />
 
-            <div className="FormOptions">
-              <div className="OptionsContainer">
-                <input 
-                    type="checkbox" 
-                    name="rememberMe" 
-                    id="rememberMe"
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-2">
+                  <input
+                    type="checkbox"
+                    name="rememberMe"
                     checked={formData.rememberMe}
                     onChange={handleChange}
-                />
-                <label htmlFor="rememberMe">Remember Me</label>
-              </div>
-              <div className="OptionsContainer">
-                  <p>Forgot Password?</p>
-              </div>
-            </div>
-                      
-            <div className="ButtonContainer">
-                <button type="submit" className="Button">
-                    Sign In
+                    className="h-4 w-4 accent-brand"
+                  />
+                  Remember me
+                </label>
+                {/* TODO: wire up the password reset flow (this was inert before the redesign too) */}
+                <button type="button" className="font-medium text-brand-ink hover:underline">
+                  Forgot password?
                 </button>
-                <div className="PrivacyText small italic">
-                    <p>"By logging in, you agree to handle all data in accordance with the Data Privacy Act of 2012 and Privacy Policies."</p>
-                </div>
-            </div>
+              </div>
+
+              <Button type="submit" size="lg" className="w-full" loading={isSubmitting}>
+                {isSubmitting ? 'Signing in…' : 'Sign in'}
+              </Button>
+            </form>
+
+            <p className="mt-6 text-xs leading-relaxed text-ink-3">
+              By signing in, you agree to handle all data in accordance with the Data Privacy Act of 2012
+              and the portal's privacy policies.
+            </p>
           </div>
-        </form>
+
+          <p className="mt-10 text-center text-sm text-ink-2">
+            Having trouble signing in?{' '}
+            <span className="font-medium text-ink">Contact the CPT administrator.</span>
+          </p>
+        </section>
       </div>
-
-      {/* ERROR MODAL */}
-      <ConfirmationModal
-        isOpen={isErrorModalOpen}
-        onClose={() => setIsErrorModalOpen(false)}
-        title="ACCESS DENIED"
-        variant="danger"
-        confirmLabel="RETRY"
-        isAlert={true} // Hides the cancel button
-        onConfirm={() => setIsErrorModalOpen(false)}
-      >
-        <p style={{ fontSize: '0.9rem', color: '#555', marginTop: '10px' }}>
-          {errorMessage}
-        </p>
-      </ConfirmationModal>
-
-    </div>
+    </main>
   );
 }
 

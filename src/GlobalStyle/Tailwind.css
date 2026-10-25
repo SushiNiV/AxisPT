@@ -1,0 +1,90 @@
+/* ============================================================================
+   Tailwind.css — design tokens + Tailwind entry for the Axis redesign.
+   Import ONCE, as the first stylesheet in src/index.js:
+       import './GlobalStyle/Tailwind.css';
+   Legacy CSS (Global.css etc.) keeps working untouched alongside it.
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ---- Tokens: light (space-separated RGB so Tailwind can apply opacity) ---- */
+  :root {
+    --c-canvas: 244 245 247;
+    --c-surface: 255 255 255;
+    --c-surface-2: 248 249 250;
+    --c-line: 229 231 235;
+    --c-line-strong: 203 207 214;
+
+    --c-ink: 31 26 27;
+    --c-ink-2: 82 78 80;
+    --c-ink-3: 115 110 112;
+
+    --c-brand: 110 26 43;        /* primary actions */
+    --c-brand-hover: 83 20 32;
+    --c-brand-soft: 251 241 242; /* tinted backgrounds */
+    --c-brand-ink: 110 26 43;    /* brand-colored text on surfaces */
+    --c-brand-on: 255 255 255;   /* text on brand fills */
+
+    --c-ok: 22 101 52;      --c-ok-soft: 232 245 236;
+    --c-warn: 133 77 14;    --c-warn-soft: 254 243 199;
+    --c-danger: 185 28 28;  --c-danger-soft: 254 226 226;
+
+    --shadow: 40 12 18;
+  }
+
+  /* ---- Tokens: dark — maroon is lifted so it stays visible on dark surfaces ---- */
+  .dark {
+    --c-canvas: 14 12 13;
+    --c-surface: 25 22 23;
+    --c-surface-2: 33 29 30;
+    --c-line: 52 46 48;
+    --c-line-strong: 78 70 73;
+
+    --c-ink: 244 240 241;
+    --c-ink-2: 187 180 182;
+    --c-ink-3: 143 136 138;
+
+    --c-brand: 169 53 70;
+    --c-brand-hover: 190 70 87;
+    --c-brand-soft: 52 24 29;
+    --c-brand-ink: 232 150 160;
+    --c-brand-on: 255 255 255;
+
+    --c-ok: 134 214 160;     --c-ok-soft: 22 48 32;
+    --c-warn: 245 195 90;    --c-warn-soft: 56 42 12;
+    --c-danger: 248 150 150; --c-danger-soft: 62 22 22;
+
+    --shadow: 0 0 0;
+  }
+
+  /* ---- Scoped reset: applies only inside `.ax` (zero specificity via :where) ----
+     Replaces Tailwind's preflight until every page is migrated; then delete this
+     block, drop `.ax`, and set `preflight` back to true in tailwind.config.js. */
+  :where(.ax),
+  :where(.ax) *,
+  :where(.ax) ::before,
+  :where(.ax) ::after {
+    box-sizing: border-box;
+    border: 0 solid rgb(var(--c-line));
+  }
+
+  :where(.ax) {
+    font-family: theme('fontFamily.sans');
+    color: rgb(var(--c-ink));
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'cv11', 'ss01'; /* Inter: single-storey a, clearer digits */
+  }
+
+  :where(.ax) :is(h1, h2, h3, h4, p) { margin: 0; }
+  :where(.ax) :is(button, input, select, textarea) { font: inherit; color: inherit; margin: 0; }
+  :where(.ax) button { background: none; cursor: pointer; }
+  :where(.ax) img { display: block; max-width: 100%; }
+
+  /* Grades, IDs and counts should align in columns. */
+  .tabular { font-variant-numeric: tabular-nums; }
+}
