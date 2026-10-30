@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BiLeftArrowAlt, BiRightArrowAlt, BiSave } from 'react-icons/bi';
-import Dropdown from '../../Components/Dropdown';
+import Dropdown from '../../Components/shared/Dropdown';
 import ConfirmationModal from '../../Admin/AComponents/ConfirmationModal'; // TODO: adjust to wherever ConfirmationModal lives
 import '../../GlobalStyle/Global.css';
 import '../../GlobalStyle/GlobalForm.css';

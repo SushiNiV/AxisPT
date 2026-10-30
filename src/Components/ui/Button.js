@@ -4,7 +4,7 @@ import cx from './Cx';
 
 const VARIANTS = {
   primary: 'bg-brand text-brand-on shadow-lift hover:bg-brand-hover',
-  secondary: 'border border-line-strong bg-surface text-ink hover:bg-surface-2',
+  secondary: 'border !border-line-strong bg-surface text-ink hover:bg-surface-2',
   ghost: 'text-ink-2 hover:bg-surface-2 hover:text-ink',
   danger: 'bg-danger-soft text-danger hover:brightness-95',
 };

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { BiSearch, BiFilterAlt, BiPlusCircle, BiX, BiPencil, BiTrash, BiDotsVerticalRounded } from 'react-icons/bi';
 import useMediaQuery from '../../../Components/useMediaQuery'; 
-import Dropdown from '../../../Components/Dropdown'; // Ensure this path is correct
+import Dropdown from '../../../Components/shared/Dropdown'; 
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import '../../../GlobalStyle/GlobalHistory.css';
 import '../../../GlobalStyle/Global.css';

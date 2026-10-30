@@ -29,22 +29,7 @@
   margin-left: 0.75rem;
 }
 
-.formGroup input,
-.formGroup textarea,
-.formGroup select,
-.custom-multiselect .select-display {
-  padding: 12px;
-  border: 1px solid var(--border-medium);
-  border-radius: 8px;
-  font-size: 0.875rem;
-  width: 100%;
-  box-sizing: border-box;
-  background-color: var(--bg-input); /* Dark input in dark mode */
-  color: var(--text-primary); /* White text in dark mode */
-  font-family: inherit;
-  cursor: pointer;
-  resize: none;
-}
+
 
 .formGroup input,
 .formGroup textarea {

@@ -1,76 +1,47 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Outlet } from 'react-router-dom';
-import ASideBar from './ASideBar';
-import AHeader from './AHeader';
+import React from 'react';
+import { BiGridAlt, BiUser, BiBookAlt, BiFile, BiBell, BiHistory, BiArchive } from 'react-icons/bi';
+import AppShell from '../../Components/shell/AppShell';
 import AssistantWidget from './Assistant/AssistantWidget';
-import useMediaQuery from '../../Components/useMediaQuery';
+import cptLogo from '../../assets/cpt-logo.png';
 
-import '../../GlobalStyle/Global.css';
+const stored = (key) => sessionStorage.getItem(key) || localStorage.getItem(key);
+
+// `match` keeps a section highlighted for every nested route under it.
+const NAV = [
+  { to: '/admin/dashboard', label: 'Dashboard', icon: BiGridAlt },
+  { to: '/admin/student-management/masterlist', match: '/admin/student-management', label: 'Student Management', icon: BiUser },
+  { to: '/admin/academics/programs&sections', match: '/admin/academics', label: 'Program Management', icon: BiBookAlt },
+  { to: '/admin/documents/student-form', match: '/admin/documents', label: 'Documents', icon: BiFile },
+  { to: '/admin/access-control', label: 'Access Control', icon: BiBell, adminOnly: true },
+  { to: '/admin/history', label: 'History', icon: BiHistory, adminOnly: true },
+  { to: '/admin/archive', label: 'Archive', icon: BiArchive },
+];
+
+const EXTRA_TITLES = [{ match: '/settings', title: 'Settings' }];
 
 function ALayout() {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [hideAssistant, setHideAssistant] = useState(false);
-  
-  const mainRef = useRef(null);
-  const lastScrollY = useRef(0);
+  const role = stored('role') || 'admin';
+  const isAdmin = role === 'admin' || role === 'superadmin';
 
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Scroll handler for hiding the Assistant widget
-  const handlePageScroll = (e) => {
-    const currentScrollY = e.target.scrollTop;
-    if (currentScrollY > lastScrollY.current + 10) {
-      setHideAssistant(true);
-    } else if (currentScrollY < lastScrollY.current - 10) {
-      setHideAssistant(false);
-    }
-    lastScrollY.current = currentScrollY;
-  };
-
-  // Build the user object from storage so the profile drawer can read it
   const user = {
-    name: sessionStorage.getItem('username') || localStorage.getItem('username') || 'Administrator',
-    email: sessionStorage.getItem('email') || localStorage.getItem('email') || '—',
-    role: sessionStorage.getItem('role') || localStorage.getItem('role') || 'admin',
-    profileUrl: sessionStorage.getItem('profileUrl') || localStorage.getItem('profileUrl') || null,
+    name: stored('username') || 'Administrator',
+    email: stored('email') || '—',
+    role,
+    profileUrl: stored('profileUrl') || null,
   };
 
   return (
-    <div className="Container NoScroll">
-      <ASideBar
-        isMobile={isMobile}
-        mobileNavOpen={mobileNavOpen}
-        closeNav={() => setMobileNavOpen(false)}
-      />
-
-      {mobileNavOpen && (
-        <div className="SidebarBackdrop" onClick={() => setMobileNavOpen(false)} />
-      )}
-
-      <div className="MainContainer">
-        <AHeader 
-          user={user} 
-          onMenuClick={() => setMobileNavOpen(true)} 
-        />
-        
-        <main 
-          className="PageContent" 
-          onScroll={handlePageScroll}
-          ref={mainRef}
-        >
-          <Outlet />
-        </main>
-      </div>
-
-      <div className={`AssistantWrap ${hideAssistant ? 'scrolledDown' : ''}`}>
-        <AssistantWidget />
-      </div>
-    </div>
+    <AppShell
+      nav={NAV.filter((item) => !item.adminOnly || isAdmin)}
+      extraTitles={EXTRA_TITLES}
+      portalRole="Administrator"
+      product="Axis CPT Portal"
+      logo={cptLogo}
+      subtitle="Our Lady of Fatima University · College of Physical Therapy"
+      user={user}
+      logoutTo="/admin/signin"
+      assistant={<AssistantWidget />}
+    />
   );
 }
 

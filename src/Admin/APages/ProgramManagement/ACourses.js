@@ -3,7 +3,7 @@ import { BiSearch, BiPlusCircle, BiX, BiPencil, BiTrash, BiChevronDown, BiDotsVe
 import useMediaQuery from '../../../Components/useMediaQuery';
 import '../../../ResponsiveStyle/ResponsiveTable.css';
 import '../../../GlobalStyle/GlobalCard.css';
-import Filter from '../../../Components/Filter';
+import Filter from '../../../Components/shared/Filter';
 import ConfirmationModal from '../../AComponents/ConfirmationModal';
 import '../../../GlobalStyle/GlobalHistory.css';
 import '../../../GlobalStyle/Global.css';

@@ -1,15 +1,42 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BiShow, BiHide, BiErrorCircle } from 'react-icons/bi';
+import { BiShow, BiHide, BiErrorCircle, BiGridAlt, BiSync, BiExport } from 'react-icons/bi';
 
-import Button from '../Components/Button';
-import TextField from '../Components/Textfield';
-import Alert from '../Components/Alert';
+import Button from '../Components/ui/Button';
+import TextField from '../Components/ui/Textfield';
+import Alert from '../Components/ui/Alert';
+import SignInPreview from './SignInPreview';
 
 import '../GlobalStyle/Global.css';
 
 import campus from '../assets/olfu.jpg';
-import logo from '../assets/cpt-logo.png';
+import seal from '../assets/cpt-logo.png';
+
+// Transparent gold wordmark, served from /public (next to logo192.png).
+const AXIS_LOGO = `${process.env.PUBLIC_URL}/AxisLogo-gold.png`;
+
+const GOLD = '#f5b942';
+
+// Maroon gradient over the campus photo, plus a faint grid that fades out toward the bottom right.
+const PANEL_STYLE = {
+  backgroundImage: `linear-gradient(160deg, rgb(61 22 22 / 0.93), rgb(110 26 43 / 0.9) 55%, rgb(38 12 12 / 0.96)), url(${campus})`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+};
+const GRID_STYLE = {
+  backgroundImage:
+    'linear-gradient(rgb(255 255 255 / 0.55) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.55) 1px, transparent 1px)',
+  backgroundSize: '48px 48px',
+  WebkitMaskImage: 'radial-gradient(ellipse at 25% 35%, #000, transparent 75%)',
+  maskImage: 'radial-gradient(ellipse at 25% 35%, #000, transparent 75%)',
+};
+
+const FEATURES = [
+  { icon: BiGridAlt, title: 'Smart dashboard', text: 'Track academic records at a glance, with performance overviews and progress trends.' },
+  { icon: BiSync, title: 'Real-time data', text: 'See live statuses and records as soon as they are updated.' },
+  { icon: BiExport, title: 'Easy export', text: 'Generate pre-filled academic documents and print them in one click.' },
+];
+
 function SignIn() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
@@ -93,29 +120,65 @@ function SignIn() {
   return (
     <main className="ax h-dvh overflow-y-auto bg-canvas text-ink">
       <div className="grid min-h-full lg:grid-cols-[1.1fr_1fr]">
-        <aside className="relative m-2 flex h-40 flex-col justify-end overflow-hidden rounded-panel p-5 lg:m-3 lg:h-auto lg:p-10">
-          <img src={campus} alt="" className="absolute inset-0 h-full w-full object-cover" />
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 bg-gradient-to-t from-maroon-950/95 via-maroon-900/75 to-maroon-800/70"
-          />
+        {/* Brand panel: a short banner on phones, the full showcase on desktop */}
+        <aside
+          style={PANEL_STYLE}
+          className="relative m-2 flex h-44 flex-col justify-end overflow-hidden rounded-sheet p-5 lg:m-3 lg:h-auto lg:justify-between lg:p-10"
+        >
+          <div aria-hidden="true" className="absolute inset-0 opacity-[0.12]" style={GRID_STYLE} />
+
+          <div className="relative flex items-center gap-3">
+            <img src={AXIS_LOGO} alt="Axis Portal" className="h-14 w-auto lg:h-20" />
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white lg:h-14 lg:w-14">
+              <img src={seal} alt="Our Lady of Fatima University seal" className="h-9 w-9 lg:h-12 lg:w-12" />
+            </span>
+          </div>
+
           <div className="relative hidden lg:block">
-            <p className="font-display text-4xl font-semibold leading-tight text-white">
-              Our Lady of Fatima University
+            <p className="font-display text-5xl font-semibold leading-[1.05] text-white xl:text-6xl">
+              Track it all in <em style={{ color: GOLD }}>one portal.</em>
             </p>
-            <p className="mt-2 text-lg text-white/75">College of Physical Therapy</p>
+            <p className="mt-4 max-w-md text-lg text-white/85">
+              Say goodbye to manual tracking and lost records. Manage your data in real time.
+            </p>
+          </div>
+
+          <ul className="relative hidden grid-cols-3 gap-3 xl:grid">
+            {FEATURES.map(({ icon: Icon, title, text }) => (
+              <li key={title} className="rounded-panel bg-white p-4 text-maroon-900">
+                <p className="flex items-center gap-2 font-display text-lg font-semibold">
+                  <Icon className="shrink-0 text-2xl" aria-hidden="true" />
+                  {title}
+                </p>
+                <p className="mt-1.5 text-sm leading-snug text-maroon-900/75">{text}</p>
+              </li>
+            ))}
+          </ul>
+
+          <p
+            className="relative hidden text-center text-xs font-semibold tracking-[0.12em] lg:block"
+            style={{ color: GOLD }}
+          >
+            OUR LADY OF FATIMA UNIVERSITY - COLLEGE OF PHYSICAL THERAPY
+          </p>
+
+          {/* Decorative preview, tilted and overlapping the panel edge (wide screens only) */}
+          <div className="absolute -right-6 top-[22%] hidden xl:block">
+            <SignInPreview />
           </div>
         </aside>
 
         {/* Form */}
         <section className="flex flex-col px-6 pb-8 pt-6 sm:px-12 lg:py-10">
-          <header className="flex items-center gap-3">
-            <img src={logo} alt="" className="h-12 w-12" />
-            <h1 className="font-display text-xl font-semibold text-brand-ink">Axis CPT Portal</h1>
-          </header>
-          <div className="mx-auto my-auto w-full max-w-sm">
+          <p className="text-right text-sm text-ink-2">
+            Having trouble signing in?{' '}
+            <span className="font-medium text-brand-ink">Contact the college administrator.</span>
+          </p>
+
+          <div className="mx-auto my-auto w-full max-w-sm py-8">
             <h1 className="font-display text-4xl font-semibold text-brand-ink">Sign in</h1>
-            <p className="mt-2 text-ink-2">Use your username or student ID.</p>
+            <p className="mt-2 text-ink-2">Welcome to Axis! Sign in to continue.</p>
+
             <form className="mt-8 space-y-5" onSubmit={handleLogin}>
               {error && (
                 <Alert>
@@ -127,7 +190,7 @@ function SignIn() {
               <TextField
                 id="username"
                 name="username"
-                label="Username or student ID"
+                label="Username or student number"
                 placeholder="Enter your username"
                 value={formData.username}
                 onChange={handleChange}
@@ -186,10 +249,7 @@ function SignIn() {
             </p>
           </div>
 
-          <p className="mt-10 text-center text-sm text-ink-2">
-            Having trouble signing in?{' '}
-            <span className="font-medium text-ink">Contact the CPT administrator.</span>
-          </p>
+          <p className="text-center text-xs text-ink-3">©2026 Axis Portal. All rights reserved.</p>
         </section>
       </div>
     </main>

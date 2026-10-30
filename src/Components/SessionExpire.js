@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { BiInfoCircle } from 'react-icons/bi';
-import PopupOverlay from './PopupOverlay';
+import PopupOverlay from './shared/PopupOverlay';
 
 function SessionExpired({ onConfirm }) {
   const portalRoot = document.getElementById('portal-root') || document.body;

@@ -16,7 +16,7 @@ export default function TextField({ id, label, trailing, className, inputClassNa
         <input
           id={id}
           className={cx(
-            'h-12 w-full rounded-ctl border border-line-strong bg-surface px-3.5 text-base text-ink',
+            'h-12 w-full rounded-ctl  bg-surface px-3.5 text-base text-ink',
             'placeholder:text-ink-3 transition-shadow',
             'focus-visible:border-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15',
             'disabled:cursor-not-allowed disabled:bg-surface-2',

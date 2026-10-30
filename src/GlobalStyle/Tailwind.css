@@ -4,21 +4,19 @@
        import './GlobalStyle/Tailwind.css';
    Legacy CSS (Global.css etc.) keeps working untouched alongside it.
    ============================================================================ */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,600;0,8..60,700;1,8..60,600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  /* ---- Tokens: light (space-separated RGB so Tailwind can apply opacity) ---- */
   :root {
     --c-canvas: 244 245 247;
     --c-surface: 255 255 255;
     --c-surface-2: 248 249 250;
     --c-line: 229 231 235;
-    --c-line-strong: 203 207 214;
+    --c-line-strong: 218 221 226; 
 
     --c-ink: 31 26 27;
     --c-ink-2: 82 78 80;
@@ -84,7 +82,28 @@
   :where(.ax) :is(button, input, select, textarea) { font: inherit; color: inherit; margin: 0; }
   :where(.ax) button { background: none; cursor: pointer; }
   :where(.ax) img { display: block; max-width: 100%; }
+  :where(.ax) a { color: inherit; text-decoration: none; }
 
   /* Grades, IDs and counts should align in columns. */
   .tabular { font-variant-numeric: tabular-nums; }
+
+  /* Theme switch: fade colors briefly. Added/removed by useTheme. */
+    .theme-anim,
+    .theme-anim *,
+    .theme-anim ::before,
+    .theme-anim ::after {
+      transition: background-color 300ms ease, color 300ms ease, 
+      fill 300ms ease, stroke 300ms ease !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+    .theme-anim,
+    .theme-anim *,
+    .theme-anim ::before,
+    .theme-anim ::after {
+        transition: none !important;
+    }
+    }
+
+    
 }

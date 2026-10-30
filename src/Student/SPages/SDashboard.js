@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { BiBookAlt, BiUser, BiBarChart, BiTrendingUp, BiCheckCircle, BiBookOpen } from 'react-icons/bi';
-import { Link } from 'react-router-dom';
-import '../../GlobalStyle/Global.css';
-import '../../GlobalStyle/Dashboard.css';
+import { Link, useNavigate } from 'react-router-dom';
+import WelcomeBanner from '../../Components/shared/WelcomeBanner'; // NEW
+import Announcements from '../../Components/shared/Announcements'; // NEW
+
+// Assuming these are from your standard Tailwind components
+import Card from '../../Components/ui/Card';
 
 function SDashboard() {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ gwa: '—', subjectsCount: 0, standing: 'Regular' });
   const [recentGrades, setRecentGrades] = useState([]);
@@ -12,7 +16,14 @@ function SDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // DUMMY ANNOUNCEMENTS
+  const [announcements] = useState([
+    { id: 1, title: "HEYHEYHEY!", body: "Ano yan", date: "2026-10-23T22:34:00" },
+    { id: 2, title: "DEADLINE FOR THE RESUME", body: "Dear students, The deadline for the resume is set today.", date: "2026-10-23T14:07:00" },
+  ]);
+
   useEffect(() => {
+    // ... (Keep your exact same useEffect fetching logic here) ...
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (!token) {
       setError("No token found. Please log in again.");
@@ -36,13 +47,11 @@ function SDashboard() {
         if (gradesData.success && gradesData.data.length > 0) {
           const grades = gradesData.data;
           
-          // Sort grades by year and semester (newest first) to get "recent" ones
           const sortedGrades = [...grades].sort((a, b) => {
             if (b.year_level !== a.year_level) return b.year_level - a.year_level;
             return b.semester_id - a.semester_id;
           });
 
-          // Take the top 4 for the dashboard
           setRecentGrades(sortedGrades.slice(0, 4));
 
           const validGrades = grades.filter(g => g.final_grade != null);
@@ -76,112 +85,127 @@ function SDashboard() {
   if (error) return <div className="InnerContainer"><p style={{ color: 'red' }}>Error: {error}</p></div>;
 
   return (
-    <div className="InnerContainer DashboardContainer">
-
-      {/* KPI Row */}
-      <div className="DashboardKPIGrid">
-        <div className="DashboardKPI">
-          <div className="DashboardKPIIcon"><BiUser /></div>
-          <div className="DashboardKPIContent">
-            <p className="DashboardKPILabel">PROGRAM</p>
-            <h3 className="DashboardKPIValue">{profile?.program_abbr || '—'}</h3>
-            <p className="DashboardKPISub">Year {profile?.year_level || '—'}</p>
-          </div>
-        </div>
-
-        <div className="DashboardKPI">
-          <div className="DashboardKPIIcon"><BiTrendingUp /></div>
-          <div className="DashboardKPIContent">
-            <p className="DashboardKPILabel">CURRENT GWA</p>
-            <h3 className="DashboardKPIValue">{stats.gwa}</h3>
-            <p className="DashboardKPISub">Based on all recorded grades</p>
-          </div>
-        </div>
-
-        <div className="DashboardKPI">
-          <div className="DashboardKPIIcon"><BiBookOpen /></div>
-          <div className="DashboardKPIContent">
-            <p className="DashboardKPILabel">SUBJECTS</p>
-            <h3 className="DashboardKPIValue">{stats.subjectsCount}</h3>
-            <p className="DashboardKPISub">Currently enrolled this term</p>
-          </div>
-        </div>
-
-        <div className="DashboardKPI">
-          <div className="DashboardKPIIcon"><BiCheckCircle /></div>
-          <div className="DashboardKPIContent">
-            <p className="DashboardKPILabel">STANDING</p>
-            <h3 className="DashboardKPIValue">{stats.standing}</h3>
-            <p className="DashboardKPISub">Academic status</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Two Column Layout for Recent Grades & Current Subjects */}
-      <div className="DashboardChartRow" style={{ marginTop: '1rem' }}>
+    <div className="InnerContainer ArchiveLayout">
+      <div className="ax min-h-0 flex-1 space-y-4 overflow-y-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         
-        {/* Recent Grades */}
-        <div className="DashboardCard">
-          <div className="DashboardCardHeader">
-            <h3>Recent Grades</h3>
-            <Link to="/student/grades" style={{ fontSize: '0.8rem', color: 'var(--text-brand)', fontWeight: 600 }}>View All</Link>
-          </div>
-          <div className="DashboardCardBody">
-            {recentGrades.length === 0 ? (
-              <p className="DashboardEmpty">No grades recorded yet.</p>
-            ) : (
-              <ul className="DashboardRecentList">
-                {recentGrades.map((g, i) => (
-                  <li key={i} className="DashboardRecentItem">
-                    <div className="DashboardRecentInitial" style={{ backgroundColor: g.remarks === 'F' ? 'var(--status-danger-text)' : 'var(--branding-maroon)' }}>
-                      {g.course_code.substring(0, 2)}
-                    </div>
-                    <div className="DashboardRecentContent">
-                      <p className="DashboardRecentName">{g.course_code}</p>
-                      <p className="DashboardRecentMeta" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
-                        {g.course_name}
-                      </p>
-                    </div>
-                    <span style={{ fontWeight: 700, color: g.remarks === 'F' ? 'var(--status-danger-text)' : 'var(--text-brand)' }}>
-                      {g.final_grade}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+        {/* NEW: Welcome Banner */}
+        <WelcomeBanner
+          name={profile?.first_name || 'Student'}
+          subtext="Next up: Complete Course Evaluation from the Registrar's Office. 44 still to upload."
+          actionText="Upload now"
+          onAction={() => navigate('/student/documents')} // Adjust route if needed
+        />
+
+        {/* KPI Row */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="flex items-center gap-4 p-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-brand">
+              <BiUser className="text-2xl" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-ink-3 uppercase tracking-wider">Program</p>
+              <h3 className="font-display text-xl font-bold text-ink">{profile?.program_abbr || '—'}</h3>
+              <p className="text-xs text-ink-2">Year {profile?.year_level || '—'}</p>
+            </div>
+          </Card>
+
+          <Card className="flex items-center gap-4 p-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-brand">
+              <BiTrendingUp className="text-2xl" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-ink-3 uppercase tracking-wider">Current GWA</p>
+              <h3 className="font-display text-xl font-bold text-ink">{stats.gwa}</h3>
+              <p className="text-xs text-ink-2">Based on all recorded grades</p>
+            </div>
+          </Card>
+
+          <Card className="flex items-center gap-4 p-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-brand">
+              <BiBookOpen className="text-2xl" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-ink-3 uppercase tracking-wider">Subjects</p>
+              <h3 className="font-display text-xl font-bold text-ink">{stats.subjectsCount}</h3>
+              <p className="text-xs text-ink-2">Currently enrolled this term</p>
+            </div>
+          </Card>
+
+          <Card className="flex items-center gap-4 p-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-brand">
+              <BiCheckCircle className="text-2xl" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-ink-3 uppercase tracking-wider">Standing</p>
+              <h3 className="font-display text-xl font-bold text-ink">{stats.standing}</h3>
+              <p className="text-xs text-ink-2">Academic status</p>
+            </div>
+          </Card>
         </div>
 
-        {/* Current Subjects */}
-        <div className="DashboardCard">
-          <div className="DashboardCardHeader">
-            <h3>Current Subjects</h3>
-            <Link to="/student/subjects" style={{ fontSize: '0.8rem', color: 'var(--text-brand)', fontWeight: 600 }}>View All</Link>
+        {/* Main Content Grid */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          
+          {/* Left Column (Grades & Subjects) */}
+          <div className="lg:col-span-2 space-y-4">
+            
+            {/* Recent Grades */}
+            <Card title="Recent Grades" action={<Link to="/student/grades" className="text-sm font-medium text-brand-ink hover:underline">View All</Link>}>
+              {recentGrades.length === 0 ? (
+                <p className="text-sm text-ink-3 py-4 text-center">No grades recorded yet.</p>
+              ) : (
+                <ul className="divide-y divide-line">
+                  {recentGrades.map((g, i) => (
+                    <li key={i} className="flex items-center gap-4 py-3">
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-brand-on ${g.remarks === 'F' ? 'bg-danger' : 'bg-brand'}`}>
+                        {g.course_code.substring(0, 2)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-ink">{g.course_code}</p>
+                        <p className="truncate text-xs text-ink-2">{g.course_name}</p>
+                      </div>
+                      <span className={`shrink-0 font-bold tabular-nums ${g.remarks === 'F' ? 'text-danger' : 'text-brand-ink'}`}>
+                        {g.final_grade}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+
+            {/* Current Subjects */}
+            <Card title="Current Subjects" action={<Link to="/student/subjects" className="text-sm font-medium text-brand-ink hover:underline">View All</Link>}>
+              {subjects.length === 0 ? (
+                <p className="text-sm text-ink-3 py-4 text-center">No active subjects enrolled.</p>
+              ) : (
+                <ul className="divide-y divide-line">
+                  {subjects.slice(0, 4).map((s, i) => (
+                    <li key={i} className="flex items-center gap-4 py-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-brand">
+                        <BiBookAlt className="text-base" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-ink">{s.course_code}</p>
+                        <p className="truncate text-xs text-ink-2">{s.course_name}</p>
+                      </div>
+                      <span className="shrink-0 rounded bg-surface-2 px-2 py-1 text-xs font-medium text-ink-2">
+                        {s.section_name || 'No Section'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
           </div>
-          <div className="DashboardCardBody">
-            {subjects.length === 0 ? (
-              <p className="DashboardEmpty">No active subjects enrolled.</p>
-            ) : (
-              <ul className="DashboardRecentList">
-                {subjects.slice(0, 4).map((s, i) => (
-                  <li key={i} className="DashboardRecentItem">
-                    <div className="DashboardRecentInitial" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-brand)' }}>
-                      <BiBookAlt />
-                    </div>
-                    <div className="DashboardRecentContent">
-                      <p className="DashboardRecentName">{s.course_code}</p>
-                      <p className="DashboardRecentMeta" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
-                        {s.course_name}
-                      </p>
-                    </div>
-                    <span className="detailBadge" style={{ fontSize: '0.7rem' }}>
-                      {s.section_name || 'No Section'}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+
+          {/* Right Column (Announcements) */}
+          <div className="lg:col-span-1">
+            <Announcements 
+              announcements={announcements} 
+              isAdmin={false} 
+            />
           </div>
+
         </div>
 
       </div>

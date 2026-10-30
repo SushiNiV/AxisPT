@@ -9,7 +9,7 @@ import {
   OverlayIconWrapper,
   OverlayHeaderTitle,
   OverlayBody
-} from './PopupOverlay.styles.js';
+} from '../PopupOverlay.styles.js';
 
 const PopupOverlay = ({ isOpen, onClose, icon, title, children }) => {
   useEffect(() => {

@@ -1,49 +1,72 @@
-import React, { useState, useEffect } from 'react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
-  LineChart, Line,
-} from 'recharts';
-import { BiUser, BiBook, BiBookOpen, BiGroup, BiTrendingUp } from 'react-icons/bi';
-import '../../../GlobalStyle/Global.css';
-import '../../../GlobalStyle/GlobalCard.css';
-import '../../../GlobalStyle/Dashboard.css';
+import React, { useCallback, useEffect, useState } from 'react';
+import { BiErrorCircle } from 'react-icons/bi';
+import { useNavigate } from 'react-router-dom';
+import Button from '../../../Components/ui/Button';
+import Avatar from '../../../Components/ui/Avatar';
+import EmptyState from '../../../Components/ui/Emptystate';
+import Card, { CardLink, CardEmpty } from '../../../Components/ui/Card';
+import StatCard from '../../../Components/ui/Statcard';
+import RankedBars from '../../../Components/charts/Rankedbars';
+import WelcomeBanner from '../../../Components/shared/WelcomeBanner';
+import Announcements from '../../../Components/shared/Announcements';
+import StudentBreakdown from '../../../Components/charts/StudentBreakdown'; // NEW
 
-const PROGRAM_COLORS = ['#3d1616', '#7a2e2e', '#a84d4d', '#c97a7a', '#e5b4b4'];
-const YEAR_COLORS = ['#3d1616', '#7a2e2e', '#a84d4d', '#c97a7a', '#e5b4b4'];
+const ROUTES = {
+  students: '/admin/student-management/masterlist',
+  academics: '/admin/academics/programs&sections',
+};
+
+// REALISTIC ADMIN ANNOUNCEMENTS
+const DUMMY_ANNOUNCEMENTS = [
+  { id: 1, title: "Midterm Grade Submission", body: "Please ensure all midterm grades are encoded in the system before Friday, 5:00 PM.", date: "2026-10-25T09:00:00" },
+  { id: 2, title: "Faculty Meeting", body: "There will be a brief faculty meeting tomorrow at 2 PM in Room 304 to discuss the upcoming accreditation.", date: "2026-10-24T14:30:00" },
+  { id: 3, title: "System Maintenance", body: "AxisPT will be down for scheduled maintenance this Saturday from 10 PM to 2 AM.", date: "2026-10-23T11:00:00" },
+];
 
 function Dashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [announcements] = useState(DUMMY_ANNOUNCEMENTS);
+
+  const fetchStats = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/dashboard/stats`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (data.success) setStats(data.data);
+      else setError(data.message || 'Failed to load dashboard.');
+    } catch (err) {
+      console.error('Error loading dashboard:', err);
+      setError('Failed to connect to the server.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/dashboard/stats`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await response.json();
-        if (data.success) setStats(data.data);
-        else setError(data.message || 'Failed to load dashboard.');
-      } catch (err) {
-        console.error('Error loading dashboard:', err);
-        setError('Failed to connect to the server.');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStats();
-  }, []);
+  }, [fetchStats]);
 
   if (loading) {
     return (
-      <div className="InnerContainer">
-        <div className="emptyState">
-          <div className="emptyStateIcon">⏳</div>
-          <h3 className="emptyStateTitle">Loading Dashboard</h3>
-          <p className="emptyStateText">Please wait while we crunch the numbers...</p>
+      <div className="InnerContainer ArchiveLayout">
+        <div className="ax space-y-4" aria-busy="true">
+          <div className="h-40 animate-pulse rounded-panel bg-line/60" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }, (_, i) => (
+              <div key={i} className="h-32 animate-pulse rounded-panel bg-line/60" />
+            ))}
+          </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="h-72 animate-pulse rounded-panel bg-line/60 lg:col-span-2" />
+            <div className="h-72 animate-pulse rounded-panel bg-line/60" />
+          </div>
         </div>
       </div>
     );
@@ -51,11 +74,14 @@ function Dashboard() {
 
   if (error || !stats) {
     return (
-      <div className="InnerContainer">
-        <div className="emptyState">
-          <div className="emptyStateIcon">⚠️</div>
-          <h3 className="emptyStateTitle">Error Loading Dashboard</h3>
-          <p className="emptyStateText">{error || 'No data available.'}</p>
+      <div className="InnerContainer ArchiveLayout">
+        <div className="ax flex flex-1 flex-col">
+          <EmptyState
+            icon={BiErrorCircle}
+            title="Couldn't load the dashboard"
+            text={error || 'No data available.'}
+            action={<Button onClick={fetchStats}>Try again</Button>}
+          />
         </div>
       </div>
     );
@@ -63,228 +89,90 @@ function Dashboard() {
 
   const { totals, studentsByYear, studentsByProgram, standingCounts, recentEnrollments, topCourses } = stats;
 
-  // Format year level labels for chart
-  const yearChartData = studentsByYear.map((y) => ({
-    name: `Year ${y.year_level}`,
-    students: y.count,
-  }));
-
-  // Standing chart: normalize to total for pie
-  const totalStanding = standingCounts.reduce((sum, s) => sum + s.count, 0) || 1;
-  const standingChartData = standingCounts.map((s) => ({
-    name: s.status === 'None' ? 'Regular' : s.status,
-    value: s.count,
-    percentage: ((s.count / totalStanding) * 100).toFixed(0),
-  }));
-
   return (
-    <div className="InnerContainer DashboardContainer">
-      {/* ===== KPI Cards ===== */}
-      <div className="DashboardKPIGrid">
-        <KPICard
-          icon={<BiUser />}
-          label="Active Students"
-          value={totals.active_students}
-          sublabel={`${totals.total_students} total enrolled`}
+    <div className="InnerContainer ArchiveLayout">
+      <div className="ax min-h-0 flex-1 space-y-4 overflow-y-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        
+        {/* Welcome Banner */}
+        <WelcomeBanner
+          name="Administrator"
+          role="ADMIN PORTAL"
+          subtext={`You have ${totals.active_students} active students and ${totals.total_sections} sections currently on file. Here is your daily overview.`}
+          actionText="Go to Masterlist"
+          onAction={() => navigate(ROUTES.students)}
         />
-        <KPICard
-          icon={<BiBook />}
-          label="Programs"
-          value={totals.active_programs}
-          sublabel="Active academic programs"
-        />
-        <KPICard
-          icon={<BiBookOpen />}
-          label="Courses"
-          value={totals.active_courses}
-          sublabel="Active in the catalog"
-        />
-        <KPICard
-          icon={<BiGroup />}
-          label="Sections"
-          value={totals.total_sections}
-          sublabel="All sections on file"
-        />
-      </div>
 
-      {/* ===== Charts row ===== */}
-      <div className="DashboardChartRow">
-        {/* Students by Year Level */}
-        <div className="DashboardCard">
-          <div className="DashboardCardHeader">
-            <h3>Students by Year Level</h3>
-            <span className="DashboardCardHint">Currently enrolled</span>
+        {/* Headline numbers */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard featured label="Active students" value={totals.active_students} hint={`${totals.total_students} total enrolled`} to={ROUTES.students} />
+          <StatCard label="Programs" value={totals.active_programs} hint="Active academic programs" to={ROUTES.academics} />
+          <StatCard featured label="Courses" value={totals.active_courses} hint="Active in the catalog" to={ROUTES.academics} />
+          <StatCard label="Sections" value={totals.total_sections} hint="All sections on file" to={ROUTES.academics} />
+        </div>
+
+        {/* Main Middle Grid: Breakdown & Announcements */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+             <StudentBreakdown 
+                studentsByYear={studentsByYear}
+                studentsByProgram={studentsByProgram}
+                standingCounts={standingCounts}
+                totalStudents={totals.total_students}
+             />
           </div>
-          <div className="DashboardChartBody">
-            {yearChartData.length === 0 ? (
-              <p className="DashboardEmpty">No enrollment data yet.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={yearChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#555' }} axisLine={{ stroke: '#ddd' }} tickLine={false} />
-                  <YAxis tick={{ fontSize: 12, fill: '#555' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{ fontSize: '0.8rem', borderRadius: 6, border: '1px solid #eee' }}
-                    cursor={{ fill: 'rgba(61,22,22,0.05)' }}
-                  />
-                  <Bar dataKey="students" fill="#3d1616" radius={[4, 4, 0, 0]} maxBarSize={60} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+          <div className="lg:col-span-1">
+            
+             <Announcements 
+               announcements={announcements} 
+               isAdmin={true} 
+               onCreate={() => console.log('Open Create Modal')}
+               onEdit={(a) => console.log('Edit', a)}
+               onDelete={(a) => console.log('Delete', a)}
+             />
           </div>
         </div>
 
-        {/* Academic Standing */}
-        <div className="DashboardCard">
-          <div className="DashboardCardHeader">
-            <h3>Academic Standing</h3>
-            <span className="DashboardCardHint">Program Head verified</span>
-          </div>
-          <div className="DashboardCardBody">
-            {standingChartData.length === 0 ? (
-              <p className="DashboardEmpty">No verified standings yet.</p>
+        {/* Bottom Row: Courses & Recent */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card title="Most enrolled courses" hint="Based on recorded grades">
+            {topCourses.length === 0 ? (
+              <CardEmpty>No grade records yet.</CardEmpty>
             ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie
-                    data={standingChartData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    paddingAngle={3}
-                    label={({ name, percentage }) => `${name} (${percentage}%)`}
-                    labelLine={false}
-                    style={{ fontSize: '0.7rem' }}
-                  >
-                    {standingChartData.map((_, i) => (
-                      <Cell key={i} fill={YEAR_COLORS[i % YEAR_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ fontSize: '0.8rem', borderRadius: 6 }} />
-                </PieChart>
-              </ResponsiveContainer>
+              <RankedBars
+                items={topCourses.map((c) => ({
+                  label: c.course_code,
+                  sublabel: c.course_name,
+                  value: c.enrollment_count,
+                }))}
+              />
             )}
-          </div>
-        </div>
-      </div>
+          </Card>
 
-      {/* ===== Lower row ===== */}
-      <div className="DashboardChartRow">
-        {/* Students by Program */}
-        <div className="DashboardCard">
-          <div className="DashboardCardHeader">
-            <h3>Students by Program</h3>
-            <span className="DashboardCardHint">Current enrollment</span>
-          </div>
-          <div className="DashboardCardBody">
-            {studentsByProgram.length === 0 ? (
-              <p className="DashboardEmpty">No students enrolled yet.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart
-                  data={studentsByProgram}
-                  layout="vertical"
-                  margin={{ top: 10, right: 30, left: 10, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#eee" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 12, fill: '#555' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <YAxis
-                    type="category"
-                    dataKey="program_abbr"
-                    tick={{ fontSize: 12, fill: '#555' }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={70}
-                  />
-                  <Tooltip
-                    contentStyle={{ fontSize: '0.8rem', borderRadius: 6 }}
-                    cursor={{ fill: 'rgba(61,22,22,0.05)' }}
-                  />
-                  <Bar dataKey="count" fill="#7a2e2e" radius={[0, 4, 4, 0]} maxBarSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
-        {/* Recent Enrollments */}
-        <div className="DashboardCard">
-          <div className="DashboardCardHeader">
-            <h3>Recent Enrollments</h3>
-            <span className="DashboardCardHint">Latest 5</span>
-          </div>
-          <div className="DashboardCardBody">
+          <Card
+            title="Recent enrollments"
+            action={<CardLink to={ROUTES.students}>View all</CardLink>}
+          >
             {recentEnrollments.length === 0 ? (
-              <p className="DashboardEmpty">No students yet.</p>
+              <CardEmpty>No students yet.</CardEmpty>
             ) : (
-              <ul className="DashboardRecentList">
+              <ul className="-my-2 divide-y divide-line">
                 {recentEnrollments.map((r, i) => (
-                  <li key={i} className="DashboardRecentItem">
-                    <div className="DashboardRecentInitial">
-                      {(r.first_name?.[0] || '?').toUpperCase()}
+                  <li key={i} className="flex items-center gap-3 py-3">
+                    <Avatar first={r.first_name} last={r.last_name} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-ink">{r.last_name}, {r.first_name}</p>
+                      <p className="truncate text-xs text-ink-2">{r.student_number}, {r.program_abbr || 'No program'}</p>
                     </div>
-                    <div className="DashboardRecentContent">
-                      <p className="DashboardRecentName">
-                        {r.last_name}, {r.first_name}
-                      </p>
-                      <p className="DashboardRecentMeta">
-                        {r.student_number} &middot; {r.program_abbr || 'No program'}
-                      </p>
-                    </div>
-                    <span className="DashboardRecentDate">
+                    <span className="shrink-0 text-xs text-ink-3">
                       {new Date(r.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
                     </span>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
+          </Card>
         </div>
-      </div>
 
-      {/* ===== Top Courses ===== */}
-      <div className="DashboardCard DashboardFullWidth">
-        <div className="DashboardCardHeader">
-          <h3>Most Enrolled Courses</h3>
-          <span className="DashboardCardHint">Based on recorded grades</span>
-        </div>
-        <div className="DashboardCardBody">
-          {topCourses.length === 0 ? (
-            <p className="DashboardEmpty">No grade records yet.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={topCourses} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
-                <XAxis dataKey="course_code" tick={{ fontSize: 11, fill: '#555' }} axisLine={{ stroke: '#ddd' }} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: '#555' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ fontSize: '0.8rem', borderRadius: 6 }}
-                  cursor={{ fill: 'rgba(61,22,22,0.05)' }}
-                  formatter={(value, name, props) => [value, props.payload.course_name]}
-                />
-                <Bar dataKey="enrollment_count" fill="#a84d4d" radius={[4, 4, 0, 0]} maxBarSize={50} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------- Small reusable KPI card ----------
-function KPICard({ icon, label, value, sublabel }) {
-  return (
-    <div className="DashboardKPI">
-      <div className="DashboardKPIIcon">{icon}</div>
-      <div className="DashboardKPIContent">
-        <p className="DashboardKPILabel">{label}</p>
-        <p className="DashboardKPIValue">{value}</p>
-        <p className="DashboardKPISub">{sublabel}</p>
       </div>
     </div>
   );

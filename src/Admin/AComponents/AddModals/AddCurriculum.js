@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import ReactDOM from 'react-dom';
 import ConfirmationModal from '../ConfirmationModal';
-import Dropdown from '../../../Components/Dropdown'; // <-- Import Dropdown
+import Dropdown from '../../../Components/shared/Dropdown'; 
 
 import '../../../GlobalStyle/GlobalForm.css';
 import '../../../GlobalStyle/GlobalOverlay.css';

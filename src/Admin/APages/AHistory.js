@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BiSearch, BiX, BiChevronDown } from 'react-icons/bi';
 import useMediaQuery from '../../Components/useMediaQuery';
-import Filter from '../../Components/Filter';
+import Filter from '../../Components/shared/Filter';
 import '../../GlobalStyle/GlobalHistory.css';
 import '../../GlobalStyle/Global.css';
 import '../../GlobalStyle/GlobalCard.css';

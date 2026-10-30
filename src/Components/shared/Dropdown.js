@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { BiChevronDown } from 'react-icons/bi';
-import '../GlobalStyle/Dropdown.css'; 
+import '../../GlobalStyle/Dropdown.css'; 
 
 function Dropdown({ 
   options = [], 
