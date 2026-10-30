@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BiLeftArrowAlt, BiRightArrowAlt, BiSave } from 'react-icons/bi';
+import { BiLeftArrowAlt, BiRightArrowAlt, BiSave, BiUndo } from 'react-icons/bi';
 import Dropdown from '../../Components/Dropdown';
-import ConfirmationModal from '../../Admin/AComponents/ConfirmationModal'; // TODO: adjust to wherever ConfirmationModal lives
+import ConfirmationModal from '../../Admin/AComponents/ConfirmationModal';
 import '../../GlobalStyle/Global.css';
 import '../../GlobalStyle/GlobalForm.css';
 import './SProfile.css'; 
@@ -27,7 +27,6 @@ const LIVING_IN = [BLANK, ...opt('Dorm/Boarding House', "Parent's House", "Relat
 const TRANSPO = [BLANK, ...opt(['< P50', 'Less than P50'], ['P51-P100', 'P51 to P100'], ['> P100', 'More than P100'])];
 const ORDINAL = [BLANK, ...opt('Only Child', 'Eldest Child', 'Middle Child', 'Youngest Child')];
 
-/** First non-empty value among several possible API key names. */
 const pick = (d, ...keys) => {
   for (const k of keys) {
     const v = d?.[k];
@@ -36,7 +35,6 @@ const pick = (d, ...keys) => {
   return '';
 };
 
-/** Case/wording-insensitive key so legacy values ("PARENT'S HOUSE", "BETWEEN P51-P100") match option values. */
 const norm = (v) => String(v).toLowerCase().replace(/^between\s+/, '').replace(/\s+/g, ' ').trim();
 const canonical = (value, options) => {
   if (!value) return '';
@@ -44,19 +42,16 @@ const canonical = (value, options) => {
   return hit ? hit.value : value;
 };
 
-/** Living/Deceased from father_status, or from an is_alive-style boolean if that is what the API returns. */
 const statusFrom = (d, who) => {
   const s = pick(d, `${who}_status`);
   if (s) return s;
   const alive = d?.[`${who}_is_alive`] ?? d?.[`${who}_alive`];
   if (alive === true || alive === 't' || alive === 'true') return 'Living';
   if (alive === false || alive === 'f' || alive === 'false') return 'Deceased';
-  return ''; // unknown: leave blank and do not overwrite on save
+  return ''; 
 };
 
-/** API response (snake_case, key names vary) -> form state (camelCase, same names as AddStudent). */
 const mapProfile = (d) => ({
-  // Read-only
   studentNumber: pick(d, 'student_number', 'studentNumber'),
   schoolEmail: pick(d, 'school_email', 'email'),
   firstName: pick(d, 'first_name', 'firstname', 'firstName'),
@@ -71,7 +66,6 @@ const mapProfile = (d) => ({
   classification: pick(d, 'classification'),
   standing: pick(d, 'standing'),
 
-  // Personal
   personalEmail: pick(d, 'personal_email', 'personalEmail'),
   placeOfBirth: pick(d, 'place_of_birth', 'birth_place', 'placeOfBirth'),
   phoneNumber: pick(d, 'mobile_no', 'phone_number', 'phoneNumber'),
@@ -84,14 +78,12 @@ const mapProfile = (d) => ({
   language: pick(d, 'language_dialects', 'language_dialect', 'language'),
   visualProblems: pick(d, 'visual_problems', 'visualProblems'),
 
-  // Permanent address (stored as present_* / perm_* depending on endpoint)
   permHouseNo: pick(d, 'perm_house_no', 'present_houseno'),
   permStreet: pick(d, 'perm_street', 'present_street', 'street'),
   permBarangay: pick(d, 'perm_barangay', 'present_sbdvsn_brgy', 'present_barangay', 'barangay'),
   permCity: pick(d, 'perm_city', 'present_city_mncplty', 'present_city', 'city_municipality'),
   permProvince: pick(d, 'perm_province', 'present_province', 'province'),
 
-  // Provincial address
   sameAsPermanent: !!d?.same_as_permanent,
   provHouseNo: pick(d, 'prov_house_no', 'provincial_houseno'),
   provStreet: pick(d, 'prov_street', 'provincial_street'),
@@ -99,7 +91,6 @@ const mapProfile = (d) => ({
   provCity: pick(d, 'prov_city', 'provincial_city_mncplty'),
   provProvince: pick(d, 'prov_province', 'provincial_province'),
 
-  // Parents / guardian
   fatherFirstName: pick(d, 'father_firstname', 'father_first_name'),
   fatherMiddleName: pick(d, 'father_middlename', 'father_middle_name'),
   fatherLastName: pick(d, 'father_lastname', 'father_last_name'),
@@ -123,7 +114,6 @@ const mapProfile = (d) => ({
   guardianOccupation: pick(d, 'guardian_occupation'),
   guardianContact: pick(d, 'guardian_contact', 'guardian_contact_no'),
 
-  // Family background
   support: canonical(pick(d, 'support'), SUPPORT),
   parentsIncome: canonical(pick(d, 'parents_income'), INCOME),
   livingIn: canonical(pick(d, 'living_in'), LIVING_IN),
@@ -131,7 +121,6 @@ const mapProfile = (d) => ({
   noSiblings: d?.no_siblings ?? '',
   ordinalPosition: canonical(pick(d, 'ordinal_position'), ORDINAL),
 
-  // Education & achievements
   highschoolGraduated: pick(d, 'highschool_graduated'),
   pubprivHS: canonical(pick(d, 'pub_priv_hs', 'pubpriv_hs', 'pubprivHS'), PUBPRIV) || 'Public',
   schoolAddress: pick(d, 'hs_school_address', 'highschool_address', 'schoolAddress'),
@@ -142,7 +131,6 @@ const mapProfile = (d) => ({
   academicClubsExtracurr: pick(d, 'acad_extracurr', 'acad_clubs_extracurr'),
 });
 
-/* ---------- Small field helpers ---------- */
 const Text = ({ label, name, form, onChange, ...rest }) => (
   <div className="formGroup">
     <label className="formLabel">{label}</label>
@@ -158,7 +146,6 @@ const Area = ({ label, name, form, onChange }) => (
 );
 
 const Pick = ({ label, name, form, setField, options }) => {
-  // A stored value that is not one of the options (legacy data) is kept visible instead of showing blank.
   const current = form[name];
   const opts = current && !options.some((o) => o.value === current)
     ? [{ value: current, label: current }, ...options]
@@ -176,25 +163,11 @@ const Pick = ({ label, name, form, setField, options }) => {
   );
 };
 
-const ReadOnly = ({ label, value, type = 'text' }) => (
-  <div className="formGroup">
-    <label className="formLabel">{label}</label>
-    <input
-      type={type}
-      value={value || ''}
-      placeholder="—"
-      readOnly
-      tabIndex={-1}
-      style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)', cursor: 'not-allowed' }}
-    />
-  </div>
-);
-
 const subHeading = { color: 'var(--text-secondary)', marginTop: '20px', marginBottom: '8px' };
 
-/* ---------- Component ---------- */
 function SProfile() {
   const [form, setForm] = useState(null);
+  const [initialForm, setInitialForm] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -205,6 +178,8 @@ function SProfile() {
   const totalSteps = STEPS.length;
   const getToken = () => sessionStorage.getItem('token') || localStorage.getItem('token');
 
+  const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm);
+
   useEffect(() => {
     let cancelled = false;
     fetch(`${process.env.REACT_APP_API_URL}/student/profile`, {
@@ -214,8 +189,9 @@ function SProfile() {
       .then((d) => {
         if (cancelled) return;
         if (d.success) {
-          if (process.env.NODE_ENV === 'development') console.log('[SProfile] raw profile', d.data);
-          setForm(mapProfile(d.data));
+          const mapped = mapProfile(d.data);
+          setForm(mapped);
+          setInitialForm(mapped); 
         } else {
           setLoadError(d.message || 'Failed to load profile.');
         }
@@ -256,6 +232,10 @@ function SProfile() {
     scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleDiscard = () => {
+    setForm(initialForm); 
+  };
+
   const validate = () => {
     if (form.personalEmail && !/^\S+@\S+\.\S+$/.test(form.personalEmail)) return 'Enter a valid personal email address.';
     if (form.hsFinalGWA !== '' && isNaN(form.hsFinalGWA)) return 'High school GWA must be a number.';
@@ -277,9 +257,21 @@ function SProfile() {
     const gwa = form.hsFinalGWA !== '' && !isNaN(form.hsFinalGWA) ? parseFloat(form.hsFinalGWA) : null;
     const siblings = form.noSiblings !== '' ? parseInt(form.noSiblings, 10) : null;
 
-    // Only student-editable fields are sent. Both key variants are included where
-    // the backend has been seen using either name (same approach as AddStudent).
     const payload = {
+      student_number: n(form.studentNumber),
+      school_email: n(form.schoolEmail),
+      first_name: n(form.firstName),
+      middle_name: n(form.middleName),
+      last_name: n(form.lastName),
+      suffix: n(form.suffix),
+      sex: n(form.sex),
+      birth_date: n(form.birthDate),
+      program_abbr: n(form.program),
+      year_level: n(form.yearLevel),
+      section_name: n(form.section),
+      classification: n(form.classification),
+      standing: n(form.standing),
+
       personal_email: n(form.personalEmail),
       place_of_birth: n(form.placeOfBirth),
       birth_place: n(form.placeOfBirth),
@@ -369,6 +361,9 @@ function SProfile() {
       const data = await res.json();
 
       if (data.success || res.ok) {
+        setInitialForm(form); // Update baseline
+        goTo(1); // <--- THIS RESETS THE PAGE TO STEP 1
+        
         setModal({
           isOpen: true,
           title: 'Profile Updated',
@@ -401,7 +396,6 @@ function SProfile() {
   return (
     <div className="InnerContainer" ref={scrollRef} style={{ justifyContent: 'flex-start', overflowY: 'auto' }}>
       <div className="SProfileZoom">
-      {/* Progress */}
       <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--border-light)', borderRadius: '3px', marginBottom: '12px', flexShrink: 0 }}>
         <div style={{ width: `${progressPercent}%`, height: '100%', backgroundColor: 'var(--branding-maroon)', borderRadius: '3px', transition: 'width 0.3s ease' }} />
       </div>
@@ -410,41 +404,37 @@ function SProfile() {
       </span>
 
       <div className="FormContent" style={{ minHeight: '400px', flexShrink: 1 }}>
-
-        {/* STEP 1: Basic details (read-only) */}
         {step === 1 && (
           <div className="stepContent">
             <h4 className="sectionHeading">Primary Details</h4>
             <div className="formRow split3">
-              <ReadOnly label="FIRST NAME" value={form.firstName} />
-              <ReadOnly label="MIDDLE NAME" value={form.middleName} />
-              <ReadOnly label="LAST NAME" value={form.lastName} />
+              <Text label="FIRST NAME" name="firstName" {...f} />
+              <Text label="MIDDLE NAME" name="middleName" {...f} />
+              <Text label="LAST NAME" name="lastName" {...f} />
             </div>
             <div className="formRow split3">
-              <ReadOnly label="SUFFIX" value={form.suffix} />
-              <ReadOnly label="STUDENT NUMBER" value={form.studentNumber} />
-              <ReadOnly label="SCHOOL EMAIL" value={form.schoolEmail} />
+              <Text label="SUFFIX" name="suffix" {...f} />
+              <Text label="STUDENT NUMBER" name="studentNumber" {...f} />
+              <Text label="SCHOOL EMAIL" name="schoolEmail" {...f} />
             </div>
             <div className="formRow split3">
-              <ReadOnly label="PROGRAM" value={form.program} />
-              <ReadOnly label="YEAR LEVEL" value={form.yearLevel} />
-              <ReadOnly label="SECTION" value={form.section} />
+              <Text label="PROGRAM" name="program" {...f} />
+              <Text label="YEAR LEVEL" name="yearLevel" {...f} />
+              <Text label="SECTION" name="section" {...f} />
             </div>
             <div className="formRow split3">
-              <ReadOnly label="CLASSIFICATION" value={form.classification} />
-              <ReadOnly label="STANDING" value={form.standing} />
-              <ReadOnly label="SEX" value={form.sex} />
+              <Text label="CLASSIFICATION" name="classification" {...f} />
+              <Text label="STANDING" name="standing" {...f} />
+              <Text label="SEX" name="sex" {...f} />
             </div>
-
           </div>
         )}
 
-        {/* STEP 2: Personal */}
         {step === 2 && (
           <div className="stepContent">
             <h4 className="sectionHeading">Personal Information</h4>
             <div className="formRow split3">
-              <ReadOnly label="DATE OF BIRTH" type="date" value={form.birthDate} />
+              <Text label="DATE OF BIRTH" type="date" name="birthDate" {...f} />
               <Text label="PLACE OF BIRTH" name="placeOfBirth" {...f} />
               <Text label="PERSONAL EMAIL" name="personalEmail" {...f} />
             </div>
@@ -466,7 +456,6 @@ function SProfile() {
           </div>
         )}
 
-        {/* STEP 3: Address */}
         {step === 3 && (
           <div className="stepContent">
             <h4 className="sectionHeading">Permanent Address</h4>
@@ -503,7 +492,6 @@ function SProfile() {
           </div>
         )}
 
-        {/* STEP 4: Parents & Guardian */}
         {step === 4 && (
           <div className="stepContent">
             <h4 className="sectionHeading">Family Information</h4>
@@ -552,7 +540,6 @@ function SProfile() {
           </div>
         )}
 
-        {/* STEP 5: Family Background */}
         {step === 5 && (
           <div className="stepContent">
             <h4 className="sectionHeading">Family Background</h4>
@@ -572,7 +559,6 @@ function SProfile() {
           </div>
         )}
 
-        {/* STEP 6: Education & Achievements */}
         {step === 6 && (
           <div className="stepContent">
             <h4 className="sectionHeading">Program and Education</h4>
@@ -601,23 +587,32 @@ function SProfile() {
         )}
       </div>
 
-      {/* Navigation */}
       <div className="SProfileNav">
-        {step > 1 ? (
-          <button type="button" className="cancelBtn" onClick={() => goTo(step - 1)} disabled={saving}>
-            <BiLeftArrowAlt style={{ marginRight: '5px', fontSize: '1.2rem' }} /> BACK
-          </button>
-        ) : <span />}
+        <div>
+          {step > 1 && (
+            <button type="button" className="cancelBtn" onClick={() => goTo(step - 1)} disabled={saving}>
+              <BiLeftArrowAlt style={{ marginRight: '5px', fontSize: '1.2rem' }} /> BACK
+            </button>
+          )}
+        </div>
 
-        {step < totalSteps ? (
-          <button type="button" className="submitBtn" onClick={() => goTo(step + 1)}>
-            NEXT <BiRightArrowAlt style={{ marginLeft: '5px', fontSize: '1.2rem' }} />
-          </button>
-        ) : (
-          <button type="button" className="submitBtn" onClick={handleSave} disabled={saving}>
-            {saving ? 'SAVING...' : <><BiSave style={{ marginRight: '5px', fontSize: '1.2rem' }} /> SAVE CHANGES</>}
-          </button>
-        )}
+        <div className="flex gap-2 items-center">
+          {isDirty && !saving && (
+            <button type="button" className="cancelBtn" onClick={handleDiscard} title="Discard Changes">
+              <BiUndo style={{ marginRight: '5px', fontSize: '1.2rem' }} /> DISCARD
+            </button>
+          )}
+
+          {step < totalSteps ? (
+            <button type="button" className="submitBtn" onClick={() => goTo(step + 1)}>
+              NEXT <BiRightArrowAlt style={{ marginLeft: '5px', fontSize: '1.2rem' }} />
+            </button>
+          ) : (
+            <button type="button" className="submitBtn" onClick={handleSave} disabled={saving || !isDirty}>
+              {saving ? 'SAVING...' : <><BiSave style={{ marginRight: '5px', fontSize: '1.2rem' }} /> SAVE CHANGES</>}
+            </button>
+          )}
+        </div>
       </div>
 
       </div>
