@@ -6,11 +6,23 @@ import { useEffect, useState } from 'react';
  * @returns {[boolean, () => void]} [isDark, toggleTheme]
  */
 export default function useTheme() {
-  const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark');
+  // Initialize by checking BOTH localStorage and the actual DOM class
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved) return saved === 'dark';
+    // Fallback to the body class if localStorage is empty (e.g., first load)
+    return document.body.classList.contains('dark');
+  });
 
   useEffect(() => {
-    document.body.classList.toggle('dark', dark);
-    localStorage.setItem('theme', dark ? 'dark' : 'light');
+    // Keep DOM and LocalStorage in sync with React state
+    if (dark) {
+      document.body.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.body.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
   }, [dark]);
 
   const toggle = () => {

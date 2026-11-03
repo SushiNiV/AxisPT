@@ -5,7 +5,7 @@ import {
 } from 'react-icons/bi';
 import useMediaQuery from '../../../Components/useMediaQuery';
 import Filter from '../../../Components/shared/Filter';
-import ConfirmationModal from '../../AComponents/ConfirmationModal';
+import ConfirmationModal from '../../../Components/shared/ConfirmationModal';
 import Button from '../../../Components/ui/Button';
 import Badge from '../../../Components/ui/Badge';
 import Avatar from '../../../Components/ui/Avatar';
@@ -16,7 +16,7 @@ import BottomSheet from '../../../Components/ui/Bottomsheet';
 import ActionMenu from '../../../Components/Actionmenu';
 import AddStudent from '../../AComponents/AddModals/AddStudent';
 import AddGrade from '../../AComponents/AddModals/AddGrade';
-import BulkStudent from '../../AComponents/BulkModals/BulkStudent';
+import BulkAction from '../../../Components/shared/BulkAction';
 
 const ARCHIVE_REASON_OPTIONS = [
   'Transferred out',
@@ -111,8 +111,8 @@ function Masterlist() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [sort, setSort] = useState({ key: null, dir: 'asc' });
-  const [selectMode, setSelectMode] = useState(false); // mobile only
-  const [sheetStudent, setSheetStudent] = useState(null); // mobile action sheet
+  const [selectMode, setSelectMode] = useState(false); 
+  const [sheetStudent, setSheetStudent] = useState(null); 
  
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
@@ -122,7 +122,9 @@ function Masterlist() {
  
   const [viewingGradesFor, setViewingGradesFor] = useState(null);
   const [confirmState, setConfirmState] = useState({ isOpen: false });
- 
+  const [successState, setSuccessState] = useState({ isOpen: false });
+ const [errorState, setErrorState] = useState({ isOpen: false });
+
   const [, setArchiveReasonCategory] = useState('');
   const [, setArchiveReasonOther] = useState('');
   const [archiveReason, setArchiveReason] = useState('');
@@ -353,25 +355,18 @@ function Masterlist() {
  
   const handleViewGrades = (student) => setViewingGradesFor(student);
  
- 
   const handleDelete = (student) => {
     const studentName = `${student.last_name}, ${student.first_name}`;
     resetArchiveReason();
     archiveSelectionRef.current = { category: '', other: '' };
- 
+
     openConfirm({
       title: 'Delete Student Record',
       summary: <>Delete <strong>{studentName}</strong> ({student.student_number})?</>,
-      message: (
-        <span style={{ color: '#c62828', fontSize: '0.75rem' }}>
-          Their account will be deactivated and they will be hidden from the
-          default Masterlist. All their grades, enrollment history, and
-          personal records are preserved. You can restore them later.
-        </span>
-      ),
+      message: 'Their account will be deactivated and they will be hidden from the default Masterlist. All their grades, enrollment history, and personal records are preserved. You can restore them later.',
       variant: 'danger',
       confirmLabel: 'DELETE',
- 
+
       selectLabel: 'REASON FOR ARCHIVING',
       selectPlaceholder: 'Select a reason',
       selectValue: '',
@@ -387,7 +382,7 @@ function Masterlist() {
           showInput: value === OTHERS,
         }));
       },
- 
+
       showInput: false,
       inputLabel: 'SPECIFY REASON',
       inputPlaceholder: 'Type the reason…',
@@ -398,16 +393,16 @@ function Masterlist() {
         setArchiveReasonOther(value);
         setConfirmState((s) => ({ ...s, inputValue: value }));
       },
- 
+
       onConfirm: async () => {
         const { category, other } = archiveSelectionRef.current;
         const finalReason = category === OTHERS ? other.trim() : category;
- 
+
         if (!finalReason) {
           openAlert('Reason Required', 'Please select or specify a reason for archiving.', 'warning');
           return;
         }
- 
+
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
           const token = sessionStorage.getItem('token') || localStorage.getItem('token');
@@ -425,16 +420,34 @@ function Masterlist() {
           const data = await response.json();
           setConfirmState({ isOpen: false });
           resetArchiveReason();
+          
           if (data.success) {
             fetchStudents();
+            setSuccessState({
+              isOpen: true,
+              title: 'Student Archived',
+              summary: 'Action completed successfully.',
+              message: 'The student record has been archived and removed from the masterlist.',
+              variant: 'success'
+            });
           } else {
-            openAlert('Delete Failed', data.message || 'Failed to delete student.', 'danger');
+            setErrorState({
+              isOpen: true,
+              title: 'Delete Failed',
+              message: data.message || 'Failed to delete student.',
+              variant: 'danger'
+            });
           }
         } catch (err) {
           console.error('Error deleting student:', err);
           setConfirmState({ isOpen: false });
           resetArchiveReason();
-          openAlert('Error', 'An unexpected error occurred.', 'danger');
+          setErrorState({
+            isOpen: true,
+            title: 'Error',
+            message: 'An unexpected error occurred.',
+            variant: 'danger'
+          });
         }
       },
       onCancel: () => {
@@ -443,7 +456,7 @@ function Masterlist() {
       },
     });
   };
- 
+
   const toggleSelectOne = (id) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -457,26 +470,21 @@ function Masterlist() {
  
   const clearSelection = () => setSelectedIds([]);
  
-  const handleBulkDelete = () => {
+    const handleBulkDelete = () => {
     setArchiveReason('');
     openConfirm({
       title: 'Delete Students',
       summary: <>Delete <strong>{selectedIds.length}</strong> selected student record(s)?</>,
-      message: (
-        <span>
-          Their accounts will be deactivated and they will be hidden from the
-          default Masterlist. All data is preserved and can be restored later.
-        </span>
-      ),
+      message: 'Their accounts will be deactivated and they will be hidden from the default Masterlist. All data is preserved and can be restored later.',
       variant: 'danger',
       confirmLabel: 'DELETE',
- 
+
       inputLabel: 'REASON FOR ARCHIVING',
       inputPlaceholder: 'e.g. Transferred out, dropped, graduated…',
       inputValue: archiveReason,
       onInputChange: setArchiveReason,
       inputRequired: true,
- 
+
       onConfirm: async () => {
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
@@ -498,18 +506,35 @@ function Masterlist() {
           const data = await response.json();
           setConfirmState({ isOpen: false });
           setArchiveReason('');
+          
           if (data.success) {
             clearSelection();
             fetchStudents();
-            openAlert('Students Deleted', data.message, 'success');
+            setSuccessState({
+              isOpen: true,
+              title: 'Students Deleted',
+              summary: 'Action completed successfully.',
+              message: data.message || 'The selected student records have been archived.',
+              variant: 'success'
+            });
           } else {
-            openAlert('Delete Failed', data.message || 'Failed to delete selected students.', 'danger');
+            setErrorState({
+              isOpen: true,
+              title: 'Delete Failed',
+              message: data.message || 'Failed to delete selected students.',
+              variant: 'danger'
+            });
           }
         } catch (err) {
           console.error('Error batch-deleting students:', err);
           setConfirmState({ isOpen: false });
           setArchiveReason('');
-          openAlert('Error', 'An unexpected error occurred.', 'danger');
+          setErrorState({
+            isOpen: true,
+            title: 'Error',
+            message: 'An unexpected error occurred.',
+            variant: 'danger'
+          });
         }
       },
       onCancel: () => { setConfirmState({ isOpen: false }); setArchiveReason(''); },
@@ -527,17 +552,45 @@ function Masterlist() {
     setSelectMode(!selectMode);
   };
  
-  if (loading) {
+      if (loading) {
     return (
       <div className="InnerContainer ArchiveLayout">
-        <div className="ax flex flex-1 flex-col gap-3" aria-busy="true" aria-label="Loading students">
-          <div className="h-10 animate-pulse rounded-ctl bg-line/60" />
-          <div className="h-9 w-2/3 animate-pulse rounded-full bg-line/60" />
-          <div className="space-y-3 rounded-panel border border-line bg-surface p-4">
-            {Array.from({ length: 8 }, (_, i) => (
-              <div key={i} className="h-12 animate-pulse rounded-ctl bg-line/50" />
+        <div className="ax flex min-h-0 flex-1 flex-col gap-3 pb-4">
+          
+          {/* Toolbar Skeleton */}
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Search Bar */}
+            <div className="h-10 flex-1 animate-pulse rounded-ctl bg-surface-2" />
+            
+            {/* Filter Button */}
+            <div className="h-10 w-[84px] shrink-0 animate-pulse rounded-ctl bg-surface-2" />
+            
+            {/* Add Student Button */}
+            <div className="h-10 w-[130px] shrink-0 animate-pulse rounded-ctl bg-surface-2" />
+          </div>
+
+          {/* Chips Skeleton */}
+          <div className="flex shrink-0 gap-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-8 w-20 animate-pulse rounded-full bg-surface-2" />
             ))}
           </div>
+
+          {/* Table Skeleton */}
+          <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border !border-line bg-surface">
+            <div className="space-y-2 p-3">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 border-b !border-line pb-2 last:border-0">
+                  <div className="h-8 w-8 animate-pulse rounded-full bg-surface-2" />
+                  <div className="flex flex-1 flex-col gap-1.5">
+                    <div className="h-3.5 w-1/3 animate-pulse rounded bg-surface-2" />
+                    <div className="h-3 w-1/4 animate-pulse rounded bg-surface-2" />
+                  </div>
+                  <div className="h-4 w-16 animate-pulse rounded bg-surface-2" />
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
       </div>
     );
@@ -582,14 +635,18 @@ function Masterlist() {
           isEditMode={!!editingStudent}
         />
       )}
- 
-      {showBulkEdit && (
-        <BulkStudent
-          studentIds={selectedIds}
-          onClose={() => setShowBulkEdit(false)}
-          onSuccess={handleBulkEditSuccess}
-        />
-      )}
+      
+      <BulkAction
+        studentIds={selectedIds}
+        showBar
+        isEditOpen={showBulkEdit}
+        onClose={() => setShowBulkEdit(false)}
+        onSuccess={handleBulkEditSuccess}
+        onClear={clearSelection}
+        onDelete={handleBulkDelete}
+        onRequestEdit={() => setShowBulkEdit(true)}
+      />
+      
  
       {viewingGradesFor && (
         <AddGrade
@@ -626,7 +683,28 @@ function Masterlist() {
         onInputChange={confirmState.onInputChange}
         inputRequired={confirmState.inputRequired}
       />
- 
+
+       <ConfirmationModal
+        isOpen={successState.isOpen}
+        title={successState.title}
+        summary={successState.summary}
+        message={successState.message}
+        variant={successState.variant}
+        isAlert={true}
+        onConfirm={() => setSuccessState({ isOpen: false })}
+        onCancel={() => setSuccessState({ isOpen: false })}
+      />
+
+      <ConfirmationModal
+        isOpen={errorState.isOpen}
+        title={errorState.title}
+        message={errorState.message}
+        variant={errorState.variant}
+        isAlert={true}
+        onConfirm={() => setErrorState({ isOpen: false })}
+        onCancel={() => setErrorState({ isOpen: false })}
+      />
+
       <div className="ax flex min-h-0 flex-1 flex-col gap-3 pb-4">
         {/* Toolbar */}
         <div className="flex shrink-0 items-center gap-2">
@@ -788,7 +866,7 @@ function Masterlist() {
                 </ul>
               </>
             ) : (
-              <div className="min-h-0 flex-1 overflow-auto">
+              <div className="min-h-0 flex-1 overflow-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <table className="w-full min-w-[720px] border-collapse text-left text-sm">
                   <thead>
                     <tr>
@@ -950,22 +1028,7 @@ function Masterlist() {
         )}
       </BottomSheet>
  
-      {selectedIds.length > 1 && (
-        <div className="BulkActionBar">
-          <span className="BulkActionCount">{selectedIds.length} selected</span>
-          <div className="BulkActionButtons">
-            <button className="TopbarBtn" onClick={() => setShowBulkEdit(true)}>
-              <BiPencil className="linkIcon" /> Edit <span className="BulkLabelExtra">Selected</span>
-            </button>
-            <button className="tableDeleteBtn" onClick={handleBulkDelete}>
-              <BiTrash /> Delete <span className="BulkLabelExtra">Selected</span>
-            </button>
-            <button className="ClearSelectionBtn" onClick={clearSelection} aria-label="Clear selection">
-              <BiX /> <span className="BulkLabelExtra">Clear</span>
-            </button>
-          </div>
-        </div>
-      )}
+      
     </div>
   );
 }

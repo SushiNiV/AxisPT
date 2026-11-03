@@ -6,15 +6,16 @@ import { Link } from 'react-router-dom';
  * @param {string} title
  * @param {string} [hint]   Small gray text on the right.
  * @param {React.ReactNode} [action] Replaces the hint (e.g. <CardLink />).
+ * @param {boolean} [scroll] Body scrolls inside the card when the card's height is bounded.
  */
-export default function Card({ title, hint, action, className = '', children }) {
+export default function Card({ title, hint, action, className = '', scroll = false, children }) {
   return (
-    <section className={`flex min-w-0 flex-col rounded-panel border !border-line bg-surface p-5 ${className}`}>
-      <header className="mb-4 flex items-center justify-between gap-3">
+    <section className={`flex min-h-0 min-w-0 flex-col rounded-panel border !border-line bg-surface p-5 ${className}`}>
+      <header className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-ink">{title}</h2>
         {action || (hint && <span className="text-xs text-ink-3">{hint}</span>)}
       </header>
-      <div className="min-h-0 flex-1">{children}</div>
+      <div className={`min-h-0 flex-1${scroll ? ' overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' : ''}`}>{children}</div>
     </section>
   );
 }

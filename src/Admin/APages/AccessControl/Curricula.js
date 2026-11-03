@@ -1,24 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import './Curricula.css';
-import ConfirmationModal from '../../AComponents/ConfirmationModal';
-import { BiSearch, BiPlusCircle, BiX, BiBook, BiPencil, BiDotsVerticalRounded } from 'react-icons/bi';
+import { BiSearch, BiPlus, BiX, BiBookOpen, BiPencil } from 'react-icons/bi';
+import { useNavigate } from 'react-router-dom';
+import ConfirmationModal from '../../../Components/shared/ConfirmationModal';
 import useMediaQuery from '../../../Components/useMediaQuery';
-import '../../../GlobalStyle/Global.css';
-import '../../../GlobalStyle/GlobalCard.css';
-import '../../../GlobalStyle/GlobalEmpty.css';
 import AddCurriculum from '../../AComponents/AddModals/AddCurriculum';
+import Button from '../../../Components/ui/Button';
+import Badge from '../../../Components/ui/Badge';
+import EmptyState from '../../../Components/ui/Emptystate';
+import Pagination from '../../../Components/ui/Pagination';
 
 function ACurricula() {
   const isMobile = useMediaQuery('(max-width: 768px)');
+  const navigate = useNavigate();
 
   const [curricula, setCurricula] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [editingCurriculum, setEditingCurriculum] = useState(null);
-  const [menuCurriculumId, setMenuCurriculumId] = useState(null); 
 
-  // --- PAGINATION STATE ---
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = isMobile ? 10 : 15; 
 
@@ -35,18 +35,6 @@ function ACurricula() {
       isAlert: false,
       loading: false,
       ...config,
-    });
-  };
-
-  const openAlert = (title, message, variant = 'info') => {
-    setConfirmState({
-      isOpen: true,
-      title,
-      message,
-      variant,
-      isAlert: true,
-      onConfirm: closeConfirm,
-      onCancel: closeConfirm,
     });
   };
 
@@ -68,7 +56,6 @@ function ACurricula() {
 
   useEffect(() => { fetchCurricula(); }, [fetchCurricula]);
 
-  // Reset to page 1 when searching or switching layouts
   useEffect(() => { setCurrentPage(1); }, [searchTerm, isMobile]);
 
   const handleAddSuccess = () => {
@@ -82,25 +69,8 @@ function ACurricula() {
     setShowAdd(true);
   };
 
-  const getCurriculumStatus = (isActive) => {
-    if (isActive) return 'current';
-    return 'inactive';
-  };
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'current': return 'Active';
-      case 'inactive': return 'Inactive';
-      default: return '';
-    }
-  };
-
-  const getStatusClass = (status) => {
-    switch (status) {
-      case 'current': return 'active-bg';
-      case 'inactive': return 'inactive-bg';
-      default: return '';
-    }
+  const handleViewCourses = (curriculum) => {
+    navigate(`/admin/academics/courses?curriculumId=${curriculum.curriculum_id}`);
   };
 
   const filteredCurricula = curricula.filter(c =>
@@ -109,19 +79,46 @@ function ACurricula() {
     c.version_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // --- PAGINATION LOGIC ---
   const totalPages = Math.ceil(filteredCurricula.length / rowsPerPage) || 1;
   const indexOfLastItem = currentPage * rowsPerPage;
   const indexOfFirstItem = indexOfLastItem - rowsPerPage;
   const currentItems = filteredCurricula.slice(indexOfFirstItem, indexOfLastItem);
 
-  const goToNextPage = () => { if (currentPage < totalPages) setCurrentPage(p => p + 1); };
-  const goToPrevPage = () => { if (currentPage > 1) setCurrentPage(p => p - 1); };
-
   const hasSearchResults = searchTerm && filteredCurricula.length === 0 && curricula.length > 0;
 
+  // --- SKELETON LOADER ---
+  if (loading) {
+    return (
+      <div className="ax flex h-full min-h-0 flex-col gap-3 pb-4">
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="h-10 flex-1 animate-pulse rounded-ctl bg-surface-2" />
+          <div className="h-10 w-36 shrink-0 animate-pulse rounded-ctl bg-surface-2" />
+        </div>
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border !border-line bg-surface">
+          <div className="p-4 space-y-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex flex-col sm:flex-row gap-4 border-b !border-line pb-4 last:border-0">
+                <div className="flex flex-1 items-center gap-4">
+                  <div className="hidden h-12 w-12 shrink-0 animate-pulse rounded-ctl bg-surface-2 sm:block" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-5 w-1/3 animate-pulse rounded bg-surface-2" />
+                    <div className="h-4 w-1/2 animate-pulse rounded bg-surface-2" />
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2 self-end sm:self-center">
+                  <div className="h-8 w-24 animate-pulse rounded-ctl bg-surface-2" />
+                  <div className="h-8 w-16 animate-pulse rounded-ctl bg-surface-2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
-    <div className="InnerContainer">
+    <div className="ax flex h-full min-h-0 flex-col gap-3 pb-4 relative">
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}
@@ -147,167 +144,97 @@ function ACurricula() {
         />
       )}
 
-      <div className="TopSection">
-        <div className="SearchWrapper">
-          <BiSearch className="SearchIcon" />
+      {/* Toolbar */}
+      <div className="flex shrink-0 items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <BiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg text-ink-3" />
           <input
             type="text"
             placeholder="Search curriculum..."
-            className="SearchInput"
+            className="h-10 w-full rounded-ctl border !border-line bg-surface pl-10 pr-10 text-base text-ink placeholder:text-ink-3 focus-visible:border-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15 sm:text-sm"
             value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); }}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
           {searchTerm && (
-            <BiX className="ClearSearchIcon" onClick={() => { setSearchTerm(""); }} />
+            <button onClick={() => setSearchTerm("")} aria-label="Clear search" className="absolute right-1.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-lg text-ink-3 hover:bg-surface-2 hover:text-ink">
+              <BiX />
+            </button>
           )}
         </div>
 
-        <div className="TopbarBtnContainer">
-          <button className="TopbarBtn" onClick={() => setShowAdd(true)}>
-            <BiPlusCircle className="linkIcon" /> Curriculum
-          </button>
-        </div>
+        <Button onClick={() => setShowAdd(true)} className="shrink-0 !px-3 sm:!px-4">
+          <BiPlus className="text-xl" aria-hidden="true" />
+          <span className="hidden sm:inline">Add Curriculum</span>
+        </Button>
       </div>
 
-      <div className="CardsContainer">
-        {loading ? (
-          <div className="emptyState">
-            <div className="emptyStateIcon">⏳</div>
-            <h3 className="emptyStateTitle">Loading Curricula</h3>
-            <p className="emptyStateText">Please wait while we fetch the data...</p>
-          </div>
-        ) : filteredCurricula.length > 0 ? (
-          currentItems.map((curriculum) => {
-            const status = getCurriculumStatus(curriculum.is_active);
-            const statusLabel = getStatusLabel(status);
-            const statusClass = getStatusClass(status);
-
-            return (
-              <div className="Card RecordCard" key={curriculum.curriculum_id}>
-                {isMobile ? (
-                  /* --- MOBILE LAYOUT --- */
-                  <div className="CardMain" style={{ alignItems: 'flex-start' }}>
-                    <div className="cardContent">
-                      
-                      <div className="cardHeader" style={{ marginBottom: '8px' }}>
-                        <span className="cardTitle" style={{ margin: 0 }}>
-                          {curriculum.program_name}
-                        </span>
-                        <span className={`statusBadge ${statusClass}`}>
-                          {statusLabel}
-                        </span>
+      {filteredCurricula.length === 0 ? (
+        <EmptyState 
+          icon={BiBookOpen} 
+          title={hasSearchResults ? "No matching results" : "No Curricula Yet"} 
+          text={hasSearchResults ? `No curricula found matching "${searchTerm}"` : "Get started by creating your first curriculum."} 
+          action={
+            <Button variant={hasSearchResults ? "secondary" : "primary"} onClick={() => hasSearchResults ? setSearchTerm("") : setShowAdd(true)}>
+              {hasSearchResults ? "Clear Search" : "Add Curriculum"}
+            </Button>
+          } 
+        />
+      ) : (
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border !border-line bg-surface">
+          
+          <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <ul className="divide-y divide-line m-0 p-0 list-none">
+              {currentItems.map((curriculum) => {
+                const isActive = curriculum.is_active;
+                
+                return (
+                  <li key={curriculum.curriculum_id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 transition-colors hover:bg-surface-2">
+                    
+                    {/* Left Side: Icon, Title, Plain Text Metadata */}
+                    <div className="flex min-w-0 items-start gap-4">
+                      <div className={`hidden h-12 w-12 shrink-0 place-items-center rounded-ctl sm:grid ${isActive ? 'bg-brand-soft text-brand-ink' : 'bg-surface-2 text-ink-3'}`}>
+                        <BiBookOpen className="text-2xl" />
                       </div>
-                      
-                      <div className="CardDetails" style={{ marginTop: 0 }}>
-                        <span className="detailBadge">From: {curriculum.start_year}</span>
-                        <span className="detailBadge">Version: {curriculum.version_name}</span>
-                        <span className="detailBadge">Courses: {curriculum.course_count || 0}</span>
-                      </div>
-                    </div>
 
-                    <button
-                      className="RecordMenuBtn"
-                      aria-label="Curriculum actions"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuCurriculumId(menuCurriculumId === curriculum.curriculum_id ? null : curriculum.curriculum_id);
-                      }}
-                    >
-                      <BiDotsVerticalRounded />
-                    </button>
-
-                    {menuCurriculumId === curriculum.curriculum_id && (
-                      <>
-                        <div
-                          className="CardMenuBackdrop"
-                          onClick={(e) => { e.stopPropagation(); setMenuCurriculumId(null); }}
-                        />
-                        <div className="CardMenu" onClick={(e) => e.stopPropagation()}>
-                          <button onClick={() => { setMenuCurriculumId(null); handleEdit(curriculum); }}>
-                            <BiPencil /> Edit
-                          </button>
-                          {/* DELETE BUTTON REMOVED */}
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-display text-lg font-semibold text-ink truncate">
+                            {curriculum.program_name}
+                          </h3>
+                          <Badge tone={isActive ? 'ok' : 'neutral'}>
+                            {isActive ? 'Active' : 'Inactive'}
+                          </Badge>
                         </div>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  /* --- DESKTOP LAYOUT --- */
-                  <div className="CardMain">
-                    <div className={`cardIcon ${status === 'current' ? 'active' : 'inactive'}`}>
-                      <BiBook />
-                    </div>
-                    <div className="cardContent">
-                      <div className="cardHeader">
-                        <span className={`statusBadge ${statusClass}`}>
-                          {statusLabel}
-                        </span>
-                      </div>
-                      <h3 className="cardTitle">{curriculum.program_name}</h3>
-                      <div className="CardDetails">
-                        <span className="detailBadge">From: {curriculum.start_year}</span>
-                        <span className="detailBadge">Version: {curriculum.version_name}</span>
-                        <span className="detailBadge">Courses: {curriculum.course_count || 0}</span>
+
+                        <p className="mt-1 text-sm text-ink-3">
+                          Effective {curriculum.start_year}
+                          <span aria-hidden="true" className="mx-1.5">·</span>
+                          {curriculum.version_name}
+                          <span aria-hidden="true" className="mx-1.5">·</span>
+                          {curriculum.course_count || 0} courses
+                        </p>
                       </div>
                     </div>
-                    <div className="CardAction">
-                      <button className="actionBtn editBtn" onClick={() => handleEdit(curriculum)}>
-                        <BiPencil /> Edit
-                      </button>
-                      {/* DELETE BUTTON REMOVED */}
+
+                    {/* Right Side: Actions */}
+                    <div className="flex shrink-0 items-center gap-2 self-end sm:self-center">
+                      <Button size="sm" variant="secondary" onClick={() => handleViewCourses(curriculum)}>
+                        View Courses
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => handleEdit(curriculum)}>
+                        <BiPencil className="text-base" aria-hidden="true" /> Edit
+                      </Button>
                     </div>
-                  </div>
-                )}
-              </div>
-            );
-          })
-        ) : hasSearchResults ? (
-          <div className="emptyState">
-            <div className="emptyStateIcon">🔍</div>
-            <h3 className="emptyStateTitle">No matching results</h3>
-            <p className="emptyStateText">No curricula found matching "{searchTerm}"</p>
-            <button className="emptyStateBtn" onClick={() => setSearchTerm("")}>
-              Clear Search
-            </button>
-          </div>
-        ) : (
-          <div className="emptyState">
-            <div className="emptyStateIcon">📚</div>
-            <h3 className="emptyStateTitle">No Curricula Yet</h3>
-            <p className="emptyStateText">Get started by creating your first curriculum.</p>
-            <button className="emptyStateBtn" onClick={() => setShowAdd(true)}>
-              <BiPlusCircle className="linkIcon"/> Create Curriculum
-            </button>
-          </div>
-        )}
-      </div>
 
-
-      {!loading && filteredCurricula.length > (!isMobile || totalPages > 1) && (
-        <div className="PaginationContainer">
-          <div className="PaginationControls">
-            <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
-            <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
-            <div className="CurrentPageInputWrapper">
-              <input
-                type="number"
-                value={currentPage}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  if (val > 0 && val <= totalPages) setCurrentPage(val);
-                }}
-                className="CurrentPageInput"
-              />
-            </div>
-            <div className="PaginationInfo">
-              out of <span>{totalPages}</span>
-            </div>
-            <button className="PageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
-            <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-        </div>
+
+          <Pagination page={currentPage} pageCount={totalPages} total={filteredCurricula.length} pageSize={rowsPerPage} onPageChange={setCurrentPage} />
+        </section>
       )}
-
     </div>
   );
 }

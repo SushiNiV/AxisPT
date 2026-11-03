@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { BiSearch, BiX, BiPrinter, BiFullscreen } from 'react-icons/bi';
-import Filter from '../../../Components/shared/Filter';
-import '../../../GlobalStyle/Global.css';
-import '../../../GlobalStyle/Documents.css';
+import { createPortal } from 'react-dom';
+import { BiSearch, BiX, BiPrinter, BiFullscreen, BiChevronRight } from 'react-icons/bi';
+import BulkAction from '../../../Components/shared/BulkAction';
+import ConfirmationModal from '../../../Components/shared/ConfirmationModal';
 import CourseOutline from '../../AComponents/StudentDocuments/CourseOutline';
 import useMediaQuery from '../../../Components/useMediaQuery';
+import Button from '../../../Components/ui/Button';
+import EmptyState from '../../../Components/ui/Emptystate';
+import Pagination from '../../../Components/ui/Pagination';
 
 const DEFAULT_PREVIEW_SCALE = 1;
 const MIN_PREVIEW_SCALE = 0.3;
@@ -32,45 +35,36 @@ function DocumentsCourseOutline() {
   const [outlineError, setOutlineError] = useState(null);
 
   const [previewScale, setPreviewScale] = useState(DEFAULT_PREVIEW_SCALE);
+  
+  // Print State
   const [printForms, setPrintForms] = useState([]);
+  const [printReady, setPrintReady] = useState(false);
+  const [readyCount, setReadyCount] = useState(0);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
-  const [isPrintPending, setIsPrintPending] = useState(false);
   const [printError, setPrintError] = useState(null);
+  const [showBulkPrintConfirm, setShowBulkPrintConfirm] = useState(false);
 
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [selectedProgram, setSelectedProgram] = useState('');
-  const [tempProgram, setTempProgram] = useState('');
-  const [programOptions, setProgramOptions] = useState([]);
-  const hasActiveFilters = selectedProgram !== '';
-
-useEffect(() => {
-  const fetchAll = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-      const [programsRes, studentsRes] = await Promise.all([
-        fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, {
+  useEffect(() => {
+    const fetchAll = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+        const studentsRes = await fetch(`${process.env.REACT_APP_API_URL}/admin/students`, {
           headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${process.env.REACT_APP_API_URL}/admin/students`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-      const programsData = await programsRes.json();
-      const studentsData = await studentsRes.json();
-      if (programsData.success) setProgramOptions(programsData.data.map((p) => p.program_abbr || p.program_name));
-      if (studentsData.success) setStudents(studentsData.data);
-      else setError(studentsData.message || 'Failed to load students.');
-    } catch (err) {
-      console.error('Error loading documents:', err);
-      setError('Failed to connect to the server.');
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchAll();
-}, []);
+        });
+        const studentsData = await studentsRes.json();
+        if (studentsData.success) setStudents(studentsData.data);
+        else setError(studentsData.message || 'Failed to load students.');
+      } catch (err) {
+        console.error('Error loading documents:', err);
+        setError('Failed to connect to the server.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAll();
+  }, []);
 
   useEffect(() => {
     if (!selectedStudentId) {
@@ -103,11 +97,9 @@ useEffect(() => {
     const term = searchTerm.toLowerCase();
     return students.filter((s) => {
       const label = `${s.first_name || ''} ${s.last_name || ''} ${s.student_number || ''} ${s.program_abbr || ''}`.toLowerCase();
-      const matchesSearch = !term || label.includes(term);
-      const matchesProgram = !selectedProgram || (s.program_abbr || s.program_name) === selectedProgram;
-      return matchesSearch && matchesProgram;
+      return !term || label.includes(term);
     });
-  }, [students, searchTerm, selectedProgram]);
+  }, [students, searchTerm]);
 
   // PAGINATION LOGIC
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / STUDENTS_PER_PAGE));
@@ -125,10 +117,16 @@ useEffect(() => {
     setSelectedIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
   };
 
+  const clearSelection = () => setSelectedIds([]);
+
   const handlePrint = async () => {
     if (selectedIds.length === 0 || isPreparingPrint) return;
     setIsPreparingPrint(true);
     setPrintError(null);
+    setReadyCount(0);
+    setPrintReady(false);
+    setShowBulkPrintConfirm(false);
+
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const forms = await Promise.all(selectedIds.map(async (studentId) => {
@@ -143,198 +141,310 @@ useEffect(() => {
         return { studentId, data: result.data };
       }));
       setPrintForms(forms);
-      setIsPrintPending(true);
     } catch (err) {
       console.error('Batch print error:', err);
       setPrintError(err.message || 'Unable to prepare the selected outlines.');
-    } finally {
       setIsPreparingPrint(false);
     }
   };
 
   useEffect(() => {
-    if (!isPrintPending || printForms.length === 0) return undefined;
-    const timer = window.setTimeout(() => {
+    if (printForms.length === 0) return;
+    if (readyCount < printForms.length) return;
+    if (printReady) return;
+
+    setPrintReady(true);
+    const raf = requestAnimationFrame(() => {
       window.print();
-      setIsPrintPending(false);
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [isPrintPending, printForms]);
+      setTimeout(() => {
+        setIsPreparingPrint(false);
+        setPrintForms([]);
+        setPrintReady(false);
+        setReadyCount(0);
+        clearSelection();
+      }, 500);
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [printForms, readyCount, printReady]);
+
+  const handlePortalReady = useCallback(() => {
+    setReadyCount((c) => c + 1);
+  }, []);
 
   const changePreviewScale = (amount) => {
     setPreviewScale((scale) => Math.min(MAX_PREVIEW_SCALE, Math.max(MIN_PREVIEW_SCALE, Number((scale + amount).toFixed(1)))));
   };
   const resetPreviewScale = () => setPreviewScale(DEFAULT_PREVIEW_SCALE);
 
-  const filters = [
-    { name: 'program', label: 'PROGRAM', value: tempProgram, options: programOptions, placeholder: 'ALL PROGRAMS' },
-  ];
-
-  const handleFilterChange = (name, value) => {
-    if (name === 'program') setTempProgram(value);
-  };
-  const resetFilters = () => {
-    setTempProgram('');
-    setSelectedProgram('');
-    setIsFilterOpen(false);
-    setCurrentPage(1);
-  };
-  const applyFilters = () => {
-    setSelectedProgram(tempProgram);
-    setIsFilterOpen(false);
-    setCurrentPage(1);
-  };
+  const printStyles = `
+    @media print {
+      @page { size: 215.9mm 330.2mm; margin: 0; }
+      
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      
+      body * { visibility: hidden !important; }
+      
+      #print-portal-root, #print-portal-root * { 
+        visibility: visible !important; 
+      }
+      
+      #print-portal-root {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        color-scheme: light !important;
+        z-index: 99999;
+      }
+      
+      .print-page {
+        page-break-after: always;
+        break-after: page;
+      }
+      .print-page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+    }
+  `;
 
   return (
     <>
-      <div className="DocSplitView">
-        <div className="DocListPanel">
-          <div className="DocListTop">
-            <div className="SearchWrapper">
-              <BiSearch className="SearchIcon" />
+      <style>{printStyles}</style>
+
+      <div className="ax flex h-full min-h-0 gap-4 pb-4 relative">
+        
+        {isPreparingPrint && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-surface/50 backdrop-blur-sm">
+            <div className="rounded-panel border !border-line bg-surface p-6 shadow-lift flex flex-col items-center gap-3">
+               <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
+               <p className="font-semibold text-ink">Preparing documents for print...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Left Pane */}
+        <div className="flex w-full shrink-0 flex-col overflow-hidden rounded-panel border !border-line bg-surface md:w-[340px]">
+          <div className="flex shrink-0 items-center gap-2 border-b !border-line p-3">
+            <div className="relative min-w-0 flex-1">
+              <BiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg text-ink-3" />
               <input
-                type="text"
-                placeholder="Search students..."
-                className="SearchInput"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
+                type="text" placeholder="Search students..." value={searchTerm}
+                className="h-10 w-full rounded-ctl border !border-line bg-surface pl-10 pr-10 text-base text-ink placeholder:text-ink-3 focus-visible:border-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15 sm:text-sm"
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               />
               {searchTerm && (
-                <BiX className="ClearSearchIcon" onClick={() => { setSearchTerm(''); setCurrentPage(1); }} />
+                <button onClick={() => { setSearchTerm(''); setCurrentPage(1); }} className="absolute right-1.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-lg text-ink-3 hover:bg-surface-2 hover:text-ink">
+                  <BiX />
+                </button>
               )}
             </div>
-            <Filter
-              isOpen={isFilterOpen}
-              setIsOpen={setIsFilterOpen}
-              hasActiveFilters={hasActiveFilters}
-              filters={filters}
-              onFilterChange={handleFilterChange}
-              onReset={resetFilters}
-              onApply={applyFilters}
-            />
           </div>
-          <div className="DocListSelectionInfo">{selectedIds.length} selected for printing</div>
-          <div className="DocStudentList">
+
+          <div className="shrink-0 border-b !border-line bg-surface-2 px-4 py-2 text-xs font-semibold text-ink-2">
+            {selectedIds.length} selected for printing
+          </div>
+
+          <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {loading ? (
-              <p className="DocListMessage">Loading students...</p>
+              // --- LEFT PANE SKELETON ---
+              <ul className="m-0 list-none divide-y divide-line p-0">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <li key={i} className="flex items-center gap-3 px-4 py-3">
+                    <div className="h-4 w-4 shrink-0 animate-pulse rounded bg-surface-2" />
+                    <div className="flex flex-1 flex-col gap-1.5 min-w-0">
+                      <div className="h-4 w-3/4 animate-pulse rounded bg-surface-2" />
+                      <div className="h-3 w-1/2 animate-pulse rounded bg-surface-2" />
+                    </div>
+                    <div className="h-5 w-5 shrink-0 animate-pulse rounded bg-surface-2" />
+                  </li>
+                ))}
+              </ul>
             ) : error ? (
-              <p className="DocListMessage" style={{ color: '#c62828' }}>{error}</p>
+              <p className="p-4 text-center text-sm text-danger">{error}</p>
             ) : filteredStudents.length === 0 ? (
-              <p className="DocListMessage">No students found.</p>
+              <p className="p-4 text-center text-sm text-ink-3">No students found.</p>
             ) : (
-              currentStudents.map((stu) => (
-              <div
-                key={stu.student_id}
-                className={`DocStudentRow ${selectedStudentId === stu.student_id ? 'Active' : ''} ${selectedIdSet.has(stu.student_id) ? 'Selected' : ''}`}
-                onClick={() => {
-                  if (!isMobile) setSelectedStudentId(stu.student_id);
-                  toggleSelection(stu.student_id);
-                }}
-              >
-                <input
-                  className="DocStudentCheckbox"
-                  type="checkbox"
-                  checked={selectedIdSet.has(stu.student_id)}
-                  onChange={() => toggleSelection(stu.student_id)}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <div className="DocStudentRowContent">
-                  <p className="DocStudentName">
-                    {stu.last_name}, {stu.first_name} {stu.middle_name ? stu.middle_name[0] + '.' : ''}
-                  </p>
-                  <p className="DocStudentMeta">
-                    {stu.student_number} · {stu.program_abbr || stu.program_name}
-                  </p>
-                  </div>
-                </div>
-              ))
+              <ul className="m-0 list-none divide-y divide-line p-0">
+                {currentStudents.map((std) => {
+                  const isSelected = selectedIdSet.has(std.student_id);
+                  const isActive = selectedStudentId === std.student_id;
+                  return (
+                    <li key={std.student_id} className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-surface-2 ${isActive ? 'bg-brand-soft' : ''}`} onClick={() => { if (!isMobile) setSelectedStudentId(std.student_id); toggleSelection(std.student_id); }}>
+                      <input type="checkbox" checked={isSelected} onChange={() => toggleSelection(std.student_id)} onClick={(e) => e.stopPropagation()} className="h-4 w-4 shrink-0 accent-brand" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-ink">{std.last_name}, {std.first_name}</p>
+                        <p className="truncate text-xs text-ink-2">{std.student_number} &middot; {std.program_abbr || '-'}</p>
+                      </div>
+                      {!isMobile && <BiChevronRight className="shrink-0 text-lg text-ink-3" />}
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </div>
+
           {!loading && !error && filteredStudents.length > 0 && (
-            <div className="PaginationContainer DocListPagination">
-              <div className="PaginationControls">
-                <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
-                <button className="PageBtn" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={currentPage === 1}>‹</button>
-                <div className="CurrentPageInputWrapper">
-                  <input
-                    type="number"
-                    value={currentPage}
-                    onChange={(e) => {
-                      const page = Number.parseInt(e.target.value, 10);
-                      if (page >= 1 && page <= totalPages) setCurrentPage(page);
-                    }}
-                    className="CurrentPageInput"
-                    aria-label="Current page"
-                  />
-                </div>
-                <div className="PaginationInfo">out of <span>{totalPages}</span></div>
-                <button className="PageBtn" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={currentPage === totalPages}>›</button>
-                <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
-              </div>
+            <div className="shrink-0 border-t !border-line">
+              <Pagination page={currentPage} pageCount={totalPages} total={filteredStudents.length} pageSize={STUDENTS_PER_PAGE} onPageChange={setCurrentPage} />
             </div>
           )}
         </div>
 
+        {/* Right Pane */}
         {!isMobile && (
-        <div className="DocPreviewPanel">
-          <div className="DocPreviewActions">
-            <button className="TopbarBtn" onClick={handlePrint} disabled={selectedIds.length === 0 || isPreparingPrint}>
-              <BiPrinter className="linkIcon" /> {isPreparingPrint ? 'Preparing…' : `Print (${selectedIds.length})`}
-            </button>
-            {printError && <p className="DocPrintError">{printError}</p>}
-          </div>
-
-          <div className="DocPreviewZoomControls">
-            <button type="button" className="DocPreviewZoomButton" onClick={resetPreviewScale} disabled={previewScale === DEFAULT_PREVIEW_SCALE}><BiFullscreen /></button>
-            <button type="button" className="DocPreviewZoomButton" onClick={() => changePreviewScale(PREVIEW_SCALE_STEP)} disabled={previewScale >= MAX_PREVIEW_SCALE}>+</button>
-            <button type="button" className="DocPreviewZoomButton" onClick={() => changePreviewScale(-PREVIEW_SCALE_STEP)} disabled={previewScale <= MIN_PREVIEW_SCALE}>−</button>
-          </div>
-
-          {!selectedStudent ? (
-            <div className="DocEmptyState">
-              <div className="emptyStateIcon">🪪</div>
-              <p>Select a student to preview its course outline.</p></div>
-          ) : outlineLoading ? (
-            <div className="DocEmptyState"><p>Loading outline...</p></div>
-          ) : outlineError ? (
-            <div className="DocEmptyState"><p style={{ color: '#c62828' }}>{outlineError}</p></div>
-          ) : (
-            <div
-              className="DocPreviewOuter DocPrintArea"
-              style={{ width: `calc(${PAGE_WIDTH_MM}mm * ${previewScale})`, height: `calc(${PAGE_HEIGHT_MM}mm * ${previewScale})` }}
-            >
-              <div
-                className="DocPreviewScaler"
-                style={{ width: `${PAGE_WIDTH_MM}mm`, height: `${PAGE_HEIGHT_MM}mm`, transform: `scale(${previewScale})` }}
-              >
-                <CourseOutline data={outlineData} />
+          <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-panel border !border-line bg-surface-2">
+            
+            <div className="absolute right-6 top-6 z-20 flex flex-col items-end gap-3">
+              {printError && <span className="rounded bg-danger-soft px-3 py-1 text-xs font-semibold text-danger shadow-sm">{printError}</span>}
+              <Button onClick={() => setShowBulkPrintConfirm(true)} disabled={selectedIds.length === 0 || isPreparingPrint} className="shadow-lift">
+                <BiPrinter className="text-lg" /> {isPreparingPrint ? 'Preparing…' : `Print (${selectedIds.length})`}
+              </Button>
+              <div className="flex flex-col overflow-hidden rounded-ctl border !border-line bg-surface shadow-lift">
+                <button onClick={resetPreviewScale} disabled={previewScale === DEFAULT_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center border-b !border-line text-lg text-brand hover:bg-surface-2 disabled:opacity-50"><BiFullscreen /></button>
+                <button onClick={() => changePreviewScale(PREVIEW_SCALE_STEP)} disabled={previewScale >= MAX_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center border-b !border-line text-xl font-bold text-brand hover:bg-surface-2 disabled:opacity-50">+</button>
+                <div className="flex h-10 items-center justify-center border-b !border-line bg-surface-2 px-2 text-xs font-bold tabular-nums text-ink-2">{Math.round(previewScale * 100)}%</div>
+                <button onClick={() => changePreviewScale(-PREVIEW_SCALE_STEP)} disabled={previewScale <= MIN_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center text-xl font-bold text-brand hover:bg-surface-2 disabled:opacity-50">−</button>
               </div>
             </div>
-          )}
-        </div>
+
+            <div className="h-full w-full overflow-auto p-12 pb-24 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {!selectedStudent ? (
+                <div className="flex h-full items-center justify-center">
+                  <EmptyState icon={BiChevronRight} title="No student selected" text="Select a student to preview its course outline." className="!border-0 !bg-transparent" />
+                </div>
+              ) : outlineLoading ? (
+                // --- RIGHT PANE DOCUMENT SKELETON ---
+                <div className="mx-auto flex w-fit shrink-0 justify-center">
+                  <div 
+                    className="shadow-lift transition-transform duration-200 bg-white"
+                    style={{ 
+                      width: `calc(${PAGE_WIDTH_MM}mm * ${previewScale})`, 
+                      height: `calc(${PAGE_HEIGHT_MM}mm * ${previewScale})`,
+                      colorScheme: 'light'
+                    }}
+                  >
+                    <div 
+                      className="flex flex-col gap-4 p-12"
+                      style={{ 
+                        width: `${PAGE_WIDTH_MM}mm`, 
+                        height: `${PAGE_HEIGHT_MM}mm`, 
+                        transform: `scale(${previewScale})`, 
+                        transformOrigin: 'top left',
+                        backgroundColor: '#ffffff'
+                      }}
+                    >
+                      {/* Fake Header */}
+                      <div className="flex flex-col items-center gap-2 border-b-2 border-gray-300 pb-4">
+                        <div className="h-4 w-64 animate-pulse rounded bg-gray-200" />
+                        <div className="h-3 w-48 animate-pulse rounded bg-gray-200" />
+                        <div className="h-3 w-32 animate-pulse rounded bg-gray-200" />
+                      </div>
+                      {/* Fake Table Rows */}
+                      <div className="mt-4 flex flex-col gap-3">
+                        <div className="h-6 w-full animate-pulse rounded bg-gray-300" />
+                        {Array.from({ length: 12 }).map((_, i) => (
+                          <div key={i} className="flex gap-2">
+                            <div className="h-4 w-16 animate-pulse rounded bg-gray-100" />
+                            <div className="h-4 flex-1 animate-pulse rounded bg-gray-100" />
+                            <div className="h-4 w-12 animate-pulse rounded bg-gray-100" />
+                            <div className="h-4 w-12 animate-pulse rounded bg-gray-100" />
+                            <div className="h-4 w-20 animate-pulse rounded bg-gray-100" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : outlineError ? (
+                <div className="flex h-full items-center justify-center"><p className="text-sm font-medium text-danger">{outlineError}</p></div>
+              ) : (
+                <div className="mx-auto flex w-fit shrink-0 justify-center">
+                  {/* FORCED LIGHT MODE PREVIEW */}
+                  <div 
+                    className="shadow-lift transition-transform duration-200" 
+                    style={{ 
+                      width: `calc(${PAGE_WIDTH_MM}mm * ${previewScale})`, 
+                      height: `calc(${PAGE_HEIGHT_MM}mm * ${previewScale})`,
+                      backgroundColor: '#ffffff',
+                      colorScheme: 'light'
+                    }}
+                  >
+                    <div 
+                      style={{ 
+                        width: `${PAGE_WIDTH_MM}mm`, 
+                        height: `${PAGE_HEIGHT_MM}mm`, 
+                        transform: `scale(${previewScale})`, 
+                        transformOrigin: 'top left',
+                        backgroundColor: '#ffffff',
+                        color: '#000000'
+                      }}
+                    >
+                      <CourseOutline data={outlineData} />
+                    </div>
+                  </div>
+
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
-      {isMobile && selectedIds.length > 0 && (
-        <div className="DocMobilePrintBar">
-          <span>{selectedIds.length} selected</span>
-          <button className="TopbarBtn" onClick={handlePrint} disabled={isPreparingPrint}>
-            <BiPrinter className="linkIcon" /> {isPreparingPrint ? 'Preparing…' : 'Print'}
-          </button>
-          {printError && <p className="DocPrintError" role="alert">{printError}</p>}
-        </div>
+
+      {/* ---------- BULK ACTION FLOATING BAR ---------- */}
+      <BulkAction
+        studentIds={selectedIds}
+        showBar
+        isEditOpen={false} 
+        editLabel="Print Selected" 
+        onRequestEdit={() => setShowBulkPrintConfirm(true)} 
+        onClose={() => {}}
+        onSuccess={() => {}}
+        onClear={clearSelection}
+        onDelete={null} 
+      />
+
+      {/* ---------- CONFIRMATION MODAL ---------- */}
+      <ConfirmationModal
+        isOpen={showBulkPrintConfirm}
+        title={`Print ${selectedIds.length} Course Outlines?`}
+        message="This will generate and format PDF documents for all selected students. Continue?"
+        variant="info"
+        confirmLabel="PRINT"
+        cancelLabel="CANCEL"
+        isAlert={false}
+        loading={isPreparingPrint}
+        onConfirm={handlePrint}
+        onCancel={() => setShowBulkPrintConfirm(false)}
+      />
+
+      {/* THE PRINT PORTAL */}
+      {printForms.length > 0 && createPortal(
+        <div id="print-portal-root">
+          {printForms.map(({ studentId, data }) => (
+            <div key={studentId} className="print-page">
+              <CourseOutlineReady data={data} onReady={handlePortalReady} />
+            </div>
+          ))}
+        </div>,
+        document.body
       )}
-      <div className="DocBatchPrintArea">
-        {printForms.map(({ studentId, data }) => (
-          <div className="DocBatchPrintForm" key={studentId}>
-            <CourseOutline data={data} />
-          </div>
-        ))}
-      </div>
     </>
   );
+}
+
+function CourseOutlineReady({ data, onReady }) {
+  useEffect(() => {
+    if (data && onReady) onReady();
+  }, [data, onReady]);
+  return <CourseOutline data={data} />;
 }
 
 export default DocumentsCourseOutline;

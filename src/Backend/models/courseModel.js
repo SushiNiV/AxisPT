@@ -1,7 +1,7 @@
 const db = require('../config/db');
 
 class CourseModel {
-  static async getAll(includeArchived = false) {
+   static async getAll(includeArchived = false) {
     const result = await db.query(`
       SELECT 
         c.course_id,
@@ -22,6 +22,7 @@ class CourseModel {
         
         (
           SELECT json_agg(json_build_object(
+            'curriculum_id', cc2.curriculum_id,
             'program_abbr', p2.program_abbr,
             'year_level', cc2.year_level,
             'semester_label', s2.semester_label

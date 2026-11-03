@@ -2,11 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import './StudentForm.css';
 
-
-function StudentForm({ adminMode = false, studentId: propsId }) {
+function StudentForm({ adminMode = false, studentId: propsId, studentData, onReady }) {
   const { studentId: paramId } = useParams();  
-  
-
   const effectiveId = propsId || paramId;
 
   const [data, setData] = useState(null);
@@ -44,6 +41,22 @@ function StudentForm({ adminMode = false, studentId: propsId }) {
   };
 
   useEffect(() => {
+    // 1. If data is passed directly as a prop (from the Print Portal), use it immediately!
+    if (studentData) {
+      let safeData = { ...studentData };
+      if (Array.isArray(safeData.support) && safeData.support.length > 0) {
+        const rawString = safeData.support[0]; 
+        safeData.support = rawString
+          .replace(/{|}/g, '')
+          .split(',')
+          .map(item => item.replace(/"/g, '').trim());
+      }
+      setData(safeData);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Otherwise, fetch from the API as normal (for the preview pane)
     if (adminMode && !effectiveId) return;
 
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
@@ -59,17 +72,17 @@ function StudentForm({ adminMode = false, studentId: propsId }) {
       .then((res) => res.json())
       .then((json) => {
         if (json.success) {
-          let studentData = json.data;
+          let fetchedData = json.data;
 
-          if (Array.isArray(studentData.support) && studentData.support.length > 0) {
-            const rawString = studentData.support[0]; 
-            studentData.support = rawString
+          if (Array.isArray(fetchedData.support) && fetchedData.support.length > 0) {
+            const rawString = fetchedData.support[0]; 
+            fetchedData.support = rawString
               .replace(/{|}/g, '')
               .split(',')
               .map(item => item.replace(/"/g, '').trim());
           }
           
-          setData(studentData);
+          setData(fetchedData);
         }
         setLoading(false);
       })
@@ -77,11 +90,20 @@ function StudentForm({ adminMode = false, studentId: propsId }) {
         console.error("Fetch error:", err);
         setLoading(false);
       });
-  }, [effectiveId, adminMode]); // 5. Added effectiveId as dependency
+  }, [effectiveId, adminMode, studentData]);
+
+  // Notify the parent when the form has actually rendered with data.
+  // This lets DocumentsStudentForm call window.print() at exactly the right moment.
+  useEffect(() => {
+    if (!loading && data && typeof onReady === 'function') {
+      onReady();
+    }
+  }, [loading, data, onReady]);
 
   const formatFullName = (f, m, l, s) => `${f || ''} ${m || ''} ${l || ''} ${s || ''}`.trim();
 
   if (loading) return <div className="loading-spinner">Loading Form Data...</div>;
+  if (!data) return <div className="loading-spinner">No form data available.</div>;
 
   return (
     <div className="form-container">
@@ -452,12 +474,39 @@ function StudentForm({ adminMode = false, studentId: propsId }) {
         </div>
       </div>
 
-      <div className="section-title sec-title">Certifications</div>
-      <div className="grid-row">
-        <span className="sub-label left-text divider">
+            <div 
+        className="section-title sec-title" 
+        style={{ 
+          backgroundColor: '#000', 
+          color: '#fff', 
+          textAlign: 'center', 
+          fontWeight: 'bold', 
+          padding: '5px', 
+          margin: '0', 
+          height: 'auto',
+          display: 'block',
+          WebkitPrintColorAdjust: 'exact',
+          printColorAdjust: 'exact'
+        }}
+      >
+        Certifications
+      </div>
+      <div className="grid-row" style={{ padding: '0', margin: '0' }}>
+        <span 
+          className="sub-label left-text" 
+          style={{ 
+            display: 'block', 
+            padding: '10px', 
+            margin: '0', 
+            fontSize: '10px', 
+            lineHeight: '1.3',
+            textAlign: 'justify',
+            color: '#000'
+          }}
+        >
           <i> 
-            I hereby certify that the information above is true an correct to the best of my knowledge an belief. 
-            I understand that I will be subject to disciplinary action should the above information to be proved false.
+            I hereby certify that the information above is true and correct to the best of my knowledge and belief. 
+            I understand that I will be subject to disciplinary action should the above information be proved false.
           </i>
         </span>
       </div>

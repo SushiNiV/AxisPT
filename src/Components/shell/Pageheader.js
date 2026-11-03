@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BiBell, BiMenu } from 'react-icons/bi';
-import ProfileDrawer from '../ProfileDrawer';
+import ProfileDrawer from './ProfileDrawer';
 
 const ICON_BTN =
   'grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line bg-surface text-ink ' +

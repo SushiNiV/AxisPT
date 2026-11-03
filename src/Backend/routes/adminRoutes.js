@@ -21,7 +21,7 @@ const assistantController = require('../controllers/assistantController');
 // ==========================================
 // AUTH & USER MANAGEMENT — ADMIN ONLY (except login, change-password)
 // ==========================================
-router.post('/login', authController.login);
+// Note: /login and /google are handled directly in Server.js under /api/auth
 router.post('/change-password', verifyToken, authController.changePassword);
 
 router.get('/users',              verifyToken, requireRole('admin'), authController.getUsers);
@@ -30,35 +30,42 @@ router.get('/roles',              verifyToken, requireRole('admin'), authControl
 router.get('/designations',       verifyToken, requireRole('admin'), authController.getDesignations);
 
 // ==========================================
-// AI — BOTH ROLES (also fixes previously unauthenticated route)
+// AI — BOTH ROLES
 // ==========================================
-// Update this line in adminRoutes.js
 router.post('/assistant/ask', verifyToken, requireRole('admin', 'faculty', 'student'), assistantController.ask);
+
 // ==========================================
 // DASHBOARD — BOTH ROLES
 // ==========================================
 router.get('/dashboard/stats', verifyToken, requireRole('admin', 'faculty'), dashboardController.getDashboardStats);
+router.get('/dashboard/summary', verifyToken, requireRole('admin', 'faculty'), dashboardController.getDashboardSummary);
 
 // ==========================================
-// STUDENT MANAGEMENT — BOTH ROLES (faculty may delete & restore per spec)
+// STUDENT MANAGEMENT — BOTH ROLES
 // ==========================================
 router.get('/students',                    verifyToken, requireRole('admin', 'faculty'), studentController.getStudentMasterlist);
-router.get('/students/:id',                verifyToken, requireRole('admin', 'faculty'), studentController.getStudentById);
 router.post('/students',                   verifyToken, requireRole('admin', 'faculty'), studentController.createStudent);
-router.put('/students/:id',                verifyToken, requireRole('admin', 'faculty'), studentController.updateStudent);
-router.put('/students/:id/status',         verifyToken, requireRole('admin', 'faculty'), studentController.updateStudentStatus);
+
 router.put('/students/batch-update',       verifyToken, requireRole('admin', 'faculty'), studentController.updateStudentsBulk);
 router.delete('/students/batch-delete',    verifyToken, requireRole('admin', 'faculty'), studentController.deleteStudentsBulk);
+
+router.get('/students/:id',                verifyToken, requireRole('admin', 'faculty'), studentController.getStudentById);
+router.put('/students/:id',                verifyToken, requireRole('admin', 'faculty'), studentController.updateStudent);
+router.put('/students/:id/status',         verifyToken, requireRole('admin', 'faculty'), studentController.updateStudentStatus);
 router.delete('/students/:id',             verifyToken, requireRole('admin', 'faculty'), studentController.deleteStudent);
 router.post('/students/:id/restore',       verifyToken, requireRole('admin', 'faculty'), studentController.restoreStudent);
 
 // ==========================================
 // GRADE MANAGEMENT — BOTH ROLES
 // ==========================================
-router.get('/students/:id/grades',            verifyToken, requireRole('admin', 'faculty'), gradeController.getStudentGrades);
-router.put('/students/:id/grades',            verifyToken, requireRole('admin', 'faculty'), gradeController.updateStudentGrades);
-router.get('/students/:id/gradable-courses',  verifyToken, requireRole('admin', 'faculty'), gradeController.getGradableCoursesForStudent);
-router.get('/courses/gradable',               verifyToken, requireRole('admin', 'faculty'), gradeController.getGradableCourses);
+router.get('/students/:id/grades',                     verifyToken, requireRole('admin', 'faculty'), gradeController.getStudentGrades);
+router.put('/students/:id/grades',                     verifyToken, requireRole('admin', 'faculty'), gradeController.updateStudentGrades);
+router.get('/students/:id/gradable-courses',           verifyToken, requireRole('admin', 'faculty'), gradeController.getGradableCoursesForStudent);
+router.get('/courses/gradable',                        verifyToken, requireRole('admin', 'faculty'), gradeController.getGradableCourses);
+router.post('/students/:id/grades/:courseId/archive',  verifyToken, requireRole('admin', 'faculty'), gradeController.archiveStudentGrade);
+router.post('/students/:id/grades/:courseId/restore',  verifyToken, requireRole('admin', 'faculty'), gradeController.restoreStudentGrade);
+router.get('/students/:id/grades/archived', verifyToken, requireRole('admin', 'faculty'), gradeController.getArchivedStudentGrades);
+router.delete('/students/:id/grades/:courseId/empty', verifyToken, requireRole('admin', 'faculty'), gradeController.deleteEmptyStudentGrade);
 
 // ==========================================
 // DOCUMENTS — BOTH ROLES
@@ -101,10 +108,10 @@ router.post('/courses',         verifyToken, requireRole('admin'), courseControl
 router.put('/courses/:id',      verifyToken, requireRole('admin'), courseController.updateCourse);
 router.delete('/courses/:id',   verifyToken, requireRole('admin'), courseController.deleteCourse);
 router.post('/courses/:id/restore', verifyToken, requireRole('admin'), courseController.restoreCourse);
+
 // ==========================================
 // USER / FACULTY MANAGEMENT — ADMIN ONLY
 // ==========================================
-// Use facultyController for all /users routes (it handles faculty+users tables together)
 router.get('/users',              verifyToken, requireRole('admin'), facultyController.getFaculties);
 router.get('/users/:id',          verifyToken, requireRole('admin'), facultyController.getFacultyById);
 router.post('/users',             verifyToken, requireRole('admin'), facultyController.addFaculty);

@@ -21,6 +21,7 @@ import '../../GlobalStyle/Global.css';
  * @param {string} logoutTo    Route to open after logging out.
  * @param {React.ReactNode} [assistant] Floating widget (e.g. <AssistantWidget />).
  * @param {Function} [onChangePassword] Passed to the profile drawer (student portal).
+ * @param {{to:string}} [promo] Shows the "Know more about AXIS PORTAL?" card in the sidebar.
  */
 export default function AppShell({
   nav,
@@ -33,6 +34,7 @@ export default function AppShell({
   logoutTo,
   assistant,
   onChangePassword,
+  promo,
 }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -78,6 +80,7 @@ export default function AppShell({
         mobileOpen={mobileNavOpen}
         onClose={() => setMobileNavOpen(false)}
         onLogout={handleLogout}
+        promo={promo}
       />
 
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">

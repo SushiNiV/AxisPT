@@ -1,34 +1,19 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
-import { BiInfoCircle } from 'react-icons/bi';
-import PopupOverlay from './shared/PopupOverlay';
+import ConfirmationModal from './shared/ConfirmationModal'; 
 
 function SessionExpired({ onConfirm }) {
-  const portalRoot = document.getElementById('portal-root') || document.body;
-
-  const modalContent = (
-    <PopupOverlay 
-      isOpen={true} 
-      onClose={() => {}} 
-      title="SESSION EXPIRED"
-      icon={<BiInfoCircle />}
-    >
-      <div>
-        <p>Your session has expired. Please log in again.</p>
-        <div className="overlayActionButtons">
-          <button 
-            className="confirmBtn" 
-            onClick={onConfirm}
-            style={{ backgroundColor: '#3D1616' }}
-          >
-            OK
-          </button>
-        </div>
-      </div>
-    </PopupOverlay>
+  return (
+    <ConfirmationModal
+      isOpen={true}
+      title="Session Expired"
+      message="Your session has expired. Please log in again."
+      variant="warning" 
+      isAlert={true} 
+      confirmLabel="OK"
+      onConfirm={onConfirm}
+      onCancel={onConfirm}
+    />
   );
-
-  return ReactDOM.createPortal(modalContent, portalRoot);
 }
 
 export default SessionExpired;

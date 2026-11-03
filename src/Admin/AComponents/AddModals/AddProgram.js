@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
-import ReactDOM from 'react-dom';
-import ConfirmationModal from '../ConfirmationModal';
-import '../../../GlobalStyle/GlobalForm.css';
-import '../../../GlobalStyle/GlobalOverlay.css';
-import '../../../GlobalStyle/Global.css';
+import React, { useState, useEffect } from "react";
+import { BiBookOpen } from 'react-icons/bi';
+import ConfirmationModal from '../../../Components/shared/ConfirmationModal';
+import Modal from '../../../Components/ui/Modal';
+import Button from '../../../Components/ui/Button';
+import TextField from '../../../Components/ui/Textfield';
+import Dropdown from '../../../Components/shared/Dropdown';
+import cx from '../../../Components/ui/Cx';
 
 function AddProgram({ onClose, onSuccess, programToEdit = null }) {
   const [programName, setProgramName] = useState("");
@@ -11,42 +13,17 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
   const [selectedYears, setSelectedYears] = useState([]);
   const [description, setDescription] = useState("");
   const [isActive, setIsActive] = useState(true);
-  const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const portalRoot = document.getElementById('portal-root') || document.body;
+  const [isDirty, setIsDirty] = useState(false);
 
   const [confirmState, setConfirmState] = useState({ isOpen: false });
   const [successState, setSuccessState] = useState({ isOpen: false });
-
-  const dropdownRef = useRef(null);
   const isEditMode = !!programToEdit;
 
   const options = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"];
-  const yearOrder = {
-    "1st Year": 1,
-    "2nd Year": 2,
-    "3rd Year": 3,
-    "4th Year": 4,
-    "5th Year": 5
-  };
-
   const closeConfirm = () => setConfirmState({ isOpen: false });
-
-  const openAlert = (title, message, variant = 'info') => {
-    setConfirmState({
-      isOpen: true,
-      title,
-      message,
-      variant,
-      isAlert: true,
-      onConfirm: closeConfirm,
-      onCancel: closeConfirm,
-    });
-  };
-
-  const showSuccess = (title, summary) => {
-    setSuccessState({ isOpen: true, title, summary, variant: 'success' });
-  };
+  const openAlert = (title, message, variant = 'info') => setConfirmState({ isOpen: true, title, message, variant, isAlert: true, onConfirm: closeConfirm, onCancel: closeConfirm });
+  const showSuccess = (title, summary) => setSuccessState({ isOpen: true, title, summary, variant: 'success' });
 
   useEffect(() => {
     if (programToEdit) {
@@ -54,84 +31,40 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
       setAbbreviation(programToEdit.program_abbr || "");
       setDescription(programToEdit.program_description || "");
       setIsActive(programToEdit.program_status === true);
-
       const yearsArray = [];
       const totalYears = programToEdit.total_year || 0;
-      for (let i = 1; i <= totalYears; i++) {
-        yearsArray.push(`${i}${getYearSuffix(i)} Year`);
-      }
+      for (let i = 1; i <= totalYears; i++) yearsArray.push(`${i}${getYearSuffix(i)} Year`);
       setSelectedYears(yearsArray);
     }
   }, [programToEdit]);
 
-  const getYearSuffix = (year) => {
-    if (year === 1) return "st";
-    if (year === 2) return "nd";
-    if (year === 3) return "rd";
-    return "th";
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+  const getYearSuffix = (year) => year === 1 ? "st" : year === 2 ? "nd" : year === 3 ? "rd" : "th";
 
   const handleYearClick = (clickedYear) => {
-    const clickedYearNum = yearOrder[clickedYear];
-
-    if (selectedYears.includes(clickedYear)) {
-      setSelectedYears(prev => prev.filter(y => y !== clickedYear));
-      return;
-    }
-
+    setIsDirty(true);
+    const clickedYearNum = options.indexOf(clickedYear) + 1;
+    if (selectedYears.includes(clickedYear)) { setSelectedYears(prev => prev.filter(y => y !== clickedYear)); return; }
     const yearsToSelect = [];
-    for (let i = 1; i <= clickedYearNum; i++) {
-      yearsToSelect.push(options[i - 1]);
-    }
-
+    for (let i = 1; i <= clickedYearNum; i++) yearsToSelect.push(options[i - 1]);
     const allSelected = yearsToSelect.every(year => selectedYears.includes(year));
-
-    if (allSelected) {
-      setSelectedYears(prev => [...prev, clickedYear]);
-    } else {
-      setSelectedYears(yearsToSelect);
-    }
+    setSelectedYears(allSelected ? prev => [...prev, clickedYear] : yearsToSelect);
   };
 
   const handleSubmit = async () => {
     if (!programName || !abbreviation || selectedYears.length === 0) {
-      openAlert(
-        'Missing Fields',
-        'Please fill in Program Name, Abbreviation, and Total Year before saving.',
-        'warning'
-      );
+      openAlert('Missing Fields', 'Please fill in Program Name, Abbreviation, and Total Year.', 'warning');
       return;
     }
-
     setIsSubmitting(true);
-
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const url = isEditMode
         ? `${process.env.REACT_APP_API_URL}/admin/programs/${programToEdit.program_id}`
         : `${process.env.REACT_APP_API_URL}/admin/programs`;
-
       const method = isEditMode ? 'PUT' : 'POST';
-
       const response = await fetch(url, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        method,
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           program_name: programName,
           program_abbr: abbreviation,
@@ -140,156 +73,80 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
           program_status: isActive
         })
       });
-
       const data = await response.json();
-
       if (data.success) {
-        showSuccess(
-          isEditMode ? 'Program Updated' : 'Program Created',
-          isEditMode
-            ? 'The program has been updated successfully.'
-            : 'The program has been created successfully.'
-        );
+        setIsDirty(false);
+        showSuccess(isEditMode ? 'Program Updated' : 'Program Created', 'The program has been saved successfully.');
       } else {
-        openAlert(
-          isEditMode ? 'Update Failed' : 'Creation Failed',
-          data.message || (isEditMode ? 'Failed to update program.' : 'Failed to create program.'),
-          'danger'
-        );
+        openAlert('Save Failed', data.message || 'Failed to save program.', 'danger');
       }
     } catch (error) {
-      console.error("Error submitting program:", error);
-      openAlert('Connection Error', 'An unexpected error occurred. Please try again.', 'danger');
+      openAlert('Connection Error', 'An unexpected error occurred.', 'danger');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const modalContent = (
-    <div className="modalOverlay">
-      <div className="modalContainer">
-        <div className="modalHeader">
-          <h3 className="modalTitle">{isEditMode ? "UPDATE PROGRAM" : "ADD NEW PROGRAM"}</h3>
-          <div className="CloseBtnArea">
-            <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
+  const yearChoices = options.map(y => ({ value: y, label: y }));
+  const currentYearSelection = selectedYears.length > 0 ? selectedYears.join(", ") : "";
+
+  return (
+    <>
+      <Modal
+        isOpen={true}
+        onClose={onClose}
+        title={isEditMode ? "Update Program" : "Add New Program"}
+        description="Enter the program details and curriculum length."
+        icon={<BiBookOpen className="text-2xl" />}
+        loading={isSubmitting}
+        isDirty={isDirty}
+        footer={({ requestClose }) => (
+          <>
+            <Button type="button" variant="secondary" onClick={requestClose} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button type="button" variant="primary" onClick={handleSubmit} loading={isSubmitting} disabled={!isDirty}>
+              {isSubmitting ? "Saving..." : (isEditMode ? "Update Program" : "Create Program")}
+            </Button>
+          </>
+        )}
+      >
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField label={<>Program Name <span className="text-danger">*</span></>} placeholder="Physical Therapy" value={programName} onChange={(e) => { setIsDirty(true); setProgramName(e.target.value); }} />
+            <TextField label={<>Abbreviation <span className="text-danger">*</span></>} placeholder="BSPT" value={abbreviation} onChange={(e) => { setIsDirty(true); setAbbreviation(e.target.value.toUpperCase()); }} />
           </div>
-        </div>
-
-        <div className="modalScrollArea">
-          <div className="FormContent">
-            <div className="formGroup">
-              <label className="formLabel">PROGRAM NAME <span style={{ color: 'red' }}>*</span></label>
-              <input
-                type="text"
-                placeholder="Physical Therapy"
-                value={programName}
-                onChange={(e) => setProgramName(e.target.value)}
-              />
-            </div>
-
-            <div className="formGroup">
-              <label className="formLabel">PROGRAM ABBREVIATION <span style={{ color: 'red' }}>*</span></label>
-              <input
-                type="text"
-                placeholder="BSPT"
-                value={abbreviation}
-                onChange={(e) => setAbbreviation(e.target.value.toUpperCase())}
-              />
-            </div>
-
-            <div className="formGroup">
-              <label className="formLabel">TOTAL YEAR <span style={{ color: 'red' }}>*</span></label>
-              <div className="custom-multiselect" ref={dropdownRef}>
-                <div
-                  className={`select-display`}
-                  onClick={() => setIsOpen(!isOpen)}
-                  tabIndex="0"
-                >
-                  <span className="selected-text">
-                    {selectedYears.length > 0
-                      ? selectedYears.join(", ")
-                      : "Select Year Levels"}
-                  </span>
-                </div>
-
-                {isOpen && (
-                  <div className="dropdown-menu">
-                    {options.map(year => (
-                      <label key={year} className="dropdown-item">
-                        <input
-                          type="checkbox"
-                          checked={selectedYears.includes(year)}
-                          onChange={() => handleYearClick(year)}
-                        />
-                        <span>{year}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-ink">Total Years <span className="text-danger">*</span></label>
+            <Dropdown options={yearChoices} value={currentYearSelection} onChange={(val) => handleYearClick(val)} placeholder="Select Total Years" />
+            {selectedYears.length > 0 && <p className="text-xs text-ink-3">Selected: {selectedYears.join(", ")}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-ink">Description</label>
+            <textarea
+              rows="3"
+              placeholder="Enter program description..."
+              value={description}
+              onChange={(e) => { setIsDirty(true); setDescription(e.target.value); }}
+              className="w-full rounded-ctl bg-surface-2 px-3.5 py-3 text-base text-ink ring-1 ring-line-strong placeholder:text-ink-3 transition-shadow focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            />
+          </div>
+          <div className="space-y-3 pt-2">
+            <label className="block text-sm font-medium text-ink">Status <span className="text-danger">*</span></label>
+            <div className="flex cursor-pointer items-center gap-3" onClick={() => { setIsDirty(true); setIsActive(!isActive); }}>
+              <div className={cx("relative h-6 w-11 rounded-full transition-colors duration-200 ease-in-out", isActive ? "bg-brand" : "bg-line-strong")}>
+                <div className={cx("absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out", isActive ? "translate-x-6" : "translate-x-1")} />
               </div>
-            </div>
-
-            <div className="formGroup">
-              <label className="formLabel">PROGRAM DESCRIPTION</label>
-              <textarea
-                rows="4"
-                placeholder="Enter program description..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              ></textarea>
-            </div>
-
-            <div className="formGroup">
-              <label className="formLabel">PROGRAM STATUS <span style={{ color: 'red' }}>*</span></label>
-              <div className="statusToggleContainer" onClick={() => setIsActive(!isActive)}>
-                <div className={`statusSwitch ${isActive ? 'active' : 'inactive'}`}>
-                  <div className="switchHandle"></div>
-                </div>
-                <span className={`statusLabel ${isActive ? 'text-active' : 'text-inactive'}`}>
-                  {isActive ? "ACTIVE" : "INACTIVE"}
-                </span>
-              </div>
-            </div>
-
-            <div className="BtnsContainer">
-              <button className="ResetFilterBtn" onClick={onClose} disabled={isSubmitting}>CANCEL</button>
-              <button className="ApplyFilterBtn" onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? (isEditMode ? "UPDATING..." : "CREATING...") : (isEditMode ? "UPDATE" : "CREATE")}
-              </button>
+              <span className={cx("text-sm font-medium transition-colors", isActive ? "text-brand-ink" : "text-ink-2")}>{isActive ? "Active" : "Inactive"}</span>
             </div>
           </div>
         </div>
-      </div>
+      </Modal>
 
-      <ConfirmationModal
-        isOpen={successState.isOpen}
-        title={successState.title}
-        summary={successState.summary}
-        variant={successState.variant}
-        isAlert={true}
-        onConfirm={() => {
-          setSuccessState({ isOpen: false });
-          onSuccess();
-        }}
-        onCancel={() => {
-          setSuccessState({ isOpen: false });
-          onSuccess();
-        }}
-      />
-
-      <ConfirmationModal
-        isOpen={confirmState.isOpen}
-        title={confirmState.title}
-        message={confirmState.message}
-        variant={confirmState.variant}
-        isAlert={confirmState.isAlert}
-        onConfirm={confirmState.onConfirm}
-        onCancel={confirmState.onCancel}
-      />
-    </div>
+      <ConfirmationModal isOpen={successState.isOpen} title={successState.title} summary={successState.summary} variant={successState.variant} isAlert={true} onConfirm={() => { setSuccessState({ isOpen: false }); onSuccess(); }} onCancel={() => { setSuccessState({ isOpen: false }); onSuccess(); }} />
+      <ConfirmationModal isOpen={confirmState.isOpen} title={confirmState.title} message={confirmState.message} variant={confirmState.variant} isAlert={confirmState.isAlert} onConfirm={confirmState.onConfirm} onCancel={confirmState.onCancel} />
+    </>
   );
-
-  return ReactDOM.createPortal(modalContent, portalRoot);
 }
 
 export default AddProgram;

@@ -1,8 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import './TermGrade.css';
 
-const TermGrade = ({ data }) => {
+const TermGrade = ({ data, onReady }) => {
   
+  // Notify the parent when the form has actually rendered with data.
+  useEffect(() => {
+    if (data && typeof onReady === 'function') {
+      onReady();
+    }
+  }, [data, onReady]);
+
   if (!data) {
     return <div className="term-container">No data available</div>;
   }
@@ -62,7 +69,6 @@ const TermGrade = ({ data }) => {
     year: 'numeric',
   }).format(date);
 
-console.log('[TermGrade] data.probationStatus =', JSON.stringify(data.probationStatus));
   const fullName = `${data.first_name || ''} ${data.last_name || ''}`.trim();
   const studentNumber = data.student_number || '';
   const yearLevel = data.year_level || '';

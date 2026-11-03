@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { BiSearch, BiPlus, BiX, BiCalendar, BiPencil, BiCheckCircle } from 'react-icons/bi';
 import AddYear from '../../AComponents/AddModals/AddYear';
-import ConfirmationModal from '../../AComponents/ConfirmationModal';
-import { BiSearch, BiPlusCircle, BiCalendar, BiX, BiPencil, BiDotsVerticalRounded } from 'react-icons/bi';
+import ConfirmationModal from '../../../Components/shared/ConfirmationModal';
 import useMediaQuery from '../../../Components/useMediaQuery';
-import '../../../GlobalStyle/Global.css';
-import '../../../GlobalStyle/GlobalCard.css';
-import '../../../GlobalStyle/GlobalEmpty.css';
-import '../../../ResponsiveStyle/ResponsiveTable.css';
+import Button from '../../../Components/ui/Button';
+import Badge from '../../../Components/ui/Badge';
+import EmptyState from '../../../Components/ui/Emptystate';
+import Pagination from '../../../Components/ui/Pagination';
 
 function AAcadYear() {
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -16,9 +16,7 @@ function AAcadYear() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [editingYear, setEditingYear] = useState(null);
-  const [menuYearId, setMenuYearId] = useState(null); 
 
-  // --- PAGINATION STATE ---
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = isMobile ? 10 : 15;
 
@@ -76,7 +74,6 @@ function AAcadYear() {
     fetchData();
   }, [fetchData]);
 
-  // Reset to page 1 when searching or switching layouts
   useEffect(() => { setCurrentPage(1); }, [searchTerm, isMobile]);
 
   const handleAddSuccess = () => {
@@ -169,45 +166,14 @@ function AAcadYear() {
     return 'past';
   };
 
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'current': return 'Active';
-      case 'future': return 'Inactive';
-      case 'past': return 'Inactive';
-      default: return '';
-    }
-  };
-
-  const getStatusClass = (status) => {
-    switch (status) {
-      case 'current': return 'active-bg';
-      case 'future': return 'inactive-bg';
-      case 'past': return 'inactive-bg';
-      default: return '';
-    }
-  };
-
-  const getTermStatusLabel = (status) => {
-    switch (status) {
-      case 'current': return 'Current Term';
-      case 'future': return 'Future Term';
-      case 'past': return 'Past Term';
-      default: return '';
-    }
-  };
-
   const filteredYears = academicYears.filter(year =>
     year.year_label?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // --- PAGINATION LOGIC ---
   const totalPages = Math.ceil(filteredYears.length / rowsPerPage) || 1;
   const indexOfLastItem = currentPage * rowsPerPage;
   const indexOfFirstItem = indexOfLastItem - rowsPerPage;
   const currentItems = filteredYears.slice(indexOfFirstItem, indexOfLastItem);
-
-  const goToNextPage = () => { if (currentPage < totalPages) setCurrentPage(p => p + 1); };
-  const goToPrevPage = () => { if (currentPage > 1) setCurrentPage(p => p - 1); };
 
   const hasSearchResults = searchTerm && filteredYears.length === 0 && academicYears.length > 0;
 
@@ -217,8 +183,43 @@ function AAcadYear() {
     { id: 3, name: 'Summer Term' }
   ];
 
+  // --- SKELETON LOADER ---
+  if (loading) {
+    return (
+      <div className="ax flex h-full min-h-0 flex-col gap-3 pb-4">
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="h-10 flex-1 animate-pulse rounded-ctl bg-surface-2" />
+          <div className="h-10 w-36 shrink-0 animate-pulse rounded-ctl bg-surface-2" />
+        </div>
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border !border-line bg-surface">
+          <div className="p-4 space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex flex-col sm:flex-row gap-4 border-b !border-line pb-4 last:border-0">
+                <div className="flex flex-1 items-start gap-4">
+                  <div className="hidden h-12 w-12 shrink-0 animate-pulse rounded-xl bg-surface-2 sm:block" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-5 w-1/3 animate-pulse rounded bg-surface-2" />
+                    <div className="flex gap-2">
+                      <div className="h-6 w-20 animate-pulse rounded-full bg-surface-2" />
+                      <div className="h-6 w-20 animate-pulse rounded-full bg-surface-2" />
+                      <div className="h-6 w-20 animate-pulse rounded-full bg-surface-2" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2 self-end sm:self-center">
+                  <div className="h-8 w-24 animate-pulse rounded-ctl bg-surface-2" />
+                  <div className="h-8 w-16 animate-pulse rounded-ctl bg-surface-2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
-    <div className="InnerContainer">
+    <div className="ax flex h-full min-h-0 flex-col gap-3 pb-4 relative">
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}
@@ -241,191 +242,113 @@ function AAcadYear() {
         />
       )}
 
-      <div className="TopSection">
-        <div className="SearchWrapper">
-          <BiSearch className="SearchIcon" />
+      {/* Toolbar */}
+      <div className="flex shrink-0 items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <BiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg text-ink-3" />
           <input
             type="text"
             placeholder="Search academic year..."
-            className="SearchInput"
+            className="h-10 w-full rounded-ctl border !border-line bg-surface pl-10 pr-10 text-base text-ink placeholder:text-ink-3 focus-visible:border-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15 sm:text-sm"
             value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); }}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
           {searchTerm && (
-            <BiX className="ClearSearchIcon" onClick={() => { setSearchTerm(""); }} />
+            <button onClick={() => setSearchTerm("")} aria-label="Clear search" className="absolute right-1.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-lg text-ink-3 hover:bg-surface-2 hover:text-ink">
+              <BiX />
+            </button>
           )}
         </div>
 
-        <div className="TopbarBtnContainer">
-          <button className="TopbarBtn" onClick={() => setShowAdd(true)}>
-            <BiPlusCircle className="linkIcon" /> Academic Year
-          </button>
-        </div>
+        <Button onClick={() => setShowAdd(true)} className="shrink-0 !px-3 sm:!px-4">
+          <BiPlus className="text-xl" aria-hidden="true" />
+          <span className="hidden sm:inline">Academic Year</span>
+        </Button>
       </div>
 
-      <div className="CardsContainer">
-        {loading ? (
-          <div className="emptyState">
-            <div className="emptyStateIcon">⏳</div>
-            <h3 className="emptyStateTitle">Loading Academic Years</h3>
-            <p className="emptyStateText">Please wait while we fetch the data...</p>
-          </div>
-        ) : filteredYears.length > 0 ? (
-          currentItems.map((year) => {
-            const status = getAcademicYearStatus(year.year_label, year.is_active);
-            const statusLabel = getStatusLabel(status);
-            const statusClass = getStatusClass(status);
-            const termStatusLabel = getTermStatusLabel(status);
+      {filteredYears.length === 0 ? (
+        <EmptyState 
+          icon={BiCalendar} 
+          title={hasSearchResults ? "No matching results" : "No Academic Years Yet"} 
+          text={hasSearchResults ? `No academic years found matching "${searchTerm}"` : "Get started by creating your first academic year."} 
+          action={
+            <Button variant={hasSearchResults ? "secondary" : "primary"} onClick={() => hasSearchResults ? setSearchTerm("") : setShowAdd(true)}>
+              {hasSearchResults ? "Clear Search" : "Create Year"}
+            </Button>
+          } 
+        />
+      ) : (
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border !border-line bg-surface">
+          
+          <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <ul className="divide-y divide-line m-0 p-0 list-none">
+              {currentItems.map((year) => {
+                const status = getAcademicYearStatus(year.year_label, year.is_active);
+                const isActive = status === 'current';
 
-            return (
-              <div className="Card RecordCard" key={year.year_id}>
-                {isMobile ? (
-                  /* --- MOBILE LAYOUT --- */
-                  <div className="CardMain" style={{ alignItems: 'flex-start' }}>
-                    <div className="cardContent">
-                      
-                      <div className="cardHeader" style={{ marginBottom: '8px' }}>
-                        <span className="cardTitle" style={{ margin: 0 }}>
-                          Academic Year {year.year_label}
-                        </span>
-                        <span className={`statusBadge ${statusClass}`}>
-                          {statusLabel}
-                        </span>
+                return (
+                  <li key={year.year_id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 transition-colors hover:bg-surface-2">
+                    
+                    {/* Left Side: Icon, Status, Title, Semesters */}
+                    <div className="flex items-start gap-4">
+                      {/* Icon */}
+                      <div className={`hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${isActive ? 'bg-brand-soft text-brand-ink' : 'bg-surface-2 text-ink-3'}`}>
+                        <BiCalendar className="text-2xl" />
                       </div>
-                      
-                      <div className="CardDetails" style={{ marginTop: 0 }}>
-                        <span className={`detailBadge ${status === 'current' ? 'current-bg' : status === 'future' ? 'future-bg' : 'past-bg'}`}>
-                          {termStatusLabel}
-                        </span>
-                        {status === 'current' && semesters.map((sem) => (
-                          <button
-                            key={sem.id}
-                            className={`detailBadge ${year.current_sem === sem.id ? 'active-semester' : 'inactive-semester'}`}
-                            onClick={() => handleSetSemester(year, sem.id, sem.name)}
-                          >
-                            {sem.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
 
-                    <button
-                      className="RecordMenuBtn"
-                      aria-label="Year actions"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuYearId(menuYearId === year.year_id ? null : year.year_id);
-                      }}
-                    >
-                      <BiDotsVerticalRounded />
-                    </button>
-
-                    {menuYearId === year.year_id && (
-                      <>
-                        <div className="CardMenuBackdrop" onClick={(e) => { e.stopPropagation(); setMenuYearId(null); }} />
-                        <div className="CardMenu" onClick={(e) => e.stopPropagation()}>
-                          {status !== 'current' && status !== 'past' && (
-                            <button onClick={() => { setMenuYearId(null); handleSetActive(year); }}>
-                              <BiCalendar /> Set Active
-                            </button>
-                          )}
-                          <button onClick={() => { setMenuYearId(null); handleEdit(year); }}>
-                            <BiPencil /> Edit
-                          </button>
-                          {/* DELETE BUTTON REMOVED */}
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                          <Badge tone={isActive ? 'ok' : 'neutral'}>
+                            {isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                          <h3 className="text-lg font-semibold text-ink">Academic Year {year.year_label}</h3>
                         </div>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  /* --- DESKTOP LAYOUT --- */
-                  <div className="CardMain">
-                    <div className={`cardIcon ${status === 'current' ? 'active' : 'inactive'}`}>
-                      <BiCalendar />
-                    </div>
-                    <div className="cardContent">
-                      <div className="cardHeader">
-                        <span className={`statusBadge ${statusClass}`}>
-                          {statusLabel}
-                        </span>
-                      </div>
-                      <h3 className="cardTitle">Academic Year {year.year_label}</h3>
-                      <div className="CardDetails">
-                        <span className={`detailBadge ${status === 'current' ? 'current-bg' : status === 'future' ? 'future-bg' : 'past-bg'}`}>
-                          {termStatusLabel}
-                        </span>
-                        {status === 'current' && semesters.map((sem) => (
-                          <button
-                            key={sem.id}
-                            className={`detailBadge ${year.current_sem === sem.id ? 'active-semester' : 'inactive-semester'}`}
-                            onClick={() => handleSetSemester(year, sem.id, sem.name)}
-                          >
-                            {sem.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="CardAction">
-                      {status !== 'current' && status !== 'past' && (
-                        <button className="actionBtn activateBtn" onClick={() => handleSetActive(year)}>
-                          Set Active
-                        </button>
-                      )}
-                      <button className="actionBtn editBtn" onClick={() => handleEdit(year)}>
-                        <BiPencil /> Edit
-                      </button>
-                      {/* DELETE BUTTON REMOVED */}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })
-        ) : hasSearchResults ? (
-          <div className="emptyState">
-            <div className="emptyStateIcon">🔍</div>
-            <h3 className="emptyStateTitle">No matching results</h3>
-            <p className="emptyStateText">No academic years found matching "{searchTerm}"</p>
-            <button className="emptyStateBtn" onClick={() => setSearchTerm("")}>
-              Clear Search
-            </button>
-          </div>
-        ) : (
-          <div className="emptyState">
-            <div className="emptyStateIcon">📅</div>
-            <h3 className="emptyStateTitle">No Academic Years Yet</h3>
-            <p className="emptyStateText">Get started by creating your first academic year.</p>
-            <button className="emptyStateBtn" onClick={() => setShowAdd(true)}>
-              <BiPlusCircle className="linkIcon"/> Create Year
-            </button>
-          </div>
-        )}
-      </div>
 
-  
-      {!loading && filteredYears.length > (!isMobile || totalPages > 1) && (
-        <div className="PaginationContainer">
-          <div className="PaginationControls">
-            <button className="PageBtn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
-            <button className="PageBtn" onClick={goToPrevPage} disabled={currentPage === 1}>‹</button>
-            <div className="CurrentPageInputWrapper">
-              <input
-                type="number"
-                value={currentPage}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  if (val > 0 && val <= totalPages) setCurrentPage(val);
-                }}
-                className="CurrentPageInput"
-              />
-            </div>
-            <div className="PaginationInfo">
-              out of <span>{totalPages}</span>
-            </div>
-            <button className="PageBtn" onClick={goToNextPage} disabled={currentPage === totalPages}>›</button>
-            <button className="PageBtn" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>»</button>
+                        {/* Term Badges */}
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          {isActive ? (
+                            semesters.map((sem) => (
+                              <button
+                                key={sem.id}
+                                onClick={() => handleSetSemester(year, sem.id, sem.name)}
+                                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                                  year.current_sem === sem.id 
+                                    ? 'bg-brand text-white shadow-sm' 
+                                    : 'bg-surface-2 text-ink-2 hover:bg-line'
+                                }`}
+                              >
+                                {sem.name}
+                              </button>
+                            ))
+                          ) : (
+                            <span className="text-sm text-ink-3 italic">
+                              {status === 'future' ? 'Future Term' : 'Past Term'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Side: Actions */}
+                    <div className="flex items-center gap-2 shrink-0 sm:self-center self-end mt-2 sm:mt-0">
+                      {!isActive && status !== 'past' && (
+                        <Button size="sm" variant="secondary" onClick={() => handleSetActive(year)}>
+                          <BiCheckCircle className="text-base" /> Set Active
+                        </Button>
+                      )}
+                      <Button size="sm" variant="secondary" onClick={() => handleEdit(year)}>
+                        <BiPencil className="text-base" /> Edit
+                      </Button>
+                    </div>
+
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-        </div>
+
+          <Pagination page={currentPage} pageCount={totalPages} total={filteredYears.length} pageSize={rowsPerPage} onPageChange={setCurrentPage} />
+        </section>
       )}
     </div>
   );

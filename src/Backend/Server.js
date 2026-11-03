@@ -40,10 +40,15 @@ const logRoutes = (prefix, router) => {
   });
 };
 
+// AUTH ROUTES
 app.post('/api/auth/login', authController.login);
+app.post('/api/auth/google', authController.googleLogin); // <-- ADDED GOOGLE ROUTE HERE
+
 console.log('\nMounted routes for /api/auth:');
 console.log('  POST /api/auth/login');
+console.log('  POST /api/auth/google'); // <-- ADDED LOG
 
+// ADMIN & STUDENT ROUTES
 app.use('/api/admin', adminRoutes);
 logRoutes('/api/admin', adminRoutes);
 

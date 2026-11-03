@@ -51,60 +51,107 @@ exports.getHistory = async (req, res) => {
 
         switch (item.action) {
           case 'LOGIN_SUCCESS':
-            formattedDetails = `${displayName} logged in successfully`;
+            formattedDetails = `${displayName} logged in`;
             if (newValues.designation) formattedDetails += ` as ${newValues.designation}`;
             break;
           case 'LOGIN_FAILED':
-            formattedDetails = `${displayName} failed to login - ${newValues.reason || 'Invalid credentials'}`;
+            formattedDetails = `${displayName} failed to log in - ${newValues.reason || 'Invalid credentials'}`;
             break;
           case 'PASSWORD_CHANGED':
             formattedDetails = `${displayName} changed their password`;
             break;
+          
+          // --- PROGRAMS ---
           case 'PROGRAM_CREATED':
-            formattedDetails = `${displayName} created program: ${newValues.program_name} (${newValues.program_abbr})`;
-            break;
           case 'PROGRAM_UPDATED':
-            formattedDetails = `${displayName} updated program: ${newValues.program_name} (${newValues.program_abbr})`;
+            formattedDetails = `${displayName} ${item.action === 'PROGRAM_CREATED' ? 'created' : 'updated'} program ${newValues.program_name || ''} (${newValues.program_abbr || ''})`;
             break;
           case 'PROGRAM_ARCHIVED':
-            formattedDetails = `${displayName} archived program #${newValues.program_id}`;
+            formattedDetails = `${displayName} archived program ${newValues.program_name || `#${newValues.program_id}`}`;
             break;
           case 'PROGRAM_RESTORED':
-            formattedDetails = `${displayName} restored program #${newValues.program_id}`;
+            formattedDetails = `${displayName} restored program ${newValues.program_name || `#${newValues.program_id}`}`;
             break;
+          
+          // --- SECTIONS ---
           case 'SECTION_ARCHIVED':
-            formattedDetails = `${displayName} archived section assignment #${newValues.assignment_id}`;
+            formattedDetails = `${displayName} archived section ${newValues.section_name || `#${newValues.assignment_id}`}`;
             break;
           case 'SECTION_RESTORED':
-            formattedDetails = `${displayName} restored section assignment #${newValues.assignment_id}`;
+            formattedDetails = `${displayName} restored section ${newValues.section_name || `#${newValues.assignment_id}`}`;
             break;
+          
+          // --- CURRICULA ---
           case 'CURRICULUM_CREATED':
-            formattedDetails = `${displayName} created curriculum for program ID ${newValues.program_id} (${newValues.version_name})`;
+            formattedDetails = `${displayName} created curriculum (${newValues.version_name || 'New Version'}) for program ${newValues.program_name || `#${newValues.program_id}`}`;
             break;
-          case 'PREREQ_OVERRIDE':
-            formattedDetails = `${displayName} overrode prerequisites for ${newValues.course_code || `course #${newValues.course_id}`}`;
-            if (Array.isArray(newValues.missing_prereqs) && newValues.missing_prereqs.length > 0) {
-              formattedDetails += ` (missing: ${newValues.missing_prereqs.join(', ')})`;
-            }
+          case 'CURRICULUM_UPDATED':
+            formattedDetails = `${displayName} updated curriculum (${newValues.version_name || 'New Version'}) for program ${newValues.program_name || `#${newValues.program_id}`}`;
             break;
+          
+          // --- COURSES ---
+          case 'COURSE_CREATED':
+            formattedDetails = `${displayName} created course ${newValues.course_code || ''} (${newValues.course_name || ''})`;
+            break;
+          case 'COURSE_UPDATED':
+            formattedDetails = `${displayName} updated course ${newValues.course_code || ''} (${newValues.course_name || ''})`;
+            break;
+          case 'COURSE_ARCHIVED':
+            formattedDetails = `${displayName} archived course ${newValues.course_code || `#${newValues.course_id}`}`;
+            break;
+          case 'COURSE_RESTORED':
+            formattedDetails = `${displayName} restored course ${newValues.course_code || `#${newValues.course_id}`}`;
+            break;
+
+          // --- STUDENTS ---
           case 'STUDENT_ARCHIVED':
-            formattedDetails = `${displayName} archived student #${newValues.student_id}`;
-            if (newValues.reason) formattedDetails += ` (reason: ${newValues.reason})`;
+            formattedDetails = `${displayName} archived student ${newValues.student_name || newValues.student_number || `#${newValues.student_id}`}`;
+            if (newValues.reason) formattedDetails += ` (${newValues.reason})`;
             break;
           case 'STUDENT_RESTORED':
-            formattedDetails = `${displayName} restored student #${newValues.student_id}`;
+            formattedDetails = `${displayName} restored student ${newValues.student_name || newValues.student_number || `#${newValues.student_id}`}`;
+            break;
+          case 'STUDENT_UPDATED':
+            formattedDetails = `${displayName} updated student ${newValues.student_name || newValues.student_number || `#${newValues.student_id}`}`;
+            break;
+
+          // --- ACADEMIC YEAR ---
+          case 'ACADEMIC_YEAR_CREATED':
+            formattedDetails = `${displayName} created academic year ${newValues.year_label || ''}`;
+            break;
+          case 'ACADEMIC_YEAR_UPDATED':
+            formattedDetails = `${displayName} updated academic year ${newValues.year_label || ''}`;
+            break;
+          case 'ACADEMIC_YEAR_ACTIVATED':
+            formattedDetails = `${displayName} set academic year ${newValues.year_label || ''} as active`;
             break;
           case 'SEMESTER_CHANGED':
             const getSemesterName = (s) => s === 1 ? '1st Semester' : s === 2 ? '2nd Semester' : s === 3 ? 'Summer' : 'None';
-            formattedDetails = `${displayName} changed semester from ${getSemesterName(oldValues.current_sem)} to ${getSemesterName(newValues.current_sem)}`;
+            formattedDetails = `${displayName} changed the current term to ${getSemesterName(newValues.current_sem)}`;
             break;
+
+          // --- OTHER ---
+          case 'PREREQ_OVERRIDE':
+            formattedDetails = `${displayName} overrode prerequisites for ${newValues.course_code || `course #${newValues.course_id}`}`;
+            break;
+          case 'FACULTY_CREATED':
+            formattedDetails = `${displayName} created user ${newValues.username || ''}`;
+            break;
+          case 'FACULTY_UPDATED':
+            formattedDetails = `${displayName} updated user ${newValues.username || ''}`;
+            break;
+          
           default:
-            formattedDetails = newValues.details || newValues.reason || `${displayName} performed ${formattedAction}`;
+            // Clean fallback: "System Admin created a course"
+            const cleanAction = formattedAction.replace(/_/g, ' ').toLowerCase();
+            formattedDetails = newValues.details || `${displayName} ${cleanAction}`;
         }
       } else {
-        formattedDetails = `${displayName} performed ${formattedAction}`;
+        // If there are no new_values, just say who did what
+        const cleanAction = formattedAction.replace(/_/g, ' ').toLowerCase();
+        formattedDetails = `${displayName} ${cleanAction}`;
       }
-
+      
       let designation = item.designation_name;
       if (!designation || designation === 'Unknown') {
         if (item.roles && item.roles.includes('SUPERADMIN')) designation = 'Developer';

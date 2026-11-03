@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
-import ReactDOM from 'react-dom';
-import ConfirmationModal from '../ConfirmationModal';
+import { BiLayerPlus } from 'react-icons/bi';
+import ConfirmationModal from '../../../Components/shared/ConfirmationModal';
 import Dropdown from '../../../Components/shared/Dropdown'; 
+import Modal from '../../../Components/ui/Modal';
+import Button from '../../../Components/ui/Button';
+import TextField from '../../../Components/ui/Textfield';
+import cx from '../../../Components/ui/Cx';
 
-import '../../../GlobalStyle/GlobalForm.css';
-import '../../../GlobalStyle/GlobalOverlay.css';
-import '../../../GlobalStyle/Global.css';
-
-function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
+function AddCurriculum({ onClose, onSuccess, curriculumToEdit = null }) {
   const isEditMode = !!curriculumToEdit;
   const currentYear = new Date().getFullYear();
 
@@ -20,7 +20,7 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
   const [programs, setPrograms] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isActive, setIsActive] = useState(true);
-  const portalRoot = document.getElementById('portal-root') || document.body;
+  const [isDirty, setIsDirty] = useState(false);
 
   const [confirmState, setConfirmState] = useState({ isOpen: false });
   const [successState, setSuccessState] = useState({ isOpen: false });
@@ -28,15 +28,7 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
   const closeConfirm = () => setConfirmState({ isOpen: false });
 
   const openAlert = (title, message, variant = 'info') => {
-    setConfirmState({
-      isOpen: true,
-      title,
-      message,
-      variant,
-      isAlert: true,
-      onConfirm: closeConfirm,
-      onCancel: closeConfirm,
-    });
+    setConfirmState({ isOpen: true, title, message, variant, isAlert: true, onConfirm: closeConfirm, onCancel: closeConfirm });
   };
 
   const showSuccess = (title, summary) => {
@@ -76,13 +68,10 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
     }
   }, [isEditMode, curriculumToEdit, currentYear]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  // Helper to update a single field and mark dirty
+  const handleFieldChange = (name, value) => {
+    setIsDirty(true);
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const toggleActive = () => {
-    setIsActive(!isActive);
   };
 
   const handleSubmit = async () => {
@@ -104,11 +93,8 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
       const method = isEditMode ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        method,
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           program_id: parseInt(program),
           start_year: parseInt(start_year),
@@ -120,18 +106,13 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
       const data = await response.json();
 
       if (data.success) {
+        setIsDirty(false);
         showSuccess(
           isEditMode ? 'Curriculum Updated' : 'Curriculum Created',
-          isEditMode
-            ? 'The curriculum has been updated successfully.'
-            : 'The curriculum has been created successfully.'
+          isEditMode ? 'The curriculum has been updated successfully.' : 'The curriculum has been created successfully.'
         );
       } else {
-        openAlert(
-          isEditMode ? 'Update Failed' : 'Creation Failed',
-          data.message || (isEditMode ? 'Failed to update curriculum.' : 'Failed to create curriculum.'),
-          'danger'
-        );
+        openAlert('Save Failed', data.message || 'Failed to save curriculum.', 'danger');
       }
     } catch (error) {
       console.error("Error submitting curriculum:", error);
@@ -141,7 +122,7 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
     }
   };
 
-  // Prepare options for Dropdown
+  // Dropdown options
   const programOptions = [
     { value: "", label: "Select Program" },
     ...programs.map(program => ({
@@ -155,90 +136,102 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
     label: String(year)
   }));
 
-  const modalContent = (
-    <div className="modalOverlay">
-      <div className="modalContainer">
-
-        <div className="modalHeader">
-          <h3 className="modalTitle">{isEditMode ? "UPDATE CURRICULUM" : "ADD NEW CURRICULUM"}</h3>
-          <div className="CloseBtnArea">
-            <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
+  return (
+    <>
+      <Modal
+  isOpen={true}
+  onClose={onClose}
+  title={isEditMode ? "Update Curriculum" : "Add New Curriculum"}
+  description="Define the curriculum version and starting year."
+  icon={<BiLayerPlus className="text-2xl" />}
+  loading={isSubmitting}
+  isDirty={isDirty}
+  footer={({ requestClose }) => (
+    <>
+          <Button 
+          type="button" 
+          variant="secondary" 
+          onClick={requestClose} 
+          disabled={isSubmitting}>
+          Cancel
+          </Button>
+          <Button 
+            type="button" 
+            variant="primary" 
+            onClick={handleSubmit} 
+            loading={isSubmitting} 
+            disabled={!isDirty}
+          >
+            {isSubmitting ? "Saving..." : (isEditMode ? "Update Curriculum" : "Create Curriculum")}
+          </Button>
+        </>
+      )}
+    >
+        <div className="space-y-6">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-ink">Program <span className="text-danger">*</span></label>
+            <Dropdown
+              options={programOptions}
+              value={formData.program}
+              onChange={(val) => handleFieldChange('program', val)}
+              placeholder="Select Program"
+            />
           </div>
-        </div>
 
-        <div className="modalScrollArea">
-          <div className="FormContent">
-            <div className="formGroup">
-              <label className="formLabel">Program <span style={{ color: 'red' }}>*</span></label>
-              <Dropdown
-                options={programOptions}
-                value={formData.program}
-                onChange={(val) => handleChange({ target: { name: 'program', value: val } })}
-                placeholder="Select Program"
-              />
-            </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-ink">Start Year <span className="text-danger">*</span></label>
+            <Dropdown
+              options={startYearOptions}
+              value={formData.start_year}
+              onChange={(val) => handleFieldChange('start_year', val)}
+              placeholder="Select Start Year"
+            />
+          </div>
 
-            <div className="formGroup">
-              <label className="formLabel">Start Year <span style={{ color: 'red' }}>*</span></label>
-              <Dropdown
-                options={startYearOptions}
-                value={formData.start_year}
-                onChange={(val) => handleChange({ target: { name: 'start_year', value: val } })}
-                placeholder="Select Start Year"
-              />
-            </div>
+          <TextField
+            label={<>Version <span className="text-danger">*</span></>}
+            name="version"
+            placeholder="e.g. Version 1.0"
+            value={formData.version}
+            onChange={(e) => handleFieldChange('version', e.target.value)}
+          />
 
-            <div className="formGroup">
-              <label className="formLabel">Version <span style={{ color: 'red' }}>*</span></label>
-              <input
-                type="text"
-                name="version"
-                placeholder="Version 1.0"
-                value={formData.version}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="formGroup">
-              <label className="formLabel">CURRICULUM STATUS <span style={{ color: 'red' }}>*</span></label>
-              <div className="statusToggleContainer" onClick={toggleActive}>
-                <div className={`statusSwitch ${isActive ? 'active' : 'inactive'}`}>
-                  <div className="switchHandle"></div>
-                </div>
-                <span className={`statusLabel ${isActive ? 'text-active' : 'text-inactive'}`}>
-                  {isActive ? "ACTIVE" : "INACTIVE"}
-                </span>
+          <div className="space-y-3 pt-2">
+            <label className="block text-sm font-medium text-ink">Curriculum Status <span className="text-danger">*</span></label>
+            <div 
+              className="flex cursor-pointer items-center gap-3" 
+              onClick={() => { setIsDirty(true); setIsActive(!isActive); }}
+            >
+              <div className={cx(
+                "relative h-6 w-11 rounded-full transition-colors duration-200 ease-in-out",
+                isActive ? "bg-brand" : "bg-line-strong"
+              )}>
+                <div className={cx(
+                  "absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out",
+                  isActive ? "translate-x-6" : "translate-x-1"
+                )} />
               </div>
-            </div>
-
-            <div className="BtnsContainer">
-              <button className="ResetFilterBtn" onClick={onClose} disabled={isSubmitting}>CANCEL</button>
-              <button className="ApplyFilterBtn" onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? (isEditMode ? "UPDATING..." : "CREATING...") : (isEditMode ? "UPDATE" : "CREATE")}
-              </button>
+              <span className={cx(
+                "text-sm font-medium transition-colors",
+                isActive ? "text-brand-ink" : "text-ink-2"
+              )}>
+                {isActive ? "Active" : "Inactive"}
+              </span>
             </div>
           </div>
         </div>
-      </div>
+      </Modal>
 
-      {/* Success modal */}
       <ConfirmationModal
         isOpen={successState.isOpen}
         title={successState.title}
         summary={successState.summary}
         variant={successState.variant}
         isAlert={true}
-        onConfirm={() => {
-          setSuccessState({ isOpen: false });
-          onSuccess();
-        }}
-        onCancel={() => {
-          setSuccessState({ isOpen: false });
-          onSuccess();
-        }}
+        onConfirm={() => { setSuccessState({ isOpen: false }); onSuccess(); }}
+        onCancel={() => { setSuccessState({ isOpen: false }); onSuccess(); }}
       />
 
-      {/* Alert / error modal */}
       <ConfirmationModal
         isOpen={confirmState.isOpen}
         title={confirmState.title}
@@ -248,10 +241,8 @@ function AddCurricula({ onClose, onSuccess, curriculumToEdit = null }) {
         onConfirm={confirmState.onConfirm}
         onCancel={confirmState.onCancel}
       />
-    </div>
+    </>
   );
-
-  return ReactDOM.createPortal(modalContent, portalRoot);
 }
 
-export default AddCurricula;
+export default AddCurriculum;

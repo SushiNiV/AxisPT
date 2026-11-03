@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
-import ReactDOM from 'react-dom';
-import ConfirmationModal from '../ConfirmationModal';
+import React, { useState, useEffect } from "react";
+import { BiBookContent, BiX } from 'react-icons/bi';
+import ConfirmationModal from '../../../Components/shared/ConfirmationModal';
 import Dropdown from '../../../Components/shared/Dropdown'; 
-import '../../../GlobalStyle/GlobalForm.css';
-import '../../../GlobalStyle/GlobalOverlay.css';
-import '../../../GlobalStyle/Global.css';
+import Modal from '../../../Components/ui/Modal';
+import Button from '../../../Components/ui/Button';
+import TextField from '../../../Components/ui/Textfield';
+import NumberInput from '../../../Components/ui/NumberInput';
+import cx from '../../../Components/ui/Cx';
 
 function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
   const [formData, setFormData] = useState({
@@ -20,58 +22,26 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
   const [tempCurriculum, setTempCurriculum] = useState("");
   const [tempYear, setTempYear] = useState("");
   const [tempSemester, setTempSemester] = useState("");
+  
   const [programs, setPrograms] = useState([]);
   const [curricula, setCurricula] = useState([]);
   const [filteredCurricula, setFilteredCurricula] = useState([]);
   const [availableCourses, setAvailableCourses] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const portalRoot = document.getElementById('portal-root') || document.body;
+  const [isDirty, setIsDirty] = useState(false);
+  
   const isEditMode = !!courseToEdit;
 
-  // --- Searchable multi-select state ---
   const [prereqSearch, setPrereqSearch] = useState("");
   const [showPrereqDropdown, setShowPrereqDropdown] = useState(false);
-  const prereqInputRef = useRef(null);
-  const prereqDropdownRef = useRef(null);
 
-  // --- Confirmation / Success modal states ---
   const [confirmState, setConfirmState] = useState({ isOpen: false });
   const [successState, setSuccessState] = useState({ isOpen: false });
 
-  // ---------------------------------------------------------------------
-  // Confirmation / Alert helpers
-  // ---------------------------------------------------------------------
   const closeConfirm = () => setConfirmState({ isOpen: false });
+  const openAlert = (title, message, variant = 'info') => setConfirmState({ isOpen: true, title, message, variant, isAlert: true, onConfirm: closeConfirm, onCancel: closeConfirm });
+  const showSuccess = (title, summary) => setSuccessState({ isOpen: true, title, summary, variant: 'success' });
 
-  const openConfirm = (config) => {
-    setConfirmState({
-      isOpen: true,
-      variant: 'info',
-      confirmLabel: 'CONFIRM',
-      cancelLabel: 'CANCEL',
-      isAlert: false,
-      loading: false,
-      ...config,
-    });
-  };
-
-  const openAlert = (title, message, variant = 'info') => {
-    setConfirmState({
-      isOpen: true,
-      title,
-      message,
-      variant,
-      isAlert: true,
-      onConfirm: closeConfirm,
-      onCancel: closeConfirm,
-    });
-  };
-
-  const showSuccess = (title, summary) => {
-    setSuccessState({ isOpen: true, title, summary, variant: 'success' });
-  };
-
-  // --- Fetch data on mount ---
   useEffect(() => {
     const fetchData = async () => {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
@@ -95,7 +65,6 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
     fetchData();
   }, []);
 
-  // --- Populate form and assignments when editing ---
   useEffect(() => {
     if (courseToEdit) {
       setFormData({
@@ -115,18 +84,13 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
           );
           const data = await response.json();
           if (data.success && data.data) {
-            // Prerequisites – populate tags
             if (data.data.prerequisites) {
               let prereqIds = [];
-              if (Array.isArray(data.data.prerequisites)) {
-                prereqIds = data.data.prerequisites;
-              } else if (typeof data.data.prerequisites === 'string') {
-                prereqIds = data.data.prerequisites.split(',').map(Number).filter(Boolean);
-              }
+              if (Array.isArray(data.data.prerequisites)) prereqIds = data.data.prerequisites;
+              else if (typeof data.data.prerequisites === 'string') prereqIds = data.data.prerequisites.split(',').map(Number).filter(Boolean);
               const prereqCourses = availableCourses.filter(c => prereqIds.includes(c.course_id));
               setSelectedPrerequisites(prereqCourses.map(c => ({ id: c.course_id, code: c.course_code, name: c.course_name })));
             }
-            // Assignments
             if (data.data.assignments && data.data.assignments.length > 0) {
               const mapped = data.data.assignments.map(a => ({
                 curriculum_id: a.curriculum_id,
@@ -150,7 +114,6 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
     }
   }, [courseToEdit, availableCourses]);
 
-  // --- Filter curricula by selected program ---
   useEffect(() => {
     if (tempProgram) {
       const filtered = curricula.filter(c => c.program_id === parseInt(tempProgram));
@@ -162,26 +125,13 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
     }
   }, [tempProgram, curricula]);
 
-  // --- Close dropdown when clicking outside ---
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (
-        prereqInputRef.current && !prereqInputRef.current.contains(e.target) &&
-        prereqDropdownRef.current && !prereqDropdownRef.current.contains(e.target)
-      ) {
-        setShowPrereqDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   const lecUnits = parseInt(formData.lec_units) || 0;
   const labUnits = parseInt(formData.lab_units) || 0;
   const totalUnits = lecUnits + labUnits;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    setIsDirty(true);
     if (name === 'lec_units' || name === 'lab_units') {
       const numValue = value === '' ? 0 : parseInt(value);
       setFormData(prev => ({ ...prev, [name]: isNaN(numValue) ? 0 : numValue }));
@@ -190,7 +140,6 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
     }
   };
 
-  // --- Prerequisite search logic (excludes current course when editing) ---
   const filteredAvailable = availableCourses.filter(c =>
     !selectedPrerequisites.some(p => p.id === c.course_id) &&
     (isEditMode ? c.course_id !== courseToEdit.course_id : true) &&
@@ -199,39 +148,29 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
   );
 
   const togglePrereq = (course) => {
+    setIsDirty(true);
     setSelectedPrerequisites(prev => {
       const exists = prev.some(p => p.id === course.course_id);
-      if (exists) {
-        return prev.filter(p => p.id !== course.course_id);
-      } else {
-        return [...prev, { id: course.course_id, code: course.course_code, name: course.course_name }];
-      }
+      if (exists) return prev.filter(p => p.id !== course.course_id);
+      return [...prev, { id: course.course_id, code: course.course_code, name: course.course_name }];
     });
     setPrereqSearch("");
     setShowPrereqDropdown(false);
-    if (prereqInputRef.current) prereqInputRef.current.focus();
   };
 
   const removePrereq = (id) => {
+    setIsDirty(true);
     setSelectedPrerequisites(prev => prev.filter(p => p.id !== id));
-    if (prereqInputRef.current) prereqInputRef.current.focus();
   };
 
-  // --- Assignment handlers ---
   const addAssignment = () => {
     if (!tempCurriculum || !tempYear || !tempSemester) {
       openAlert('Missing Selection', 'Please select Curriculum, Year, and Semester.', 'warning');
       return;
     }
-    
-    // STRICT CHECK: A course can only appear ONCE per curriculum in the DB.
     const existing = assignments.find(a => a.curriculum_id === parseInt(tempCurriculum));
     if (existing) {
-      openAlert(
-        'Duplicate Assignment', 
-        'This curriculum is already assigned. Please remove the existing assignment first if you want to change the year or semester.', 
-        'warning'
-      );
+      openAlert('Duplicate Assignment', 'This curriculum is already assigned. Please remove the existing assignment first.', 'warning');
       return;
     }
 
@@ -249,6 +188,7 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
       semester_id: parseInt(tempSemester)
     };
     
+    setIsDirty(true);
     setAssignments([...assignments, newAssignment]);
     setTempProgram("");
     setTempCurriculum("");
@@ -257,27 +197,10 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
   };
 
   const removeAssignment = (index) => {
+    setIsDirty(true);
     setAssignments(assignments.filter((_, i) => i !== index));
   };
 
-  // --- Render selected prerequisites as tags ---
-  const renderPrereqTags = () => {
-    if (selectedPrerequisites.length === 0) return null;
-    return (
-      <div className="tags-container">
-        {selectedPrerequisites.map(p => (
-          <span key={p.id} className="tags">
-            {p.code} - {p.name}
-            <button type="button" className="remove-btn" onClick={() => removePrereq(p.id)}>
-              &times;
-            </button>
-          </span>
-        ))}
-      </div>
-    );
-  };
-
-  // --- Submit ---
   const handleSubmit = async () => {
     if (!formData.course_code || !formData.course_name) {
       openAlert('Missing Fields', 'Please fill in Course Code and Course Name.', 'warning');
@@ -293,7 +216,6 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
     }
 
     setIsSubmitting(true);
-
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const url = isEditMode
@@ -313,28 +235,19 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
 
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload)
       });
 
       const data = await response.json();
-
       if (data.success || response.ok) {
+        setIsDirty(false);
         showSuccess(
           isEditMode ? 'Course Updated' : 'Course Created',
-          isEditMode
-            ? 'The course has been updated successfully.'
-            : 'The course has been created successfully.'
+          isEditMode ? 'The course has been updated successfully.' : 'The course has been created successfully.'
         );
       } else {
-        openAlert(
-          isEditMode ? 'Update Failed' : 'Creation Failed',
-          data.message || (isEditMode ? "Failed to update course." : "Failed to create course."),
-          'danger'
-        );
+        openAlert('Save Failed', data.message || 'Failed to save course.', 'danger');
       }
     } catch (error) {
       console.error("Error submitting course:", error);
@@ -353,7 +266,6 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
     }
   };
 
-  // --- Dropdown Options Preparation ---
   const programOptions = [
     { value: "", label: "Select Program" },
     ...programs.map(p => ({ value: p.program_id, label: p.program_abbr || p.program_name }))
@@ -382,241 +294,148 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
     { value: "3", label: "Summer" }
   ];
 
-  const modalContent = (
-    <div className="modalOverlay">
-      <div className="modalContainer">
-        <div className="modalHeader">
-          <h3 className="modalTitle">{isEditMode ? "UPDATE COURSE" : "ADD NEW COURSE"}</h3>
-          <div className="CloseBtnArea">
-            <button className="CloseBtn" onClick={onClose} disabled={isSubmitting}>&times;</button>
-          </div>
-        </div>
-
-        <div className="modalScrollArea">
+  return (
+    <>
+      <Modal
+        isOpen={true}
+        onClose={onClose}
+        title={isEditMode ? "Update Course" : "Add New Course"}
+        description="Define course details, prerequisites, and curriculum assignments."
+        icon={<BiBookContent className="text-2xl" />}
+        loading={isSubmitting}
+        isDirty={isDirty}
+        footer={({ requestClose }) => (
+          <>
+            <Button type="button" variant="secondary" onClick={requestClose} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button type="button" variant="primary" onClick={handleSubmit} loading={isSubmitting} disabled={!isDirty}>
+              {isSubmitting ? "Saving..." : (isEditMode ? "Update Course" : "Create Course")}
+            </Button>
+          </>
+        )}
+      >
+        <div className="space-y-8">
           {/* Course Details */}
-          <div className="formSection">
-            <h4 className="sectionHeading">Course Details</h4>
-            <div className="formRow split2">
-              <div className="formGroup">
-                <label className="formLabel">COURSE CODE <span style={{color: 'red'}}>*</span></label>
-                <input type="text" name="course_code" value={formData.course_code} onChange={handleChange} />
-              </div>
-              <div className="formGroup">
-                <label className="formLabel">COURSE NAME <span style={{color: 'red'}}>*</span></label>
-                <input type="text" name="course_name" value={formData.course_name} onChange={handleChange} />
-              </div>
+          <div>
+            <h4 className="mb-4 text-sm font-semibold text-ink">Course Details</h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField label={<>Course Code <span className="text-danger">*</span></>} name="course_code" value={formData.course_code} onChange={handleChange} placeholder="e.g. PT101" />
+              <TextField label={<>Course Name <span className="text-danger">*</span></>} name="course_name" value={formData.course_name} onChange={handleChange} placeholder="e.g. Anatomy" />
             </div>
-            <div className="formRow split3">
-              <div className="formGroup">
-                <label className="formLabel">LEC UNITS <span style={{color: 'red'}}>*</span></label>
-                <input type="number" name="lec_units" value={formData.lec_units === 0 ? "" : formData.lec_units} onChange={handleChange} min="0" placeholder="0" />
-              </div>
-              <div className="formGroup">
-                <label className="formLabel">LAB UNITS</label>
-                <input type="number" name="lab_units" value={formData.lab_units === 0 ? "" : formData.lab_units} onChange={handleChange} min="0" placeholder="0" />
-              </div>
-              <div className="formGroup">
-                <label className="formLabel">TOTAL UNITS</label>
-                <input type="number" disabled className="readOnlyInput" value={totalUnits} />
-              </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              <NumberInput label={<>Lec Units <span className="text-danger">*</span></>} name="lec_units" value={formData.lec_units} onChange={handleChange} min="0" placeholder="0" />
+              <NumberInput label="Lab Units" name="lab_units" value={formData.lab_units} onChange={handleChange} min="0" placeholder="0" />
+              <TextField label="Total Units" value={totalUnits} disabled className="opacity-60" />
             </div>
           </div>
 
-          {/* Prerequisites - Searchable Multi-Select */}
-          <div className="formSection">
-            <h4 className="sectionHeading">Prerequisites</h4>
-            <div className="formGroup">
-              <label className="formLabel">Search and select prerequisite courses</label>
-              <div ref={prereqInputRef} style={{ position: 'relative' }}>
-                <input
-                  type="text"
-                  value={prereqSearch}
-                  onChange={(e) => setPrereqSearch(e.target.value)}
-                  onFocus={() => setShowPrereqDropdown(true)}
-                  placeholder="Type to search courses..."
-                  className="formInput"
-                  style={{ width: '100%' }}
-                />
+          {/* Prerequisites */}
+          <div>
+            <h4 className="mb-4 text-sm font-semibold text-ink border-t border-line pt-6">Prerequisites</h4>
+            <div className="space-y-3">
+              <div className="relative">
+                <TextField label="Search Prerequisites" value={prereqSearch} onChange={(e) => { setPrereqSearch(e.target.value); setShowPrereqDropdown(true); }} onFocus={() => setShowPrereqDropdown(true)} placeholder="Type to search courses..." />
                 {showPrereqDropdown && filteredAvailable.length > 0 && (
-                  <div
-                    ref={prereqDropdownRef}
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                      background: 'var(--bg-card)',
-                      border: '1px solid var(--border-medium)',
-                      borderRadius: '4px',
-                      zIndex: 10,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                    }}
-                  >
+                  <div className="absolute left-0 top-[calc(100%+4px)] z-50 max-h-48 w-full overflow-y-auto rounded-ctl border border-line bg-surface p-1 shadow-xl">
                     {filteredAvailable.map(course => (
                       <div
                         key={course.course_id}
                         onClick={() => togglePrereq(course)}
-                        style={{
-                          padding: '6px 10px',
-                          cursor: 'pointer',
-                          borderBottom: '1px solid var(--border-light)',
-                          fontSize: '0.85rem',
-                          color: 'var(--text-primary)'
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = 'var(--bg-hover)'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                        className="cursor-pointer truncate rounded-md px-3 py-2 text-sm text-ink hover:bg-surface-2"
                       >
-                        {course.course_code} - {course.course_name}
+                        {course.course_code} — {course.course_name}
                       </div>
                     ))}
                   </div>
                 )}
-                {showPrereqDropdown && prereqSearch && filteredAvailable.length === 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: '4px', padding: '8px', zIndex: 10, color: 'var(--text-muted)' }}>
-                    No courses found
-                  </div>
-                )}
               </div>
-              {renderPrereqTags()}
+
+              {selectedPrerequisites.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {selectedPrerequisites.map(p => (
+                    <span key={p.id} className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft py-1 pl-3 pr-2 text-xs font-medium text-brand-ink">
+                      {p.code} - {p.name}
+                      <button type="button" onClick={() => removePrereq(p.id)} className="grid h-4 w-4 place-items-center rounded-full hover:bg-brand/20">
+                        <BiX className="text-sm" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Curriculum Assignments */}
-          <div className="formSection">
-            <h4 className="sectionHeading">Curriculum Assignment <span style={{color: 'red'}}>*</span></h4>
-            <div className="formRow split2">
-              <div className="formGroup">
-                <label className="formLabel">Program</label>
-                <Dropdown
-                  options={programOptions}
-                  value={tempProgram}
-                  onChange={setTempProgram}
-                  placeholder="Select Program"
-                />
+          <div>
+            <h4 className="mb-4 text-sm font-semibold text-ink border-t border-line pt-6">Curriculum Assignments <span className="text-danger">*</span></h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-ink">Program</label>
+                <Dropdown options={programOptions} value={tempProgram} onChange={(v) => { setIsDirty(true); setTempProgram(v); }} placeholder="Select Program" />
               </div>
-              <div className="formGroup">
-                <label className="formLabel">Curriculum</label>
-                <Dropdown
-                  options={curriculumOptions}
-                  value={tempCurriculum}
-                  onChange={setTempCurriculum}
-                  placeholder="Select Curriculum"
-                  disabled={!tempProgram}
-                />
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-ink">Curriculum</label>
+                <Dropdown options={curriculumOptions} value={tempCurriculum} onChange={(v) => { setIsDirty(true); setTempCurriculum(v); }} placeholder="Select Curriculum" disabled={!tempProgram} />
               </div>
             </div>
-            <div className="formRow split2">
-              <div className="formGroup">
-                <label className="formLabel">Year Level</label>
-                <Dropdown
-                  options={yearOptions}
-                  value={tempYear}
-                  onChange={setTempYear}
-                  placeholder="Select Year"
-                  disabled={!tempCurriculum}
-                />
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-ink">Year Level</label>
+                <Dropdown options={yearOptions} value={tempYear} onChange={(v) => { setIsDirty(true); setTempYear(v); }} placeholder="Select Year" disabled={!tempCurriculum} />
               </div>
-              <div className="formGroup">
-                <label className="formLabel">Semester</label>
-                <Dropdown
-                  options={semesterOptions}
-                  value={tempSemester}
-                  onChange={setTempSemester}
-                  placeholder="Select Semester"
-                  disabled={!tempCurriculum}
-                />
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-ink">Semester</label>
+                <Dropdown options={semesterOptions} value={tempSemester} onChange={(v) => { setIsDirty(true); setTempSemester(v); }} placeholder="Select Semester" disabled={!tempCurriculum} />
               </div>
             </div>
-            <button type="button" className="AddBtn" onClick={addAssignment} style={{ marginTop: '6px' }}>+ Add</button>
+            
+            <Button type="button" variant="secondary" onClick={addAssignment} className="mt-4 !border-0 bg-brand-soft text-brand-ink hover:bg-brand/20">
+              + Add Assignment
+            </Button>
 
             {assignments.length > 0 && (
-              <div className="assignment-table-wrapper" style={{ marginTop: '12px' }}>
-                <table className="Table assignment-table">
-                  <thead>
-                    <tr>
-                      <th>Program</th>
-                      <th>Curriculum</th>
-                      <th>Year</th>
-                      <th>Semester</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {assignments.map((assignment, idx) => (
-                      <tr key={idx}>
-                        <td>{assignment.program_abbr || assignment.curriculum_name}</td>
-                        <td>{assignment.version_name} ({assignment.start_year})</td>
-                        <td>{assignment.year_level}</td>
-                        <td>{getSemesterLabel(assignment.semester_id)}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="RemoveBtn"
-                            onClick={() => removeAssignment(idx)}
-                            style={{ padding: '2px 8px', fontSize: '0.75rem' }}
-                          >
-                            Remove
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="mt-4 space-y-2">
+                {assignments.map((assignment, idx) => (
+                  <div key={idx} className="flex flex-wrap items-center justify-between gap-3 rounded-ctl border border-line bg-surface-2 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-ink">{assignment.program_abbr || assignment.curriculum_name}</p>
+                      <p className="text-xs text-ink-2">
+                        {assignment.version_name} ({assignment.start_year}) · Year {assignment.year_level} · {getSemesterLabel(assignment.semester_id)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeAssignment(idx)}
+                      className="rounded-ctl px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger-soft"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>
 
           {/* Course Description */}
-          <div className="formSection">
-            <h4 className="sectionHeading">Course Description</h4>
-            <div className="formGroup">
-              <textarea name="course_desc" rows="4" value={formData.course_desc} onChange={handleChange} style={{ resize: 'none' }} />
-            </div>
-          </div>
-
-          <div className="modalFooter">
-            <button type="button" className="cancelBtn" onClick={onClose} disabled={isSubmitting}>CANCEL</button>
-            <button type="submit" className="submitBtn" onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? "SAVING..." : (isEditMode ? "UPDATE COURSE" : "CREATE COURSE")}
-            </button>
+          <div>
+            <h4 className="mb-4 text-sm font-semibold text-ink border-t border-line pt-6">Course Description</h4>
+            <textarea
+              name="course_desc"
+              rows="4"
+              value={formData.course_desc}
+              onChange={handleChange}
+              placeholder="Enter course description..."
+              className="w-full rounded-ctl bg-surface-2 px-3.5 py-3 text-base text-ink ring-1 ring-line-strong placeholder:text-ink-3 transition-shadow focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            />
           </div>
         </div>
-      </div>
+      </Modal>
 
-      <ConfirmationModal
-        isOpen={successState.isOpen}
-        title={successState.title}
-        summary={successState.summary}
-        variant={successState.variant}
-        isAlert={true}  
-        onConfirm={() => {
-          setSuccessState({ isOpen: false });
-          onSuccess();
-        }}
-        onCancel={() => {
-          setSuccessState({ isOpen: false });
-          onSuccess();
-        }}
-      />
-
-      <ConfirmationModal
-        isOpen={confirmState.isOpen}
-        title={confirmState.title}
-        message={confirmState.message}
-        variant={confirmState.variant}
-        confirmLabel={confirmState.confirmLabel}
-        cancelLabel={confirmState.cancelLabel}
-        isAlert={confirmState.isAlert}
-        loading={confirmState.loading}
-        onConfirm={confirmState.onConfirm}
-        onCancel={confirmState.onCancel}
-      />
-    </div>
+      <ConfirmationModal isOpen={successState.isOpen} title={successState.title} summary={successState.summary} variant={successState.variant} isAlert={true} onConfirm={() => { setSuccessState({ isOpen: false }); onSuccess(); }} onCancel={() => { setSuccessState({ isOpen: false }); onSuccess(); }} />
+      <ConfirmationModal isOpen={confirmState.isOpen} title={confirmState.title} message={confirmState.message} variant={confirmState.variant} isAlert={confirmState.isAlert} onConfirm={confirmState.onConfirm} onCancel={confirmState.onCancel} />
+    </>
   );
-
-  return ReactDOM.createPortal(modalContent, portalRoot);
 }
 
 export default AddCourse;

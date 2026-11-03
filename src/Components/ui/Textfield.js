@@ -9,20 +9,23 @@ import cx from './Cx';
 export default function TextField({ id, label, trailing, className, inputClassName, ...props }) {
   return (
     <div className={cx('space-y-1.5', className)}>
-      <label htmlFor={id} className="block text-sm font-medium text-ink">
-        {label}
-      </label>
+      {label && (
+        <label htmlFor={id} className="block text-sm font-medium text-ink">
+          {label}
+        </label>
+      )}
       <div className="relative">
         <input
           id={id}
-          className={cx(
-            'h-12 w-full rounded-ctl  bg-surface px-3.5 text-base text-ink',
-            'placeholder:text-ink-3 transition-shadow',
-            'focus-visible:border-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/15',
-            'disabled:cursor-not-allowed disabled:bg-surface-2',
-            trailing && 'pr-12',
-            inputClassName
-          )}
+            className={cx(
+              'h-12 w-full rounded-ctl bg-surface-2 px-3.5 text-base text-ink',
+              'ring-1 ring-line-strong transition-shadow', // <-- Added ring here
+              'placeholder:text-ink-3',
+              'focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40', // <-- Updated focus ring
+              'disabled:cursor-not-allowed disabled:opacity-60',
+              trailing && 'pr-12',
+              inputClassName
+            )}
           {...props}
         />
         {trailing && <div className="absolute inset-y-0 right-1 flex items-center">{trailing}</div>}

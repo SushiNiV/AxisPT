@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { BiBell, BiUserCircle, BiMenu } from 'react-icons/bi';
-import ProfileDrawer from '../../Components/ProfileDrawer'; // Adjust path if necessary
+import ProfileDrawer from '../../Components/ProfileDrawer';
 import '../../GlobalStyle/Global.css';
 import '../../GlobalStyle/GlobalHeader.css';
 import '../../Components/useMediaQuery'

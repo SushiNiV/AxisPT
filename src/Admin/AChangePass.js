@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BiArrowBack, BiShow, BiHide, BiLockAlt } from 'react-icons/bi';
-import ConfirmationModal from './AComponents/ConfirmationModal'; 
+import ConfirmationModal from '../Components/shared/ConfirmationModal'; 
 import '../GlobalStyle/ChangePass.css';
 import cptLogo from '../assets/cpt-logo.png';
 

@@ -1,10 +1,14 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const db = require('../config/db');
 
 const AdminModel = require('../models/adminModel');
 const UserModel = require('../models/userModel');
 const HistoryModel = require('../models/historyModel');
+
+// Initialize Google Client for verifying tokens
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const getIpAddress = (req) => req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
 
@@ -133,6 +137,136 @@ exports.login = async (req, res) => {
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};
+
+// ==========================================
+// GOOGLE OAUTH LOGIN
+// ==========================================
+exports.googleLogin = async (req, res) => {
+  const { token } = req.body; // The access_token from the React frontend
+  const ipAddress = getIpAddress(req);
+  const userAgent = req.headers['user-agent'];
+
+  const safeLog = async (payload) => {
+    try { await HistoryModel.log(payload); } catch (e) { console.error('Log failed:', e.message); }
+  };
+
+  try {
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'No Google token provided.' });
+    }
+
+    // 1. Verify the token with Google
+    const ticket = await googleClient.getTokenInfo(token);
+    const email = ticket.email ? ticket.email.toLowerCase() : '';
+
+    // 2. Domain check (just in case)
+    if (!email.endsWith('@fatima.edu.ph') && !email.endsWith('@student.fatima.edu.ph')) {
+      return res.status(403).json({ success: false, message: 'Please use your official Fatima email.' });
+    }
+
+    // 3. Check if this email belongs to a Student
+    // We query the `users` table where the `school_email` matches the Google email
+    const student = await db.query(`
+      SELECT s.student_id, s.user_id, s.account_status,
+             u.username, u.is_active, u.changed_pass,
+             p.first_name, p.last_name
+      FROM users u
+      JOIN students s ON u.user_id = s.user_id
+      LEFT JOIN student_pii p ON p.student_id = s.student_id
+      WHERE LOWER(u.school_email) = $1
+      LIMIT 1
+    `, [email]);
+
+    if (student.rows.length > 0) {
+      const s = student.rows[0];
+
+      if (!s.is_active) {
+        return res.status(403).json({ success: false, message: 'Account is deactivated.' });
+      }
+
+      // Generate JWT exactly like your normal login
+      const jwtToken = jwt.sign(
+        { id: s.user_id, student_id: s.student_id, role: 'student' },
+        process.env.JWT_SECRET,
+        { expiresIn: '2h' }
+      );
+
+      await safeLog({
+        userId: s.user_id, action: 'Google Login', tableName: 'users', recordId: s.user_id,
+        ipAddress, userAgent
+      });
+
+      return res.json({
+        success: true,
+        token: jwtToken,
+        username: s.username,
+        firstName: s.first_name,
+        role: 'student',
+        mustChangePassword: false, // Bypassed for Google Auth
+      });
+    }
+
+    // 4. If not a student, check if it's an Admin/Faculty
+    const adminRes = await db.query(`
+      SELECT u.user_id, u.username, u.changed_pass, u.is_active, u.school_email,
+             f.faculty_id, f.first_name, f.faculty_status, d.designation_name,
+             (SELECT string_agg(r.role_name, ',') FROM user_roles ur JOIN roles r ON r.role_id = ur.role_id WHERE ur.user_id = u.user_id) as roles
+      FROM users u
+      LEFT JOIN faculties f ON f.user_id = u.user_id
+      LEFT JOIN designations d ON d.designation_id = f.designation
+      WHERE LOWER(u.school_email) = $1
+      LIMIT 1
+    `, [email]);
+
+    if (adminRes.rows.length > 0) {
+      const admin = adminRes.rows[0];
+      
+      const rolesArray = admin.roles ? admin.roles.split(',') : [];
+      const hasAdminRole = rolesArray.some(r => ['SUPERADMIN', 'ADMIN'].includes(r.trim().toUpperCase()));
+
+      if (!admin.is_active || (!hasAdminRole && !admin.faculty_status)) {
+        return res.status(403).json({ success: false, message: 'Access denied. Account not active.' });
+      }
+
+      const jwtToken = jwt.sign(
+        {
+          id: admin.user_id,
+          role: hasAdminRole ? 'admin' : 'faculty',
+          designation: admin.designation_name,
+          faculty_id: admin.faculty_id,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '2h' }
+      );
+
+      await safeLog({
+        userId: admin.user_id, action: 'Google Login', tableName: 'users', recordId: admin.user_id,
+        ipAddress, userAgent
+      });
+
+      return res.json({
+        success: true,
+        token: jwtToken,
+        username: admin.username,
+        firstName: admin.first_name,
+        role: hasAdminRole ? 'admin' : 'faculty',
+        designation: admin.designation_name,
+        mustChangePassword: false,
+        email: admin.school_email,
+      });
+    }
+
+    // 5. If we reach here, they have a valid Fatima email but aren't in the database.
+    return res.status(404).json({ 
+      success: false, 
+      message: 'Your email is not registered in the portal. Please contact the administrator.' 
+    });
+
+  } catch (err) {
+    console.error('Google Login error:', err);
+    res.status(500).json({ success: false, message: 'Internal Server Error during Google login.' });
   }
 };
 

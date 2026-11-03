@@ -276,7 +276,7 @@ class StudentManageModel {
         ON CONFLICT DO NOTHING
       `, [userId]);
 
-      // 2. Create Student
+  
       const studentRes = await client.query(`
         INSERT INTO students (user_id, birth_date, account_status)
         VALUES ($1, $2, $3)
@@ -438,15 +438,20 @@ class StudentManageModel {
 
       // 7. Education Record
       const termInfo = await this.getActiveAcademicTerm(client);
-      const programOrCurriculumId = data.curriculum_id || data.program_id;
-
-      let curriculumId = programOrCurriculumId;
-      if (programOrCurriculumId) {
-        const curRes = await client.query(
-          `SELECT curriculum_id FROM curricula WHERE program_id = $1 ORDER BY curriculum_id DESC LIMIT 1`,
-          [programOrCurriculumId]
-        );
-        if (curRes.rows.length > 0) curriculumId = curRes.rows[0].curriculum_id;
+      // Use an explicit curriculum as-is. Only resolve via program when just a
+      // program was given, preferring the newest curriculum that has courses.
+      let curriculumId = data.curriculum_id || null;
+      if (!curriculumId && data.program_id) {
+        const curRes = await client.query(`
+          SELECT c.curriculum_id
+          FROM curricula c
+          WHERE c.program_id = $1
+          ORDER BY EXISTS (
+            SELECT 1 FROM curriculum_courses cc WHERE cc.curriculum_id = c.curriculum_id
+          ) DESC, c.curriculum_id DESC
+          LIMIT 1
+        `, [data.program_id]);
+        curriculumId = curRes.rows[0]?.curriculum_id || null;
       }
 
       const yearLevel = String(data.year_level || data.yearLevel || '1');
@@ -746,15 +751,28 @@ class StudentManageModel {
       }
 
       // 8. Update Active Education
-      const programOrCurriculumId = data.curriculum_id || data.program_id;
-      let curriculumId = programOrCurriculumId;
-
-      if (programOrCurriculumId) {
-        const curRes = await client.query(
-          `SELECT curriculum_id FROM curricula WHERE program_id = $1 ORDER BY curriculum_id DESC LIMIT 1`,
-          [programOrCurriculumId]
-        );
-        if (curRes.rows.length > 0) curriculumId = curRes.rows[0].curriculum_id;
+      // Use an explicit curriculum as-is. If only a program was given, keep the
+      // student's current curriculum when it already belongs to that program;
+      // otherwise fall back to the program's newest curriculum that has courses.
+      let curriculumId = data.curriculum_id || null;
+      if (!curriculumId && data.program_id) {
+        const curRes = await client.query(`
+          SELECT COALESCE(
+            (SELECT se.curriculum_id
+               FROM student_education se
+               JOIN curricula c ON c.curriculum_id = se.curriculum_id
+              WHERE se.student_id = $2 AND se.is_current = true AND c.program_id = $1
+              LIMIT 1),
+            (SELECT c.curriculum_id
+               FROM curricula c
+              WHERE c.program_id = $1
+              ORDER BY EXISTS (
+                SELECT 1 FROM curriculum_courses cc WHERE cc.curriculum_id = c.curriculum_id
+              ) DESC, c.curriculum_id DESC
+              LIMIT 1)
+          ) AS curriculum_id
+        `, [data.program_id, studentId]);
+        curriculumId = curRes.rows[0]?.curriculum_id || null;
       }
 
       const yearLevel = data.year_level || data.yearLevel;
@@ -981,8 +999,6 @@ class StudentManageModel {
       if (row) {
         assignmentId = row.assignment_id;
 
-        // Guard: reject if the section's year_level doesn't match the
-        // year level being assigned.
         if (yearLevel && String(row.yl) !== String(yearLevel)) {
           throw new Error(
             `Section year level (${row.yl}) does not match the requested year level (${yearLevel}).`
@@ -997,7 +1013,7 @@ class StudentManageModel {
         year_level = COALESCE($1, year_level),
         assignment_id = COALESCE($2, assignment_id),
         updated_at = NOW()
-      WHERE student_id = ANY($3) AND is_current = true
+      WHERE student_id = ANY($3::int[]) AND is_current = true
       RETURNING student_id
     `, [yearLevel ? String(yearLevel) : null, assignmentId, studentIds]);
     return result.rows.map(r => r.student_id);

@@ -11,19 +11,19 @@ export default function StatCard({ label, value, hint, to, featured = false }) {
 
   return (
     <div
-      className={`flex min-h-[10.5rem] flex-col justify-between rounded-panel p-5 ${
+      className={`flex min-h-[6.75rem] flex-col justify-between gap-2 rounded-panel px-4 py-3.5 ${
         featured
           ? 'bg-gradient-to-br from-maroon-700 to-maroon-950 text-white shadow-lift ring-1 ring-white/10'
           : 'border !border-line bg-surface text-ink'
       }`}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-base font-medium">{label}</p>
+        <p className="text-sm font-medium">{label}</p>
         {to && (
           <Link
             to={to}
             aria-label={`Go to ${label}`}
-            className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border text-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+            className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border text-base transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
               featured
                 ? 'border-white/30 bg-white text-maroon-800 hover:bg-white/90'
                 : '!border-line-strong text-ink hover:bg-surface-2'
@@ -35,8 +35,8 @@ export default function StatCard({ label, value, hint, to, featured = false }) {
       </div>
 
       <div>
-        <p className={`font-semibold leading-none tabular-nums ${long ? 'text-3xl' : 'text-5xl'}`}>{value}</p>
-        {hint && <p className={`mt-2 text-sm ${featured ? 'text-white/75' : 'text-ink-2'}`}>{hint}</p>}
+        <p className={`font-semibold leading-none tabular-nums ${long ? 'text-2xl' : 'text-4xl'}`}>{value}</p>
+        {hint && <p className={`mt-1.5 text-xs ${featured ? 'text-white/75' : 'text-ink-2'}`}>{hint}</p>}
       </div>
     </div>
   );

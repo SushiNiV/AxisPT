@@ -28,7 +28,6 @@ exports.getMyGrades = async (req, res) => {
       ORDER BY g.year_id DESC, g.semester_id DESC, c.course_code
     `, [student_id]);
 
-    // Fetch components for each grade
     const gradeIds = result.rows.map(r => r.grade_id);
     let componentsByGrade = {};
     if (gradeIds.length > 0) {
@@ -126,13 +125,12 @@ const clean = (v) => {
 };
 const num = (v) => {
   if (v === undefined || v === null || v === '') return null;
-  const n = parseFloat(v); // "170 cm" -> 170
+  const n = parseFloat(v);
   return Number.isNaN(n) ? null : n;
 };
 
 // ==========================================
 // GET MY PROFILE
-// Returns the same flat shape the admin getStudentById builds, scoped to the signed-in student.
 // ==========================================
 exports.getMyProfile = async (req, res) => {
   const { student_id } = req.user;
@@ -176,7 +174,6 @@ exports.getMyProfile = async (req, res) => {
     }
     const data = result.rows[0];
 
-    // Addresses ('Present' holds what the admin form calls the Permanent address)
     const addrRes = await db.query('SELECT * FROM student_addresses WHERE student_id = $1', [student_id]);
     addrRes.rows.forEach((a) => {
       if (a.address_type === 'Present') {
@@ -194,7 +191,6 @@ exports.getMyProfile = async (req, res) => {
       }
     });
 
-    // Parents / guardian (one row per person)
     const memRes = await db.query('SELECT * FROM student_family_members WHERE student_id = $1', [student_id]);
     memRes.rows.forEach((m) => {
       const rel = (m.relation_type || '').toLowerCase();
@@ -216,8 +212,7 @@ exports.getMyProfile = async (req, res) => {
 };
 
 // ==========================================
-// UPDATE MY PROFILE (self-service fields only; identity/enrollment/status are never touched)
-// A group is only written when the request contains keys for it.
+// UPDATE MY PROFILE
 // ==========================================
 exports.updateMyProfile = async (req, res) => {
   const { student_id } = req.user;
@@ -232,8 +227,31 @@ exports.updateMyProfile = async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // 1. PII (fixed column map, so only whitelisted columns can be set)
+    // 1. Update students table (Birth Date)
+    if (has('birth_date')) {
+      await client.query(
+        `UPDATE students SET birth_date = $1, updated_at = NOW() WHERE student_id = $2`,
+        [clean(body.birth_date), student_id]
+      );
+    }
+
+    // 2. Update users table (Student Number / Username)
+    if (has('student_number')) {
+      await client.query(
+        `UPDATE users SET username = $1, updated_at = NOW() 
+         WHERE user_id = (SELECT user_id FROM students WHERE student_id = $2)`,
+        [clean(body.student_number), student_id]
+      );
+    }
+
+    // 3. Update student_pii (Identity & Personal Info)
     const piiMap = {
+      first_name: ['first_name', clean],
+      middle_name: ['middle_name', clean],
+      last_name: ['last_name', clean],
+      suffix: ['suffix', clean],
+      sex: ['sex', clean],
+      
       personal_email: ['personal_email', clean],
       place_of_birth: ['birth_place', clean],
       mobile_no: ['mobile_no', clean],
@@ -246,10 +264,17 @@ exports.updateMyProfile = async (req, res) => {
       language_dialects: ['language_dialects', clean],
       visual_problems: ['visual_problems', clean],
     };
+    
     const sets = [];
     const vals = [];
     for (const [key, [col, fn]] of Object.entries(piiMap)) {
-      if (has(key)) { vals.push(fn(body[key])); sets.push(`${col} = $${vals.length}`); }
+      if (has(key)) { 
+        // Prevent NOT NULL constraint violations by defaulting to empty string if null
+        let val = fn(body[key]);
+        if (val === null && ['first_name', 'last_name'].includes(key)) val = '';
+        vals.push(val); 
+        sets.push(`${col} = $${vals.length}`); 
+      }
     }
     if (sets.length) {
       vals.push(student_id);
@@ -259,7 +284,7 @@ exports.updateMyProfile = async (req, res) => {
       );
     }
 
-    // 2. Addresses
+    // 4. Update Addresses
     const saveAddress = async (type, keys, a) => {
       if (!has(...keys)) return;
       if (Object.values(a).some((v) => v !== null)) {
@@ -295,7 +320,7 @@ exports.updateMyProfile = async (req, res) => {
         province: first('provincial_province', 'prov_province'),
       });
 
-    // 3. High school
+    // 5. High school
     if (has('highschool_graduated', 'pub_priv_hs', 'hs_school_address', 'hs_final_gwa')) {
       await client.query(`
         INSERT INTO student_highschool (student_id, highschool_graduated, pubpriv_hs, highschool_address, hs_final_gwa, updated_at)
@@ -306,7 +331,7 @@ exports.updateMyProfile = async (req, res) => {
       `, [student_id, clean(body.highschool_graduated), first('pub_priv_hs', 'pubpriv_hs'), first('hs_school_address', 'highschool_address'), num(body.hs_final_gwa)]);
     }
 
-    // 4. Parents / guardian. Replace the row for that relation; a blank form removes it.
+    // 6. Parents / guardian
     const saveMember = async (relation, prefix, isGuardian) => {
       if (!has(`${prefix}_firstname`, `${prefix}_lastname`, `${prefix}_occupation`, `${prefix}_contact`)) return;
       const m = {
@@ -328,7 +353,7 @@ exports.updateMyProfile = async (req, res) => {
       const alive = isGuardian ? true
         : status === 'Living' ? true
         : status === 'Deceased' ? false
-        : (prev.rows[0]?.is_alive ?? true); // unknown status: keep what is stored
+        : (prev.rows[0]?.is_alive ?? true);
 
       await client.query(`
         INSERT INTO student_family_members
@@ -340,7 +365,7 @@ exports.updateMyProfile = async (req, res) => {
     await saveMember('Mother', 'mother', false);
     await saveMember('Guardian', 'guardian', true);
 
-    // 5. Family background
+    // 7. Family background
     if (has('support', 'parents_income', 'living_in', 'daily_transpo_expense', 'no_siblings', 'ordinal_position')) {
       const sib = clean(body.no_siblings);
       await client.query(`
@@ -354,7 +379,7 @@ exports.updateMyProfile = async (req, res) => {
           clean(body.daily_transpo_expense), sib === null ? null : parseInt(sib, 10), clean(body.ordinal_position)]);
     }
 
-    // 6. Achievements
+    // 8. Achievements
     if (has('awards_honors', 'hobbies_interests', 'future_career', 'acad_extracurr')) {
       await client.query(`
         INSERT INTO student_achievements (student_id, awards_honors, hobbies_interests, future_career, acad_extracurr, updated_at)

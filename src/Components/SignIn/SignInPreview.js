@@ -1,5 +1,5 @@
 import React from 'react';
-import PillBars from '../Components/charts/Pillbars';
+import PillBars from '../charts/Pillbars';
 
 // Sample numbers for the sign-in preview only. They are not read from the database.
 const SAMPLE = [
@@ -14,7 +14,7 @@ export default function SignInPreview() {
   return (
     <div
       aria-hidden="true"
-      className="w-[21rem] rotate-[5deg] rounded-sheet bg-white/15 p-3 shadow-2xl ring-1 ring-white/30 backdrop-blur-md"
+      className="w-[22rem] rotate-[5deg] 2xl:w-[25rem] rounded-sheet bg-white/15 p-3 shadow-2xl ring-1 ring-white/30 backdrop-blur-md"
     >
       <div className="space-y-3 rounded-panel bg-surface p-4">
         <div className="flex items-center justify-between">
@@ -33,7 +33,7 @@ export default function SignInPreview() {
           </div>
         </div>
 
-        <PillBars data={SAMPLE} label="Sample enrollment by year level" height={96} />
+        <PillBars data={SAMPLE} label="Sample enrollment by year level" height={104} />
       </div>
     </div>
   );

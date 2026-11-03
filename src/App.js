@@ -8,7 +8,6 @@ import ADashboard from './Admin/APages/Dashboard/ADashboard';
 
 import AStudentManage from './Admin/APages/StudentManagement/AStudentManage';
 import Masterlist from './Admin/APages/StudentManagement/Masterlist';
-import Archive from './Admin/APages/Archived/AArchive';
 
 import AAcademics from './Admin/APages/ProgramManagement/AGrades';
 import AProgSec from './Admin/APages/ProgramManagement/AProgSec';
@@ -26,19 +25,15 @@ import Curricula from './Admin/APages/AccessControl/Curricula';
 
 import AHistory from './Admin/APages/AHistory';
 
+// ONLY import the new unified AArchive
 import AArchive from './Admin/APages/Archived/AArchive';
-import ArchivedStudents from './Admin/APages/Archived/ArchivedStudents';
-import ArchivedPrograms from './Admin/APages/Archived/ArchivedPrograms';
-import ArchivedSections from './Admin/APages/Archived/ArchivedSections';
-import ArchivedUsers from './Admin/APages/Archived/ArchivedUsers';
-import ArchivedCourses from './Admin/APages/Archived/ArchivedCourses';
 
 import ProtectedRoute from './Components/ProtectedRoute';
 import ALayout from './Admin/AComponents/ALayout';
 import AssistantWidget from './Admin/AComponents/Assistant/AssistantWidget';
 
 // Unified Sign In
-import SignIn from './Components/SignIn';
+import SignIn from './Components/SignIn/SignIn';
 
 // Student Imports
 import SLayout from './Student/SComponents/SLayout';
@@ -136,7 +131,6 @@ function AppContent() {
                 <Route element={<AStudentManage />}>
                   <Route index element={<Navigate to="masterlist" replace />} />
                   <Route path="masterlist" element={<Masterlist />} />
-                  <Route path="archive" element={<Archive />} />
                 </Route>
               </Route>
 
@@ -190,14 +184,8 @@ function AppContent() {
                 path="/admin/archive"
                 element={<ProtectedRoute allowedRoles={ADMIN_AND_FACULTY} />}
               >
-                <Route element={<AArchive />}>
-                  <Route index element={<Navigate to="students" replace />} />
-                  <Route path="students" element={<ArchivedStudents />} />
-                  <Route path="programs" element={<ArchivedPrograms />} />
-                  <Route path="courses" element={<ArchivedCourses />} />
-                  <Route path="sections" element={<ArchivedSections />} />
-                  <Route path="users" element={<ArchivedUsers />} />
-                </Route>
+                {/* Unified Archive Page */}
+                <Route index element={<AArchive />} />
               </Route>
 
             </Route>

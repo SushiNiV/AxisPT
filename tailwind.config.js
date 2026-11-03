@@ -37,7 +37,7 @@ module.exports = {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
-        display: ['"Source Serif 4"', 'Georgia', 'serif'],
+        display: ['Nexa', 'Montserrat', 'system-ui', 'sans-serif'],
       },
       // Radius follows hierarchy: controls < panels < sheets/modals.
       borderRadius: { ctl: '0.625rem', panel: '1rem', sheet: '1.5rem' },

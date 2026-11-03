@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   BiSearch, BiPlus, BiX, BiPencil, BiTrash, BiUndo, BiBook, BiChevronRight
 } from 'react-icons/bi';
-import ConfirmationModal from '../../AComponents/ConfirmationModal';
+import ConfirmationModal from '../../../Components/shared/ConfirmationModal';
 import AddProgram from '../../AComponents/AddModals/AddProgram';
 import AddSection from '../../AComponents/AddModals/AddSection';
 import useMediaQuery from '../../../Components/useMediaQuery';
@@ -184,6 +184,78 @@ function AProgSec() {
     setSheetSection(null);
     if (sec) action(sec);
   };
+
+  // --- SKELETON LOADER ---
+  if (loadingPrograms) {
+    return (
+      <div className="ax flex h-full min-h-0 flex-col gap-3 pb-4">
+        {/* Mobile Picker Skeleton */}
+        {isMobile && (
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="h-10 flex-1 animate-pulse rounded-ctl bg-surface-2" />
+            <div className="h-10 w-24 shrink-0 animate-pulse rounded-ctl bg-surface-2" />
+          </div>
+        )}
+
+        <div className="flex min-h-0 flex-1 gap-4">
+          {/* Sidebar Skeleton (Desktop Only) */}
+          {!isMobile && (
+            <aside className="flex w-[300px] shrink-0 flex-col overflow-hidden rounded-panel border !border-line bg-surface lg:w-[340px]">
+              {/* Sidebar Toolbar */}
+              <div className="flex shrink-0 items-center gap-2 border-b !border-line p-3">
+                <div className="h-10 flex-1 animate-pulse rounded-ctl bg-surface-2" />
+                <div className="h-10 w-24 shrink-0 animate-pulse rounded-ctl bg-surface-2" />
+              </div>
+              {/* Program List */}
+              <div className="flex-1 overflow-hidden p-3 space-y-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="h-4 w-3/4 animate-pulse rounded bg-surface-2" />
+                    <div className="h-3 w-1/2 animate-pulse rounded bg-surface-2" />
+                  </div>
+                ))}
+              </div>
+            </aside>
+          )}
+
+          {/* Main Detail Skeleton */}
+          <main className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-panel border !border-line bg-surface">
+            {/* Header Skeleton */}
+            <div className="flex shrink-0 flex-col justify-between gap-4 border-b !border-line p-5 sm:flex-row sm:items-start">
+              <div className="space-y-2">
+                <div className="h-6 w-64 animate-pulse rounded bg-surface-2" />
+                <div className="flex gap-3">
+                  <div className="h-5 w-16 animate-pulse rounded-full bg-surface-2" />
+                  <div className="h-5 w-32 animate-pulse rounded bg-surface-2" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <div className="h-9 w-20 animate-pulse rounded-ctl bg-surface-2" />
+                <div className="h-9 w-24 animate-pulse rounded-ctl bg-surface-2" />
+              </div>
+            </div>
+            {/* Sections Toolbar Skeleton */}
+            <div className="flex shrink-0 items-center gap-2 p-3 border-b !border-line">
+              <div className="h-10 flex-1 animate-pulse rounded-ctl bg-surface-2" />
+              <div className="h-10 w-24 shrink-0 animate-pulse rounded-ctl bg-surface-2" />
+            </div>
+            {/* Table Skeleton */}
+            <div className="flex-1 p-3 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between border-b !border-line pb-3 last:border-0">
+                  <div className="h-4 w-1/4 animate-pulse rounded bg-surface-2" />
+                  <div className="h-4 w-16 animate-pulse rounded bg-surface-2" />
+                  <div className="h-4 w-24 animate-pulse rounded bg-surface-2" />
+                  <div className="h-4 w-16 animate-pulse rounded bg-surface-2" />
+                  <div className="h-8 w-20 animate-pulse rounded-ctl bg-surface-2" />
+                </div>
+              ))}
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="ax flex h-full min-h-0 flex-col gap-3 pb-4 relative">
