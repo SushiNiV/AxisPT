@@ -17,7 +17,9 @@ import campus from '../../assets/olfu.jpg';
 import seal from '../../assets/cpt-logo-white.png';
 import axisLogo from '../../assets/AxisLogo-gold.png';
 
-const GOOGLE_CLIENT_ID = '380468995263-evlspbemil3b77orbqui505pol0o8pun.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+
+const googleConfigured = Boolean(GOOGLE_CLIENT_ID);
 
 const GOLD = '#ffcb57';
 const ROSE = '#893a49';
@@ -42,6 +44,39 @@ const FEATURES = [
   { icon: BiGroup, title: 'Student records', text: 'Keep profiles, sections, grades, and standing together in one organized masterlist.' },
   { icon: BiBot, title: 'Ask AI', text: 'Get quick answers about records and procedures from the built-in assistant.' },
 ];
+
+/**
+ * Saves a login response to sessionStorage. Shared by password and Google sign-in
+ * so every page finds the same keys whichever way the user signed in.
+ */
+function saveSession(data) {
+  const store = sessionStorage;
+  store.setItem('token', data.token);
+  store.setItem('username', data.username);
+  store.setItem('role', (data.role || '').toLowerCase());
+  store.setItem('email', data.email || '—');
+
+  // The dashboard greeting reads `first_name`; `firstName` is kept for any older code.
+  if (data.firstName) {
+    store.setItem('first_name', data.firstName);
+    store.setItem('firstName', data.firstName);
+  }
+
+  // Set-or-remove, so a previous user's values never leak into the next sign-in.
+  if (data.designation) store.setItem('designation', data.designation);
+  else store.removeItem('designation');
+  if (data.avatarUrl) store.setItem('avatarUrl', data.avatarUrl);
+  else store.removeItem('avatarUrl');
+
+  try {
+    const payload = JSON.parse(atob(data.token.split('.')[1]));
+    if (payload.id != null) store.setItem('user_id', String(payload.id));
+    if (payload.student_id != null) store.setItem('student_id', String(payload.student_id));
+    if (payload.faculty_id != null) store.setItem('faculty_id', String(payload.faculty_id));
+  } catch {
+    // The token payload is optional context; ignore if it cannot be decoded.
+  }
+}
 
 function SignInForm() {
   const navigate = useNavigate();
@@ -80,12 +115,7 @@ function SignInForm() {
         const data = await response.json();
 
         if (data.success) {
-          const storage = sessionStorage;
-          storage.setItem('token', data.token);
-          storage.setItem('username', data.username);
-          storage.setItem('role', data.role);
-
-          if (data.firstName) storage.setItem('firstName', data.firstName);
+          saveSession(data);
 
           if (data.role === 'student') {
             navigate('/student/dashboard');
@@ -127,20 +157,7 @@ function SignInForm() {
       const data = await response.json();
 
       if (data.success) {
-        const storage = sessionStorage; 
-        storage.setItem('token', data.token);
-        storage.setItem('username', data.username);
-        storage.setItem('role', (data.role || '').toLowerCase());
-        sessionStorage.setItem('email', data.email || '—');
-
-        if (data.designation) storage.setItem('designation', data.designation);
-
-        try {
-          const payload = JSON.parse(atob(data.token.split('.')[1]));
-          if (payload.id != null) storage.setItem('user_id', String(payload.id));
-          if (payload.student_id != null) storage.setItem('student_id', String(payload.student_id));
-          if (payload.faculty_id != null) storage.setItem('faculty_id', String(payload.faculty_id));
-        } catch (decodeErr) {}
+        saveSession(data);
 
         if (data.mustChangePassword === true) {
           navigate('/change-password');
@@ -282,22 +299,21 @@ function SignInForm() {
             </form>
 
             {/* --- CUSTOM GOOGLE LOGIN BUTTON --- */}
-            <div className="mt-5 flex items-center justify-center gap-3">
-              <div className="h-0.5 flex-1 rounded-full bg-line-strong dark:bg-gray-600" />
-              <span className="text-xs font-semibold text-ink-3 uppercase tracking-wider">OR</span>
-              <div className="h-0.5 flex-1 rounded-full bg-line-strong dark:bg-gray-600" />
-            </div>
-
             <div className="mt-4">
               <button
                 type="button"
                 onClick={() => googleLogin()}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !googleConfigured}
                 className="flex w-full items-center justify-center gap-3 rounded-ctl bg-surface-2 px-4 py-3 text-sm font-semibold text-ink transition-colors hover:bg-line disabled:opacity-50 border border-line dark:border-gray-700"
               >
                 <FcGoogle className="text-xl" />
                 Continue with Google
               </button>
+              {!googleConfigured && (
+                <p className="mt-2 text-xs text-ink-3">
+                  Google sign-in is unavailable right now. Use your username and password.
+                </p>
+              )}
             </div>
             {/* -------------------------------------- */}
 

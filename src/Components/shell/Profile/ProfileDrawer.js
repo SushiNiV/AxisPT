@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BiX, BiUserCircle, BiLockAlt } from 'react-icons/bi';
-import Avatar from '../ui/Avatar';
-import Button from '../ui/Button';
-import Badge from '../ui/Badge';
-import BottomSheet from '../ui/Bottomsheet';
-import useMediaQuery from '../useMediaQuery';
+import { BiX, BiLockAlt } from 'react-icons/bi';
+import ProfileIdentity from './ProfileIdentity';
+import Button from '../../ui/Button';
+import BottomSheet from '../../ui/Bottomsheet';
+import useMediaQuery from '../../useMediaQuery';
 
 export default function ProfileDrawer({ isOpen, onClose, user }) {
   const navigate = useNavigate();
@@ -45,16 +44,8 @@ export default function ProfileDrawer({ isOpen, onClose, user }) {
 
   const ProfileContent = (
     <div className="space-y-6">
-      {/* Identity */}
-      <div className="flex items-center gap-4">
-        <Avatar first={user?.firstName || user?.first_name || '?'} last={user?.lastName || user?.last_name || ''} size="lg" />
-        <div className="min-w-0">
-          <p className="text-lg font-semibold text-ink truncate">{displayName}</p>
-          <div className="mt-1">
-            <Badge tone="neutral" className="capitalize">{role}</Badge>
-          </div>
-        </div>
-      </div>
+      {/* Identity: photo (editable), name and role */}
+      <ProfileIdentity name={displayName} role={role} />
 
       {/* Details Card */}
       <div className="rounded-panel border !border-line bg-surface overflow-hidden">

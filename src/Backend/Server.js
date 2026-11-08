@@ -4,7 +4,10 @@ require('dotenv').config();
 
 const adminRoutes = require('./routes/adminRoutes');
 const studentRoutes = require('./routes/studentRoutes');
+const avatarRoutes = require('./routes/avatarRoutes');
 const authController = require('./controllers/authController');
+
+
 
 const helmet = require('helmet');
 const compression = require('compression');
@@ -25,6 +28,8 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
 }));
+
+app.use('/api/avatars', avatarRoutes);
 
 // 4. Body parser
 app.use(express.json());

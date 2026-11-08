@@ -13,12 +13,10 @@ const standingRank = (label) => {
   const i = STANDING_ORDER.indexOf(label);
   return i === -1 ? STANDING_ORDER.length : i;
 };
-// Short axis labels so four bars fit side by side.
 const SHORT = { 'Probationary 1': 'Prob. 1', 'Probationary 2': 'Prob. 2' };
 
 const students = (n) => `${n} student${n === 1 ? '' : 's'}`;
 
-/** Student body card: pill-bar chart that can be grouped by year, program, or standing. */
 export default function StudentBreakdown({
   studentsByYear = [],
   studentsByProgram = [],
@@ -50,7 +48,8 @@ export default function StudentBreakdown({
 
   return (
     <Card title="Student body" hint={`Total enrolled: ${totalStudents}`} className="h-full">
-      <div className="flex h-full flex-col">
+      {/* MOBILE: min-w-0 so the chart container can shrink with the card */}
+      <div className="flex h-full min-w-0 flex-col">
         <div role="group" aria-label="Group students by" className="mb-4 flex rounded-ctl bg-surface-2 p-1">
           {OPTIONS.map((opt) => (
             <button
@@ -58,7 +57,8 @@ export default function StudentBreakdown({
               type="button"
               aria-pressed={mode === opt.value}
               onClick={() => setMode(opt.value)}
-              className={`flex-1 rounded-ctl py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+              // MOBILE: min-h-[40px] on mobile (segmented control is a primary tap target).
+              className={`flex-1 min-h-[40px] rounded-ctl px-1 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 md:min-h-0 md:py-1.5 ${
                 mode === opt.value ? 'bg-brand text-brand-on shadow-lift' : 'text-ink-2 hover:text-ink'
               }`}
             >
@@ -67,8 +67,7 @@ export default function StudentBreakdown({
           ))}
         </div>
 
-        {/* Centered in whatever height the row gives us, so it lines up with the announcements card. */}
-        <div className="flex flex-1 flex-col justify-center">
+        <div className="flex min-w-0 flex-1 flex-col justify-center">
           {hasData ? (
             <PillBars data={data} height={150} label={`Students by ${mode}`} formatValue={students} />
           ) : (

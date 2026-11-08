@@ -2,13 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { HiSparkles } from 'react-icons/hi';
 import { BiCheckCircle, BiErrorCircle, BiInfoCircle, BiRefresh } from 'react-icons/bi';
 
-/** Window event that AssistantWidget listens for to open the Ask AI panel. */
 const OPEN_EVENT = 'axispt:open-assistant';
 
-/**
- * Visual treatment per bullet tone. Colors come from the status variables in
- * Global.css so they stay consistent with the Masterlist standing chips.
- */
 const TONES = {
   good: { Icon: BiCheckCircle, badge: 'bg-[var(--status-success-bg)] text-[var(--status-success-text)]' },
   warn: { Icon: BiErrorCircle, badge: 'bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]' },
@@ -22,7 +17,6 @@ const CHIP_TONES = {
   info: 'bg-surface-2 text-ink-2',
 };
 
-/** "1h ago" style label from an age in milliseconds. */
 const ago = (ms) => {
   const m = Math.floor(ms / 60000);
   if (m < 1) return 'just now';
@@ -31,16 +25,12 @@ const ago = (ms) => {
   return h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
 };
 
-/** Renders **bold** segments from the model output as <strong>, without innerHTML. */
+// MOBILE: break-words on <strong> so an unbroken token (course code, URL) can't overflow the card.
 const renderRich = (text) =>
   text.split(/\*\*(.+?)\*\*/g).map((part, i) =>
-    i % 2 ? <strong key={i} className="font-semibold">{part}</strong> : part
+    i % 2 ? <strong key={i} className="break-words font-semibold">{part}</strong> : part
   );
 
-/**
- * Parses the summary text into bullets and priorities.
- * Tolerates "- [tone] text", "- text", and numbered "1. text" lines.
- */
 function parseSummary(summary = '') {
   const lines = summary.split('\n').map((l) => l.trim()).filter(Boolean);
 
@@ -59,17 +49,11 @@ function parseSummary(summary = '') {
   return { highlights, priorities };
 }
 
-/** Accepts chips as plain strings or { label, tone } objects. */
 const normalizeChips = (chips = []) =>
   chips
     .map((c) => (typeof c === 'string' ? { label: c, tone: 'info' } : { label: c.label || c.text, tone: c.tone || 'info' }))
     .filter((c) => c.label);
 
-/**
- * Dashboard AI summary card.
- * Layout: key-number chips, then tone-coded highlights, then ranked priorities.
- * Data comes from GET /admin/dashboard/summary (scoped server-side).
- */
 export default function AISummary() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -138,7 +122,8 @@ export default function AISummary() {
                 <span aria-hidden="true" className={`mt-px grid h-6 w-6 shrink-0 place-items-center rounded-full ${badge}`}>
                   <Icon className="h-4 w-4" />
                 </span>
-                <span className="pt-0.5">{renderRich(text)}</span>
+                {/* MOBILE: min-w-0 + break-words so a long unbroken token wraps instead of overflowing */}
+                <span className="min-w-0 break-words pt-0.5">{renderRich(text)}</span>
               </li>
             );
           })}
@@ -153,7 +138,7 @@ export default function AISummary() {
                   <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-brand text-xs font-semibold tabular-nums text-brand-on">
                     {i + 1}
                   </span>
-                  <span>{renderRich(p)}</span>
+                  <span className="min-w-0 break-words">{renderRich(p)}</span>
                 </li>
               ))}
             </ol>
@@ -166,18 +151,19 @@ export default function AISummary() {
   return (
     <section className="flex flex-col rounded-panel border !border-line bg-surface p-4 shadow-lift sm:p-5">
       <header className="mb-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-ctl bg-brand-soft text-brand-ink">
+        <div className="min-w-0 flex items-center gap-2">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-ctl bg-brand-soft text-brand-ink">
             <HiSparkles className="h-4 w-4" aria-hidden="true" />
           </span>
-          <h2 className="text-base font-semibold text-ink">AI Summary</h2>
+          <h2 className="min-w-0 truncate text-base font-semibold text-ink">AI Summary</h2>
         </div>
         <button
           type="button"
           onClick={() => load(true)}
           disabled={loading}
           aria-label="Refresh summary"
-          className="flex h-8 w-8 items-center justify-center rounded-ctl text-ink-2 transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-50"
+          // MOBILE: 40px touch target on mobile, 32px on md+.
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-ctl text-ink-2 transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:opacity-50 md:h-8 md:w-8"
         >
           <BiRefresh className={`h-5 w-5 ${loading ? 'animate-spin motion-reduce:animate-none' : ''}`} />
         </button>
@@ -186,12 +172,14 @@ export default function AISummary() {
       <div aria-live="polite">{body}</div>
 
       {hasContent && !failed && (
-        <footer className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-3">
+        // MOBILE: flex-wrap so "Updated X ago" + "Ask a follow-up" stack instead of squishing.
+        <footer className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
           <span className="text-xs text-ink-3">Updated {ago(data.ageMs || 0)}</span>
           <button
             type="button"
             onClick={() => window.dispatchEvent(new Event(OPEN_EVENT))}
-            className="inline-flex items-center gap-2 rounded-ctl bg-brand px-3 py-1.5 text-sm font-medium text-brand-on transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            // MOBILE: min-h-[40px] touch target
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-ctl bg-brand px-3.5 py-2 text-sm font-medium text-brand-on transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
           >
             <HiSparkles className="h-4 w-4" aria-hidden="true" />
             Ask a follow-up
