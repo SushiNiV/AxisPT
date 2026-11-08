@@ -17,17 +17,24 @@ const RETURNING_PATH_FIELDS = `avatar_key, image IS NOT NULL AS has_image, ${VER
 const toPath = (row) => (row && row.has_image ? `/avatars/${row.avatar_key}?v=${row.version}` : null);
 
 /**
- * Current photo path for a user, or null.
- * Fails soft: this runs during sign-in, and a photo problem (for example the
- * migration not being applied yet) must never stop anyone from logging in.
+ * Current photo path for a user, or null when they have none.
+ * Throws on database errors, so callers can tell "no photo" apart from "lookup failed".
+ */
+exports.findPathByUserId = async (userId) => {
+  const { rows } = await db.query(
+    `SELECT ${RETURNING_PATH_FIELDS} FROM user_avatars WHERE user_id = $1`,
+    [userId]
+  );
+  return toPath(rows[0]);
+};
+
+/**
+ * Same lookup, but fails soft. This runs during sign-in, and a photo problem
+ * (for example the migration not being applied yet) must never stop anyone from logging in.
  */
 exports.getPathByUserId = async (userId) => {
   try {
-    const { rows } = await db.query(
-      `SELECT ${RETURNING_PATH_FIELDS} FROM user_avatars WHERE user_id = $1`,
-      [userId]
-    );
-    return toPath(rows[0]);
+    return await exports.findPathByUserId(userId);
   } catch (err) {
     console.error('Avatar lookup failed:', err.message);
     return null;

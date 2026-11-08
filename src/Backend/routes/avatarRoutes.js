@@ -20,6 +20,7 @@ router.post('/me', verifyToken, requireRole(...ALL_ROLES), parseAvatarBody, avat
 router.delete('/me', verifyToken, requireRole(...ALL_ROLES), avatarController.remove);
 
 // Public: <img> tags cannot send an Authorization header.
+router.get('/me', verifyToken, requireRole(...ALL_ROLES), avatarController.getMine);
 router.get('/:key', avatarController.serve);
 
 module.exports = router;

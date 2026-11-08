@@ -36,6 +36,21 @@ function sendError(res, err, logLabel) {
   return res.status(500).json({ success: false, message: 'Internal Server Error' });
 }
 
+/**
+ * Returns the signed-in user's current photo path (or null). The frontend calls this once
+ * per sign-in, so the photo comes back after logout/login and stays correct when it was
+ * changed from another device. A database error is a 500, never a misleading "no photo".
+ */
+exports.getMine = async (req, res) => {
+  try {
+    const avatarUrl = await AvatarModel.findPathByUserId(req.user.id);
+    res.set('Cache-Control', 'no-store');
+    res.json({ success: true, avatarUrl });
+  } catch (err) {
+    sendError(res, err, 'Avatar lookup failed');
+  }
+};
+
 exports.upload = async (req, res) => {
   const userId = req.user.id;
   if (!allowChange(userId)) {
