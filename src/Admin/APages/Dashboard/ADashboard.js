@@ -8,7 +8,7 @@ import Card, { CardLink, CardEmpty } from '../../../Components/ui/Card';
 import StatCard from '../../../Components/ui/Statcard';
 import RankedBars from '../../../Components/charts/Rankedbars';
 import WelcomeBanner from '../../../Components/shared/WelcomeBanner';
-import Announcements from '../../../Components/shared/Announcements';
+import Announcements from '../../../Components/shared/Notification/Announcements';
 import StudentBreakdown from '../../../Components/charts/StudentBreakdown';
 import AISummary from '../../../Components/shared/AISummary';
 import BottomSheet from '../../../Components/ui/Bottomsheet';
@@ -18,18 +18,11 @@ const ROUTES = {
   academics: '/admin/academics/programs&sections',
 };
 
-const DUMMY_ANNOUNCEMENTS = [
-  { id: 1, title: "Midterm Grade Submission", body: "Please ensure all midterm grades are encoded in the system before Friday, 5:00 PM.", date: "2026-10-25T09:00:00" },
-  { id: 2, title: "Faculty Meeting", body: "There will be a brief faculty meeting tomorrow at 2 PM in Room 304 to discuss the upcoming accreditation.", date: "2026-10-24T14:30:00" },
-  { id: 3, title: "System Maintenance", body: "AxisPT will be down for scheduled maintenance this Saturday from 10 PM to 2 AM.", date: "2026-10-23T11:00:00" },
-];
-
 function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [announcements] = useState(DUMMY_ANNOUNCEMENTS);
   
   // MOBILE: State for the enrollment bottom sheet
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
@@ -136,13 +129,9 @@ function Dashboard() {
 
         {/* MOBILE: single column up to lg (1024px); 3-col only on xl */}
         <div className="grid shrink-0 items-stretch gap-4 lg:grid-cols-2 xl:min-h-[16rem] xl:flex-1 xl:shrink xl:grid-cols-3 xl:grid-rows-[minmax(0,1fr)]">
-          <Announcements
-            announcements={announcements}
-            isAdmin={role === 'admin' || role === 'superadmin'}
-            onCreate={() => console.log('Open Create Modal')}
-            onEdit={(a) => console.log('Edit', a)}
-            onDelete={(a) => console.log('Delete', a)}
-          />
+          
+          {/* RE-WIRED: Real Announcements Component */}
+          <Announcements isAdmin={role === 'admin' || role === 'superadmin'} />
 
           <Card title="Most enrolled courses" hint="Based on recorded grades" scroll className="h-full min-w-0">
             {topCourses.length === 0 ? (

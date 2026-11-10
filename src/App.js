@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import './utils/api';
 import SessionExpired from './Components/SessionExpire';
 
-import AChangePass from './Admin/AChangePass';
+import ChangePass from './Components/shell/Profile/ChangePass';
 import ADashboard from './Admin/APages/Dashboard/ADashboard';
 
 import AStudentManage from './Admin/APages/StudentManagement/AStudentManage';
@@ -114,7 +114,7 @@ function AppContent() {
 
         {/* AUTHENTICATED AREA */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/change-password" element={<AChangePass />} />
+          <Route path="/change-password" element={<ChangePass />} />
 
           {/* --- ADMIN & FACULTY SHELL --- */}
           <Route element={<ProtectedRoute allowedRoles={ADMIN_AND_FACULTY} />}>

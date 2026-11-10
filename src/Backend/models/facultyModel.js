@@ -1,163 +1,112 @@
 const db = require('../config/db');
+const { withTransaction } = require('../../utils/transaction');
+
+// getAll / getById / getByUserId used to be three copies of this SELECT.
+// Column aliases (designation_id, is_active, email) are kept: the frontend relies on them.
+const FACULTY_SELECT = `
+  SELECT
+    f.faculty_id,
+    f.user_id,
+    f.last_name,
+    f.first_name,
+    f.middle_name,
+    f.suffix,
+    f.designation,
+    f.designation AS designation_id,
+    f.program_id,
+    f.account_status,
+    f.account_status AS is_active,
+    d.designation_name,
+    u.username,
+    u.school_email AS email,
+    (SELECT ur.role_id FROM user_roles ur
+      WHERE ur.user_id = f.user_id
+      ORDER BY ur.role_id LIMIT 1) AS role_id
+  FROM faculties f
+  LEFT JOIN designations d ON f.designation = d.designation_id
+  LEFT JOIN users u ON f.user_id = u.user_id
+`;
 
 class FacultyModel {
-    static async getAll(includeInactive = false) {
-    // Base query
-    let query = `
-      SELECT 
-        f.faculty_id,
-        f.user_id,
-        f.last_name,
-        f.first_name,
-        f.middle_name,
-        f.suffix,
-        f.designation,
-        f.designation AS designation_id,
-        f.program_id,
-        f.account_status,
-        f.account_status AS is_active,
-        d.designation_name,
-        u.username,
-        u.school_email AS email,
-        (SELECT role_id FROM user_roles WHERE user_id = f.user_id LIMIT 1) AS role_id
-      FROM faculties f
-      LEFT JOIN designations d ON f.designation = d.designation_id
-      LEFT JOIN users u ON f.user_id = u.user_id
-    `;
-
-    // Only filter by active if we are NOT including inactive
-    if (!includeInactive) {
-      query += ` WHERE f.account_status = true `;
-    }
-    
-    query += ` ORDER BY f.last_name ASC `;
-
-    const result = await db.query(query);
-    return result.rows;
+  static async getAll(includeInactive = false) {
+    const where = includeInactive ? '' : 'WHERE f.account_status = true';
+    const { rows } = await db.query(`${FACULTY_SELECT} ${where} ORDER BY f.last_name ASC`);
+    return rows;
   }
 
   static async getById(facultyId) {
-    const result = await db.query(`
-      SELECT 
-        f.faculty_id,
-        f.user_id,
-        f.last_name,
-        f.first_name,
-        f.middle_name,
-        f.suffix,
-        f.designation,
-        f.designation AS designation_id,
-        f.program_id,
-        f.account_status,
-        f.account_status AS is_active,
-        d.designation_name,
-        u.username,
-        u.school_email AS email,
-        (SELECT role_id FROM user_roles WHERE user_id = f.user_id LIMIT 1) AS role_id
-      FROM faculties f
-      LEFT JOIN designations d ON f.designation = d.designation_id
-      LEFT JOIN users u ON f.user_id = u.user_id
-      WHERE f.faculty_id = $1
-    `, [facultyId]);
-    return result.rows[0] || null;
+    const { rows } = await db.query(`${FACULTY_SELECT} WHERE f.faculty_id = $1`, [facultyId]);
+    return rows[0] || null;
   }
 
-  static async getByUserId(userId) {
-    const result = await db.query(`
-      SELECT 
-        f.faculty_id,
-        f.user_id,
-        f.last_name,
-        f.first_name,
-        f.middle_name,
-        f.suffix,
-        f.designation,
-        f.designation AS designation_id,
-        f.program_id,
-        f.account_status,
-        f.account_status AS is_active,
-        d.designation_name,
-        u.username,
-        u.school_email AS email,
-        (SELECT role_id FROM user_roles WHERE user_id = f.user_id LIMIT 1) AS role_id
-      FROM faculties f
-      LEFT JOIN designations d ON f.designation = d.designation_id
-      LEFT JOIN users u ON f.user_id = u.user_id
-      WHERE f.user_id = $1
-    `, [userId]);
-    return result.rows[0] || null;
+  static async getByUserId(userId, client = db) {
+    const { rows } = await client.query(`${FACULTY_SELECT} WHERE f.user_id = $1`, [userId]);
+    return rows[0] || null;
   }
 
-  static async updateByUserId(userId, data) {
-    const {
-      last_name,
-      first_name,
-      middle_name,
-      suffix,
-      designation_id,
-      account_status,
-    } = data;
-
-    const result = await db.query(`
-      UPDATE faculties
-      SET
-        last_name      = COALESCE($1, last_name),
-        first_name     = COALESCE($2, first_name),
-        middle_name    = $3,
-        suffix         = $4,
-        designation    = $5,
-        account_status = COALESCE($6, account_status),
-        updated_at     = NOW()
-      WHERE user_id = $7
+  // This method did not exist before, but addFaculty called it.
+  static async create(data, client = db) {
+    const { user_id, last_name, first_name, middle_name, suffix, designation_id, account_status } = data;
+    const { rows } = await client.query(`
+      INSERT INTO faculties
+        (user_id, last_name, first_name, middle_name, suffix, designation, account_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
-    `, [
-      last_name || null,
-      first_name || null,
-      middle_name ?? null,
-      suffix ?? null,
-      designation_id ?? null,
-      typeof account_status === 'boolean' ? account_status : null,
-      userId,
-    ]);
-
-    return result.rows[0] || null;
+    `, [user_id, last_name, first_name, middle_name ?? null, suffix ?? null, designation_id ?? null, account_status]);
+    return rows[0];
   }
 
-    static async deleteByUserId(userId) {
-    await db.query(`
-      UPDATE users 
-      SET is_active = false, updated_at = NOW()
-      WHERE user_id = $1
-    `, [userId]);
+  /**
+   * Partial update: only fields that are actually provided are written.
+   * (Previously middle_name, suffix and designation were reset to NULL
+   * whenever a request omitted them.)
+   */
+  static async updateByUserId(userId, data, client = db) {
+    const sets = [];
+    const values = [];
+    const set = (column, value) => {
+      values.push(value);
+      sets.push(`${column} = $${values.length}`);
+    };
 
-    // Soft delete: deactivate the faculty record
-    const result = await db.query(`
-      UPDATE faculties 
-      SET account_status = false, updated_at = NOW()
-      WHERE user_id = $1
-      RETURNING *
-    `, [userId]);
+    if (data.last_name) set('last_name', data.last_name);
+    if (data.first_name) set('first_name', data.first_name);
+    if (data.middle_name !== undefined) set('middle_name', data.middle_name);
+    if (data.suffix !== undefined) set('suffix', data.suffix);
+    if (data.designation_id !== undefined) set('designation', data.designation_id);
+    if (typeof data.account_status === 'boolean') set('account_status', data.account_status);
 
-    return result.rows[0] || null;
+    sets.push('updated_at = NOW()');
+    values.push(userId);
+
+    const { rows } = await client.query(
+      `UPDATE faculties SET ${sets.join(', ')} WHERE user_id = $${values.length} RETURNING *`,
+      values
+    );
+    return rows[0] || null;
   }
 
-    static async restoreByUserId(userId) {
-    await db.query(`
-      UPDATE users 
-      SET is_active = true, updated_at = NOW()
-      WHERE user_id = $1
-    `, [userId]);
+  /** Flips users.is_active and faculties.account_status together. Pass a client to join a transaction. */
+  static async setActiveByUserId(userId, isActive, client = db) {
+    await client.query(
+      'UPDATE users SET is_active = $1, updated_at = NOW() WHERE user_id = $2',
+      [isActive, userId]
+    );
+    const { rows } = await client.query(
+      'UPDATE faculties SET account_status = $1, updated_at = NOW() WHERE user_id = $2 RETURNING *',
+      [isActive, userId]
+    );
+    return rows[0] || null;
+  }
 
-    const result = await db.query(`
-      UPDATE faculties 
-      SET account_status = true, updated_at = NOW()
-      WHERE user_id = $1
-      RETURNING *
-    `, [userId]);
+  // Soft delete / restore. Both tables now change in ONE transaction.
+  static deleteByUserId(userId) {
+    return withTransaction((client) => FacultyModel.setActiveByUserId(userId, false, client));
+  }
 
-    return result.rows[0] || null;
+  static restoreByUserId(userId) {
+    return withTransaction((client) => FacultyModel.setActiveByUserId(userId, true, client));
   }
 }
-
 
 module.exports = FacultyModel;

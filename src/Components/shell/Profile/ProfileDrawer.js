@@ -35,11 +35,7 @@ export default function ProfileDrawer({ isOpen, onClose, user }) {
 
   const handleGoToChangePassword = () => {
     onClose();
-    if (role.toLowerCase() === 'student') {
-      navigate('/student/change-password');
-    } else {
-      navigate('/change-password');
-    }
+    navigate('/change-password'); // <-- Single route for both
   };
 
   const ProfileContent = (

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BiBookAlt, BiUser, BiBarChart, BiTrendingUp, BiCheckCircle, BiBookOpen } from 'react-icons/bi';
 import { Link, useNavigate } from 'react-router-dom';
 import WelcomeBanner from '../../Components/shared/WelcomeBanner'; // NEW
-import Announcements from '../../Components/shared/Announcements'; // NEW
+import Announcements from '../../Components/shared/Notification/Announcements'; // NEW
 
 // Assuming these are from your standard Tailwind components
 import Card from '../../Components/ui/Card';

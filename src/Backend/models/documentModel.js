@@ -1,3 +1,6 @@
+'use strict';
+
+
 /**
  * ============================================================================
  * DocumentModel
@@ -8,7 +11,7 @@
 
 const StudentManageModel = require('./studentmanageModel');
 const GradeManageModel = require('./grademanageModel');
-const GradingEngine = require('./gradingEngine');
+const GradingEngine = require('../services/gradingEngine');
 const db = require('../config/db');
 
 class DocumentModel {

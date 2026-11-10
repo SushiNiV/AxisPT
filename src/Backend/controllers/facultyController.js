@@ -1,314 +1,167 @@
 const FacultyModel = require('../models/facultyModel');
-const HistoryModel = require('../models/historyModel');
-const db = require('../config/db');
+const UserModel = require('../models/userModel');
+const { hashPassword } = require('../services/authService');
+const { withTransaction } = require('../../utils/transaction');
+const { audit } = require('../../utils/audit');
+const { parseId } = require('../../utils/request');
+const HttpError = require('../../utils/httpError');
 
-const getIpAddress = (req) => req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+/**
+ * Staff accounts (admin + faculty): one users row + one faculties row.
+ * Replaces facultyController and the /users handlers that lived in authController.
+ * In every route, :id is the USER id.
+ */
 
-// ==========================================
-// FACULTY
-// ==========================================
+const UNIQUE_VIOLATION = '23505';
+const toHttpError = (err) =>
+  err.code === UNIQUE_VIOLATION ? new HttpError(400, 'Username or email already exists.') : err;
 
-exports.getFaculties = async (req, res) => {
-  try {
-    const includeInactive = req.query.includeInactive === 'true';
-    const faculties = await FacultyModel.getAll(includeInactive);
-    res.json({ success: true, data: faculties });
-  } catch (error) {
-    console.error("Error fetching faculties:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  }
+const snapshot = (f) =>
+  f && {
+    user_id: f.user_id,
+    last_name: f.last_name,
+    first_name: f.first_name,
+    designation_id: f.designation_id ?? f.designation,
+    is_active: f.is_active ?? f.account_status,
+  };
+
+// undefined => "not provided" (leave unchanged); null/'' => clear it.
+async function resolveDesignationId({ designation_id, new_designation_name }, client) {
+  if (designation_id) return designation_id;
+  const name = typeof new_designation_name === 'string' ? new_designation_name.trim() : '';
+  if (name) return UserModel.findOrCreateDesignation(name, client);
+  return designation_id === '' ? null : designation_id;
+}
+
+// ------------------------------------------------------------------- reads
+exports.list = async (req, res) => {
+  // Deactivated staff are only visible to admins (this route is also open to faculty).
+  const includeInactive = req.query.includeInactive === 'true' && req.user.role === 'admin';
+  res.json({ success: true, data: await FacultyModel.getAll(includeInactive) });
 };
-exports.getFacultyById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const faculty = await FacultyModel.getById(id);
-    if (!faculty) {
-      return res.status(404).json({ success: false, message: "Faculty not found." });
-    }
-    res.json({ success: true, data: faculty });
-  } catch (error) {
-    console.error("Error fetching faculty:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  }
+
+exports.getById = async (req, res) => {
+  const staff = await FacultyModel.getByUserId(parseId(req.params.id));
+  if (!staff) throw new HttpError(404, 'User not found.');
+  res.json({ success: true, data: staff });
 };
 
-exports.addFaculty = async (req, res) => {
-  const userId = req.user?.id || null;
-  const ipAddress = getIpAddress(req);
-  const userAgent = req.headers['user-agent'];
+exports.roles = async (req, res) => {
+  res.json({ success: true, data: await UserModel.getAllRoles() });
+};
 
+exports.designations = async (req, res) => {
+  res.json({ success: true, data: await UserModel.getAllDesignations() });
+};
+
+// ------------------------------------------------------------------ create
+exports.create = async (req, res) => {
   const {
-    last_name, first_name, middle_name, suffix,
-    username, email,
-    role_id, designation_id, new_designation_name,
-    is_active = true,
-  } = req.body;
+    last_name, first_name, middle_name, suffix, username, email,
+    role_id, designation_id, new_designation_name, is_active = true,
+  } = req.body ?? {};
 
   if (!last_name || !first_name || !username || !email || !role_id) {
-    return res.status(400).json({
-      success: false,
-      message: 'Last name, first name, username, email, and role are required.',
-    });
+    throw new HttpError(400, 'Last name, first name, username, email, and role are required.');
   }
 
-  const client = db.getClient ? await db.getClient() : db;
-  const isDedicatedClient = Boolean(db.getClient);
+  const active = Boolean(is_active);
+  const plainPassword = `axis-cpt-${String(last_name).toLowerCase()}`;
+  const passwordHash = await hashPassword(plainPassword);
 
+  let faculty;
   try {
-    if (isDedicatedClient) await client.query('BEGIN');
-
-    // 1. Create user
-    const userRes = await client.query(`
-      INSERT INTO users (username, school_email, password_hash, is_active)
-      VALUES ($1, $2, $3, $4)
-      RETURNING user_id
-    `, [
-      username,
-      email,
-      null,
-      Boolean(is_active),
-    ]);
-    const newUserId = userRes.rows[0].user_id;
-
-    // 2. Assign role
-    await client.query(`
-      INSERT INTO user_roles (user_id, role_id)
-      VALUES ($1, $2)
-      ON CONFLICT DO NOTHING
-    `, [newUserId, role_id]);
-
-    // 3. Resolve designation (existing or new)
-    let finalDesignationId = designation_id;
-    if (!finalDesignationId && new_designation_name) {
-      const desRes = await client.query(`
-        INSERT INTO designations (designation_name)
-        VALUES ($1)
-        ON CONFLICT (designation_name) DO UPDATE
-          SET designation_name = EXCLUDED.designation_name
-        RETURNING designation_id
-      `, [new_designation_name]);
-      finalDesignationId = desRes.rows[0].designation_id;
-    }
-
-    // 4. Create faculty row
-    const faculty = await FacultyModel.create({
-      user_id: newUserId,
-      last_name,
-      first_name,
-      middle_name,
-      suffix,
-      designation_id: finalDesignationId,
-      account_status: Boolean(is_active),
+    faculty = await withTransaction(async (client) => {
+      const userId = await UserModel.createAccount({ username, passwordHash, email, isActive: active }, client);
+      await UserModel.setRole(userId, role_id, client);
+      const designationId = await resolveDesignationId({ designation_id, new_designation_name }, client);
+      return FacultyModel.create({
+        user_id: userId, last_name, first_name,
+        middle_name: middle_name || null, suffix: suffix || null,
+        designation_id: designationId ?? null, account_status: active,
+      }, client);
     });
-
-    if (isDedicatedClient) await client.query('COMMIT');
-
-    await HistoryModel.log({
-      userId, targetUserId: userId, tableName: 'faculties',
-      recordId: faculty.faculty_id,
-      action: 'FACULTY_CREATED', oldValues: null,
-      newValues: {
-        user_id: newUserId, last_name, first_name,
-        designation_id: finalDesignationId, is_active,
-        timestamp: new Date().toISOString(),
-      },
-      ipAddress, userAgent,
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'User created successfully.',
-      data: faculty,
-    });
-  } catch (error) {
-    if (isDedicatedClient) await client.query('ROLLBACK');
-    console.error("Error creating faculty:", error);
-    if (error.code === '23505') {
-      return res.status(400).json({
-        success: false,
-        message: 'Username or email already exists.',
-      });
-    }
-    res.status(500).json({ success: false, message: "Internal server error." });
-  } finally {
-    if (isDedicatedClient && client.release) client.release();
+  } catch (err) {
+    throw toHttpError(err);
   }
+
+  await audit(req, {
+    targetUserId: faculty.user_id, tableName: 'faculties', recordId: faculty.faculty_id,
+    action: 'FACULTY_CREATED', oldValues: null,
+    newValues: { ...snapshot(faculty), timestamp: new Date().toISOString() },
+  });
+
+  res.json({ success: true, message: 'User created successfully', password: plainPassword, data: faculty });
 };
 
-exports.updateFaculty = async (req, res) => {
-  const { id: userId } = req.params;
-  const userIdCaller = req.user?.id || null;
-  const ipAddress = getIpAddress(req);
-  const userAgent = req.headers['user-agent'];
-
+// ------------------------------------------------------------------ update
+exports.update = async (req, res) => {
+  const userId = parseId(req.params.id);
   const {
-    last_name, first_name, middle_name, suffix,
-    username, email,
-    role_id, designation_id, new_designation_name,
-    is_active,
-  } = req.body;
+    last_name, first_name, middle_name, suffix, username, email,
+    role_id, designation_id, new_designation_name, is_active,
+  } = req.body ?? {};
 
-  const client = db.getClient ? await db.getClient() : db;
-  const isDedicatedClient = Boolean(db.getClient);
+  const before = await FacultyModel.getByUserId(userId);
+  if (!before) throw new HttpError(404, 'User not found.');
 
+  let updated;
   try {
-    if (isDedicatedClient) await client.query('BEGIN');
-
-    // 1. Update users table
-    await client.query(`
-      UPDATE users
-      SET
-        username = COALESCE($1, username),
-        school_email = COALESCE($2, school_email),
-        is_active = COALESCE($3, is_active),
-        updated_at = NOW()
-      WHERE user_id = $4
-    `, [
-      username || null,
-      email || null,
-      typeof is_active === 'boolean' ? is_active : null,
-      userId,
-    ]);
-
-    // 2. Update role if provided
-    if (role_id) {
-      await client.query(`DELETE FROM user_roles WHERE user_id = $1`, [userId]);
-      await client.query(`
-        INSERT INTO user_roles (user_id, role_id)
-        VALUES ($1, $2)
-        ON CONFLICT DO NOTHING
-      `, [userId, role_id]);
-    }
-
-    // 3. Resolve designation
-    let finalDesignationId = designation_id;
-    if (!finalDesignationId && new_designation_name) {
-      const desRes = await client.query(`
-        INSERT INTO designations (designation_name)
-        VALUES ($1)
-        ON CONFLICT (designation_name) DO UPDATE
-          SET designation_name = EXCLUDED.designation_name
-        RETURNING designation_id
-      `, [new_designation_name]);
-      finalDesignationId = desRes.rows[0].designation_id;
-    }
-
-    // 4. Update faculty row
-    const updatedFaculty = await FacultyModel.updateByUserId(userId, {
-      last_name,
-      first_name,
-      middle_name,
-      suffix,
-      designation_id: finalDesignationId,
-      account_status: typeof is_active === 'boolean' ? is_active : undefined,
+    updated = await withTransaction(async (client) => {
+      await UserModel.updateAccount(userId, { username, email, isActive: is_active }, client);
+      if (role_id) await UserModel.setRole(userId, role_id, client);
+      const designationId = await resolveDesignationId({ designation_id, new_designation_name }, client);
+      return FacultyModel.updateByUserId(userId, {
+        last_name, first_name, middle_name, suffix,
+        designation_id: designationId,
+        account_status: typeof is_active === 'boolean' ? is_active : undefined,
+      }, client);
     });
-
-    if (isDedicatedClient) await client.query('COMMIT');
-
-    await HistoryModel.log({
-      userId: userIdCaller, targetUserId: userIdCaller, tableName: 'faculties',
-      recordId: updatedFaculty?.faculty_id || null,
-      action: 'FACULTY_UPDATED', oldValues: null,
-      newValues: {
-        user_id: Number(userId), last_name, first_name,
-        designation_id: finalDesignationId,
-        is_active, timestamp: new Date().toISOString(),
-      },
-      ipAddress, userAgent,
-    });
-
-    res.json({
-      success: true,
-      message: 'User updated successfully.',
-      data: updatedFaculty,
-    });
-  } catch (error) {
-    if (isDedicatedClient) await client.query('ROLLBACK');
-    console.error("Error updating faculty:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  } finally {
-    if (isDedicatedClient && client.release) client.release();
+  } catch (err) {
+    throw toHttpError(err);
   }
+
+  await audit(req, {
+    targetUserId: userId, tableName: 'faculties', recordId: before.faculty_id,
+    action: 'FACULTY_UPDATED',
+    oldValues: snapshot(before),
+    newValues: { ...snapshot(updated), timestamp: new Date().toISOString() },
+  });
+
+  res.json({ success: true, message: 'User updated successfully.', data: updated });
 };
 
-exports.deleteFaculty = async (req, res) => {
-  const { id: userId } = req.params; // The ID from the URL (user_id)
-  const callerId = req.user?.id || null;
-  const ipAddress = getIpAddress(req);
-  const userAgent = req.headers['user-agent'];
+// -------------------------------------------------- deactivate / restore
+exports.remove = async (req, res) => {
+  const userId = parseId(req.params.id);
+  const before = await FacultyModel.getByUserId(userId);
+  if (!before) throw new HttpError(404, 'User not found.');
 
-  try {
-    // 1. Optional: Get the faculty details first for the history log
-    const facultyToDelete = await FacultyModel.getByUserId(userId);
-    
-    if (!facultyToDelete) {
-      return res.status(404).json({ success: false, message: "User not found." });
-    }
+  const data = await FacultyModel.deleteByUserId(userId);
 
-    // 2. Perform the soft delete
-    const deletedFaculty = await FacultyModel.deleteByUserId(userId);
+  await audit(req, {
+    targetUserId: userId, tableName: 'faculties', recordId: before.faculty_id,
+    action: 'FACULTY_DELETED',
+    oldValues: snapshot(before),
+    newValues: { is_active: false, timestamp: new Date().toISOString() },
+  });
 
-    // 3. Log the action
-    await HistoryModel.log({
-      userId: callerId, 
-      targetUserId: userId, 
-      tableName: 'faculties',
-      recordId: facultyToDelete.faculty_id,
-      action: 'FACULTY_DELETED', 
-      oldValues: {
-        user_id: userId,
-        last_name: facultyToDelete.last_name,
-        first_name: facultyToDelete.first_name,
-        is_active: true,
-      },
-      newValues: { is_active: false, timestamp: new Date().toISOString() },
-      ipAddress, 
-      userAgent,
-    });
-
-    res.json({
-      success: true,
-      message: 'User deleted successfully.',
-      data: deletedFaculty,
-    });
-  } catch (error) {
-    console.error("Error deleting faculty:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  }
+  res.json({ success: true, message: 'User deleted successfully.', data });
 };
 
-exports.restoreFaculty = async (req, res) => {
-  const { id: userId } = req.params;
-  const callerId = req.user?.id || null;
-  const ipAddress = getIpAddress(req);
-  const userAgent = req.headers['user-agent'];
-  try {
+exports.restore = async (req, res) => {
+  const userId = parseId(req.params.id);
+  const before = await FacultyModel.getByUserId(userId);
+  if (!before) throw new HttpError(404, 'User not found.');
 
-    const facultyToRestore = await FacultyModel.getByUserId(userId);
-    if (!facultyToRestore) {
-      return res.status(404).json({ success: false, message: "User not found." });
-    }
-    await FacultyModel.restoreByUserId(userId);
+  await FacultyModel.restoreByUserId(userId);
 
+  await audit(req, {
+    targetUserId: userId, tableName: 'faculties', recordId: before.faculty_id,
+    action: 'FACULTY_RESTORED',
+    oldValues: { is_active: false },
+    newValues: { is_active: true, timestamp: new Date().toISOString() },
+  });
 
-    await HistoryModel.log({
-      userId: callerId,
-      targetUserId: userId,
-      tableName: 'faculties',
-      recordId: facultyToRestore.faculty_id,
-      action: 'FACULTY_RESTORED',
-      oldValues: { is_active: false },
-      newValues: { is_active: true, timestamp: new Date().toISOString() },
-      ipAddress,
-      userAgent,
-    });
-
-    res.json({
-      success: true,
-      message: 'User restored successfully.',
-    });
-  } catch (error) {
-    console.error("Error restoring faculty:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  }
+  res.json({ success: true, message: 'User restored successfully.' });
 };

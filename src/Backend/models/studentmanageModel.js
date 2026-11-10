@@ -1,963 +1,935 @@
+'use strict';
+
+/**
+ * StudentManageModel: data access for student records.
+ *
+ * A student spans several tables: users (login), students (core record),
+ * student_pii, student_addresses, student_highschool, student_family,
+ * student_family_members, student_achievements and student_education.
+ * create() and update() share one input reader (`readStudentInput`) and one
+ * section writer (`saveProfileSections`), so both accept the same field names.
+ *
+ * Field names: the frontend has used several spellings over time
+ * (first_name / firstName, place_of_birth / birth_place, ...). Each canonical
+ * field lists its accepted aliases once, in the *_FIELDS tables below.
+ *
+ * Update semantics: a field that is not sent is left unchanged; a field sent
+ * blank is cleared (except NOT NULL columns, where blank means "unchanged").
+ * A group of fields (address, high school, ...) is written only if at least
+ * one of its values is non-blank.
+ *
+ * Every multi-table write runs in withTransaction. Rule violations are thrown
+ * as HttpError; database errors are left to the controller to translate.
+ */
+
+const bcrypt = require('bcrypt');
 const db = require('../config/db');
-const bcrypt = require('bcrypt'); // <-- Added bcrypt
+const { HttpError } = require('../../utils/httpError');
+const { withTransaction } = require('../../utils/transaction');
 
-class StudentManageModel {
+const BCRYPT_ROUNDS = 10;
+const YEAR_LEVELS = ['1', '2', '3', '4', '5'];
 
-  static async getActiveAcademicTerm(client) {
-    const res = await client.query(`
-      SELECT ay.year_id, ay.current_sem 
-      FROM academic_year ay 
-      WHERE ay.is_active = true 
-      LIMIT 1
-    `);
-    return res.rows[0] || { year_id: null, current_sem: null };
+// ---------------------------------------------------------------------------
+// Input helpers
+// ---------------------------------------------------------------------------
+
+const hasKey = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+const isBlank = (value) => value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+
+/**
+ * First non-blank value among the aliases.
+ * @returns {*} the value; null if an alias was sent but all were blank (clear it);
+ *   undefined if no alias was sent at all (leave unchanged)
+ */
+function pick(data, ...aliases) {
+  let sent = false;
+  for (const alias of aliases) {
+    if (!hasKey(data, alias)) continue;
+    sent = true;
+    if (!isBlank(data[alias])) {
+      const value = data[alias];
+      return typeof value === 'string' ? value.trim() : value;
+    }
+  }
+  return sent ? null : undefined;
+}
+
+const parseDecimal = (label) => (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) throw new HttpError(400, `${label} must be a number.`);
+  return n;
+};
+
+const parseWholeNumber = (label) => (value) => {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0) throw new HttpError(400, `${label} must be a whole number.`);
+  return n;
+};
+
+function parseBoolean(value, label) {
+  if (typeof value === 'boolean') return value;
+  if (value === 'true' || value === 1 || value === '1') return true;
+  if (value === 'false' || value === 0 || value === '0') return false;
+  throw new HttpError(400, `${label} must be true or false.`);
+}
+
+function parseYearLevel(value) {
+  if (value === undefined || value === null) return null;
+  const level = String(value);
+  if (!YEAR_LEVELS.includes(level)) {
+    throw new HttpError(400, `Year level must be one of: ${YEAR_LEVELS.join(', ')}.`);
+  }
+  return level;
+}
+
+/**
+ * Read a table of [column, aliases, parser?, options?] into { column: value }.
+ * Unsent fields are omitted; blank fields are null (dropped when `notNull`).
+ */
+function readFields(data, fields) {
+  const out = {};
+  for (const [column, aliases, parse, options] of fields) {
+    const value = pick(data, ...aliases);
+    if (value === undefined) continue;
+    if (value === null) {
+      if (!options?.notNull) out[column] = null;
+      continue;
+    }
+    out[column] = parse ? parse(value) : value;
+  }
+  return out;
+}
+
+const hasContent = (values) => Object.values(values).some((v) => v !== null && v !== undefined);
+
+// ---------------------------------------------------------------------------
+// Field tables: canonical column <- accepted request keys
+// ---------------------------------------------------------------------------
+
+const PII_FIELDS = [
+  ['first_name', ['first_name', 'firstName'], null, { notNull: true }],
+  ['last_name', ['last_name', 'lastName'], null, { notNull: true }],
+  ['middle_name', ['middle_name', 'middleName']],
+  ['suffix', ['suffix']],
+  ['sex', ['sex']],
+  ['birth_place', ['birth_place', 'place_of_birth', 'placeOfBirth']],
+  ['personal_email', ['personal_email', 'email']],
+  ['mobile_no', ['mobile_no', 'phoneNumber']],
+  ['landline', ['landline']],
+  ['religion', ['religion']],
+  ['nationality', ['nationality']],
+  ['civil_status', ['civil_status', 'civilStatus']],
+  ['height', ['height'], parseDecimal('Height')],
+  ['weight', ['weight'], parseDecimal('Weight')],
+  ['language_dialects', ['language_dialect', 'language_dialects', 'language']],
+  ['visual_problems', ['visual_problems', 'visualProblems']],
+];
+
+const ADDRESS_FIELDS = {
+  Present: [
+    ['house_no', ['present_houseno', 'perm_house_no', 'house_no']],
+    ['street', ['present_street', 'perm_street', 'street']],
+    ['barangay', ['present_sbdvsn_brgy', 'perm_barangay', 'barangay']],
+    ['city_municipality', ['present_city_mncplty', 'perm_city', 'city_municipality']],
+    ['province', ['perm_province', 'province']],
+  ],
+  Provincial: [
+    ['house_no', ['provincial_houseno', 'prov_house_no']],
+    ['street', ['provincial_street', 'prov_street']],
+    ['barangay', ['provincial_sbdvsn_brgy', 'prov_barangay']],
+    ['city_municipality', ['provincial_city_mncplty', 'prov_city']],
+    ['province', ['prov_province']],
+  ],
+};
+
+const HIGHSCHOOL_FIELDS = [
+  ['highschool_graduated', ['highschool_graduated', 'highschoolGraduated']],
+  ['pubpriv_hs', ['pub_priv_hs', 'pubprivHS']],
+  ['highschool_address', ['hs_school_address', 'schoolAddress']],
+  ['hs_final_gwa', ['hs_final_gwa', 'hsFinalGWA'], parseDecimal('High school GWA')],
+];
+
+const FAMILY_FIELDS = [
+  ['support', ['support', 'supportSource']],
+  ['parents_income', ['parents_income', 'parentsIncome']],
+  ['living_in', ['living_in', 'livingIn']],
+  ['daily_transpo_expense', ['daily_transpo_expense', 'dailyTranspoExpense']],
+  ['no_siblings', ['no_siblings', 'noSiblings'], parseWholeNumber('Number of siblings')],
+  ['ordinal_position', ['ordinal_position', 'ordinalPosition']],
+];
+
+const ACHIEVEMENT_FIELDS = [
+  ['awards_honors', ['awards_honors', 'awardsHonors']],
+  ['hobbies_interests', ['hobbies_interests', 'hobbiesInterests']],
+  ['future_career', ['future_career', 'futureCareer']],
+  ['acad_extracurr', ['acad_extracurr', 'acad_clubs_extracurr', 'academicClubsExtracurr']],
+];
+
+const FAMILY_MEMBERS = [
+  { relation: 'Father', prefix: 'father', isGuardian: false },
+  { relation: 'Mother', prefix: 'mother', isGuardian: false },
+  { relation: 'Guardian', prefix: 'guardian', isGuardian: true },
+];
+
+/** Output keys for getById: response key -> student_addresses column. */
+const ADDRESS_OUTPUT_KEYS = {
+  Present: {
+    present_houseno: 'house_no', present_street: 'street',
+    present_sbdvsn_brgy: 'barangay', present_city_mncplty: 'city_municipality',
+    perm_house_no: 'house_no', perm_street: 'street', perm_barangay: 'barangay',
+    perm_city: 'city_municipality', perm_province: 'province',
+  },
+  Provincial: {
+    provincial_houseno: 'house_no', provincial_street: 'street',
+    provincial_sbdvsn_brgy: 'barangay', provincial_city_mncplty: 'city_municipality',
+    prov_house_no: 'house_no', prov_street: 'street', prov_barangay: 'barangay',
+    prov_city: 'city_municipality', prov_province: 'province',
+  },
+};
+
+/**
+ * Read a request body into normalised, validated sections. Used by create and update.
+ * @param {object} data
+ * @returns {object}
+ */
+function readStudentInput(data) {
+  const accountStatus = pick(data, 'account_status', 'accountStatus');
+
+  const members = [];
+  for (const { relation, prefix, isGuardian } of FAMILY_MEMBERS) {
+    // A member is only written when a first name (or a full name) was sent.
+    const first = pick(data, `${prefix}_firstname`, `${prefix}_name`);
+    if (isBlank(first)) continue;
+    members.push({
+      relation,
+      isGuardian,
+      first_name: first,
+      middle_name: pick(data, `${prefix}_middlename`) ?? null,
+      last_name: pick(data, `${prefix}_lastname`) ?? null,
+      suffix: pick(data, `${prefix}_suffix`) ?? null,
+      occupation: pick(data, `${prefix}_occupation`) ?? null,
+      contact_no: pick(data, `${prefix}_contact`, `${prefix}_contact_no`) ?? null,
+      status: isGuardian ? 'Living' : data[`${prefix}_status`],
+    });
   }
 
-  static async getMasterlist({ search = '', programId = null, includeArchived = false, limit = 100, offset = 0 }) {
-    let query = `
-      SELECT 
-        s.student_id,
-        u.user_id,
-        u.username AS student_number,
-        s.account_status,
-        s.archived_at,
-        s.archive_reason,
-        p.last_name,
-        p.first_name,
-        p.middle_name,
-        p.suffix,
-        CONCAT_WS(' ', 
-          p.first_name, 
-          NULLIF(p.middle_name, ''), 
-          p.last_name, 
-          NULLIF(p.suffix, '')
-        ) AS full_name,
-        p.personal_email,
-        se.year_level,
-        se.classification,
-        se.enrollment_status,
-        sec.section_name,
-        prog.program_id,
-        prog.program_code,
-        prog.program_abbr,
-        prog.program_name
-      FROM students s
-      LEFT JOIN users u ON s.user_id = u.user_id
-      LEFT JOIN student_pii p ON s.student_id = p.student_id
-      LEFT JOIN student_education se ON s.student_id = se.student_id AND se.is_current = true
-      LEFT JOIN section_assignments sa ON se.assignment_id = sa.assignment_id
-      LEFT JOIN sections sec ON sa.section_id = sec.section_id
-      LEFT JOIN curricula c ON se.curriculum_id = c.curriculum_id
-      LEFT JOIN programs prog ON c.program_id = prog.program_id
-      WHERE 1=1
-    `;
+  return {
+    studentNumber: pick(data, 'student_number', 'studentNumber'),
+    schoolEmail: pick(data, 'school_email', 'email', 'personal_email'),
+    accountStatus: isBlank(accountStatus) ? undefined : parseBoolean(accountStatus, 'Account status'),
+    birthDate: pick(data, 'birth_date', 'birthDate'),
+    pii: readFields(data, PII_FIELDS),
+    addresses: {
+      Present: readFields(data, ADDRESS_FIELDS.Present),
+      Provincial: readFields(data, ADDRESS_FIELDS.Provincial),
+    },
+    highschool: readFields(data, HIGHSCHOOL_FIELDS),
+    family: readFields(data, FAMILY_FIELDS),
+    achievements: readFields(data, ACHIEVEMENT_FIELDS),
+    members,
+  };
+}
 
+// ---------------------------------------------------------------------------
+// SQL helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Insert a row, or update only the given columns if it already exists.
+ * Table and column names come from the constant tables above, never from requests.
+ */
+async function upsertPartial(client, table, conflictColumns, keyValues, values) {
+  const valueColumns = Object.keys(values);
+  const columns = [...Object.keys(keyValues), ...valueColumns];
+  const params = [...Object.values(keyValues), ...valueColumns.map((c) => values[c])];
+  const placeholders = params.map((_, i) => `$${i + 1}`);
+  const updates = [...valueColumns.map((c) => `${c} = EXCLUDED.${c}`), 'updated_at = NOW()'];
+
+  await client.query(
+    `INSERT INTO ${table} (${columns.join(', ')}, updated_at)
+     VALUES (${placeholders.join(', ')}, NOW())
+     ON CONFLICT (${conflictColumns.join(', ')}) DO UPDATE SET ${updates.join(', ')}`,
+    params
+  );
+}
+
+const escapeLike = (text) => text.replace(/[\\%_]/g, '\\$&');
+
+class StudentManageModel {
+  // -------------------------------------------------------------------------
+  // Reading
+  // -------------------------------------------------------------------------
+
+  /**
+   * @returns {Promise<{ year_id: number|null, current_sem: number|null }>}
+   */
+  static async getActiveAcademicTerm(client = db) {
+    const { rows } = await client.query(
+      `SELECT ay.year_id, ay.current_sem
+         FROM academic_year ay
+        WHERE ay.is_active = true
+        LIMIT 1`
+    );
+    return rows[0] || { year_id: null, current_sem: null };
+  }
+
+  /**
+   * Paged student list with program, year level and section.
+   * @param {{ search?: string, programId?: number|null, includeArchived?: boolean,
+   *           limit?: number, offset?: number }} [options]
+   * @returns {Promise<object[]>}
+   */
+  static async getMasterlist({
+    search = '', programId = null, includeArchived = false, limit = 100, offset = 0,
+  } = {}) {
+    const conditions = [];
     const values = [];
-    let paramIndex = 1;
 
-    if (!includeArchived) {
-      query += ` AND s.archived_at IS NULL`;
-    }
+    if (!includeArchived) conditions.push('s.archived_at IS NULL');
 
     if (search) {
-      query += ` AND (
-        p.first_name ILIKE $${paramIndex} OR 
-        p.last_name ILIKE $${paramIndex} OR 
-        u.username ILIKE $${paramIndex}
-      )`;
-      values.push(`%${search}%`);
-      paramIndex++;
+      values.push(`%${escapeLike(search)}%`);
+      const p = `$${values.length}`;
+      conditions.push(`(p.first_name ILIKE ${p} OR p.last_name ILIKE ${p} OR u.username ILIKE ${p})`);
     }
 
     if (programId) {
-      query += ` AND prog.program_id = $${paramIndex}`;
       values.push(programId);
-      paramIndex++;
+      conditions.push(`prog.program_id = $${values.length}`);
     }
 
-    query += ` ORDER BY p.last_name ASC NULLS LAST LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     values.push(limit, offset);
+    const limitParam = `$${values.length - 1}`;
+    const offsetParam = `$${values.length}`;
 
-    const result = await db.query(query, values);
-    return result.rows;
+    const { rows } = await db.query(
+      `SELECT
+         s.student_id,
+         u.user_id,
+         u.username AS student_number,
+         s.account_status,
+         s.archived_at,
+         s.archive_reason,
+         p.last_name,
+         p.first_name,
+         p.middle_name,
+         p.suffix,
+         CONCAT_WS(' ',
+           p.first_name,
+           NULLIF(p.middle_name, ''),
+           p.last_name,
+           NULLIF(p.suffix, '')
+         ) AS full_name,
+         p.personal_email,
+         se.year_level,
+         se.classification,
+         se.enrollment_status,
+         sec.section_name,
+         prog.program_id,
+         prog.program_code,
+         prog.program_abbr,
+         prog.program_name
+       FROM students s
+       LEFT JOIN users u ON s.user_id = u.user_id
+       LEFT JOIN student_pii p ON s.student_id = p.student_id
+       LEFT JOIN student_education se ON s.student_id = se.student_id AND se.is_current = true
+       LEFT JOIN section_assignments sa ON se.assignment_id = sa.assignment_id
+       LEFT JOIN sections sec ON sa.section_id = sec.section_id
+       LEFT JOIN curricula c ON se.curriculum_id = c.curriculum_id
+       LEFT JOIN programs prog ON c.program_id = prog.program_id
+       ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
+       ORDER BY p.last_name ASC NULLS LAST
+       LIMIT ${limitParam} OFFSET ${offsetParam}`,
+      values
+    );
+    return rows;
   }
 
+  /**
+   * Full student profile, flattened for the edit form.
+   * @returns {Promise<object|null>}
+   */
   static async getById(studentId) {
-    const mainQuery = `
-      SELECT 
-        s.student_id,
-        s.birth_date,
-        s.account_status,
-        u.user_id,
-        u.username AS student_number,
-        u.school_email,
-        u.is_active AS user_active,
-        
-        pii.first_name AS firstname,
-        pii.middle_name AS middlename,
-        pii.last_name AS lastname,
-        pii.suffix,
-        pii.sex,
-        pii.birth_place AS place_of_birth,
-        pii.personal_email AS email,
-        pii.mobile_no,
-        pii.landline AS landline_no,
-        pii.religion,
-        pii.nationality,
-        pii.civil_status,
-        pii.height,
-        pii.weight,
-        pii.language_dialects AS language_dialect,
-        pii.visual_problems,
+    const [main, addresses, members] = await Promise.all([
+      db.query(
+        `SELECT
+           s.student_id,
+           s.birth_date,
+           s.account_status,
+           u.user_id,
+           u.username AS student_number,
+           u.school_email,
+           u.is_active AS user_active,
 
-        hs.highschool_graduated,
-        hs.pubpriv_hs AS pub_priv_hs,
-        hs.highschool_address AS hs_school_address,
-        hs.hs_final_gwa,
+           pii.first_name AS firstname,
+           pii.middle_name AS middlename,
+           pii.last_name AS lastname,
+           pii.suffix,
+           pii.sex,
+           pii.birth_place AS place_of_birth,
+           pii.personal_email AS email,
+           pii.mobile_no,
+           pii.landline AS landline_no,
+           pii.religion,
+           pii.nationality,
+           pii.civil_status,
+           pii.height,
+           pii.weight,
+           pii.language_dialects AS language_dialect,
+           pii.visual_problems,
 
-        fam.support,
-        fam.parents_income,
-        fam.living_in,
-        fam.daily_transpo_expense,
-        fam.no_siblings,
-        fam.ordinal_position,
+           hs.highschool_graduated,
+           hs.pubpriv_hs AS pub_priv_hs,
+           hs.highschool_address AS hs_school_address,
+           hs.hs_final_gwa,
 
-        ach.awards_honors,
-        ach.hobbies_interests,
-        ach.future_career,
-        ach.acad_extracurr AS acad_clubs_extracurr,
+           fam.support,
+           fam.parents_income,
+           fam.living_in,
+           fam.daily_transpo_expense,
+           fam.no_siblings,
+           fam.ordinal_position,
 
-        edu.education_id,
-        edu.curriculum_id,
-        edu.assignment_id,
-        edu.year_id,
-        edu.semester_id,
-        edu.year_level,
-        edu.classification,
-        edu.enrollment_status,
-        p.program_id,
-        p.program_name AS program,
-        p.program_abbr,
-        p.program_code,
-        sa.section_id,
-        sec.section_name AS section
+           ach.awards_honors,
+           ach.hobbies_interests,
+           ach.future_career,
+           ach.acad_extracurr AS acad_clubs_extracurr,
 
-      FROM students s
-      JOIN users u ON u.user_id = s.user_id
-      LEFT JOIN student_pii pii ON pii.student_id = s.student_id
-      LEFT JOIN student_highschool hs ON hs.student_id = s.student_id
-      LEFT JOIN student_family fam ON fam.student_id = s.student_id
-      LEFT JOIN student_achievements ach ON ach.student_id = s.student_id
-      LEFT JOIN student_education edu ON edu.student_id = s.student_id AND edu.is_current = true
-      LEFT JOIN section_assignments sa ON edu.assignment_id = sa.assignment_id
-      LEFT JOIN sections sec ON sa.section_id = sec.section_id
-      LEFT JOIN curricula c ON c.curriculum_id = edu.curriculum_id
-      LEFT JOIN programs p ON p.program_id = c.program_id
-      WHERE s.student_id = $1
-    `;
+           edu.education_id,
+           edu.curriculum_id,
+           edu.assignment_id,
+           edu.year_id,
+           edu.semester_id,
+           edu.year_level,
+           edu.classification,
+           edu.enrollment_status,
+           p.program_id,
+           p.program_name AS program,
+           p.program_abbr,
+           p.program_code,
+           sa.section_id,
+           sec.section_name AS section
 
-    const res = await db.query(mainQuery, [studentId]);
-    if (res.rows.length === 0) return null;
+         FROM students s
+         JOIN users u ON u.user_id = s.user_id
+         LEFT JOIN student_pii pii ON pii.student_id = s.student_id
+         LEFT JOIN student_highschool hs ON hs.student_id = s.student_id
+         LEFT JOIN student_family fam ON fam.student_id = s.student_id
+         LEFT JOIN student_achievements ach ON ach.student_id = s.student_id
+         LEFT JOIN student_education edu ON edu.student_id = s.student_id AND edu.is_current = true
+         LEFT JOIN section_assignments sa ON edu.assignment_id = sa.assignment_id
+         LEFT JOIN sections sec ON sa.section_id = sec.section_id
+         LEFT JOIN curricula c ON c.curriculum_id = edu.curriculum_id
+         LEFT JOIN programs p ON p.program_id = c.program_id
+         WHERE s.student_id = $1`,
+        [studentId]
+      ),
+      db.query('SELECT * FROM student_addresses WHERE student_id = $1', [studentId]),
+      db.query('SELECT * FROM student_family_members WHERE student_id = $1', [studentId]),
+    ]);
 
-    const studentData = res.rows[0];
+    if (main.rows.length === 0) return null;
+    const student = main.rows[0];
 
-    // Map Addresses
-    const addrRes = await db.query(
-      `SELECT * FROM student_addresses WHERE student_id = $1`,
-      [studentId]
-    );
+    for (const address of addresses.rows) {
+      const outputKeys = ADDRESS_OUTPUT_KEYS[address.address_type];
+      if (!outputKeys) continue;
+      for (const [key, column] of Object.entries(outputKeys)) student[key] = address[column];
+    }
 
-    addrRes.rows.forEach(addr => {
-      if (addr.address_type === 'Present') {
-        studentData.present_houseno = addr.house_no;
-        studentData.present_street = addr.street;
-        studentData.present_sbdvsn_brgy = addr.barangay;
-        studentData.present_city_mncplty = addr.city_municipality;
-        studentData.perm_house_no = addr.house_no;
-        studentData.perm_street = addr.street;
-        studentData.perm_barangay = addr.barangay;
-        studentData.perm_city = addr.city_municipality;
-        studentData.perm_province = addr.province;
-      } else if (addr.address_type === 'Provincial') {
-        studentData.provincial_houseno = addr.house_no;
-        studentData.provincial_street = addr.street;
-        studentData.provincial_sbdvsn_brgy = addr.barangay;
-        studentData.provincial_city_mncplty = addr.city_municipality;
-        studentData.prov_house_no = addr.house_no;
-        studentData.prov_street = addr.street;
-        studentData.prov_barangay = addr.barangay;
-        studentData.prov_city = addr.city_municipality;
-        studentData.prov_province = addr.province;
+    for (const member of members.rows) {
+      const relation = (member.relation_type || '').toLowerCase();
+      if (!['father', 'mother', 'guardian'].includes(relation)) continue;
+
+      student[`${relation}_firstname`] = member.first_name;
+      student[`${relation}_middlename`] = member.middle_name;
+      student[`${relation}_lastname`] = member.last_name;
+      student[`${relation}_suffix`] = member.suffix;
+      student[`${relation}_name`] = [member.first_name, member.middle_name, member.last_name, member.suffix]
+        .filter(Boolean).join(' ');
+      student[`${relation}_occupation`] = member.occupation;
+      student[`${relation}_contact_no`] = member.contact_no;
+      student[`${relation}_contact`] = member.contact_no;
+      if (relation !== 'guardian') {
+        student[`${relation}_status`] = member.is_alive ? 'Living' : 'Deceased';
       }
-    });
+    }
 
-    // Map Family Members
-    const membersRes = await db.query(
-      `SELECT * FROM student_family_members WHERE student_id = $1`,
-      [studentId]
-    );
+    student.first_name = student.firstname;
+    student.last_name = student.lastname;
+    student.middle_name = student.middlename;
 
-    membersRes.rows.forEach(m => {
-      const rel = (m.relation_type || '').toLowerCase();
-      if (rel === 'father') {
-        studentData.father_firstname = m.first_name;
-        studentData.father_middlename = m.middle_name;
-        studentData.father_lastname = m.last_name;
-        studentData.father_suffix = m.suffix;
-        studentData.father_name = [m.first_name, m.middle_name, m.last_name, m.suffix].filter(Boolean).join(' ');
-        studentData.father_occupation = m.occupation;
-        studentData.father_contact_no = m.contact_no;
-        studentData.father_contact = m.contact_no;
-        studentData.father_status = m.is_alive ? 'Living' : 'Deceased';
-      } else if (rel === 'mother') {
-        studentData.mother_firstname = m.first_name;
-        studentData.mother_middlename = m.middle_name;
-        studentData.mother_lastname = m.last_name;
-        studentData.mother_suffix = m.suffix;
-        studentData.mother_name = [m.first_name, m.middle_name, m.last_name, m.suffix].filter(Boolean).join(' ');
-        studentData.mother_occupation = m.occupation;
-        studentData.mother_contact_no = m.contact_no;
-        studentData.mother_contact = m.contact_no;
-        studentData.mother_status = m.is_alive ? 'Living' : 'Deceased';
-      } else if (rel === 'guardian') {
-        studentData.guardian_firstname = m.first_name;
-        studentData.guardian_middlename = m.middle_name;
-        studentData.guardian_lastname = m.last_name;
-        studentData.guardian_suffix = m.suffix;
-        studentData.guardian_name = [m.first_name, m.middle_name, m.last_name, m.suffix].filter(Boolean).join(' ');
-        studentData.guardian_occupation = m.occupation;
-        studentData.guardian_contact_no = m.contact_no;
-        studentData.guardian_contact = m.contact_no;
-      }
-    });
-
-    studentData.first_name = studentData.firstname;
-    studentData.last_name = studentData.lastname;
-    studentData.middle_name = studentData.middlename;
-
-    return studentData;
+    return student;
   }
 
+  // -------------------------------------------------------------------------
+  // Create and update
+  // -------------------------------------------------------------------------
+
+  /**
+   * Create a student: login account, student record, profile sections and the
+   * current enrolment, in one transaction.
+   *
+   * The initial password is `data.password_hash` when supplied (it is hashed
+   * here, so send plaintext), otherwise `axis-cpt-<lastname>`.
+   *
+   * @param {object} data  request body
+   * @returns {Promise<{ student_id: number, user_id: number }>}
+   * @throws {HttpError} 400 on invalid input; pg error 23505 on a duplicate student number
+   */
   static async create(data) {
-    const client = db.getClient ? await db.getClient() : db;
-    const isDedicatedClient = Boolean(db.getClient);
-
-    try {
-      if (isDedicatedClient) await client.query('BEGIN');
-
-      const studentNumber = data.student_number || data.studentNumber;
-      const schoolEmail = data.school_email || data.email || data.personal_email;
-      const firstName = data.first_name || data.firstName;
-      const lastName = data.last_name || data.lastName;
-      const middleName = data.middle_name || data.middleName || null;
-      
-      const safeLast = (lastName || 'student').toLowerCase().replace(/\s+/g, '');
-      const defaultPassword = data.password_hash || `axis-cpt-${safeLast}`;
-      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-
-      const userRes = await client.query(`
-        INSERT INTO users (username, password_hash, school_email, is_active, changed_pass)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING user_id
-      `, [
-        studentNumber,
-        hashedPassword,
-        schoolEmail || null,
-        data.account_status !== undefined ? Boolean(data.account_status) : true,
-        false 
-      ]);
-
-      const userId = userRes.rows[0].user_id;
-
-      // Assign Student Role
-      await client.query(`
-        INSERT INTO user_roles (user_id, role_id)
-        VALUES ($1, (SELECT role_id FROM roles WHERE UPPER(role_name) = 'STUDENT' LIMIT 1))
-        ON CONFLICT DO NOTHING
-      `, [userId]);
-
-  
-      const studentRes = await client.query(`
-        INSERT INTO students (user_id, birth_date, account_status)
-        VALUES ($1, $2, $3)
-        RETURNING student_id
-      `, [
-        userId,
-        data.birth_date || data.birthDate || null,
-        data.account_status !== undefined ? Boolean(data.account_status) : true
-      ]);
-      const studentId = studentRes.rows[0].student_id;
-
-      // 3. Create Student PII
-      await client.query(`
-        INSERT INTO student_pii (
-          student_id, last_name, first_name, middle_name, suffix, sex,
-          birth_place, personal_email, mobile_no, landline, religion,
-          nationality, civil_status, height, weight, language_dialects, visual_problems
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-      `, [
-        studentId,
-        lastName,
-        firstName,
-        middleName,
-        data.suffix || null,
-        data.sex || null,
-        data.birth_place || data.place_of_birth || data.placeOfBirth || null,
-        data.personal_email || data.email || null,
-        data.mobile_no || data.phoneNumber || null,
-        data.landline || null,
-        data.religion || null,
-        data.nationality || null,
-        data.civil_status || data.civilStatus || null,
-        data.height ? parseFloat(data.height) : null,
-        data.weight ? parseFloat(data.weight) : null,
-        data.language_dialect || data.language_dialects || data.language || null,
-        data.visual_problems || data.visualProblems || null
-      ]);
-
-      // 4. Addresses
-      const presHouse = data.present_houseno || data.perm_house_no || data.house_no;
-      const presStreet = data.present_street || data.perm_street || data.street;
-      const presBrgy = data.present_sbdvsn_brgy || data.perm_barangay || data.barangay;
-      const presCity = data.present_city_mncplty || data.perm_city || data.city_municipality;
-      const presProvince = data.perm_province || data.province;
-
-      if (presHouse || presStreet || presBrgy || presCity || presProvince) {
-        await client.query(`
-          INSERT INTO student_addresses (student_id, address_type, house_no, street, barangay, city_municipality, province)
-          VALUES ($1, 'Present', $2, $3, $4, $5, $6)
-        `, [studentId, presHouse || null, presStreet || null, presBrgy || null, presCity || null, presProvince || null]);
-      }
-
-      const provHouse = data.provincial_houseno || data.prov_house_no;
-      const provStreet = data.provincial_street || data.prov_street;
-      const provBrgy = data.provincial_sbdvsn_brgy || data.prov_barangay;
-      const provCity = data.provincial_city_mncplty || data.prov_city;
-      const provProvince = data.prov_province;
-
-      if (provHouse || provStreet || provBrgy || provCity || provProvince) {
-        await client.query(`
-          INSERT INTO student_addresses (student_id, address_type, house_no, street, barangay, city_municipality, province)
-          VALUES ($1, 'Provincial', $2, $3, $4, $5, $6)
-        `, [studentId, provHouse || null, provStreet || null, provBrgy || null, provCity || null, provProvince || null]);
-      }
-
-      // 5. High School Info
-      const hsGrad = data.highschool_graduated || data.highschoolGraduated;
-      const hsGwa = data.hs_final_gwa || data.hsFinalGWA;
-      const hsAddress = data.hs_school_address || data.schoolAddress;
-      const pubpriv = data.pub_priv_hs || data.pubprivHS;
-
-      if (hsGrad || hsGwa || hsAddress) {
-        await client.query(`
-          INSERT INTO student_highschool (student_id, highschool_graduated, pubpriv_hs, highschool_address, hs_final_gwa)
-          VALUES ($1, $2, $3, $4, $5)
-        `, [studentId, hsGrad || null, pubpriv || null, hsAddress || null, hsGwa ? parseFloat(hsGwa) : null]);
-      }
-
-      // 6. Family Members
-      if (data.father_name || data.father_firstname) {
-        await client.query(`
-          INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
-          VALUES ($1, 'Father', $2, $3, $4, $5, false)
-        `, [
-          studentId,
-          data.father_firstname || data.father_name || null,
-          data.father_occupation || null,
-          data.father_contact || data.father_contact_no || null,
-          data.father_status === 'Living'
-        ]);
-      }
-
-      if (data.mother_name || data.mother_firstname) {
-        await client.query(`
-          INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
-          VALUES ($1, 'Mother', $2, $3, $4, $5, false)
-        `, [
-          studentId,
-          data.mother_firstname || data.mother_name || null,
-          data.mother_occupation || null,
-          data.mother_contact || data.mother_contact_no || null,
-          data.mother_status === 'Living'
-        ]);
-      }
-
-      if (data.guardian_name || data.guardian_firstname) {
-        await client.query(`
-          INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
-          VALUES ($1, 'Guardian', $2, $3, $4, true, true)
-        `, [
-          studentId,
-          data.guardian_firstname || data.guardian_name || null,
-          data.guardian_occupation || null,
-          data.guardian_contact || data.guardian_contact_no || null
-        ]);
-      }
-
-      // 6b. Family Background
-      const support = data.support || data.supportSource;
-      const parentsIncome = data.parents_income || data.parentsIncome;
-      const livingIn = data.living_in || data.livingIn;
-      const dailyTranspo = data.daily_transpo_expense || data.dailyTranspoExpense;
-      const noSiblings = data.no_siblings ?? data.noSiblings;
-      const ordinalPosition = data.ordinal_position || data.ordinalPosition;
-
-      if (support || parentsIncome || livingIn || dailyTranspo || noSiblings || ordinalPosition) {
-        await client.query(`
-          INSERT INTO student_family (student_id, support, parents_income, living_in, daily_transpo_expense, no_siblings, ordinal_position)
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
-        `, [
-          studentId,
-          support || null,
-          parentsIncome || null,
-          livingIn || null,
-          dailyTranspo || null,
-          (noSiblings !== undefined && noSiblings !== '') ? parseInt(noSiblings, 10) : null,
-          ordinalPosition || null
-        ]);
-      }
-
-      // 6c. Achievements, Hobbies, Interests
-      const awardsHonors = data.awards_honors || data.awardsHonors;
-      const hobbiesInterests = data.hobbies_interests || data.hobbiesInterests;
-      const futureCareer = data.future_career || data.futureCareer;
-      const acadExtracurr = data.acad_extracurr || data.acad_clubs_extracurr || data.academicClubsExtracurr;
-
-      if (awardsHonors || hobbiesInterests || futureCareer || acadExtracurr) {
-        await client.query(`
-          INSERT INTO student_achievements (student_id, awards_honors, hobbies_interests, future_career, acad_extracurr)
-          VALUES ($1, $2, $3, $4, $5)
-        `, [
-          studentId,
-          awardsHonors || null,
-          hobbiesInterests || null,
-          futureCareer || null,
-          acadExtracurr || null
-        ]);
-      }
-
-      // 7. Education Record
-      const termInfo = await this.getActiveAcademicTerm(client);
-      // Use an explicit curriculum as-is. Only resolve via program when just a
-      // program was given, preferring the newest curriculum that has courses.
-      let curriculumId = data.curriculum_id || null;
-      if (!curriculumId && data.program_id) {
-        const curRes = await client.query(`
-          SELECT c.curriculum_id
-          FROM curricula c
-          WHERE c.program_id = $1
-          ORDER BY EXISTS (
-            SELECT 1 FROM curriculum_courses cc WHERE cc.curriculum_id = c.curriculum_id
-          ) DESC, c.curriculum_id DESC
-          LIMIT 1
-        `, [data.program_id]);
-        curriculumId = curRes.rows[0]?.curriculum_id || null;
-      }
-
-      const yearLevel = String(data.year_level || data.yearLevel || '1');
-
-      // Resolve assignment_id from chosen section_id
-      let assignmentId = data.assignment_id || null;
-      if (!assignmentId && data.section_id) {
-        const assignRes = await client.query(`
-          SELECT assignment_id FROM section_assignments
-          WHERE section_id = $1 AND year_id = $2 AND semester_id = $3
-          LIMIT 1
-        `, [data.section_id, data.year_id || termInfo.year_id, data.semester_id || termInfo.current_sem]);
-        assignmentId = assignRes.rows[0]?.assignment_id || null;
-      }
-
-      // Guard: if we have both a section and a year level, ensure they match.
-      if (assignmentId && yearLevel) {
-        const check = await client.query(`
-          SELECT year_level::text AS yl
-          FROM section_assignments
-          WHERE assignment_id = $1
-        `, [assignmentId]);
-
-        const sa = check.rows[0];
-        if (sa && String(sa.yl) !== String(yearLevel)) {
-          throw new Error(
-            `Section year level (${sa.yl}) does not match student year level (${yearLevel}).`
-          );
-        }
-      }
-
-      await client.query(`
-        INSERT INTO student_education (
-          student_id, curriculum_id, assignment_id, year_id, semester_id, year_level, classification, enrollment_status, is_current
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
-      `, [
-        studentId,
-        curriculumId || null,
-        assignmentId,                                
-        data.year_id || termInfo.year_id,
-        data.semester_id || termInfo.current_sem,
-        yearLevel,
-        data.classification || 'New',                
-        data.enrollment_status || 'Enrolled'
-      ]);
-      
-      if (isDedicatedClient) await client.query('COMMIT');
-      return { student_id: studentId, user_id: userId };
-    } catch (error) {
-      if (isDedicatedClient) await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      if (isDedicatedClient && client.release) client.release();
+    const input = readStudentInput(data);
+    if (!input.studentNumber || !input.pii.first_name || !input.pii.last_name) {
+      throw new HttpError(400, 'Student number, first name, and last name are required.');
     }
+
+    const lastNamePart = input.pii.last_name.toLowerCase().replace(/\s+/g, '');
+    const initialPassword = data.password_hash || `axis-cpt-${lastNamePart}`;
+    const passwordHash = await bcrypt.hash(initialPassword, BCRYPT_ROUNDS);
+    const isActive = input.accountStatus ?? true;
+
+    let created;
+    await withTransaction(async (client) => {
+      const { rows: [user] } = await client.query(
+        `INSERT INTO users (username, password_hash, school_email, is_active, changed_pass)
+         VALUES ($1, $2, $3, $4, false)
+         RETURNING user_id`,
+        [input.studentNumber, passwordHash, input.schoolEmail ?? null, isActive]
+      );
+
+      await client.query(
+        `INSERT INTO user_roles (user_id, role_id)
+         VALUES ($1, (SELECT role_id FROM roles WHERE UPPER(role_name) = 'STUDENT' LIMIT 1))
+         ON CONFLICT DO NOTHING`,
+        [user.user_id]
+      );
+
+      const { rows: [student] } = await client.query(
+        `INSERT INTO students (user_id, birth_date, account_status)
+         VALUES ($1, $2, $3)
+         RETURNING student_id`,
+        [user.user_id, input.birthDate ?? null, isActive]
+      );
+
+      await this._saveProfileSections(client, student.student_id, input, { isNew: true });
+      await this._createEducation(client, student.student_id, data);
+
+      created = { student_id: student.student_id, user_id: user.user_id };
+    });
+
+    return created;
   }
 
+  /**
+   * Update a student. Fields not sent are left unchanged (see the file header).
+   * @param {number} studentId
+   * @param {object} data  request body
+   * @returns {Promise<{ userId: number }>}
+   * @throws {HttpError} 404 if the student does not exist; 400 on invalid input
+   */
   static async update(studentId, data) {
-    const client = db.getClient ? await db.getClient() : db;
-    const isDedicatedClient = Boolean(db.getClient);
+    const input = readStudentInput(data);
 
-    try {
-      if (isDedicatedClient) await client.query('BEGIN');
-
-      const studentNumber = data.student_number || data.studentNumber;
-      const accountStatus = data.account_status !== undefined ? data.account_status : data.accountStatus;
-      const schoolEmail = data.school_email || data.email || data.personal_email;
-
-      // 1. Update user record
-      if (studentNumber || accountStatus !== undefined || schoolEmail) {
-        await client.query(`
-          UPDATE users
-          SET
-            username = COALESCE($1, username),
-            school_email = COALESCE($2, school_email),
-            is_active = COALESCE($3, is_active),
-            updated_at = NOW()
-          WHERE user_id = (SELECT user_id FROM students WHERE student_id = $4)
-        `, [
-          studentNumber || null,
-          schoolEmail || null,
-          accountStatus !== undefined ? Boolean(accountStatus) : null,
-          studentId
-        ]);
-      }
-
-      // 2. Update core student record
-      const birthDate = data.birth_date || data.birthDate;
-      await client.query(`
-        UPDATE students
-        SET
-          birth_date = COALESCE($1, birth_date),
-          account_status = COALESCE($2, account_status),
-          updated_at = NOW()
-        WHERE student_id = $3
-      `, [
-        birthDate || null,
-        accountStatus !== undefined ? Boolean(accountStatus) : null,
-        studentId
-      ]);
-
-      // 3. Upsert PII
-      await client.query(`
-        INSERT INTO student_pii (
-          student_id, first_name, last_name, middle_name, suffix, sex,
-          birth_place, personal_email, mobile_no, landline, religion,
-          nationality, civil_status, height, weight, language_dialects, visual_problems, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
-        ON CONFLICT (student_id) DO UPDATE SET
-          first_name = COALESCE(EXCLUDED.first_name, student_pii.first_name),
-          last_name = COALESCE(EXCLUDED.last_name, student_pii.last_name),
-          middle_name = EXCLUDED.middle_name,
-          suffix = EXCLUDED.suffix,
-          sex = EXCLUDED.sex,
-          birth_place = EXCLUDED.birth_place,
-          personal_email = EXCLUDED.personal_email,
-          mobile_no = EXCLUDED.mobile_no,
-          landline = EXCLUDED.landline,
-          religion = EXCLUDED.religion,
-          nationality = EXCLUDED.nationality,
-          civil_status = EXCLUDED.civil_status,
-          height = EXCLUDED.height,
-          weight = EXCLUDED.weight,
-          language_dialects = EXCLUDED.language_dialects,
-          visual_problems = EXCLUDED.visual_problems,
-          updated_at = NOW()
-      `, [
-        studentId,
-        data.first_name || data.firstName || null,
-        data.last_name || data.lastName || null,
-        data.middle_name || data.middleName || null,
-        data.suffix || null,
-        data.sex || null,
-        data.birth_place || data.place_of_birth || data.placeOfBirth || null,
-        data.personal_email || data.email || null,
-        data.mobile_no || data.phoneNumber || null,
-        data.landline || null,
-        data.religion || null,
-        data.nationality || null,
-        data.civil_status || data.civilStatus || null,
-        data.height ? parseFloat(data.height) : null,
-        data.weight ? parseFloat(data.weight) : null,
-        data.language_dialect || data.language_dialects || data.language || null,
-        data.visual_problems || data.visualProblems || null
-      ]);
-
-      // 4. Upsert Present Address
-      const presHouse = data.present_houseno || data.perm_house_no || data.house_no;
-      const presStreet = data.present_street || data.perm_street || data.street;
-      const presBrgy = data.present_sbdvsn_brgy || data.perm_barangay || data.barangay;
-      const presCity = data.present_city_mncplty || data.perm_city || data.city_municipality;
-      const presProvince = data.perm_province || data.province;
-
-      if (presHouse || presStreet || presBrgy || presCity || presProvince) {
-        await client.query(`
-          INSERT INTO student_addresses (student_id, address_type, house_no, street, barangay, city_municipality, province, updated_at)
-          VALUES ($1, 'Present', $2, $3, $4, $5, $6, NOW())
-          ON CONFLICT (student_id, address_type) DO UPDATE SET
-            house_no = EXCLUDED.house_no,
-            street = EXCLUDED.street,
-            barangay = EXCLUDED.barangay,
-            city_municipality = EXCLUDED.city_municipality,
-            province = EXCLUDED.province,
-            updated_at = NOW()
-        `, [studentId, presHouse || null, presStreet || null, presBrgy || null, presCity || null, presProvince || null]);
-      }
-
-      // 5. Upsert Provincial Address
-      const provHouse = data.provincial_houseno || data.prov_house_no;
-      const provStreet = data.provincial_street || data.prov_street;
-      const provBrgy = data.provincial_sbdvsn_brgy || data.prov_barangay;
-      const provCity = data.provincial_city_mncplty || data.prov_city;
-      const provProvince = data.prov_province;
-
-      if (provHouse || provStreet || provBrgy || provCity || provProvince) {
-        await client.query(`
-          INSERT INTO student_addresses (student_id, address_type, house_no, street, barangay, city_municipality, province, updated_at)
-          VALUES ($1, 'Provincial', $2, $3, $4, $5, $6, NOW())
-          ON CONFLICT (student_id, address_type) DO UPDATE SET
-            house_no = EXCLUDED.house_no,
-            street = EXCLUDED.street,
-            barangay = EXCLUDED.barangay,
-            city_municipality = EXCLUDED.city_municipality,
-            province = EXCLUDED.province,
-            updated_at = NOW()
-        `, [studentId, provHouse || null, provStreet || null, provBrgy || null, provCity || null, provProvince || null]);
-      }
-
-      // 6. Upsert Highschool
-      const hsGrad = data.highschool_graduated || data.highschoolGraduated;
-      const hsGwa = data.hs_final_gwa || data.hsFinalGWA;
-      const hsAddress = data.hs_school_address || data.schoolAddress;
-      const pubpriv = data.pub_priv_hs || data.pubprivHS;
-
-      if (hsGrad || hsGwa || hsAddress) {
-        await client.query(`
-          INSERT INTO student_highschool (student_id, highschool_graduated, pubpriv_hs, highschool_address, hs_final_gwa, updated_at)
-          VALUES ($1, $2, $3, $4, $5, NOW())
-          ON CONFLICT (student_id) DO UPDATE SET
-            highschool_graduated = EXCLUDED.highschool_graduated,
-            pubpriv_hs = EXCLUDED.pubpriv_hs,
-            highschool_address = EXCLUDED.highschool_address,
-            hs_final_gwa = EXCLUDED.hs_final_gwa,
-            updated_at = NOW()
-        `, [studentId, hsGrad || null, pubpriv || null, hsAddress || null, hsGwa ? parseFloat(hsGwa) : null]);
-      }
-
-      // 7. Family Members (delete-then-insert)
-      if (data.father_name || data.father_firstname) {
-        await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND relation_type = 'Father'`, [studentId]);
-        await client.query(`
-          INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
-          VALUES ($1, 'Father', $2, $3, $4, $5, false)
-        `, [
-          studentId,
-          data.father_firstname || data.father_name || null,
-          data.father_occupation || null,
-          data.father_contact || data.father_contact_no || null,
-          data.father_status === 'Living'
-        ]);
-      }
-
-      if (data.mother_name || data.mother_firstname) {
-        await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND relation_type = 'Mother'`, [studentId]);
-        await client.query(`
-          INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
-          VALUES ($1, 'Mother', $2, $3, $4, $5, false)
-        `, [
-          studentId,
-          data.mother_firstname || data.mother_name || null,
-          data.mother_occupation || null,
-          data.mother_contact || data.mother_contact_no || null,
-          data.mother_status === 'Living'
-        ]);
-      }
-
-      if (data.guardian_name || data.guardian_firstname) {
-        await client.query(`DELETE FROM student_family_members WHERE student_id = $1 AND relation_type = 'Guardian'`, [studentId]);
-        await client.query(`
-          INSERT INTO student_family_members (student_id, relation_type, first_name, occupation, contact_no, is_alive, is_guardian)
-          VALUES ($1, 'Guardian', $2, $3, $4, true, true)
-        `, [
-          studentId,
-          data.guardian_firstname || data.guardian_name || null,
-          data.guardian_occupation || null,
-          data.guardian_contact || data.guardian_contact_no || null
-        ]);
-      }
-
-      // 7b. Family Background
-      const support = data.support || data.supportSource;
-      const parentsIncome = data.parents_income || data.parentsIncome;
-      const livingIn = data.living_in || data.livingIn;
-      const dailyTranspo = data.daily_transpo_expense || data.dailyTranspoExpense;
-      const noSiblings = data.no_siblings ?? data.noSiblings;
-      const ordinalPosition = data.ordinal_position || data.ordinalPosition;
-
-      if (support || parentsIncome || livingIn || dailyTranspo || noSiblings || ordinalPosition) {
-        await client.query(`
-          INSERT INTO student_family (student_id, support, parents_income, living_in, daily_transpo_expense, no_siblings, ordinal_position, updated_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-          ON CONFLICT (student_id) DO UPDATE SET
-            support = EXCLUDED.support,
-            parents_income = EXCLUDED.parents_income,
-            living_in = EXCLUDED.living_in,
-            daily_transpo_expense = EXCLUDED.daily_transpo_expense,
-            no_siblings = EXCLUDED.no_siblings,
-            ordinal_position = EXCLUDED.ordinal_position,
-            updated_at = NOW()
-        `, [
-          studentId,
-          support || null,
-          parentsIncome || null,
-          livingIn || null,
-          dailyTranspo || null,
-          (noSiblings !== undefined && noSiblings !== '') ? parseInt(noSiblings, 10) : null,
-          ordinalPosition || null
-        ]);
-      }
-
-      // 7c. Achievements
-      const awardsHonors = data.awards_honors || data.awardsHonors;
-      const hobbiesInterests = data.hobbies_interests || data.hobbiesInterests;
-      const futureCareer = data.future_career || data.futureCareer;
-      const acadExtracurr = data.acad_extracurr || data.acad_clubs_extracurr || data.academicClubsExtracurr;
-
-      if (awardsHonors || hobbiesInterests || futureCareer || acadExtracurr) {
-        await client.query(`
-          INSERT INTO student_achievements (student_id, awards_honors, hobbies_interests, future_career, acad_extracurr, updated_at)
-          VALUES ($1, $2, $3, $4, $5, NOW())
-          ON CONFLICT (student_id) DO UPDATE SET
-            awards_honors = EXCLUDED.awards_honors,
-            hobbies_interests = EXCLUDED.hobbies_interests,
-            future_career = EXCLUDED.future_career,
-            acad_extracurr = EXCLUDED.acad_extracurr,
-            updated_at = NOW()
-        `, [studentId, awardsHonors || null, hobbiesInterests || null, futureCareer || null, acadExtracurr || null]);
-      }
-
-      // 8. Update Active Education
-      // Use an explicit curriculum as-is. If only a program was given, keep the
-      // student's current curriculum when it already belongs to that program;
-      // otherwise fall back to the program's newest curriculum that has courses.
-      let curriculumId = data.curriculum_id || null;
-      if (!curriculumId && data.program_id) {
-        const curRes = await client.query(`
-          SELECT COALESCE(
-            (SELECT se.curriculum_id
-               FROM student_education se
-               JOIN curricula c ON c.curriculum_id = se.curriculum_id
-              WHERE se.student_id = $2 AND se.is_current = true AND c.program_id = $1
-              LIMIT 1),
-            (SELECT c.curriculum_id
-               FROM curricula c
-              WHERE c.program_id = $1
-              ORDER BY EXISTS (
-                SELECT 1 FROM curriculum_courses cc WHERE cc.curriculum_id = c.curriculum_id
-              ) DESC, c.curriculum_id DESC
-              LIMIT 1)
-          ) AS curriculum_id
-        `, [data.program_id, studentId]);
-        curriculumId = curRes.rows[0]?.curriculum_id || null;
-      }
-
-      const yearLevel = data.year_level || data.yearLevel;
-
-      // Distinguish "field not sent" from "field explicitly cleared"
-      const has = (k) => Object.prototype.hasOwnProperty.call(data, k);
-      const sectionWasSent = has('section_id') || has('assignment_id');
-
-      let assignmentId = null;
-      let sectionYearId = null;
-      let sectionSemesterId = null;
-
-      if (sectionWasSent) {
-        // Prefer an explicit assignment_id if the client sent one
-        if (data.assignment_id) {
-          assignmentId = parseInt(data.assignment_id, 10);
-          const meta = await client.query(
-            `SELECT year_id, semester_id FROM section_assignments WHERE assignment_id = $1`,
-            [assignmentId]
-          );
-          if (meta.rows[0]) {
-            sectionYearId = meta.rows[0].year_id;
-            sectionSemesterId = meta.rows[0].semester_id;
-          }
-        } else if (data.section_id) {
-          // Otherwise resolve from section_id within the active term
-          const termInfo = await this.getActiveAcademicTerm(client);
-          const assignRes = await client.query(`
-            SELECT assignment_id, year_id, semester_id
-            FROM section_assignments
-            WHERE section_id = $1 AND year_id = $2 AND semester_id = $3
-            LIMIT 1
-          `, [data.section_id, data.year_id || termInfo.year_id, data.semester_id || termInfo.current_sem]);
-          if (assignRes.rows[0]) {
-            assignmentId = assignRes.rows[0].assignment_id;
-            sectionYearId = assignRes.rows[0].year_id;
-            sectionSemesterId = assignRes.rows[0].semester_id;
-          }
-        }
-        // If neither resolved, assignmentId stays null → this CLEARS the section
-      }
-
-      // Guard: if we're setting an assignment, verify its year_level matches
-      // the student's year level (or the year level being set right now).
-      const effectiveYearLevel = yearLevel
-        || (await client.query(
-          `SELECT year_level::text AS yl FROM student_education
-           WHERE student_id = $1 AND is_current = true LIMIT 1`,
-          [studentId]
-        )).rows[0]?.yl
-        || null;
-
-      if (assignmentId && effectiveYearLevel) {
-        const check = await client.query(`
-          SELECT year_level::text AS yl FROM section_assignments WHERE assignment_id = $1
-        `, [assignmentId]);
-        const sa = check.rows[0];
-        if (sa && String(sa.yl) !== String(effectiveYearLevel)) {
-          throw new Error(
-            `Section year level (${sa.yl}) does not match student year level (${effectiveYearLevel}).`
-          );
-        }
-      }
-
-      if (curriculumId || yearLevel || data.classification || sectionWasSent) {
-        const eduRes = await client.query(`
-          UPDATE student_education SET
-            curriculum_id = COALESCE($1, curriculum_id),
-            year_level = COALESCE($2, year_level),
-            classification = COALESCE($3, classification),
-            year_id = COALESCE($4, year_id),
-            semester_id = COALESCE($5, semester_id),
-            assignment_id = CASE WHEN $6 THEN $7 ELSE assignment_id END,
-            updated_at = NOW()
-          WHERE student_id = $8 AND is_current = true
-          RETURNING education_id
-        `, [
-          curriculumId || null,
-          yearLevel ? String(yearLevel) : null,
-          data.classification || null,
-          sectionYearId,
-          sectionSemesterId,
-          sectionWasSent,
-          assignmentId,
-          studentId
-        ]);
-
-        if (eduRes.rowCount === 0) {
-          // No active row — revive the most recent one (fixes legacy archived students)
-          const reviveRes = await client.query(`
-            UPDATE student_education SET
-              curriculum_id = COALESCE($1, curriculum_id),
-              year_level = COALESCE($2, year_level),
-              classification = COALESCE($3, classification),
-              year_id = COALESCE($4, year_id),
-              semester_id = COALESCE($5, semester_id),
-              assignment_id = CASE WHEN $6 THEN $7 ELSE assignment_id END,
-              is_current = true,
-              updated_at = NOW()
-            WHERE education_id = (
-              SELECT education_id FROM student_education
-              WHERE student_id = $8
-              ORDER BY education_id DESC
-              LIMIT 1
-            )
-            RETURNING education_id
-          `, [
-            curriculumId || null,
-            yearLevel ? String(yearLevel) : null,
-            data.classification || null,
-            sectionYearId,
-            sectionSemesterId,
-            sectionWasSent,
-            assignmentId,
-            studentId
-          ]);
-
-          if (reviveRes.rowCount === 0) {
-            throw new Error('No enrollment row found for this student.');
-          }
-        }
-      }
-
-      if (isDedicatedClient) await client.query('COMMIT');
-      return true;
-    } catch (error) {
-      if (isDedicatedClient) await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      if (isDedicatedClient && client.release) client.release();
-    }
-  }
-
-  static async updateStatus(studentId, { probationStatus, standing, facultyId = null }) {
-    const client = db.getClient ? await db.getClient() : db;
-    const isDedicatedClient = Boolean(db.getClient);
-
-    try {
-      if (isDedicatedClient) await client.query('BEGIN');
-
-      const studentRes = await client.query(
-        `SELECT user_id, standing FROM students WHERE student_id = $1 FOR UPDATE`,
+    let userId;
+    await withTransaction(async (client) => {
+      const { rows } = await client.query(
+        'SELECT user_id FROM students WHERE student_id = $1 FOR UPDATE',
         [studentId]
       );
-      if (studentRes.rows.length === 0) throw new Error('Student not found.');
-      const { user_id: studentUserId, standing: currentStanding } = studentRes.rows[0];
+      if (rows.length === 0) throw new HttpError(404, 'Student not found.');
+      userId = rows[0].user_id;
 
-      const term = await StudentManageModel.getActiveAcademicTerm(client);
+      if (input.studentNumber || input.schoolEmail || input.accountStatus !== undefined) {
+        await client.query(
+          `UPDATE users
+              SET username = COALESCE($1, username),
+                  school_email = COALESCE($2, school_email),
+                  is_active = COALESCE($3, is_active),
+                  updated_at = NOW()
+            WHERE user_id = $4`,
+          [input.studentNumber ?? null, input.schoolEmail ?? null, input.accountStatus ?? null, userId]
+        );
+      }
+
+      await client.query(
+        `UPDATE students
+            SET birth_date = COALESCE($1, birth_date),
+                account_status = COALESCE($2, account_status),
+                updated_at = NOW()
+          WHERE student_id = $3`,
+        [input.birthDate ?? null, input.accountStatus ?? null, studentId]
+      );
+
+      await this._saveProfileSections(client, studentId, input, { isNew: false });
+      await this._updateEducation(client, studentId, data);
+    });
+
+    return { userId };
+  }
+
+  /**
+   * Write the profile sections (PII, addresses, high school, family, members,
+   * achievements). Sections with nothing to write are skipped.
+   * @private
+   */
+  static async _saveProfileSections(client, studentId, input, { isNew }) {
+    if (Object.keys(input.pii).length > 0) {
+      await upsertPartial(client, 'student_pii', ['student_id'], { student_id: studentId }, input.pii);
+    }
+
+    for (const [type, values] of Object.entries(input.addresses)) {
+      if (!hasContent(values)) continue;
+      await upsertPartial(
+        client, 'student_addresses', ['student_id', 'address_type'],
+        { student_id: studentId, address_type: type }, values
+      );
+    }
+
+    const groups = [
+      ['student_highschool', input.highschool],
+      ['student_family', input.family],
+      ['student_achievements', input.achievements],
+    ];
+    for (const [table, values] of groups) {
+      if (!hasContent(values)) continue;
+      await upsertPartial(client, table, ['student_id'], { student_id: studentId }, values);
+    }
+
+    for (const member of input.members) {
+      await this._replaceFamilyMember(client, studentId, member, { isNew });
+    }
+  }
+
+  /**
+   * Replace one family member row. When no living/deceased status is sent, the
+   * previous value is kept (new students default to living).
+   * @private
+   */
+  static async _replaceFamilyMember(client, studentId, member, { isNew }) {
+    let isAlive = true;
+    if (member.status === 'Living') isAlive = true;
+    else if (member.status === 'Deceased') isAlive = false;
+    else if (!isNew) {
+      const { rows } = await client.query(
+        'SELECT is_alive FROM student_family_members WHERE student_id = $1 AND relation_type = $2 LIMIT 1',
+        [studentId, member.relation]
+      );
+      isAlive = rows[0]?.is_alive ?? true;
+    }
+
+    await client.query(
+      'DELETE FROM student_family_members WHERE student_id = $1 AND relation_type = $2',
+      [studentId, member.relation]
+    );
+    await client.query(
+      `INSERT INTO student_family_members
+         (student_id, relation_type, first_name, middle_name, last_name, suffix,
+          occupation, contact_no, is_alive, is_guardian)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        studentId, member.relation, member.first_name, member.middle_name, member.last_name,
+        member.suffix, member.occupation, member.contact_no, isAlive, member.isGuardian,
+      ]
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Education (curriculum, year level, section)
+  // -------------------------------------------------------------------------
+
+  /**
+   * An explicit curriculum is used as is. With only a program, keep the
+   * student's current curriculum when it belongs to that program; otherwise use
+   * the program's newest curriculum that has courses.
+   * @private
+   */
+  static async _resolveCurriculumId(client, curriculumId, programId, studentId) {
+    if (curriculumId) return curriculumId;
+    if (!programId) return null;
+
+    const { rows } = await client.query(
+      `SELECT COALESCE(
+         (SELECT se.curriculum_id
+            FROM student_education se
+            JOIN curricula c ON c.curriculum_id = se.curriculum_id
+           WHERE se.student_id = $2 AND se.is_current = true AND c.program_id = $1
+           LIMIT 1),
+         (SELECT c.curriculum_id
+            FROM curricula c
+           WHERE c.program_id = $1
+           ORDER BY EXISTS (
+             SELECT 1 FROM curriculum_courses cc WHERE cc.curriculum_id = c.curriculum_id
+           ) DESC, c.curriculum_id DESC
+           LIMIT 1)
+       ) AS curriculum_id`,
+      [programId, studentId]
+    );
+    return rows[0]?.curriculum_id || null;
+  }
+
+  /** @private */
+  static async _findAssignmentForSection(client, sectionId, yearId, semesterId) {
+    const { rows } = await client.query(
+      `SELECT assignment_id, year_id, semester_id
+         FROM section_assignments
+        WHERE section_id = $1 AND year_id = $2 AND semester_id = $3
+        LIMIT 1`,
+      [sectionId, yearId, semesterId]
+    );
+    return rows[0] || null;
+  }
+
+  /**
+   * A section assignment must be for the same year level as the student.
+   * @private
+   * @throws {HttpError} 400 on mismatch
+   */
+  static async _assertSectionMatchesYearLevel(client, assignmentId, yearLevel) {
+    if (!assignmentId || !yearLevel) return;
+    const { rows } = await client.query(
+      'SELECT year_level::text AS yl FROM section_assignments WHERE assignment_id = $1',
+      [assignmentId]
+    );
+    const section = rows[0];
+    if (section && String(section.yl) !== String(yearLevel)) {
+      throw new HttpError(
+        400,
+        `Section year level (${section.yl}) does not match student year level (${yearLevel}).`
+      );
+    }
+  }
+
+  /** Insert the student's first (current) enrolment record. @private */
+  static async _createEducation(client, studentId, data) {
+    const term = await this.getActiveAcademicTerm(client);
+    const curriculumId = await this._resolveCurriculumId(
+      client, data.curriculum_id, data.program_id, studentId
+    );
+    const yearLevel = parseYearLevel(pick(data, 'year_level', 'yearLevel')) || '1';
+    const yearId = data.year_id || term.year_id;
+    const semesterId = data.semester_id || term.current_sem;
+
+    let assignmentId = data.assignment_id || null;
+    if (!assignmentId && data.section_id) {
+      const assignment = await this._findAssignmentForSection(client, data.section_id, yearId, semesterId);
+      assignmentId = assignment?.assignment_id || null;
+    }
+    await this._assertSectionMatchesYearLevel(client, assignmentId, yearLevel);
+
+    await client.query(
+      `INSERT INTO student_education
+         (student_id, curriculum_id, assignment_id, year_id, semester_id, year_level,
+          classification, enrollment_status, is_current)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)`,
+      [
+        studentId, curriculumId, assignmentId, yearId, semesterId, yearLevel,
+        data.classification || 'New', data.enrollment_status || 'Enrolled',
+      ]
+    );
+  }
+
+  /**
+   * Update the current enrolment. Sending `section_id` or `assignment_id` blank
+   * clears the student's section. Without a current row, the most recent one is
+   * revived.
+   * @private
+   */
+  static async _updateEducation(client, studentId, data) {
+    const yearLevel = parseYearLevel(pick(data, 'year_level', 'yearLevel'));
+    const classification = pick(data, 'classification') ?? null;
+    const curriculumId = await this._resolveCurriculumId(
+      client, data.curriculum_id, data.program_id, studentId
+    );
+
+    const sectionWasSent = hasKey(data, 'section_id') || hasKey(data, 'assignment_id');
+    let assignmentId = null;
+    let sectionYearId = null;
+    let sectionSemesterId = null;
+
+    if (sectionWasSent) {
+      if (data.assignment_id) {
+        assignmentId = Number(data.assignment_id);
+        if (!Number.isInteger(assignmentId) || assignmentId < 1) {
+          throw new HttpError(400, 'Invalid assignment id.');
+        }
+        const { rows } = await client.query(
+          'SELECT year_id, semester_id FROM section_assignments WHERE assignment_id = $1',
+          [assignmentId]
+        );
+        sectionYearId = rows[0]?.year_id ?? null;
+        sectionSemesterId = rows[0]?.semester_id ?? null;
+      } else if (data.section_id) {
+        const term = await this.getActiveAcademicTerm(client);
+        const assignment = await this._findAssignmentForSection(
+          client, data.section_id, data.year_id || term.year_id, data.semester_id || term.current_sem
+        );
+        if (assignment) {
+          assignmentId = assignment.assignment_id;
+          sectionYearId = assignment.year_id;
+          sectionSemesterId = assignment.semester_id;
+        }
+      }
+      // If neither resolved, assignmentId stays null and the section is cleared.
+    }
+
+    const effectiveYearLevel = yearLevel || (await client.query(
+      `SELECT year_level::text AS yl FROM student_education
+        WHERE student_id = $1 AND is_current = true LIMIT 1`,
+      [studentId]
+    )).rows[0]?.yl || null;
+    await this._assertSectionMatchesYearLevel(client, assignmentId, effectiveYearLevel);
+
+    if (!(curriculumId || yearLevel || classification || sectionWasSent)) return;
+
+    const assignments = `
+      curriculum_id = COALESCE($1, curriculum_id),
+      year_level = COALESCE($2, year_level),
+      classification = COALESCE($3, classification),
+      year_id = COALESCE($4, year_id),
+      semester_id = COALESCE($5, semester_id),
+      assignment_id = CASE WHEN $6 THEN $7 ELSE assignment_id END,
+      updated_at = NOW()`;
+    const values = [
+      curriculumId, yearLevel, classification, sectionYearId, sectionSemesterId,
+      sectionWasSent, assignmentId, studentId,
+    ];
+
+    const updated = await client.query(
+      `UPDATE student_education SET ${assignments}
+        WHERE student_id = $8 AND is_current = true
+        RETURNING education_id`,
+      values
+    );
+    if (updated.rowCount > 0) return;
+
+    // No current row: revive the most recent one (legacy archived students).
+    const revived = await client.query(
+      `UPDATE student_education SET ${assignments}, is_current = true
+        WHERE education_id = (
+          SELECT education_id FROM student_education
+           WHERE student_id = $8
+           ORDER BY education_id DESC
+           LIMIT 1
+        )
+        RETURNING education_id`,
+      values
+    );
+    if (revived.rowCount === 0) {
+      throw new HttpError(400, 'No enrollment row found for this student.');
+    }
+  }
+
+  /**
+   * Move many students to a year level and/or section in one statement.
+   * The section is looked up in the active academic term.
+   *
+   * @param {number[]} studentIds
+   * @param {{ yearLevel?: string|null, sectionId?: number|null }} changes
+   * @returns {Promise<number[]>} ids of the students that were updated
+   * @throws {HttpError} 400 if the section is not assigned in the active term or
+   *   its year level differs from the requested one
+   */
+  static async bulkUpdateEducation(studentIds, { yearLevel = null, sectionId = null } = {}) {
+    let assignmentId = null;
+
+    if (sectionId) {
+      const term = await this.getActiveAcademicTerm(db);
+      const { rows } = await db.query(
+        `SELECT assignment_id, year_level::text AS yl
+           FROM section_assignments
+          WHERE section_id = $1 AND year_id = $2 AND semester_id = $3
+          LIMIT 1`,
+        [sectionId, term.year_id, term.current_sem]
+      );
+      if (rows.length === 0) {
+        throw new HttpError(400, 'That section has no assignment in the active academic term.');
+      }
+      if (yearLevel && String(rows[0].yl) !== String(yearLevel)) {
+        throw new HttpError(
+          400,
+          `Section year level (${rows[0].yl}) does not match the requested year level (${yearLevel}).`
+        );
+      }
+      assignmentId = rows[0].assignment_id;
+    }
+
+    const { rows } = await db.query(
+      `UPDATE student_education
+          SET year_level = COALESCE($1, year_level),
+              assignment_id = COALESCE($2, assignment_id),
+              updated_at = NOW()
+        WHERE student_id = ANY($3::int[]) AND is_current = true
+        RETURNING student_id`,
+      [yearLevel ? String(yearLevel) : null, assignmentId, studentIds]
+    );
+    return rows.map((r) => r.student_id);
+  }
+
+  // -------------------------------------------------------------------------
+  // Status, archive, delete
+  // -------------------------------------------------------------------------
+
+  /**
+   * Set a manual probation status (for the active term) and/or the standing.
+   * `probationStatus` "Automatic" removes the manual override.
+   *
+   * @param {number} studentId
+   * @param {{ probationStatus?: string, standing?: string, facultyId?: number|null }} changes
+   * @returns {Promise<{ studentUserId: number, before: object, after: object }>}
+   * @throws {HttpError} 404 if the student does not exist; 400 if there is no active term
+   */
+  static async updateStatus(studentId, { probationStatus, standing, facultyId = null }) {
+    let result;
+
+    await withTransaction(async (client) => {
+      const { rows } = await client.query(
+        'SELECT user_id, standing FROM students WHERE student_id = $1 FOR UPDATE',
+        [studentId]
+      );
+      if (rows.length === 0) throw new HttpError(404, 'Student not found.');
+      const { user_id: studentUserId, standing: currentStanding } = rows[0];
+
+      const term = await this.getActiveAcademicTerm(client);
       const termKnown = term.year_id != null && term.current_sem != null;
 
-      // Current manual probation override for this term, if any
+      // Current manual probation override for this term, if any.
       let currentProbation = 'Automatic';
       if (termKnown) {
-        const rowRes = await client.query(
+        const { rows: statusRows } = await client.query(
           `SELECT probation_status, verified_by_id FROM student_status
-           WHERE student_id = $1 AND year_id = $2 AND semester_id = $3`,
+            WHERE student_id = $1 AND year_id = $2 AND semester_id = $3`,
           [studentId, term.year_id, term.current_sem]
         );
-        const row = rowRes.rows[0];
+        const row = statusRows[0];
         if (row && row.verified_by_id != null) currentProbation = row.probation_status || 'None';
       }
 
       let newProbation = currentProbation;
       if (probationStatus !== undefined) {
-        if (!termKnown) throw new Error('There is no active academic term.');
+        if (!termKnown) throw new HttpError(400, 'There is no active academic term.');
 
         if (probationStatus === 'Automatic') {
           // Keep the row (it may hold residency data); just drop the override.
-          await client.query(`
-            UPDATE student_status
-            SET probation_status = NULL, verified_by_id = NULL,
-                verification_date = NULL, updated_at = NOW()
-            WHERE student_id = $1 AND year_id = $2 AND semester_id = $3
-          `, [studentId, term.year_id, term.current_sem]);
+          await client.query(
+            `UPDATE student_status
+                SET probation_status = NULL, verified_by_id = NULL,
+                    verification_date = NULL, updated_at = NOW()
+              WHERE student_id = $1 AND year_id = $2 AND semester_id = $3`,
+            [studentId, term.year_id, term.current_sem]
+          );
         } else {
-          await client.query(`
-            INSERT INTO student_status
-              (student_id, year_id, semester_id, probation_status, verified_by_id, verification_date)
-            VALUES ($1, $2, $3, $4::probation_status_type, $5, CURRENT_DATE)
-            ON CONFLICT (student_id, year_id, semester_id) DO UPDATE SET
-              probation_status  = EXCLUDED.probation_status,
-              verified_by_id    = EXCLUDED.verified_by_id,
-              verification_date = EXCLUDED.verification_date,
-              updated_at        = NOW()
-          `, [studentId, term.year_id, term.current_sem, probationStatus, facultyId]);
+          await client.query(
+            `INSERT INTO student_status
+               (student_id, year_id, semester_id, probation_status, verified_by_id, verification_date)
+             VALUES ($1, $2, $3, $4::probation_status_type, $5, CURRENT_DATE)
+             ON CONFLICT (student_id, year_id, semester_id) DO UPDATE SET
+               probation_status  = EXCLUDED.probation_status,
+               verified_by_id    = EXCLUDED.verified_by_id,
+               verification_date = EXCLUDED.verification_date,
+               updated_at        = NOW()`,
+            [studentId, term.year_id, term.current_sem, probationStatus, facultyId]
+          );
         }
         newProbation = probationStatus;
       }
@@ -965,198 +937,138 @@ class StudentManageModel {
       let newStanding = currentStanding;
       if (standing !== undefined) {
         await client.query(
-          `UPDATE students SET standing = $1::standing_type, updated_at = NOW() WHERE student_id = $2`,
+          'UPDATE students SET standing = $1::standing_type, updated_at = NOW() WHERE student_id = $2',
           [standing, studentId]
         );
         newStanding = standing;
       }
 
-      if (isDedicatedClient) await client.query('COMMIT');
-      return {
+      result = {
         studentUserId,
         before: { probation: currentProbation, standing: currentStanding },
-        after: { probation: newProbation, standing: newStanding }
+        after: { probation: newProbation, standing: newStanding },
       };
-    } catch (error) {
-      if (isDedicatedClient) await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      if (isDedicatedClient && client.release) client.release();
-    }
+    });
+
+    return result;
   }
 
-  static async bulkUpdateEducation(studentIds, { yearLevel = null, sectionId = null } = {}) {
-    let assignmentId = null;
-    if (sectionId) {
-      const termInfo = await this.getActiveAcademicTerm(db);
-      const assignRes = await db.query(`
-        SELECT assignment_id, year_level::text AS yl, semester_id
-        FROM section_assignments
-        WHERE section_id = $1 AND year_id = $2 AND semester_id = $3
-        LIMIT 1
-      `, [sectionId, termInfo.year_id, termInfo.current_sem]);
-      const row = assignRes.rows[0];
-      if (row) {
-        assignmentId = row.assignment_id;
-
-        if (yearLevel && String(row.yl) !== String(yearLevel)) {
-          throw new Error(
-            `Section year level (${row.yl}) does not match the requested year level (${yearLevel}).`
-          );
-        }
-      }
-    }
-
-    const result = await db.query(`
-      UPDATE student_education
-      SET
-        year_level = COALESCE($1, year_level),
-        assignment_id = COALESCE($2, assignment_id),
-        updated_at = NOW()
-      WHERE student_id = ANY($3::int[]) AND is_current = true
-      RETURNING student_id
-    `, [yearLevel ? String(yearLevel) : null, assignmentId, studentIds]);
-    return result.rows.map(r => r.student_id);
-  }
-
+  /**
+   * Archive a student and deactivate their login. The enrolment row is left
+   * current so the archived list can still show program, year level and section.
+   * @param {number} studentId
+   * @param {{ reason?: string|null }} [options]
+   * @returns {Promise<{ userId: number|null }>}
+   * @throws {HttpError} 404 if not found, 400 if already archived
+   */
   static async archive(studentId, { reason = null } = {}) {
-    const client = db.getClient ? await db.getClient() : db;
-    const isDedicatedClient = Boolean(db.getClient);
+    let userId;
 
-    try {
-      if (isDedicatedClient) await client.query('BEGIN');
-
-      const studentRes = await client.query(
-        `SELECT user_id, archived_at FROM students WHERE student_id = $1`,
+    await withTransaction(async (client) => {
+      const { rows } = await client.query(
+        'SELECT user_id, archived_at FROM students WHERE student_id = $1 FOR UPDATE',
         [studentId]
       );
-      if (studentRes.rows.length === 0) throw new Error('Student not found.');
-      if (studentRes.rows[0].archived_at) throw new Error('Student is already archived.');
-      const userId = studentRes.rows[0].user_id;
+      if (rows.length === 0) throw new HttpError(404, 'Student not found.');
+      if (rows[0].archived_at) throw new HttpError(400, 'Student is already archived.');
+      userId = rows[0].user_id;
 
-      await client.query(`
-        UPDATE students
-        SET archived_at = NOW(),
-            archive_reason = $1,
-            updated_at = NOW()
-        WHERE student_id = $2
-      `, [reason || null, studentId]);
+      await client.query(
+        `UPDATE students
+            SET archived_at = NOW(), archive_reason = $1, updated_at = NOW()
+          WHERE student_id = $2`,
+        [reason || null, studentId]
+      );
 
       if (userId) {
-        await client.query(`
-          UPDATE users SET is_active = false, updated_at = NOW()
-          WHERE user_id = $1
-        `, [userId]);
+        await client.query(
+          'UPDATE users SET is_active = false, updated_at = NOW() WHERE user_id = $1',
+          [userId]
+        );
       }
+    });
 
-      // NOTE: We intentionally do NOT touch student_education here.
-      // Keeping is_current = true lets the archived list still resolve
-      // the student's program, year level, and section.
-
-      if (isDedicatedClient) await client.query('COMMIT');
-      return true;
-    } catch (error) {
-      if (isDedicatedClient) await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      if (isDedicatedClient && client.release) client.release();
-    }
+    return { userId };
   }
 
+  /**
+   * Restore an archived student and reactivate their login.
+   * @param {number} studentId
+   * @returns {Promise<{ userId: number|null }>}
+   * @throws {HttpError} 404 if not found, 400 if not archived
+   */
   static async unarchive(studentId) {
-    const client = db.getClient ? await db.getClient() : db;
-    const isDedicatedClient = Boolean(db.getClient);
+    let userId;
 
-    try {
-      if (isDedicatedClient) await client.query('BEGIN');
-
-      const studentRes = await client.query(
-        `SELECT user_id, archived_at FROM students WHERE student_id = $1`,
+    await withTransaction(async (client) => {
+      const { rows } = await client.query(
+        'SELECT user_id, archived_at FROM students WHERE student_id = $1 FOR UPDATE',
         [studentId]
       );
-      if (studentRes.rows.length === 0) throw new Error('Student not found.');
-      if (!studentRes.rows[0].archived_at) throw new Error('Student is not archived.');
-      const userId = studentRes.rows[0].user_id;
+      if (rows.length === 0) throw new HttpError(404, 'Student not found.');
+      if (!rows[0].archived_at) throw new HttpError(400, 'Student is not archived.');
+      userId = rows[0].user_id;
 
-      await client.query(`
-        UPDATE students
-        SET archived_at = NULL,
-            archive_reason = NULL,
-            updated_at = NOW()
-        WHERE student_id = $1
-      `, [studentId]);
+      await client.query(
+        `UPDATE students
+            SET archived_at = NULL, archive_reason = NULL, updated_at = NOW()
+          WHERE student_id = $1`,
+        [studentId]
+      );
 
       if (userId) {
-        await client.query(`
-          UPDATE users SET is_active = true, updated_at = NOW()
-          WHERE user_id = $1
-        `, [userId]);
+        await client.query(
+          'UPDATE users SET is_active = true, updated_at = NOW() WHERE user_id = $1',
+          [userId]
+        );
       }
+    });
 
-      if (isDedicatedClient) await client.query('COMMIT');
-      return true;
-    } catch (error) {
-      if (isDedicatedClient) await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      if (isDedicatedClient && client.release) client.release();
-    }
+    return { userId };
   }
 
+  /**
+   * Permanently delete a student and everything attached to them.
+   *
+   * @deprecated Nothing in the cleaned controllers calls this (students are
+   * archived, not deleted). It does not remove rows other tables hold for the
+   * user (avatars, notifications, history), so it can fail on a foreign key.
+   * Remove it once a project-wide search shows no callers.
+   *
+   * @returns {Promise<boolean>} false if the student did not exist
+   */
   static async delete(studentId) {
-    const client = db.getClient ? await db.getClient() : db;
-    const isDedicatedClient = Boolean(db.getClient);
+    let deleted = false;
 
-    try {
-      if (isDedicatedClient) await client.query('BEGIN');
-
-      // 1. Get user_id (needed to clean up users table later)
-      const studentRes = await client.query(
-        `SELECT user_id FROM students WHERE student_id = $1`,
+    await withTransaction(async (client) => {
+      const { rows } = await client.query(
+        'SELECT user_id FROM students WHERE student_id = $1',
         [studentId]
       );
+      if (rows.length === 0) return;
+      const userId = rows[0].user_id;
 
-      if (studentRes.rows.length === 0) {
-        if (isDedicatedClient) await client.query('ROLLBACK');
-        return false;
+      // Children first.
+      await client.query(
+        'DELETE FROM grade_components WHERE grade_id IN (SELECT grade_id FROM grades WHERE student_id = $1)',
+        [studentId]
+      );
+      for (const table of [
+        'grades', 'student_status', 'student_achievements', 'student_family_members',
+        'student_family', 'student_highschool', 'student_addresses', 'student_education',
+        'student_pii', 'students',
+      ]) {
+        await client.query(`DELETE FROM ${table} WHERE student_id = $1`, [studentId]);
       }
 
-      const userId = studentRes.rows[0].user_id;
-
-      // 2. Delete child records in correct order (children first)
-      await client.query(`
-        DELETE FROM grade_components 
-        WHERE grade_id IN (SELECT grade_id FROM grades WHERE student_id = $1)
-      `, [studentId]);
-
-      await client.query(`DELETE FROM grades WHERE student_id = $1`, [studentId]);
-      await client.query(`DELETE FROM student_status WHERE student_id = $1`, [studentId]);
-      await client.query(`DELETE FROM student_achievements WHERE student_id = $1`, [studentId]);
-      await client.query(`DELETE FROM student_family_members WHERE student_id = $1`, [studentId]);
-      await client.query(`DELETE FROM student_family WHERE student_id = $1`, [studentId]);
-      await client.query(`DELETE FROM student_highschool WHERE student_id = $1`, [studentId]);
-      await client.query(`DELETE FROM student_addresses WHERE student_id = $1`, [studentId]);
-      await client.query(`DELETE FROM student_education WHERE student_id = $1`, [studentId]);
-      await client.query(`DELETE FROM student_pii WHERE student_id = $1`, [studentId]);
-
-      // 3. Delete the student row
-      await client.query(`DELETE FROM students WHERE student_id = $1`, [studentId]);
-
-      // 4. Clean up the associated user + roles
       if (userId) {
-        await client.query(`DELETE FROM user_roles WHERE user_id = $1`, [userId]);
-        await client.query(`DELETE FROM users WHERE user_id = $1`, [userId]);
+        await client.query('DELETE FROM user_roles WHERE user_id = $1', [userId]);
+        await client.query('DELETE FROM users WHERE user_id = $1', [userId]);
       }
+      deleted = true;
+    });
 
-      if (isDedicatedClient) await client.query('COMMIT');
-      return true;
-    } catch (error) {
-      if (isDedicatedClient) await client.query('ROLLBACK');
-      console.error('Error deleting student:', error);
-      throw error;
-    } finally {
-      if (isDedicatedClient && client.release) client.release();
-    }
+    return deleted;
   }
 }
 

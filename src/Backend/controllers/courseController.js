@@ -1,235 +1,159 @@
-const db = require('../config/db');
 const CourseModel = require('../models/courseModel');
-const HistoryModel = require('../models/historyModel');
+const { withTransaction } = require('../../utils/transaction');
+const { audit } = require('../../utils/audit');
+const { parseId } = require('../../utils/request');
+const HttpError = require('../../utils/httpError');
 
-const getIpAddress = (req) => req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+// HTTP only. Errors are thrown as HttpError; Express 5 forwards them to the
+// global error handler, so no try/catch/finally is needed here.
 
-// ==========================================
-// COURSE MANAGEMENT
-// ==========================================
+const UNIQUE_VIOLATION = '23505';
+const FOREIGN_KEY_VIOLATION = '23503';
 
-exports.getCourses = async (req, res) => {
-  try {
-    // Support ?includeArchived=true so the Archive page can fetch them
-    const includeArchived = req.query.includeArchived === 'true';
-    const courses = await CourseModel.getAll(includeArchived);
-    res.json({ success: true, data: courses });
-  } catch (error) {
-    console.error("Error fetching courses:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
+const toHttpError = (err) => {
+  if (err.code === UNIQUE_VIOLATION) return new HttpError(400, 'Course code already exists.');
+  if (err.code === FOREIGN_KEY_VIOLATION) return new HttpError(400, 'Invalid curriculum or semester in assignments.');
+  return err;
+};
+
+const toUnits = (v) => Number.parseInt(v, 10) || 0;
+
+/** Validate and normalize the body shared by create and update. */
+function parseCourseBody(body = {}) {
+  const { course_code, course_name, lec_units, lab_units, course_desc, grading_scheme, prerequisites, assignments } = body;
+
+  if (typeof course_code !== 'string' || typeof course_name !== 'string' || !course_code.trim() || !course_name.trim()) {
+    throw new HttpError(400, 'Course code and name are required.');
   }
+
+  const list = Array.isArray(assignments) ? assignments : [];
+  for (const a of list) {
+    if (!a || !Number.isInteger(Number(a.curriculum_id))) {
+      throw new HttpError(400, 'Each assignment needs a valid curriculum.');
+    }
+  }
+
+  return {
+    course_code: course_code.trim().toUpperCase(),
+    course_name: course_name.trim().toUpperCase(),
+    lec_units: toUnits(lec_units),
+    lab_units: toUnits(lab_units),
+    course_desc: course_desc || null,
+    grading_scheme: grading_scheme || null,
+    prerequisites: prerequisites || [],
+    assignments: list.map((a) => ({ ...a, curriculum_id: Number(a.curriculum_id) })),
+  };
+}
+
+// ------------------------------------------------------------------- reads
+exports.getCourses = async (req, res) => {
+  // Archived courses are only visible to admins (this route is also open to faculty).
+  const includeArchived = req.query.includeArchived === 'true' && req.user.role === 'admin';
+  res.json({ success: true, data: await CourseModel.getAll(includeArchived) });
 };
 
 exports.getCourseById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const course = await CourseModel.getById(id);
-    if (!course) return res.status(404).json({ success: false, message: "Course not found." });
-    res.json({ success: true, data: course });
-  } catch (error) {
-    console.error("Error fetching course:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  }
+  const course = await CourseModel.getById(parseId(req.params.id));
+  if (!course) throw new HttpError(404, 'Course not found.');
+  res.json({ success: true, data: course });
 };
 
+// ------------------------------------------------------------------ create
 exports.addCourse = async (req, res) => {
-  const { course_code, course_name, lec_units, lab_units, course_desc, prerequisites, assignments } = req.body;
-  const userId = req.user.id;
-  const ipAddress = getIpAddress(req);
-  const userAgent = req.headers['user-agent'];
-
-  const lecUnits = parseInt(lec_units) || 0;
-  const labUnits = parseInt(lab_units) || 0;
-
-  const client = db.getClient ? await db.getClient() : db;
-
-  try {
-    if (!course_code || !course_name) {
-      return res.status(400).json({ success: false, message: "Course code and name are required." });
-    }
-    if (!assignments || assignments.length === 0) {
-      return res.status(400).json({ success: false, message: "Please add at least one curriculum assignment." });
-    }
-
-    const existingCourse = await CourseModel.getByCode(course_code);
-    if (existingCourse) return res.status(400).json({ success: false, message: "Course code already exists." });
-
-    if (db.getClient) await client.query('BEGIN');
-
-    const newCourse = await CourseModel.create({
-      course_code: course_code.toUpperCase(),
-      course_name: course_name.toUpperCase(),
-      lec_units: lecUnits,
-      lab_units: labUnits,
-      course_desc: course_desc || null,
-      is_active: true,
-      prerequisites: prerequisites || []
-    });
-
-    for (const assignment of assignments) {
-      await CourseModel.addToCurriculum(
-        assignment.curriculum_id, newCourse.course_id,
-        assignment.year_level, assignment.semester_id
-      );
-    }
-
-    if (prerequisites && prerequisites.length > 0) {
-      for (const assignment of assignments) {
-        const curriculumCourseResult = await client.query(`
-          SELECT id FROM curriculum_courses 
-          WHERE curriculum_id = $1 AND course_id = $2
-        `, [assignment.curriculum_id, newCourse.course_id]);
-
-        const curriculumCourseId = curriculumCourseResult.rows[0]?.id;
-
-        if (curriculumCourseId) {
-          for (const prereqCourseId of prerequisites) {
-            await client.query(`
-              INSERT INTO curriculum_course_prerequisites (curriculum_course_id, prerequisite_course_id)
-              VALUES ($1, $2)
-            `, [curriculumCourseId, prereqCourseId]);
-          }
-        }
-      }
-    }
-
-    if (db.getClient) await client.query('COMMIT');
-
-    await HistoryModel.log({
-      userId, targetUserId: userId, tableName: 'courses', recordId: newCourse.course_id,
-      action: 'COURSE_CREATED', oldValues: null,
-      newValues: { course_id: newCourse.course_id, course_code: newCourse.course_code, course_name: newCourse.course_name, timestamp: new Date().toISOString() },
-      ipAddress, userAgent
-    });
-
-    res.json({ success: true, message: "Course created successfully.", data: newCourse });
-  } catch (error) {
-    if (db.getClient) await client.query('ROLLBACK');
-    console.error("Error creating course:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  } finally {
-    if (db.getClient && client.release) client.release();
+  const data = parseCourseBody(req.body);
+  if (data.assignments.length === 0) {
+    throw new HttpError(400, 'Please add at least one curriculum assignment.');
   }
+  // Checked with the normalized (uppercase) code: that is what gets stored.
+  if (await CourseModel.getByCode(data.course_code)) {
+    throw new HttpError(400, 'Course code already exists.');
+  }
+
+  let course;
+  try {
+    course = await withTransaction(async (client) => {
+      const created = await CourseModel.create({ ...data, is_active: true }, client);
+      for (const a of data.assignments) {
+        await CourseModel.addToCurriculum(a.curriculum_id, created.course_id, a.year_level, a.semester_id, client);
+      }
+      return created;
+    });
+  } catch (err) {
+    throw toHttpError(err);
+  }
+
+  await audit(req, {
+    tableName: 'courses', recordId: course.course_id, action: 'COURSE_CREATED', oldValues: null,
+    newValues: {
+      course_id: course.course_id, course_code: course.course_code,
+      course_name: course.course_name, timestamp: new Date().toISOString(),
+    },
+  });
+
+  res.json({ success: true, message: 'Course created successfully.', data: course });
 };
 
+// ------------------------------------------------------------------ update
 exports.updateCourse = async (req, res) => {
-  const { id } = req.params;
-  const { course_code, course_name, lec_units, lab_units, course_desc, grading_scheme, assignments, prerequisites } = req.body;
-  const userId = req.user.id;
-  const ipAddress = getIpAddress(req);
-  const userAgent = req.headers['user-agent'];
+  const id = parseId(req.params.id);
+  const data = parseCourseBody(req.body);
 
-  const client = db.getClient ? await db.getClient() : db;
+  const before = await CourseModel.getById(id);
+  if (!before) throw new HttpError(404, 'Course not found.');
+
+  // Fields the client did not send keep their current value (they used to be wiped).
+  const sent = req.body ?? {};
+  for (const field of ['lec_units', 'lab_units', 'course_desc', 'grading_scheme', 'prerequisites']) {
+    if (sent[field] === undefined) data[field] = before[field];
+  }
+
+  if (data.course_code !== before.course_code) {
+    const clash = await CourseModel.getByCode(data.course_code);
+    if (clash && clash.course_id !== id) throw new HttpError(400, 'Course code already exists.');
+  }
 
   try {
-    if (db.getClient) await client.query('BEGIN');
-
-    if (!course_code || !course_name) {
-      return res.status(400).json({ success: false, message: "Course code and name are required." });
-    }
-
-    const existingCourse = await CourseModel.getById(id);
-    if (!existingCourse) return res.status(404).json({ success: false, message: "Course not found." });
-
-    if (course_code.toUpperCase() !== existingCourse.course_code) {
-      const codeClash = await CourseModel.getByCode(course_code);
-      if (codeClash && codeClash.course_id !== Number(id)) {
-        return res.status(400).json({ success: false, message: "Course code already exists." });
-      }
-    }
-
-    const updatedCourse = await CourseModel.update(id, {
-      course_code: course_code.toUpperCase(),
-      course_name: course_name.toUpperCase(),
-      lec_units: parseInt(lec_units) || 0,
-      lab_units: parseInt(lab_units) || 0,
-      course_desc: course_desc || null,
-      grading_scheme: grading_scheme || null,
-      prerequisites: prerequisites || []
+    // One transaction: a failure can no longer leave the course without its assignments.
+    await withTransaction(async (client) => {
+      await CourseModel.update(id, data, client);
+      if (data.assignments.length > 0) await CourseModel.replaceAssignments(id, data.assignments, client);
     });
-
-    if (assignments && assignments.length > 0) {
-      await client.query('DELETE FROM curriculum_courses WHERE course_id = $1', [id]);
-
-      for (const assignment of assignments) {
-        await client.query(`
-          INSERT INTO curriculum_courses (curriculum_id, course_id, year_level, semester_id)
-          VALUES ($1, $2, $3, $4)
-        `, [assignment.curriculum_id, id, assignment.year_level, assignment.semester_id]);
-      }
-    }
-
-    await HistoryModel.log({
-      userId, targetUserId: userId, tableName: 'courses', recordId: id,
-      action: 'COURSE_UPDATED', oldValues: existingCourse, newValues: updatedCourse,
-      ipAddress, userAgent
-    });
-
-    if (db.getClient) await client.query('COMMIT');
-
-    const finalCourse = await CourseModel.getById(id);
-    res.json({ success: true, message: "Course updated successfully.", data: finalCourse });
-  } catch (error) {
-    if (db.getClient) await client.query('ROLLBACK');
-    console.error("Error updating course:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  } finally {
-    if (db.getClient && client.release) client.release();
+  } catch (err) {
+    throw toHttpError(err);
   }
+
+  const after = await CourseModel.getById(id);
+  await audit(req, {
+    tableName: 'courses', recordId: id, action: 'COURSE_UPDATED',
+    oldValues: before, newValues: after,
+  });
+
+  res.json({ success: true, message: 'Course updated successfully.', data: after });
 };
 
+// ------------------------------------------------------- archive / restore
 exports.deleteCourse = async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.id;
-  const ipAddress = getIpAddress(req);
-  const userAgent = req.headers['user-agent'];
+  const id = parseId(req.params.id);
+  if (!(await CourseModel.archive(id))) throw new HttpError(404, 'Course not found.');
 
-  try {
-    const existingCourse = await CourseModel.getById(id);
-    if (!existingCourse) return res.status(404).json({ success: false, message: "Course not found." });
+  await audit(req, {
+    tableName: 'courses', recordId: id, action: 'COURSE_ARCHIVED',
+    oldValues: { is_archived: false },
+    newValues: { is_archived: true, timestamp: new Date().toISOString() },
+  });
 
-    // Soft delete: mark as archived, never actually remove from the table.
-    // This avoids FK violations from curriculum_courses / grades and lets us restore later.
-    await CourseModel.archive(id);
-
-    await HistoryModel.log({
-      userId, targetUserId: userId, tableName: 'courses', recordId: id,
-      action: 'COURSE_ARCHIVED',
-      oldValues: { is_archived: false },
-      newValues: { is_archived: true, timestamp: new Date().toISOString() },
-      ipAddress, userAgent
-    });
-
-    res.json({ success: true, message: "Course archived successfully." });
-  } catch (error) {
-    console.error("Error archiving course:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  }
+  res.json({ success: true, message: 'Course archived successfully.' });
 };
 
 exports.restoreCourse = async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.id;
-  const ipAddress = getIpAddress(req);
-  const userAgent = req.headers['user-agent'];
+  const id = parseId(req.params.id);
+  if (!(await CourseModel.restore(id))) throw new HttpError(404, 'Course not found.');
 
-  try {
-    const existingCourse = await CourseModel.getById(id);
-    if (!existingCourse) return res.status(404).json({ success: false, message: "Course not found." });
+  await audit(req, {
+    tableName: 'courses', recordId: id, action: 'COURSE_RESTORED',
+    oldValues: { is_archived: true },
+    newValues: { is_archived: false, timestamp: new Date().toISOString() },
+  });
 
-    await CourseModel.restore(id);
-
-    await HistoryModel.log({
-      userId, targetUserId: userId, tableName: 'courses', recordId: id,
-      action: 'COURSE_RESTORED',
-      oldValues: { is_archived: true },
-      newValues: { is_archived: false, timestamp: new Date().toISOString() },
-      ipAddress, userAgent
-    });
-
-    res.json({ success: true, message: "Course restored successfully." });
-  } catch (error) {
-    console.error("Error restoring course:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  }
+  res.json({ success: true, message: 'Course restored successfully.' });
 };

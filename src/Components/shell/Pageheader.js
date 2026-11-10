@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { BiBell, BiMenu } from 'react-icons/bi';
+import { BiMenu } from 'react-icons/bi';
 import ProfileDrawer from './Profile/ProfileDrawer';
 import useAvatar from './Profile/UseAvatar';
-
+import NotificationBell from '../shared/Notification/NotificationBell';
 // FIXED: Replaced !border-line with !border-0 to remove borders entirely from all header buttons
 const ICON_BTN =
   'grid h-10 w-10 shrink-0 place-items-center rounded-full !border-0 bg-surface p-0 text-ink ' +
@@ -32,9 +32,7 @@ export default function PageHeader({ title, subtitle, user, onMenuClick, onChang
         </div>
 
         <div className="flex items-center gap-2">
-          <button type="button" aria-label="Notifications" className={`${ICON_BTN} text-xl`}>
-            <BiBell />
-          </button>
+          <NotificationBell buttonClass={`${ICON_BTN} text-xl`} />
 
           <button
             type="button"

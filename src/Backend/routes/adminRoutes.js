@@ -1,10 +1,6 @@
 const express = require('express');
-const router = express.Router();
 const { verifyToken, requireRole } = require('../middleware/auth');
 
-// ==========================================
-// IMPORT SEPARATED CONTROLLERS
-// ==========================================
 const authController = require('../controllers/authController');
 const dashboardController = require('../controllers/dashboardController');
 const studentController = require('../controllers/studentController');
@@ -13,135 +9,111 @@ const academicController = require('../controllers/academicController');
 const programController = require('../controllers/programController');
 const sectionController = require('../controllers/sectionController');
 const courseController = require('../controllers/courseController');
-const facultyController = require('../controllers/facultyController');
+const staffController = require('../controllers/facultyController');
 const historyController = require('../controllers/historyController');
 const gradeController = require('../controllers/gradeController');
 const assistantController = require('../controllers/assistantController');
 
-// ==========================================
-// AUTH & USER MANAGEMENT — ADMIN ONLY (except login, change-password)
-// ==========================================
-// Note: /login and /google are handled directly in Server.js under /api/auth
+const router = express.Router();
+
+// Middleware presets: define once, spread into each route.
+const anyRole   = [verifyToken, requireRole('admin', 'faculty', 'student')];
+const staff     = [verifyToken, requireRole('admin', 'faculty')];
+const adminOnly = [verifyToken, requireRole('admin')];
+
+// NOTE: /login and /google are mounted in Server.js under /api/auth.
+
+// ---------- Auth ----------
 router.post('/change-password', verifyToken, authController.changePassword);
 
-router.get('/users',              verifyToken, requireRole('admin'), authController.getUsers);
-router.post('/users',             verifyToken, requireRole('admin'), authController.addUser);
-router.get('/roles',              verifyToken, requireRole('admin'), authController.getRoles);
-router.get('/designations',       verifyToken, requireRole('admin'), authController.getDesignations);
+// ---------- Staff accounts (admin + faculty) ----------
+// "Users" here are staff accounts, and :id is always the user_id.
+router.get('/roles', ...adminOnly, staffController.roles);
+router.get('/designations', ...adminOnly, staffController.designations);
 
-// ==========================================
-// AI — BOTH ROLES
-// ==========================================
-router.post('/assistant/ask', verifyToken, requireRole('admin', 'faculty', 'student'), assistantController.ask);
+router.get('/users', ...adminOnly, staffController.list);
+router.post('/users', ...adminOnly, staffController.create);
+router.get('/users/:id', ...adminOnly, staffController.getById);
+router.put('/users/:id', ...adminOnly, staffController.update);
+router.delete('/users/:id', ...adminOnly, staffController.remove);
+router.post('/users/:id/restore', ...adminOnly, staffController.restore);
 
-// ==========================================
-// DASHBOARD — BOTH ROLES
-// ==========================================
-router.get('/dashboard/stats', verifyToken, requireRole('admin', 'faculty'), dashboardController.getDashboardStats);
-router.get('/dashboard/summary', verifyToken, requireRole('admin', 'faculty'), dashboardController.getDashboardSummary);
+// Same list, also open to faculty (adviser dropdowns, etc.).
+router.get('/faculties', ...staff, staffController.list);
 
-// ==========================================
-// STUDENT MANAGEMENT — BOTH ROLES
-// ==========================================
-router.get('/students',                    verifyToken, requireRole('admin', 'faculty'), studentController.getStudentMasterlist);
-router.post('/students',                   verifyToken, requireRole('admin', 'faculty'), studentController.createStudent);
+// ---------- AI assistant ----------
+router.post('/assistant/ask', ...anyRole, assistantController.ask);
 
-router.put('/students/batch-update',       verifyToken, requireRole('admin', 'faculty'), studentController.updateStudentsBulk);
-router.delete('/students/batch-delete',    verifyToken, requireRole('admin', 'faculty'), studentController.deleteStudentsBulk);
+// ---------- Dashboard ----------
+router.get('/dashboard/stats', ...staff, dashboardController.getDashboardStats);
+router.get('/dashboard/summary', ...staff, dashboardController.getDashboardSummary);
 
-router.get('/students/:id',                verifyToken, requireRole('admin', 'faculty'), studentController.getStudentById);
-router.put('/students/:id',                verifyToken, requireRole('admin', 'faculty'), studentController.updateStudent);
-router.put('/students/:id/status',         verifyToken, requireRole('admin', 'faculty'), studentController.updateStudentStatus);
-router.delete('/students/:id',             verifyToken, requireRole('admin', 'faculty'), studentController.deleteStudent);
-router.post('/students/:id/restore',       verifyToken, requireRole('admin', 'faculty'), studentController.restoreStudent);
+// ---------- Students ----------
+// Static paths (batch-*) must stay above '/:id'.
+router.get('/students', ...staff, studentController.getStudentMasterlist);
+router.post('/students', ...staff, studentController.createStudent);
+router.put('/students/batch-update', ...staff, studentController.updateStudentsBulk);
+router.delete('/students/batch-delete', ...staff, studentController.deleteStudentsBulk);
+router.get('/students/:id', ...staff, studentController.getStudentById);
+router.put('/students/:id', ...staff, studentController.updateStudent);
+router.put('/students/:id/status', ...staff, studentController.updateStudentStatus);
+router.delete('/students/:id', ...staff, studentController.deleteStudent);
+router.post('/students/:id/restore', ...staff, studentController.restoreStudent);
 
-// ==========================================
-// GRADE MANAGEMENT — BOTH ROLES
-// ==========================================
-router.get('/students/:id/grades',                     verifyToken, requireRole('admin', 'faculty'), gradeController.getStudentGrades);
-router.put('/students/:id/grades',                     verifyToken, requireRole('admin', 'faculty'), gradeController.updateStudentGrades);
-router.get('/students/:id/gradable-courses',           verifyToken, requireRole('admin', 'faculty'), gradeController.getGradableCoursesForStudent);
-router.get('/courses/gradable',                        verifyToken, requireRole('admin', 'faculty'), gradeController.getGradableCourses);
-router.post('/students/:id/grades/:courseId/archive',  verifyToken, requireRole('admin', 'faculty'), gradeController.archiveStudentGrade);
-router.post('/students/:id/grades/:courseId/restore',  verifyToken, requireRole('admin', 'faculty'), gradeController.restoreStudentGrade);
-router.get('/students/:id/grades/archived', verifyToken, requireRole('admin', 'faculty'), gradeController.getArchivedStudentGrades);
-router.delete('/students/:id/grades/:courseId/empty', verifyToken, requireRole('admin', 'faculty'), gradeController.deleteEmptyStudentGrade);
+// ---------- Grades ----------
+router.get('/students/:id/grades', ...staff, gradeController.getStudentGrades);
+router.put('/students/:id/grades', ...staff, gradeController.updateStudentGrades);
+router.get('/students/:id/grades/archived', ...staff, gradeController.getArchivedStudentGrades);
+router.get('/students/:id/gradable-courses', ...staff, gradeController.getGradableCoursesForStudent);
+router.post('/students/:id/grades/:courseId/archive', ...staff, gradeController.archiveStudentGrade);
+router.post('/students/:id/grades/:courseId/restore', ...staff, gradeController.restoreStudentGrade);
+router.delete('/students/:id/grades/:courseId/empty', ...staff, gradeController.deleteEmptyStudentGrade);
+router.get('/courses/gradable', ...staff, gradeController.getGradableCourses); // keep above '/courses/:id'
 
-// ==========================================
-// DOCUMENTS — BOTH ROLES
-// ==========================================
-router.get('/student-form/:id',    verifyToken, requireRole('admin', 'faculty'), documentController.getStudentFormById);
-router.get('/term-grade/:id',      verifyToken, requireRole('admin', 'faculty'), documentController.getTermGradeById);
-router.get('/course-outline/:id',  verifyToken, requireRole('admin', 'faculty'), documentController.getCourseOutlineById);
+// ---------- Documents ----------
+router.get('/student-form/:id', ...staff, documentController.getStudentFormById);
+router.get('/term-grade/:id', ...staff, documentController.getTermGradeById);
+router.get('/course-outline/:id', ...staff, documentController.getCourseOutlineById);
 
-// ==========================================
-// ACADEMIC YEAR — ADMIN ONLY
-// ==========================================
-router.get('/academic-years',                          verifyToken, requireRole('admin'), academicController.getAcademicYears);
-router.post('/academic-years',                         verifyToken, requireRole('admin'), academicController.addAcademicYear);
-router.put('/academic-years/:year_id/semester',        verifyToken, requireRole('admin'), academicController.updateAcademicYearSemester);
-router.put('/academic-years/:year_id/activate',        verifyToken, requireRole('admin'), academicController.activateAcademicYear);
-router.put('/academic-years/:year_id',                 verifyToken, requireRole('admin'), academicController.updateAcademicYear);
+// ---------- Academic years (admin) ----------
+router.get('/academic-years', ...adminOnly, academicController.getAcademicYears);
+router.post('/academic-years', ...adminOnly, academicController.addAcademicYear);
+router.put('/academic-years/:year_id/semester', ...adminOnly, academicController.updateAcademicYearSemester);
+router.put('/academic-years/:year_id/activate', ...adminOnly, academicController.activateAcademicYear);
+router.put('/academic-years/:year_id', ...adminOnly, academicController.updateAcademicYear);
 
-// ==========================================
-// CURRICULUM — ADMIN ONLY
-// ==========================================
-router.get('/curricula',                       verifyToken, requireRole('admin'), academicController.getCurricula);
-router.post('/curricula',                      verifyToken, requireRole('admin'), academicController.addCurriculum);
-router.put('/curricula/:curriculum_id',        verifyToken, requireRole('admin'), academicController.updateCurriculum);
+// ---------- Curricula (admin) ----------
+router.get('/curricula', ...adminOnly, academicController.getCurricula);
+router.post('/curricula', ...adminOnly, academicController.addCurriculum);
+router.put('/curricula/:curriculum_id', ...adminOnly, academicController.updateCurriculum);
 
-// ==========================================
-// PROGRAM — GET both roles; mutations admin only
-// ==========================================
-router.get('/programs',                          verifyToken, requireRole('admin', 'faculty'), programController.getPrograms);
-router.post('/programs',                         verifyToken, requireRole('admin'), programController.addProgram);
-router.put('/programs/:program_id',              verifyToken, requireRole('admin'), programController.updateProgram);
-router.delete('/programs/:program_id',           verifyToken, requireRole('admin'), programController.deleteProgram);
-router.post('/programs/:program_id/restore',     verifyToken, requireRole('admin'), programController.restoreProgram);
+// ---------- Programs (read: staff, write: admin) ----------
+router.get('/programs', ...staff, programController.getPrograms);
+router.post('/programs', ...adminOnly, programController.addProgram);
+router.put('/programs/:program_id', ...adminOnly, programController.updateProgram);
+router.delete('/programs/:program_id', ...adminOnly, programController.deleteProgram);
+router.post('/programs/:program_id/restore', ...adminOnly, programController.restoreProgram);
 
-// ==========================================
-// COURSE — GET both roles; mutations admin only
-// ==========================================
-router.get('/courses',          verifyToken, requireRole('admin', 'faculty'), courseController.getCourses);
-router.get('/courses/:id',      verifyToken, requireRole('admin', 'faculty'), courseController.getCourseById);
-router.post('/courses',         verifyToken, requireRole('admin'), courseController.addCourse);
-router.put('/courses/:id',      verifyToken, requireRole('admin'), courseController.updateCourse);
-router.delete('/courses/:id',   verifyToken, requireRole('admin'), courseController.deleteCourse);
-router.post('/courses/:id/restore', verifyToken, requireRole('admin'), courseController.restoreCourse);
+// ---------- Courses (read: staff, write: admin) ----------
+router.get('/courses', ...staff, courseController.getCourses);
+router.get('/courses/:id', ...staff, courseController.getCourseById);
+router.post('/courses', ...adminOnly, courseController.addCourse);
+router.put('/courses/:id', ...adminOnly, courseController.updateCourse);
+router.delete('/courses/:id', ...adminOnly, courseController.deleteCourse);
+router.post('/courses/:id/restore', ...adminOnly, courseController.restoreCourse);
 
-// ==========================================
-// USER / FACULTY MANAGEMENT — ADMIN ONLY
-// ==========================================
-router.get('/users',              verifyToken, requireRole('admin'), facultyController.getFaculties);
-router.get('/users/:id',          verifyToken, requireRole('admin'), facultyController.getFacultyById);
-router.post('/users',             verifyToken, requireRole('admin'), facultyController.addFaculty);
-router.put('/users/:id',          verifyToken, requireRole('admin'), facultyController.updateFaculty);
-router.delete('/users/:id',       verifyToken, requireRole('admin'), facultyController.deleteFaculty);
-router.post('/users/:id/restore', verifyToken, requireRole('admin'), facultyController.restoreFaculty);
+// ---------- Sections (read: staff, archived + assignments: admin) ----------
+router.get('/sections', ...staff, sectionController.getSectionsByProgram);
+router.get('/sections/active', ...staff, sectionController.getActiveSectionsByProgram);
+router.get('/sections/all', ...staff, sectionController.getAllSectionsByProgram);
+router.get('/sections/by-program/:programId', ...staff, sectionController.getSectionsByProgramId);
+router.get('/sections/archived', ...adminOnly, sectionController.getArchivedSections);
+router.post('/section-assignments', ...adminOnly, sectionController.addSectionAssignment);
+router.put('/section-assignments/:assignment_id', ...adminOnly, sectionController.updateSectionAssignment);
+router.delete('/section-assignments/:assignment_id', ...adminOnly, sectionController.deleteSectionAssignment);
+router.post('/section-assignments/:assignment_id/restore', ...adminOnly, sectionController.restoreSectionAssignment);
 
-// Keep /faculties as alias if needed elsewhere
-router.get('/faculties', verifyToken, requireRole('admin', 'faculty'), facultyController.getFaculties);
-
-// Roles & designations from authController (separate concern)
-router.get('/roles',              verifyToken, requireRole('admin'), authController.getRoles);
-router.get('/designations',       verifyToken, requireRole('admin'), authController.getDesignations);
-
-// ==========================================
-// SECTION — GET both roles; mutations & archived admin only
-// ==========================================
-router.get('/sections',                                       verifyToken, requireRole('admin', 'faculty'), sectionController.getSectionsByProgram);
-router.get('/sections/active',                                verifyToken, requireRole('admin', 'faculty'), sectionController.getActiveSectionsByProgram);
-router.get('/sections/all',                                   verifyToken, requireRole('admin', 'faculty'), sectionController.getAllSectionsByProgram);
-router.get('/sections/by-program/:programId',                 verifyToken, requireRole('admin', 'faculty'), sectionController.getSectionsByProgramId);
-router.get('/sections/archived',                              verifyToken, requireRole('admin'), sectionController.getArchivedSections);
-router.post('/section-assignments',                           verifyToken, requireRole('admin'), sectionController.addSectionAssignment);
-router.put('/section-assignments/:assignment_id',             verifyToken, requireRole('admin'), sectionController.updateSectionAssignment);
-router.delete('/section-assignments/:assignment_id',          verifyToken, requireRole('admin'), sectionController.deleteSectionAssignment);
-router.post('/section-assignments/:assignment_id/restore',    verifyToken, requireRole('admin'), sectionController.restoreSectionAssignment);
-
-// ==========================================
-// HISTORY — ADMIN ONLY
-// ==========================================
-router.get('/history', verifyToken, requireRole('admin'), historyController.getHistory);
+// ---------- History (admin) ----------
+router.get('/history', ...adminOnly, historyController.getHistory);
 
 module.exports = router;

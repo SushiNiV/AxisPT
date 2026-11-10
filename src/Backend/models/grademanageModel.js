@@ -1,210 +1,305 @@
+'use strict';
+
 /**
- * ============================================================================
- * GradeManageModel
- * ============================================================================
+ * GradeManageModel: data access and grade-sheet assembly for student grades.
+ *
+ * Scoring rules live in services/gradingEngine.js (pure, no database access).
+ * This model loads data, applies the engine, and persists the result.
+ *
+ * Conventions:
+ *  - saveGrades() owns its own transaction, so callers never see partial saves.
+ *  - Business-rule failures are thrown as HttpError(400); database errors are
+ *    left to the caller (the controller translates constraint violations).
+ *  - Audit logging is the controller's job. Methods that change state return
+ *    the facts the controller needs to log.
+ *
+ * Schema rules this code relies on:
+ *  - UNIQUE (student_id, course_id, year_id, semester_id, year_level) on grades,
+ *    so saving the same course/term again updates the row (and un-archives it).
+ *  - grades.faculty_id references faculties.faculty_id (not users.user_id).
+ *  - Raw and transmuted marks are CHECK-constrained to 60-100.
+ *  - grade_prereq_overrides cascades on grade delete; grade_components does not.
  */
 
 const db = require('../config/db');
-const GradingEngine = require('./gradingEngine');
-const HistoryModel = require('./historyModel');
+const GradingEngine = require('../services/gradingEngine');
+const { HttpError } = require('../../utils/httpError');
+const { withTransaction } = require('../../utils/transaction');
 
 const ACADEMIC_STANDING = {
   NONE: 'None',
   WARNING: 'Warning',
   PROBATIONARY_1: 'Probationary 1',
-  PROBATIONARY_2: 'Probationary 2'
+  PROBATIONARY_2: 'Probationary 2',
 };
 
 const PROBATION_STATUS_LABELS = {
   None: ACADEMIC_STANDING.NONE,
   Warning: ACADEMIC_STANDING.WARNING,
   'Probationary 1': ACADEMIC_STANDING.PROBATIONARY_1,
-  'Probationary 2': ACADEMIC_STANDING.PROBATIONARY_2
+  'Probationary 2': ACADEMIC_STANDING.PROBATIONARY_2,
 };
 
+const TERMS = ['Prelim', 'Midterm', 'Final'];
+
+/** Allowed range for manual raw/transmuted marks. Mirrors the grades_*_range CHECKs. */
+const MARK_RANGE = { min: 60, max: 100 };
+
+/** Allowed range for a single component score (grade_components.score is numeric(5,2)). */
+const SCORE_RANGE = { min: 0, max: 100 };
+
+const isBlank = (value) => value === '' || value === undefined || value === null;
+const toNumberOrNull = (value) => (isBlank(value) ? null : Number(value));
+const emptyScores = () => ({ Prelim: {}, Midterm: {}, Final: {} });
+
 class GradeManageModel {
+  // -------------------------------------------------------------------------
+  // Lookups
+  // -------------------------------------------------------------------------
 
+  /**
+   * The active academic year and its current semester.
+   * @returns {Promise<{ year_id: number|null, semester_id: number|null }>}
+   */
   static async getActiveAcademicTerm(client = db) {
-    const res = await client.query(`
-      SELECT year_id, current_sem AS semester_id
-      FROM academic_year
-      WHERE is_active = true
-      LIMIT 1
-    `);
-    return res.rows[0] || { year_id: null, semester_id: null };
+    const { rows } = await client.query(
+      `SELECT year_id, current_sem AS semester_id
+         FROM academic_year
+        WHERE is_active = true
+        LIMIT 1`
+    );
+    return rows[0] || { year_id: null, semester_id: null };
   }
 
-  static async getStudentCurriculumContext(studentId) {
-    const res = await db.query(`
-      SELECT 
-        se.curriculum_id,
-        se.year_level AS current_year_level,
-        se.year_id AS current_year_id,
-        c.program_id,
-        p.program_name,
-        p.program_abbr,
-        p.total_year
-      FROM student_education se
-      JOIN curricula c ON c.curriculum_id = se.curriculum_id
-      JOIN programs p ON p.program_id = c.program_id
-      WHERE se.student_id = $1
-      ORDER BY se.is_current DESC NULLS LAST, se.education_id DESC
-      LIMIT 1
-    `, [studentId]);
-
-    return res.rows[0] || null;
+  /**
+   * faculties.faculty_id for a login account, or null (e.g. admins have none).
+   * grades.faculty_id references faculty_id, so a user_id must never be stored there.
+   * @param {number} userId
+   * @returns {Promise<number|null>}
+   */
+  static async findFacultyIdByUserId(userId, client = db) {
+    const { rows } = await client.query(
+      'SELECT faculty_id FROM faculties WHERE user_id = $1 LIMIT 1',
+      [userId]
+    );
+    return rows[0]?.faculty_id ?? null;
   }
 
+  /**
+   * The student's current curriculum, year level and program.
+   * @returns {Promise<object|null>}
+   */
+  static async getStudentCurriculumContext(studentId, client = db) {
+    const { rows } = await client.query(
+      `SELECT
+         se.curriculum_id,
+         se.year_level AS current_year_level,
+         se.year_id AS current_year_id,
+         c.program_id,
+         p.program_name,
+         p.program_abbr,
+         p.total_year
+       FROM student_education se
+       JOIN curricula c ON c.curriculum_id = se.curriculum_id
+       JOIN programs p ON p.program_id = c.program_id
+       WHERE se.student_id = $1
+       ORDER BY se.is_current DESC NULLS LAST, se.education_id DESC
+       LIMIT 1`,
+      [studentId]
+    );
+    return rows[0] || null;
+  }
+
+  /**
+   * Map of course_id -> earliest curriculum year level, for the student's curriculum.
+   * @returns {Promise<Map<number, number>>}
+   */
   static async getCurriculumYearLevelMap(studentId) {
-    const ctx = await this.getStudentCurriculumContext(studentId);
-    if (!ctx || !ctx.curriculum_id) return new Map();
+    const context = await this.getStudentCurriculumContext(studentId);
+    if (!context?.curriculum_id) return new Map();
 
-    const res = await db.query(`
-      SELECT course_id, MIN(year_level)::int AS year_level
-      FROM curriculum_courses
-      WHERE curriculum_id = $1
-      GROUP BY course_id
-    `, [ctx.curriculum_id]);
-
-    return new Map(res.rows.map((r) => [r.course_id, Number(r.year_level)]));
+    const { rows } = await db.query(
+      `SELECT course_id, MIN(year_level)::int AS year_level
+         FROM curriculum_courses
+        WHERE curriculum_id = $1
+        GROUP BY course_id`,
+      [context.curriculum_id]
+    );
+    return new Map(rows.map((row) => [row.course_id, Number(row.year_level)]));
   }
 
+  /**
+   * Map of course_id -> whether the student's latest active attempt is a pass.
+   * @returns {Promise<Map<number, boolean>>}
+   */
   static async getCoursePassedMap(studentId) {
-    const res = await db.query(`
-      SELECT DISTINCT ON (course_id)
-        course_id, remarks
-      FROM grades
-      WHERE student_id = $1 AND archived_at IS NULL
-      ORDER BY course_id, year_level DESC, semester_id DESC
-    `, [studentId]);
-
-    const map = new Map();
-    for (const r of res.rows) {
-      map.set(r.course_id, r.remarks === 'P');
-    }
-    return map;
+    const { rows } = await db.query(
+      `SELECT DISTINCT ON (course_id) course_id, remarks
+         FROM grades
+        WHERE student_id = $1 AND archived_at IS NULL
+        ORDER BY course_id, year_level DESC, semester_id DESC`,
+      [studentId]
+    );
+    return new Map(rows.map((row) => [row.course_id, row.remarks === 'P']));
   }
 
+  /**
+   * For each course, whether the student has passed all of its prerequisites.
+   * `courses.prerequisites` is a comma-separated list of course ids; tokens that
+   * are not numeric are ignored.
+   *
+   * @param {number} studentId
+   * @param {number[]} courseIds
+   * @returns {Promise<Map<number, { eligible: boolean, missing: string[], missingIds: number[] }>>}
+   *   `missing` holds course codes (or "#id" when a code is unknown).
+   */
   static async checkPrerequisiteEligibility(studentId, courseIds) {
     if (!courseIds || courseIds.length === 0) return new Map();
 
-    const courseRes = await db.query(`
-      SELECT course_id, course_code, prerequisites
-      FROM courses
-      WHERE course_id = ANY($1::int[])
-    `, [courseIds]);
+    const { rows: courses } = await db.query(
+      `SELECT course_id, prerequisites
+         FROM courses
+        WHERE course_id = ANY($1::int[])`,
+      [courseIds]
+    );
 
-    const allCodesRes = await db.query(`SELECT course_id, course_code FROM courses`);
-    const codeById = new Map(allCodesRes.rows.map((r) => [String(r.course_id), r.course_code]));
+    const prerequisiteTokens = (course) =>
+      (course.prerequisites || '')
+        .split(',')
+        .map((token) => token.trim())
+        .filter((token) => /^\d+$/.test(token));
 
     const prereqIds = new Set();
-    for (const c of courseRes.rows) {
-      const str = (c.prerequisites || '').trim();
-      if (!str) continue;
-      for (const tok of str.split(',').map((s) => s.trim()).filter(Boolean)) {
-        if (/^\d+$/.test(tok)) prereqIds.add(Number(tok));
-      }
+    for (const course of courses) {
+      for (const token of prerequisiteTokens(course)) prereqIds.add(Number(token));
     }
 
-    const passedSet = new Set();
+    const passed = new Set();
+    const codeById = new Map();
     if (prereqIds.size > 0) {
-      const gradeRes = await db.query(`
-        SELECT DISTINCT ON (course_id)
-          course_id, remarks
-        FROM grades
-        WHERE student_id = $1 AND course_id = ANY($2::int[]) AND archived_at IS NULL
-        ORDER BY course_id, year_level DESC, semester_id DESC
-      `, [studentId, [...prereqIds]]);
-      for (const g of gradeRes.rows) {
-        if (g.remarks === 'P') passedSet.add(g.course_id);
+      const ids = [...prereqIds];
+
+      const { rows: grades } = await db.query(
+        `SELECT DISTINCT ON (course_id) course_id, remarks
+           FROM grades
+          WHERE student_id = $1 AND course_id = ANY($2::int[]) AND archived_at IS NULL
+          ORDER BY course_id, year_level DESC, semester_id DESC`,
+        [studentId, ids]
+      );
+      for (const grade of grades) {
+        if (grade.remarks === 'P') passed.add(grade.course_id);
       }
+
+      const { rows: codes } = await db.query(
+        'SELECT course_id, course_code FROM courses WHERE course_id = ANY($1::int[])',
+        [ids]
+      );
+      for (const row of codes) codeById.set(row.course_id, row.course_code);
     }
 
     const result = new Map();
-    for (const c of courseRes.rows) {
-      const str = (c.prerequisites || '').trim();
-      if (!str) {
-        result.set(c.course_id, { eligible: true, missing: [], missingIds: [] });
-        continue;
-      }
+    for (const course of courses) {
+      const missingIds = prerequisiteTokens(course)
+        .map(Number)
+        .filter((id) => !passed.has(id));
 
-      const tokens = str.split(',').map((s) => s.trim()).filter(Boolean);
-      const missing = [];
-      const missingIds = [];
-      for (const tok of tokens) {
-        if (/^\d+$/.test(tok)) {
-          const id = Number(tok);
-          if (!passedSet.has(id)) {
-            missing.push(codeById.get(tok) || `#${tok}`);
-            missingIds.push(id);
-          }
-        }
-      }
-
-      result.set(c.course_id, {
-        eligible: missing.length === 0,
-        missing,
-        missingIds
+      result.set(course.course_id, {
+        eligible: missingIds.length === 0,
+        missing: missingIds.map((id) => codeById.get(id) || `#${id}`),
+        missingIds,
       });
     }
     return result;
   }
 
+  /**
+   * Active courses with their grading category and enterable score fields.
+   * @returns {Promise<object[]>}
+   */
+  static async getGradableCourses() {
+    const { rows } = await db.query(
+      `SELECT course_id, course_code, course_name, total_units, lab_units, grading_scheme
+         FROM courses
+        WHERE is_active = true
+        ORDER BY course_code ASC`
+    );
+
+    return rows.map((course) => ({
+      courseId: course.course_id,
+      courseCode: course.course_code,
+      courseName: course.course_name,
+      units: course.total_units,
+      category: GradingEngine.getCourseCategory(course),
+      enterableFields: GradingEngine.getEnterableFields(course),
+    }));
+  }
+
+  // -------------------------------------------------------------------------
+  // Grade sheet
+  // -------------------------------------------------------------------------
+
+  /**
+   * Build the student's full grade sheet: every curriculum course by year and
+   * semester, plus retakes that fall outside their native curriculum slot.
+   *
+   * @param {number} studentId
+   * @returns {Promise<object|null>} null when the student has no curriculum record
+   */
   static async getGradeSheet(studentId) {
     const context = await this.getStudentCurriculumContext(studentId);
     if (!context) return null;
 
-    // FIX: Direct assignment instead of destructuring to match the return object
-    const curriculumId = context.curriculum_id;
-    const currentYearLevel = context.current_year_level;
-    const programName = context.program_name;
-    const programAbbr = context.program_abbr;
-    const totalYear = context.total_year;
+    const {
+      curriculum_id: curriculumId,
+      current_year_level: currentYearLevel,
+      program_name: programName,
+      program_abbr: programAbbr,
+      total_year: totalYear,
+    } = context;
 
-    const coursesRes = await db.query(`
-      SELECT 
-        cc.year_level,
-        cc.semester_id,
-        sem.semester_label,
-        co.course_id,
-        co.course_code,
-        co.course_name,
-        co.total_units,
-        co.lab_units,
-        co.grading_scheme
-      FROM curriculum_courses cc
-      JOIN courses co ON co.course_id = cc.course_id
-      JOIN semester sem ON sem.semester_id = cc.semester_id
-      WHERE cc.curriculum_id = $1
-      ORDER BY cc.year_level ASC, cc.semester_id ASC, co.course_code ASC
-    `, [curriculumId]);
+    const [curriculumCourses, gradeRows, semesters] = await Promise.all([
+      db.query(
+        `SELECT
+           cc.year_level,
+           cc.semester_id,
+           sem.semester_label,
+           co.course_id,
+           co.course_code,
+           co.course_name,
+           co.total_units,
+           co.lab_units,
+           co.grading_scheme
+         FROM curriculum_courses cc
+         JOIN courses co ON co.course_id = cc.course_id
+         JOIN semester sem ON sem.semester_id = cc.semester_id
+         WHERE cc.curriculum_id = $1
+         ORDER BY cc.year_level ASC, cc.semester_id ASC, co.course_code ASC`,
+        [curriculumId]
+      ),
+      db.query(
+        `SELECT
+           g.grade_id, g.course_id, g.year_id, g.semester_id, g.year_level,
+           g.final_grade, g.remarks,
+           g.prelim_raw, g.prelim_transmuted,
+           g.midterm_raw, g.midterm_transmuted,
+           g.final_raw, g.final_transmuted,
+           gc.term, gc.component_name, gc.score
+         FROM grades g
+         LEFT JOIN grade_components gc ON gc.grade_id = g.grade_id
+         WHERE g.student_id = $1 AND g.archived_at IS NULL`,
+        [studentId]
+      ),
+      db.query('SELECT semester_id, semester_label FROM semester'),
+    ]);
 
-    const gradesRes = await db.query(`
-      SELECT 
-        g.grade_id,
-        g.course_id,
-        g.year_id,
-        g.semester_id,
-        g.year_level,
-        g.final_grade,
-        g.remarks,
-        g.prelim_raw, g.prelim_transmuted,
-        g.midterm_raw, g.midterm_transmuted,
-        g.final_raw, g.final_transmuted,
-        gc.term,
-        gc.component_name,
-        gc.score
-      FROM grades g
-      LEFT JOIN grade_components gc ON gc.grade_id = g.grade_id
-      WHERE g.student_id = $1 AND g.archived_at IS NULL
-    `, [studentId]);
+    const semesterLabels = new Map(semesters.rows.map((r) => [r.semester_id, r.semester_label]));
+    const semesterLabel = (id) => semesterLabels.get(id) || `Semester ${id}`;
 
+    // Group score components under their grade attempt, per course.
     const attemptsByCourse = new Map();
-    for (const row of gradesRes.rows) {
-      if (!attemptsByCourse.has(row.course_id)) attemptsByCourse.set(row.course_id, []);
-
-      const attempts = attemptsByCourse.get(row.course_id);
-      let attempt = attempts.find((a) => a.gradeId === row.grade_id);
+    const attemptsById = new Map();
+    for (const row of gradeRows.rows) {
+      let attempt = attemptsById.get(row.grade_id);
       if (!attempt) {
         attempt = {
           gradeId: row.grade_id,
@@ -213,151 +308,101 @@ class GradeManageModel {
           yearLevel: row.year_level,
           finalGrade: row.final_grade,
           remarks: row.remarks,
-          prelim_raw: row.prelim_raw, prelim_transmuted: row.prelim_transmuted,
-          midterm_raw: row.midterm_raw, midterm_transmuted: row.midterm_transmuted,
-          final_raw: row.final_raw, final_transmuted: row.final_transmuted,
-          scoresByTerm: { Prelim: {}, Midterm: {}, Final: {} }
+          prelim_raw: row.prelim_raw,
+          prelim_transmuted: row.prelim_transmuted,
+          midterm_raw: row.midterm_raw,
+          midterm_transmuted: row.midterm_transmuted,
+          final_raw: row.final_raw,
+          final_transmuted: row.final_transmuted,
+          scoresByTerm: emptyScores(),
         };
-        attempts.push(attempt);
+        attemptsById.set(row.grade_id, attempt);
+        if (!attemptsByCourse.has(row.course_id)) attemptsByCourse.set(row.course_id, []);
+        attemptsByCourse.get(row.course_id).push(attempt);
       }
       if (row.term && row.component_name) {
         attempt.scoresByTerm[row.term][row.component_name] = row.score;
       }
     }
 
-    const allCourseIds = new Set(coursesRes.rows.map((c) => c.course_id));
-    for (const cid of attemptsByCourse.keys()) allCourseIds.add(cid);
-    const eligibilityMap = await this.checkPrerequisiteEligibility(
-      studentId,
-      [...allCourseIds]
-    );
+    // Metadata for every attempted course (retakes may be outside the curriculum).
+    const attemptedCourseIds = [...attemptsByCourse.keys()];
+    const attemptedCourses = attemptedCourseIds.length
+      ? (await db.query(
+          `SELECT course_id, course_code, course_name, total_units, lab_units, grading_scheme
+             FROM courses
+            WHERE course_id = ANY($1::int[])`,
+          [attemptedCourseIds]
+        )).rows
+      : [];
+    const courseMetaById = new Map(attemptedCourses.map((c) => [c.course_id, c]));
 
-    const semLabelCache = new Map();
-    const getSemesterLabel = async (semesterId) => {
-      if (semLabelCache.has(semesterId)) return semLabelCache.get(semesterId);
-      const res = await db.query(
-        `SELECT semester_label FROM semester WHERE semester_id = $1`,
-        [semesterId]
-      );
-      const label = res.rows[0]?.semester_label || `Semester ${semesterId}`;
-      semLabelCache.set(semesterId, label);
-      return label;
-    };
+    const allCourseIds = new Set(curriculumCourses.rows.map((c) => c.course_id));
+    for (const courseId of attemptedCourseIds) allCourseIds.add(courseId);
+    const eligibilityMap = await this.checkPrerequisiteEligibility(studentId, [...allCourseIds]);
 
+    // year level -> semester id -> { semesterId, semesterLabel, courses }
     const yearMap = new Map();
-    const ensureYearAndSem = (yearLevel, semesterId, semesterLabel) => {
+    const ensureSemester = (yearLevel, semesterId, label) => {
       if (!yearMap.has(yearLevel)) yearMap.set(yearLevel, new Map());
-      const semMap = yearMap.get(yearLevel);
-      if (!semMap.has(semesterId)) {
-        semMap.set(semesterId, {
-          semesterId,
-          semesterLabel,
-          courses: []
-        });
+      const semesterMap = yearMap.get(yearLevel);
+      if (!semesterMap.has(semesterId)) {
+        semesterMap.set(semesterId, { semesterId, semesterLabel: label, courses: [] });
       }
-      return semMap.get(semesterId);
+      return semesterMap.get(semesterId);
     };
 
-    const buildCourseRow = (courseMeta, attempt, allAttempts) => {
-      const category = GradingEngine.getCourseCategory(courseMeta);
-      const scoresByTerm = attempt?.scoresByTerm || { Prelim: {}, Midterm: {}, Final: {} };
-      const cumulative = attempt
-        ? GradingEngine.computeCumulativeGrade(courseMeta, scoresByTerm)
-        : { finalGrade: null, remarks: null };
+    // Pass 1: curriculum slots. Show the attempt for that slot, else the latest one.
+    for (const course of curriculumCourses.rows) {
+      const slotYear = Number(course.year_level);
+      const slotSemester = Number(course.semester_id);
+      const semester = ensureSemester(slotYear, slotSemester, course.semester_label);
 
-      const eligibility = eligibilityMap.get(courseMeta.course_id)
-        || { eligible: true, missing: [], missingIds: [] };
-
-      return {
-        courseId: courseMeta.course_id,
-        courseCode: courseMeta.course_code,
-        courseName: courseMeta.course_name,
-        units: courseMeta.total_units,
-        category,
-        enterableFields: GradingEngine.getEnterableFields(courseMeta),
-        prereqEligible: eligibility.eligible,
-        prereqMissing: eligibility.missing,
-        prereqMissingIds: eligibility.missingIds,
-        gradeId: attempt?.gradeId || null,
-        finalGrade: attempt?.finalGrade ?? cumulative.finalGrade,
-        remarks: attempt?.remarks || cumulative.remarks,
-        prelim_raw: attempt?.prelim_raw ?? null,
-        prelim_transmuted: attempt?.prelim_transmuted ?? null,
-        midterm_raw: attempt?.midterm_raw ?? null,
-        midterm_transmuted: attempt?.midterm_transmuted ?? null,
-        final_raw: attempt?.final_raw ?? null,
-        final_transmuted: attempt?.final_transmuted ?? null,
-        scoresByTerm,
-        termGrades: {
-          Prelim: GradingEngine.computeTermGrade(category, 'Prelim', scoresByTerm),
-          Midterm: GradingEngine.computeTermGrade(category, 'Midterm', scoresByTerm),
-          Final: GradingEngine.computeTermGrade(category, 'Final', scoresByTerm)
-        },
-        attemptCount: allAttempts.length,
-        attempts: allAttempts.map((a) => ({
-          gradeId: a.gradeId,
-          yearId: a.yearId,
-          semesterId: a.semesterId,
-          yearLevel: a.yearLevel,
-          finalGrade: a.finalGrade,
-          remarks: a.remarks
-        }))
-      };
-    };
-
-    // Pass 1 — curriculum slots.
-    for (const c of coursesRes.rows) {
-      const slotYear = Number(c.year_level);
-      const slotSem = Number(c.semester_id);
-      const sem = ensureYearAndSem(slotYear, slotSem, c.semester_label);
-
-      const attempts = attemptsByCourse.get(c.course_id) || [];
+      const attempts = attemptsByCourse.get(course.course_id) || [];
       const exact = attempts.find(
-        (a) => Number(a.yearLevel) === slotYear && Number(a.semesterId) === slotSem
+        (a) => Number(a.yearLevel) === slotYear && Number(a.semesterId) === slotSemester
       );
       const latest = [...attempts].sort(
         (a, b) => (b.yearLevel - a.yearLevel) || (b.semesterId - a.semesterId)
       )[0] || null;
-      const chosen = exact || latest;
 
-      sem.courses.push(buildCourseRow(c, chosen, attempts));
+      semester.courses.push(
+        this._buildCourseRow(course, exact || latest, attempts, eligibilityMap)
+      );
     }
 
-    // Pass 2 — retakes outside their native curriculum slot.
+    // Pass 2: attempts outside their native curriculum slot (retakes, extra courses).
     for (const [courseId, attempts] of attemptsByCourse.entries()) {
-      const metaRes = await db.query(`
-        SELECT course_id, course_code, course_name, total_units, lab_units, grading_scheme
-        FROM courses WHERE course_id = $1
-      `, [courseId]);
-      const courseMeta = metaRes.rows[0];
+      const courseMeta = courseMetaById.get(courseId);
       if (!courseMeta) continue;
 
-      const nativeSlot = coursesRes.rows.find((r) => r.course_id === courseId);
+      const nativeSlot = curriculumCourses.rows.find((r) => r.course_id === courseId);
       const nativeYear = nativeSlot ? Number(nativeSlot.year_level) : null;
-      const nativeSem = nativeSlot ? Number(nativeSlot.semester_id) : null;
+      const nativeSemester = nativeSlot ? Number(nativeSlot.semester_id) : null;
 
       for (const attempt of attempts) {
-        const aYear = Number(attempt.yearLevel);
-        const aSem = Number(attempt.semesterId);
+        const attemptYear = Number(attempt.yearLevel);
+        const attemptSemester = Number(attempt.semesterId);
 
-        if (nativeYear !== null && aYear === nativeYear && aSem === nativeSem) continue;
+        if (nativeYear !== null && attemptYear === nativeYear && attemptSemester === nativeSemester) {
+          continue;
+        }
 
-        const label = await getSemesterLabel(aSem);
-        const targetSem = ensureYearAndSem(aYear, aSem, label);
+        const semester = ensureSemester(attemptYear, attemptSemester, semesterLabel(attemptSemester));
+        const alreadyShown = semester.courses.some(
+          (row) => row.courseId === courseId && row.gradeId === attempt.gradeId
+        );
+        if (alreadyShown) continue;
 
-        if (targetSem.courses.some(
-          (r) => r.courseId === courseId && r.gradeId === attempt.gradeId
-        )) continue;
-
-        targetSem.courses.push(buildCourseRow(courseMeta, attempt, attempts));
+        semester.courses.push(this._buildCourseRow(courseMeta, attempt, attempts, eligibilityMap));
       }
     }
 
-    const years = Array.from(yearMap.entries())
+    const years = [...yearMap.entries()]
       .sort(([a], [b]) => a - b)
-      .map(([yearLevel, semMap]) => ({
+      .map(([yearLevel, semesterMap]) => ({
         yearLevel,
-        semesters: Array.from(semMap.values()).sort((a, b) => a.semesterId - b.semesterId)
+        semesters: [...semesterMap.values()].sort((a, b) => a.semesterId - b.semesterId),
       }));
 
     return {
@@ -367,298 +412,435 @@ class GradeManageModel {
       totalYears: totalYear,
       currentYearLevel,
       gradeScale: GradingEngine.getGradeScale(),
-      years
+      years,
     };
   }
 
-  static async getGradableCourses() {
-    const res = await db.query(`
-      SELECT course_id, course_code, course_name, total_units, lab_units, grading_scheme
-      FROM courses
-      WHERE is_active = true
-      ORDER BY course_code ASC
-    `);
+  /**
+   * One course row of the grade sheet. Computed values are used only when the
+   * stored attempt has none.
+   * @private
+   */
+  static _buildCourseRow(courseMeta, attempt, allAttempts, eligibilityMap) {
+    const category = GradingEngine.getCourseCategory(courseMeta);
+    const scoresByTerm = attempt?.scoresByTerm || emptyScores();
+    const cumulative = attempt
+      ? GradingEngine.computeCumulativeGrade(courseMeta, scoresByTerm)
+      : { finalGrade: null, remarks: null };
 
-    return res.rows.map((course) => ({
-      courseId: course.course_id,
-      courseCode: course.course_code,
-      courseName: course.course_name,
-      units: course.total_units,
-      category: GradingEngine.getCourseCategory(course),
-      enterableFields: GradingEngine.getEnterableFields(course)
-    }));
+    const eligibility = eligibilityMap.get(courseMeta.course_id)
+      || { eligible: true, missing: [], missingIds: [] };
+
+    return {
+      courseId: courseMeta.course_id,
+      courseCode: courseMeta.course_code,
+      courseName: courseMeta.course_name,
+      units: courseMeta.total_units,
+      category,
+      enterableFields: GradingEngine.getEnterableFields(courseMeta),
+      prereqEligible: eligibility.eligible,
+      prereqMissing: eligibility.missing,
+      prereqMissingIds: eligibility.missingIds,
+      gradeId: attempt?.gradeId || null,
+      finalGrade: attempt?.finalGrade ?? cumulative.finalGrade,
+      remarks: attempt?.remarks || cumulative.remarks,
+      prelim_raw: attempt?.prelim_raw ?? null,
+      prelim_transmuted: attempt?.prelim_transmuted ?? null,
+      midterm_raw: attempt?.midterm_raw ?? null,
+      midterm_transmuted: attempt?.midterm_transmuted ?? null,
+      final_raw: attempt?.final_raw ?? null,
+      final_transmuted: attempt?.final_transmuted ?? null,
+      scoresByTerm,
+      termGrades: {
+        Prelim: GradingEngine.computeTermGrade(category, 'Prelim', scoresByTerm),
+        Midterm: GradingEngine.computeTermGrade(category, 'Midterm', scoresByTerm),
+        Final: GradingEngine.computeTermGrade(category, 'Final', scoresByTerm),
+      },
+      attemptCount: allAttempts.length,
+      attempts: allAttempts.map((a) => ({
+        gradeId: a.gradeId,
+        yearId: a.yearId,
+        semesterId: a.semesterId,
+        yearLevel: a.yearLevel,
+        finalGrade: a.finalGrade,
+        remarks: a.remarks,
+      })),
+    };
   }
 
-  static async resolveAcademicPeriod(client, studentId, yearLevel, semesterId) {
-    const res = await client.query(`
-      SELECT year_id, semester_id 
-      FROM student_education 
-      WHERE student_id = $1 AND year_level = $2 AND semester_id = $3
-      ORDER BY education_id DESC
-      LIMIT 1
-    `, [studentId, yearLevel, semesterId]);
+  // -------------------------------------------------------------------------
+  // Saving grades
+  // -------------------------------------------------------------------------
 
-    if (res.rows.length > 0) return res.rows[0];
+  /**
+   * Year and semester a grade belongs to: the student's enrolment record for that
+   * year level and semester, else the active academic year.
+   * @returns {Promise<{ year_id: number|null, semester_id: number }>}
+   */
+  static async resolveAcademicPeriod(client, studentId, yearLevel, semesterId) {
+    const { rows } = await client.query(
+      `SELECT year_id, semester_id
+         FROM student_education
+        WHERE student_id = $1 AND year_level = $2 AND semester_id = $3
+        ORDER BY education_id DESC
+        LIMIT 1`,
+      [studentId, yearLevel, semesterId]
+    );
+    if (rows.length > 0) return rows[0];
 
     const active = await this.getActiveAcademicTerm(client);
     return { year_id: active.year_id, semester_id: semesterId };
   }
 
+  /**
+   * Grades may only be saved for active students. A student is blocked when the
+   * student record is inactive or archived, or the login account is deactivated.
+   * @private
+   * @throws {HttpError} 404 if the student does not exist, 400 if not active
+   */
+  static async _assertStudentActive(studentId, client = db) {
+    const { rows } = await client.query(
+      `SELECT s.account_status, s.archived_at, u.is_active
+         FROM students s
+         LEFT JOIN users u ON u.user_id = s.user_id
+        WHERE s.student_id = $1`,
+      [studentId]
+    );
+    const student = rows[0];
+    if (!student) throw new HttpError(404, 'Student not found.');
+
+    if (student.account_status === false || student.archived_at || student.is_active === false) {
+      throw new HttpError(400, 'Cannot save grades for an inactive or archived student.');
+    }
+  }
+
+  /**
+   * Save one or more grade entries for a student, atomically: either every
+   * entry is saved or none is.
+   *
+   * Each entry is an upsert on (student, course, year, semester, year level), so
+   * re-saving a course updates it and un-archives it. Component scores and
+   * prerequisite overrides are replaced with the submitted ones.
+   *
+   * @param {number} studentId
+   * @param {number|null} facultyId  faculties.faculty_id of the grader, or null
+   * @param {object[]} entries  { courseId, yearLevel, semesterId, scoresByTerm,
+   *                              missingPrereqs?, prelim_raw?, ..., remarks? }
+   * @returns {Promise<object[]>} one summary per entry, for audit logging:
+   *   { gradeId, courseId, courseCode, yearLevel, semesterId,
+   *     missingPrereqIds, missingPrereqCodes }
+   * @throws {HttpError} 400 on invalid input, a rule violation, or an inactive or
+   *   archived student; 404 if the student does not exist
+   */
   static async saveGrades(studentId, facultyId, entries) {
     if (!Array.isArray(entries) || entries.length === 0) {
-      throw new Error('No grade entries provided.');
+      throw new HttpError(400, 'No grade entries provided.');
     }
 
-    const client = db.getClient ? await db.getClient() : db;
-    const isDedicatedClient = Boolean(db.getClient);
+    entries.forEach((entry) => this._assertValidEntry(entry));
+    await this._assertStudentActive(studentId);
 
-    try {
-      if (isDedicatedClient) await client.query('BEGIN');
+    const context = await this.getStudentCurriculumContext(studentId);
 
+    const saved = [];
+    await withTransaction(async (client) => {
       for (const entry of entries) {
-        const {
-          courseId, yearLevel, semesterId, scoresByTerm, missingPrereqs,
-          prelim_raw, prelim_transmuted, midterm_raw, midterm_transmuted,
-          final_raw, final_transmuted, remarks: manualRemarks
-        } = entry;
-        const num = (v) => (v === '' || v === undefined || v === null ? null : Number(v));
+        saved.push(await this._saveEntry(client, studentId, facultyId, context, entry));
+      }
+    });
+    return saved;
+  }
 
-        // Validate manual grades before touching the database.
-        // Keep in sync with the DB check constraints and RULES in AddGrade.js.
-        const RANGES = { raw: [60, 100], transmuted: [60, 100] };
-        const checkGrade = (kind, value, label) => {
-          if (value === null || value === undefined || value === '') return;
-          const n = Number(value);
-          const [min, max] = RANGES[kind];
-          if (!Number.isFinite(n) || n < min || n > max) {
-            throw new Error(`${label} must be between ${min} and ${max}.`);
-          }
-        };
-        checkGrade('raw', prelim_raw, 'Prelim raw');
-        checkGrade('transmuted', prelim_transmuted, 'Prelim transmuted');
-        checkGrade('raw', midterm_raw, 'Midterm raw');
-        checkGrade('transmuted', midterm_transmuted, 'Midterm transmuted');
-        checkGrade('raw', final_raw, 'Final raw');
-        checkGrade('transmuted', final_transmuted, 'Final transmuted');
+  /**
+   * Validate one entry's shape and numeric ranges before touching the database.
+   * @private
+   * @throws {HttpError}
+   */
+  static _assertValidEntry(entry) {
+    const { courseId, yearLevel, semesterId, scoresByTerm } = entry ?? {};
 
-        if (!courseId || !yearLevel || !semesterId || !scoresByTerm) {
-          throw new Error('Incomplete grade entry: course, year level, semester, and scores are required.');
-        }
+    if (!courseId || !yearLevel || !semesterId || !scoresByTerm || typeof scoresByTerm !== 'object') {
+      throw new HttpError(
+        400,
+        'Incomplete grade entry: course, year level, semester, and scores are required.'
+      );
+    }
+    if (!Number.isInteger(Number(yearLevel)) || Number(yearLevel) < 1) {
+      throw new HttpError(400, 'Year level must be a positive whole number.');
+    }
 
-        const courseRes = await client.query(`
-          SELECT course_id, lab_units, grading_scheme FROM courses WHERE course_id = $1
-        `, [courseId]);
+    const marks = [
+      ['Prelim raw', entry.prelim_raw],
+      ['Prelim transmuted', entry.prelim_transmuted],
+      ['Midterm raw', entry.midterm_raw],
+      ['Midterm transmuted', entry.midterm_transmuted],
+      ['Final raw', entry.final_raw],
+      ['Final transmuted', entry.final_transmuted],
+    ];
+    for (const [label, value] of marks) {
+      if (isBlank(value)) continue;
+      const n = Number(value);
+      if (!Number.isFinite(n) || n < MARK_RANGE.min || n > MARK_RANGE.max) {
+        throw new HttpError(400, `${label} must be between ${MARK_RANGE.min} and ${MARK_RANGE.max}.`);
+      }
+    }
 
-        if (courseRes.rows.length === 0) {
-          throw new Error(`Course ${courseId} not found.`);
-        }
-        const course = courseRes.rows[0];
-        const category = GradingEngine.getCourseCategory(course);
-
-        // Guard: reject grades for year levels the student hasn't reached.
-        const ctx = await this.getStudentCurriculumContext(studentId);
-        if (ctx && Number(yearLevel) > Number(ctx.current_year_level)) {
-          throw new Error(
-            `Cannot save grades for Year ${yearLevel} — student is currently Year ${ctx.current_year_level}.`
+    for (const term of TERMS) {
+      for (const [component, score] of Object.entries(scoresByTerm[term] || {})) {
+        if (isBlank(score)) continue;
+        const n = Number(score);
+        if (!Number.isFinite(n) || n < SCORE_RANGE.min || n > SCORE_RANGE.max) {
+          throw new HttpError(
+            400,
+            `${term} ${component} score must be between ${SCORE_RANGE.min} and ${SCORE_RANGE.max}.`
           );
-        }
-
-        const { year_id, semester_id } = await this.resolveAcademicPeriod(
-          client, studentId, yearLevel, semesterId
-        );
-
-        if (!year_id) {
-          throw new Error(
-            'Unable to determine an academic year for this grade entry. ' +
-            'Please ensure an academic year is marked active.'
-          );
-        }
-
-        const { finalGrade, remarks: computedRemarks } = GradingEngine.computeCumulativeGrade(course, scoresByTerm);
-        // A remark picked manually in the UI wins over the computed one.
-        const remarks = manualRemarks || computedRemarks;
-
-        const gradeRes = await client.query(`
-          INSERT INTO grades (student_id, course_id, year_id, semester_id, year_level, faculty_id, final_grade, remarks,
-                              prelim_raw, prelim_transmuted, midterm_raw, midterm_transmuted, final_raw, final_transmuted, updated_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
-          ON CONFLICT (student_id, course_id, year_id, semester_id, year_level) DO UPDATE SET
-            faculty_id = EXCLUDED.faculty_id,
-            final_grade = EXCLUDED.final_grade,
-            remarks = EXCLUDED.remarks,
-            prelim_raw = EXCLUDED.prelim_raw,
-            prelim_transmuted = EXCLUDED.prelim_transmuted,
-            midterm_raw = EXCLUDED.midterm_raw,
-            midterm_transmuted = EXCLUDED.midterm_transmuted,
-            final_raw = EXCLUDED.final_raw,
-            final_transmuted = EXCLUDED.final_transmuted,
-            archived_at = NULL,
-            archive_reason = NULL,
-            updated_at = NOW()
-          RETURNING grade_id
-        `, [
-          studentId, courseId, year_id, semester_id, Number(yearLevel), facultyId || null, finalGrade, remarks,
-          num(prelim_raw), num(prelim_transmuted), num(midterm_raw), num(midterm_transmuted), num(final_raw), num(final_transmuted)
-        ]);
-
-        const gradeId = gradeRes.rows[0].grade_id;
-
-        await client.query(
-          `DELETE FROM grade_prereq_overrides WHERE grade_id = $1`,
-          [gradeId]
-        );
-
-        if (Array.isArray(missingPrereqs) && missingPrereqs.length > 0) {
-          for (const missingCourseId of missingPrereqs) {
-            await client.query(`
-              INSERT INTO grade_prereq_overrides (grade_id, missing_prereq_course_id)
-              VALUES ($1, $2)
-            `, [gradeId, missingCourseId]);
-          }
-
-          const codesRes = await client.query(
-            `SELECT course_id, course_code FROM courses WHERE course_id = ANY($1::int[])`,
-            [missingPrereqs]
-          );
-          const codeMap = new Map(codesRes.rows.map((r) => [r.course_id, r.course_code]));
-
-          const courseRes2 = await client.query(
-            `SELECT course_code FROM courses WHERE course_id = $1`,
-            [courseId]
-          );
-
-          await HistoryModel.log({
-            userId: facultyId || null,
-            targetUserId: null,
-            tableName: 'grades',
-            recordId: gradeId,
-            action: 'PREREQ_OVERRIDE',
-            oldValues: null,
-            newValues: {
-              student_id: studentId,
-              course_id: courseId,
-              course_code: courseRes2.rows[0]?.course_code || null,
-              year_level: Number(yearLevel),
-              semester_id: semester_id,
-              missing_prereq_ids: missingPrereqs,
-              missing_prereqs: missingPrereqs.map((id) => codeMap.get(id) || `#${id}`),
-              timestamp: new Date().toISOString()
-            },
-            ipAddress: null,
-            userAgent: null
-          });
-        }
-
-        await client.query(`DELETE FROM grade_components WHERE grade_id = $1`, [gradeId]);
-
-        for (const term of ['Prelim', 'Midterm', 'Final']) {
-          const termScores = scoresByTerm[term] || {};
-          for (const [component, score] of Object.entries(termScores)) {
-            if (score === '' || score === null || score === undefined) continue;
-
-            const weight = GradingEngine.getComponentWeight(category, term, component);
-            await client.query(`
-              INSERT INTO grade_components (grade_id, term, component_name, score, percentage)
-              VALUES ($1, $2, $3, $4, $5)
-            `, [gradeId, term, component, Number(score), weight]);
-          }
         }
       }
-
-      if (isDedicatedClient) await client.query('COMMIT');
-      return true;
-    } catch (error) {
-      if (isDedicatedClient) await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      if (isDedicatedClient && client.release) client.release();
     }
   }
-  
-  static async deleteEmptyAssignment(studentId, courseId, yearLevel, semesterId) {
-    const res = await db.query(`
-      DELETE FROM grades g
-      WHERE g.student_id = $1 
-        AND g.course_id = $2 
-        AND g.year_level = $3 
-        AND g.semester_id = $4
-        AND NOT EXISTS (
-          SELECT 1 FROM grade_components gc WHERE gc.grade_id = g.grade_id
-        )
-      RETURNING g.grade_id
-    `, [studentId, courseId, yearLevel, semesterId]);
-    
-    return res.rowCount > 0;
+
+  /**
+   * Save a single entry inside a transaction.
+   * @private
+   */
+  static async _saveEntry(client, studentId, facultyId, context, entry) {
+    const { courseId, yearLevel, semesterId, scoresByTerm, missingPrereqs } = entry;
+
+    const { rows: courseRows } = await client.query(
+      `SELECT course_id, course_code, lab_units, grading_scheme
+         FROM courses
+        WHERE course_id = $1`,
+      [courseId]
+    );
+    const course = courseRows[0];
+    if (!course) throw new HttpError(400, `Course ${courseId} not found.`);
+
+    // Reject grades for year levels the student has not reached.
+    if (context && Number(yearLevel) > Number(context.current_year_level)) {
+      throw new HttpError(
+        400,
+        `Cannot save grades for Year ${yearLevel} — student is currently Year ${context.current_year_level}.`
+      );
+    }
+
+    const period = await this.resolveAcademicPeriod(client, studentId, yearLevel, semesterId);
+    if (!period.year_id) {
+      throw new HttpError(
+        400,
+        'Unable to determine an academic year for this grade entry. ' +
+        'Please ensure an academic year is marked active.'
+      );
+    }
+
+    const category = GradingEngine.getCourseCategory(course);
+    const { finalGrade, remarks: computedRemarks } =
+      GradingEngine.computeCumulativeGrade(course, scoresByTerm);
+    // A remark picked manually in the UI wins over the computed one.
+    const remarks = entry.remarks || computedRemarks;
+
+    const { rows } = await client.query(
+      `INSERT INTO grades
+         (student_id, course_id, year_id, semester_id, year_level, faculty_id, final_grade, remarks,
+          prelim_raw, prelim_transmuted, midterm_raw, midterm_transmuted,
+          final_raw, final_transmuted, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+       ON CONFLICT (student_id, course_id, year_id, semester_id, year_level) DO UPDATE SET
+         faculty_id = EXCLUDED.faculty_id,
+         final_grade = EXCLUDED.final_grade,
+         remarks = EXCLUDED.remarks,
+         prelim_raw = EXCLUDED.prelim_raw,
+         prelim_transmuted = EXCLUDED.prelim_transmuted,
+         midterm_raw = EXCLUDED.midterm_raw,
+         midterm_transmuted = EXCLUDED.midterm_transmuted,
+         final_raw = EXCLUDED.final_raw,
+         final_transmuted = EXCLUDED.final_transmuted,
+         archived_at = NULL,
+         archive_reason = NULL,
+         updated_at = NOW()
+       RETURNING grade_id`,
+      [
+        studentId, courseId, period.year_id, period.semester_id, Number(yearLevel),
+        facultyId || null, finalGrade, remarks,
+        toNumberOrNull(entry.prelim_raw), toNumberOrNull(entry.prelim_transmuted),
+        toNumberOrNull(entry.midterm_raw), toNumberOrNull(entry.midterm_transmuted),
+        toNumberOrNull(entry.final_raw), toNumberOrNull(entry.final_transmuted),
+      ]
+    );
+    const gradeId = rows[0].grade_id;
+
+    const overrides = await this._replacePrereqOverrides(client, gradeId, missingPrereqs);
+    await this._replaceComponents(client, gradeId, category, scoresByTerm);
+
+    return {
+      gradeId,
+      courseId,
+      courseCode: course.course_code,
+      yearLevel: Number(yearLevel),
+      semesterId: period.semester_id,
+      missingPrereqIds: overrides.ids,
+      missingPrereqCodes: overrides.codes,
+    };
   }
 
-  static async archiveGradeById(gradeId, { reason, facultyId }) {
-    if (!reason || !reason.trim()) {
-      throw new Error('A reason is required to archive a grade.');
+  /**
+   * Replace a grade's prerequisite overrides (prerequisites waived for this attempt).
+   * @private
+   * @returns {Promise<{ ids: number[], codes: string[] }>}
+   */
+  static async _replacePrereqOverrides(client, gradeId, missingPrereqs) {
+    await client.query('DELETE FROM grade_prereq_overrides WHERE grade_id = $1', [gradeId]);
+
+    const ids = [...new Set((Array.isArray(missingPrereqs) ? missingPrereqs : []).map(Number))];
+    if (ids.length === 0) return { ids: [], codes: [] };
+
+    if (ids.some((id) => !Number.isInteger(id) || id < 1)) {
+      throw new HttpError(400, 'missingPrereqs must be a list of course ids.');
     }
 
-    const res = await db.query(`
-      UPDATE grades
-      SET archived_at = NOW(),
-          archive_reason = $2,
-          updated_at = NOW()
-      WHERE grade_id = $1 AND archived_at IS NULL
-      RETURNING grade_id, student_id, course_id, year_level, semester_id
-    `, [gradeId, reason.trim()]);
-
-    if (res.rowCount === 0) {
-      throw new Error('Grade not found or already archived.');
-    }
-
-    const row = res.rows[0];
-
-    const courseRes = await db.query(
-      `SELECT course_code FROM courses WHERE course_id = $1`,
-      [row.course_id]
+    const placeholders = ids.map((_, i) => `($1, $${i + 2})`).join(', ');
+    await client.query(
+      `INSERT INTO grade_prereq_overrides (grade_id, missing_prereq_course_id) VALUES ${placeholders}`,
+      [gradeId, ...ids]
     );
 
-    await HistoryModel.log({
-      userId: facultyId || null,
-      targetUserId: null,
-      tableName: 'grades',
-      recordId: gradeId,
-      action: 'GRADE_ARCHIVED',
-      oldValues: null,
-      newValues: {
-        student_id: row.student_id,
-        course_id: row.course_id,
-        course_code: courseRes.rows[0]?.course_code || null,
-        year_level: row.year_level,
-        semester_id: row.semester_id,
-        reason: reason.trim(),
-        timestamp: new Date().toISOString()
-      },
-      ipAddress: null,
-      userAgent: null
-    });
+    const { rows } = await client.query(
+      'SELECT course_id, course_code FROM courses WHERE course_id = ANY($1::int[])',
+      [ids]
+    );
+    const codeById = new Map(rows.map((r) => [r.course_id, r.course_code]));
 
-    return gradeId;
+    return { ids, codes: ids.map((id) => codeById.get(id) || `#${id}`) };
   }
 
-  static async getArchivedGradesForStudent(studentId) {
-    const res = await db.query(`
-      SELECT 
-        g.grade_id,
-        g.course_id,
-        g.year_level,
-        g.semester_id,
-        g.archived_at,
-        g.archive_reason,
-        c.course_code,
-        c.course_name,
-        sem.semester_label
-      FROM grades g
-      JOIN courses c ON c.course_id = g.course_id
-      JOIN semester sem ON sem.semester_id = g.semester_id
-      WHERE g.student_id = $1 AND g.archived_at IS NOT NULL
-      ORDER BY g.archived_at DESC
-    `, [studentId]);
+  /**
+   * Replace a grade's component scores. Blank scores are skipped. The stored
+   * percentage records the weight in effect when saved; calculations never read it.
+   * @private
+   */
+  static async _replaceComponents(client, gradeId, category, scoresByTerm) {
+    await client.query('DELETE FROM grade_components WHERE grade_id = $1', [gradeId]);
 
-    return res.rows.map(r => ({
+    const rows = [];
+    for (const term of TERMS) {
+      for (const [component, score] of Object.entries(scoresByTerm[term] || {})) {
+        if (isBlank(score)) continue;
+        rows.push([
+          term,
+          component,
+          Number(score),
+          GradingEngine.getComponentWeight(category, term, component),
+        ]);
+      }
+    }
+    if (rows.length === 0) return;
+
+    const placeholders = rows
+      .map((_, i) => `($1, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4}, $${i * 4 + 5})`)
+      .join(', ');
+    await client.query(
+      `INSERT INTO grade_components (grade_id, term, component_name, score, percentage)
+       VALUES ${placeholders}`,
+      [gradeId, ...rows.flat()]
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Archive, restore, delete
+  // -------------------------------------------------------------------------
+
+  /**
+   * Delete a course assignment that has no scores entered. Rows that have
+   * component scores are never deleted.
+   * @returns {Promise<boolean>} whether a row was deleted
+   */
+  static async deleteEmptyAssignment(studentId, courseId, yearLevel, semesterId) {
+    const { rowCount } = await db.query(
+      `DELETE FROM grades g
+        WHERE g.student_id = $1
+          AND g.course_id = $2
+          AND g.year_level = $3
+          AND g.semester_id = $4
+          AND NOT EXISTS (SELECT 1 FROM grade_components gc WHERE gc.grade_id = g.grade_id)`,
+      [studentId, courseId, yearLevel, semesterId]
+    );
+    return rowCount > 0;
+  }
+
+  /**
+   * Archive a grade with a reason.
+   * @param {number} gradeId
+   * @param {{ reason: string, studentId?: number|null }} options
+   *   `studentId`, when given, restricts the change to that student's grades.
+   * @returns {Promise<object|null>} what was archived (with course_code), or null
+   *   if the grade does not exist, is already archived, or belongs to another student
+   */
+  static async archiveGradeById(gradeId, { reason, studentId = null }) {
+    const { rows } = await db.query(
+      `WITH updated AS (
+         UPDATE grades
+            SET archived_at = NOW(), archive_reason = $2, updated_at = NOW()
+          WHERE grade_id = $1
+            AND archived_at IS NULL
+            AND ($3::int IS NULL OR student_id = $3::int)
+          RETURNING grade_id, student_id, course_id, year_level, semester_id
+       )
+       SELECT u.*, c.course_code
+         FROM updated u
+         LEFT JOIN courses c ON c.course_id = u.course_id`,
+      [gradeId, reason, studentId]
+    );
+    return rows[0] ?? null;
+  }
+
+  /**
+   * Restore an archived grade.
+   * @param {number} gradeId
+   * @param {{ studentId?: number|null }} [options]
+   * @returns {Promise<object|null>} what was restored (with course_code), or null
+   *   if the grade does not exist, is not archived, or belongs to another student
+   */
+  static async restoreGradeById(gradeId, { studentId = null } = {}) {
+    const { rows } = await db.query(
+      `WITH updated AS (
+         UPDATE grades
+            SET archived_at = NULL, archive_reason = NULL, updated_at = NOW()
+          WHERE grade_id = $1
+            AND archived_at IS NOT NULL
+            AND ($2::int IS NULL OR student_id = $2::int)
+          RETURNING grade_id, student_id, course_id, year_level, semester_id
+       )
+       SELECT u.*, c.course_code
+         FROM updated u
+         LEFT JOIN courses c ON c.course_id = u.course_id`,
+      [gradeId, studentId]
+    );
+    return rows[0] ?? null;
+  }
+
+  /**
+   * @returns {Promise<object[]>} the student's archived grades, newest first
+   */
+  static async getArchivedGradesForStudent(studentId) {
+    const { rows } = await db.query(
+      `SELECT
+         g.grade_id,
+         g.course_id,
+         g.year_level,
+         g.semester_id,
+         g.archived_at,
+         g.archive_reason,
+         c.course_code,
+         c.course_name,
+         sem.semester_label
+       FROM grades g
+       JOIN courses c ON c.course_id = g.course_id
+       JOIN semester sem ON sem.semester_id = g.semester_id
+       WHERE g.student_id = $1 AND g.archived_at IS NOT NULL
+       ORDER BY g.archived_at DESC`,
+      [studentId]
+    );
+
+    return rows.map((r) => ({
       gradeId: r.grade_id,
       courseId: r.course_id,
       courseCode: r.course_code,
@@ -667,53 +849,24 @@ class GradeManageModel {
       semesterId: r.semester_id,
       semesterLabel: r.semester_label,
       archivedAt: r.archived_at,
-      archiveReason: r.archive_reason
+      archiveReason: r.archive_reason,
     }));
   }
 
-  static async restoreGradeById(gradeId, { facultyId }) {
-    const res = await db.query(`
-      UPDATE grades
-      SET archived_at = NULL,
-          archive_reason = NULL,
-          updated_at = NOW()
-      WHERE grade_id = $1 AND archived_at IS NOT NULL
-      RETURNING grade_id, student_id, course_id, year_level, semester_id
-    `, [gradeId]);
+  // -------------------------------------------------------------------------
+  // Academic standing
+  // -------------------------------------------------------------------------
 
-    if (res.rowCount === 0) {
-      throw new Error('Grade not found or is not archived.');
-    }
-
-    const row = res.rows[0];
-
-    const courseRes = await db.query(
-      `SELECT course_code FROM courses WHERE course_id = $1`,
-      [row.course_id]
-    );
-
-    await HistoryModel.log({
-      userId: facultyId || null,
-      targetUserId: null,
-      tableName: 'grades',
-      recordId: gradeId,
-      action: 'GRADE_RESTORED',
-      oldValues: null,
-      newValues: {
-        student_id: row.student_id,
-        course_id: row.course_id,
-        course_code: courseRes.rows[0]?.course_code || null,
-        year_level: row.year_level,
-        semester_id: row.semester_id,
-        timestamp: new Date().toISOString()
-      },
-      ipAddress: null,
-      userAgent: null
-    });
-
-    return gradeId;
-  }
-
+  /**
+   * Academic standing per student, from failed-course counts, unless a verified
+   * status override exists for the current term.
+   *
+   * Rules: a course failed 3+ times or 5+ failures in one semester is
+   * Probationary 2; 2+ times or 3+ in a semester is Probationary 1; failing 2 or
+   * more distinct courses is a Warning.
+   *
+   * @returns {Promise<Map<number, { status: string, isOverridden: boolean }>>}
+   */
   static async getAcademicStandingMap() {
     const aggRes = await db.query(`
       WITH course_repeats AS (
@@ -751,7 +904,10 @@ class GradeManageModel {
     `);
 
     const overrides = new Map(
-      overrideRes.rows.map((r) => [r.student_id, PROBATION_STATUS_LABELS[r.probation_status] || ACADEMIC_STANDING.NONE])
+      overrideRes.rows.map((r) => [
+        r.student_id,
+        PROBATION_STATUS_LABELS[r.probation_status] || ACADEMIC_STANDING.NONE,
+      ])
     );
 
     const standingMap = new Map();

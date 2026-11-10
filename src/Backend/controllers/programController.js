@@ -1,140 +1,183 @@
+'use strict';
 const ProgramModel = require('../models/programModel');
-const HistoryModel = require('../models/historyModel');
+const { HttpError } = require('../../utils/httpError');
+const { parseId } = require('../../utils/request');
+const { withTransaction } = require('../../utils/transaction');
+const { audit } = require('../../utils/audit');
 
-const getIpAddress = (req) => req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+const VIEW_MODES = ['active', 'archived', 'all'];
+const MAX_TOTAL_YEARS = 10;
 
-// ==========================================
-// PROGRAM MANAGEMENT
-// ==========================================
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-exports.addProgram = async (req, res) => {
-  const { program_name, program_abbr, total_year, program_description, program_status } = req.body;
-  const userId = req.user.id;
-  const ipAddress = getIpAddress(req);
-  const userAgent = req.headers['user-agent'];
+/** The fields worth recording in the history log. */
+const snapshot = (program) => ({
+  program_name: program.program_name,
+  program_abbr: program.program_abbr,
+  total_year: program.total_year,
+  program_description: program.program_description,
+  program_status: program.program_status,
+});
 
-  try {
-    if (!program_name || !program_abbr || !total_year) {
-      return res.status(400).json({ success: false, message: "Program name, abbreviation, and total years are required." });
+/** Accepts true/false and the strings 'true'/'false'; anything else is rejected. */
+function parseStatus(value) {
+  if (typeof value === 'boolean') return value;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  throw new HttpError(400, 'Program status must be true or false.');
+}
+
+/**
+ * Validate and normalise a request body.
+ * @param {object} body
+ * @param {{ requireAll: boolean }} options  true for create, false for partial update
+ * @returns {object} only the fields that were supplied (all required ones on create)
+ */
+function parseProgramInput(body, { requireAll }) {
+  const input = {};
+
+  if (requireAll || body.program_name !== undefined) {
+    const name = String(body.program_name ?? '').trim();
+    if (!name) throw new HttpError(400, 'Program name is required.');
+    input.program_name = name;
+  }
+
+  if (requireAll || body.program_abbr !== undefined) {
+    const abbr = String(body.program_abbr ?? '').trim();
+    if (!abbr) throw new HttpError(400, 'Program abbreviation is required.');
+    input.program_abbr = abbr;
+  }
+
+  if (requireAll || body.total_year !== undefined) {
+    const years = Number(body.total_year);
+    if (!Number.isInteger(years) || years < 1 || years > MAX_TOTAL_YEARS) {
+      throw new HttpError(400, `Total years must be a whole number from 1 to ${MAX_TOTAL_YEARS}.`);
     }
-
-    const existingPrograms = await ProgramModel.getAll({ mode: 'all' });
-    if (existingPrograms.find(p => p.program_abbr === program_abbr)) {
-      return res.status(400).json({ success: false, message: "Program abbreviation already exists." });
-    }
-
-    const newProgram = await ProgramModel.create({
-      program_name, program_abbr, total_year,
-      program_description: program_description || null, program_status
-    });
-
-    await HistoryModel.log({
-      userId, targetUserId: userId, tableName: 'programs', recordId: newProgram.program_id,
-      action: 'PROGRAM_CREATED', oldValues: null,
-      newValues: { program_id: newProgram.program_id, program_name, program_abbr, total_year, program_status, timestamp: new Date().toISOString() },
-      ipAddress, userAgent
-    });
-
-    res.json({ success: true, message: "Program created successfully.", data: newProgram });
-  } catch (error) {
-    console.error("Error creating program:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
+    input.total_year = years;
   }
-};
 
-exports.updateProgram = async (req, res) => {
-  const { program_id } = req.params;
-  const { program_name, program_abbr, total_year, program_description, program_status } = req.body;
-  const userId = req.user.id;
-  const ipAddress = getIpAddress(req);
-  const userAgent = req.headers['user-agent'];
-
-  try {
-    const existingProgram = await ProgramModel.findById(program_id);
-    if (!existingProgram) return res.status(404).json({ success: false, message: "Program not found." });
-
-    const updatedProgram = await ProgramModel.update(program_id, {
-      program_name, program_abbr, total_year,
-      program_description: program_description || null, program_status
-    });
-
-    await HistoryModel.log({
-      userId, targetUserId: userId, tableName: 'programs', recordId: updatedProgram.program_id,
-      action: 'PROGRAM_UPDATED',
-      oldValues: { program_name: existingProgram.program_name, program_abbr: existingProgram.program_abbr, total_year: existingProgram.total_year, program_status: existingProgram.program_status },
-      newValues: { program_name: updatedProgram.program_name, program_abbr: updatedProgram.program_abbr, total_year: updatedProgram.total_year, program_status: updatedProgram.program_status, timestamp: new Date().toISOString() },
-      ipAddress, userAgent
-    });
-
-    res.json({ success: true, message: "Program updated successfully.", data: updatedProgram });
-  } catch (error) {
-    console.error("Error updating program:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
+  if (body.program_description !== undefined) {
+    input.program_description = String(body.program_description ?? '').trim() || null;
   }
-};
 
-exports.deleteProgram = async (req, res) => {
-  const { program_id } = req.params;
-  const userId = req.user?.id || null;
-  const ipAddress = getIpAddress(req);
-  const userAgent = req.headers['user-agent'];
-
-  try {
-    const existing = await ProgramModel.findById(program_id);
-    if (!existing) return res.status(404).json({ success: false, message: 'Program not found.' });
-
-    await ProgramModel.deactivate(program_id);
-
-    await HistoryModel.log({
-      userId, targetUserId: userId, tableName: 'programs', recordId: Number(program_id),
-      action: 'PROGRAM_ARCHIVED', oldValues: { program_status: existing.program_status },
-      newValues: { program_id: Number(program_id), timestamp: new Date().toISOString() },
-      ipAddress, userAgent,
-    });
-
-    res.json({ success: true, message: 'Program archived successfully.' });
-  } catch (error) {
-    console.error('Error archiving program:', error);
-    res.status(500).json({ success: false, message: 'Internal server error.' });
+  if (body.program_status !== undefined) {
+    input.program_status = parseStatus(body.program_status);
   }
-};
 
-exports.restoreProgram = async (req, res) => {
-  const { program_id } = req.params;
-  const userId = req.user?.id || null;
-  const ipAddress = getIpAddress(req);
-  const userAgent = req.headers['user-agent'];
+  return input;
+}
 
-  try {
-    const existing = await ProgramModel.findById(program_id);
-    if (!existing) return res.status(404).json({ success: false, message: 'Program not found.' });
+/** Throw 400 if another program already uses this abbreviation (case-insensitive). */
+async function assertAbbreviationFree(abbr, client, excludeId = null) {
+  const clash = await ProgramModel.findByAbbreviation(abbr, { excludeId }, client);
+  if (clash) throw new HttpError(400, 'Program abbreviation already exists.');
+}
 
-    await ProgramModel.reactivate(program_id);
+/** Shared flow for archive and restore. Idempotent: repeating it changes nothing. */
+async function changeStatus(req, res, { active, action, message }) {
+  const programId = parseId(req.params.program_id);
 
-    await HistoryModel.log({
-      userId, targetUserId: userId, tableName: 'programs', recordId: Number(program_id),
-      action: 'PROGRAM_RESTORED', oldValues: { program_status: existing.program_status },
-      newValues: { program_id: Number(program_id), timestamp: new Date().toISOString() },
-      ipAddress, userAgent,
+  const before = await ProgramModel.findById(programId);
+  if (!before) throw new HttpError(404, 'Program not found.');
+
+  if (before.program_status !== active) {
+    await ProgramModel.setStatus(programId, active);
+    await audit(req, {
+      tableName: 'programs',
+      recordId: programId,
+      action,
+      oldValues: { program_status: before.program_status },
+      newValues: { program_status: active },
     });
-
-    res.json({ success: true, message: 'Program restored successfully.' });
-  } catch (error) {
-    console.error('Error restoring program:', error);
-    res.status(500).json({ success: false, message: 'Internal server error.' });
   }
-};
+
+  res.json({ success: true, message });
+}
+
+// ---------------------------------------------------------------------------
+// Handlers
+// ---------------------------------------------------------------------------
+
+/** GET /programs?mode=active|archived|all  (non-admins always get active only) */
 exports.getPrograms = async (req, res) => {
-  try {
-    const { mode, includeArchived } = req.query;
-    const resolvedMode = ['active', 'archived', 'all'].includes(mode)
-      ? mode
-      : (includeArchived === 'true' ? 'all' : 'active');
+  const { mode, includeArchived } = req.query;
 
-    const programs = await ProgramModel.getAll({ mode: resolvedMode });
-    res.json({ success: true, data: programs });
-  } catch (error) {
-    console.error("Error fetching programs:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  }
+  let resolvedMode = VIEW_MODES.includes(mode)
+    ? mode
+    : includeArchived === 'true' ? 'all' : 'active';
+
+  if (req.user?.role !== 'admin') resolvedMode = 'active';
+
+  const programs = await ProgramModel.getAll({ mode: resolvedMode });
+  res.json({ success: true, data: programs });
 };
+
+/** POST /programs */
+exports.addProgram = async (req, res) => {
+  const input = parseProgramInput(req.body ?? {}, { requireAll: true });
+
+  let program;
+  await withTransaction(async (client) => {
+    await ProgramModel.lockAbbreviations(client);
+    await assertAbbreviationFree(input.program_abbr, client);
+    program = await ProgramModel.create(input, client);
+  });
+
+  await audit(req, {
+    tableName: 'programs',
+    recordId: program.program_id,
+    action: 'PROGRAM_CREATED',
+    oldValues: null,
+    newValues: snapshot(program),
+  });
+
+  res.status(201).json({ success: true, message: 'Program created successfully.', data: program });
+};
+
+/** PUT /programs/:program_id  (omitted fields are left unchanged) */
+exports.updateProgram = async (req, res) => {
+  const programId = parseId(req.params.program_id);
+  const changes = parseProgramInput(req.body ?? {}, { requireAll: false });
+
+  let before;
+  let after;
+  await withTransaction(async (client) => {
+    before = await ProgramModel.findById(programId, client);
+    if (!before) throw new HttpError(404, 'Program not found.');
+
+    if (changes.program_abbr !== undefined) {
+      await ProgramModel.lockAbbreviations(client);
+      await assertAbbreviationFree(changes.program_abbr, client, programId);
+    }
+
+    after = await ProgramModel.update(programId, changes, client);
+  });
+
+  await audit(req, {
+    tableName: 'programs',
+    recordId: programId,
+    action: 'PROGRAM_UPDATED',
+    oldValues: snapshot(before),
+    newValues: snapshot(after),
+  });
+
+  res.json({ success: true, message: 'Program updated successfully.', data: after });
+};
+
+/** DELETE /programs/:program_id  (archives; programs are referenced by other tables) */
+exports.deleteProgram = (req, res) =>
+  changeStatus(req, res, {
+    active: false,
+    action: 'PROGRAM_ARCHIVED',
+    message: 'Program archived successfully.',
+  });
+
+/** PUT/POST /programs/:program_id/restore */
+exports.restoreProgram = (req, res) =>
+  changeStatus(req, res, {
+    active: true,
+    action: 'PROGRAM_RESTORED',
+    message: 'Program restored successfully.',
+  });

@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { BiLeftArrowAlt, BiRightArrowAlt, BiSave, BiUndo } from 'react-icons/bi';
 
-import { BiLeftArrowAlt, BiRightArrowAlt, BiSave, BiUndo} from 'react-icons/bi';
-import Dropdown from '../../Components/shared/Dropdown';
+import TextField from '../../Components/ui/Textfield';
+import Button from '../../Components/ui/Button';
+import Alert from '../../Components/ui/Alert';
 import ConfirmationModal from '../../Components/shared/ConfirmationModal';
-import '../../GlobalStyle/Global.css';
-import '../../GlobalStyle/GlobalForm.css';
-import './SProfile.css'; 
+import Avatar from '../../Components/ui/Avatar';
 
 const STEPS = [
   'Basic Details',
@@ -49,7 +49,7 @@ const statusFrom = (d, who) => {
   const alive = d?.[`${who}_is_alive`] ?? d?.[`${who}_alive`];
   if (alive === true || alive === 't' || alive === 'true') return 'Living';
   if (alive === false || alive === 'f' || alive === 'false') return 'Deceased';
-  return ''; 
+  return '';
 };
 
 const mapProfile = (d) => ({
@@ -132,39 +132,70 @@ const mapProfile = (d) => ({
   academicClubsExtracurr: pick(d, 'acad_extracurr', 'acad_clubs_extracurr'),
 });
 
-const Text = ({ label, name, form, onChange, ...rest }) => (
-  <div className="formGroup">
-    <label className="formLabel">{label}</label>
-    <input type="text" name={name} value={form[name]} onChange={onChange} {...rest} />
-  </div>
+/* ---------------- Field helpers ---------------- */
+
+const Field = ({ label, name, form, onChange, ...rest }) => (
+  <TextField 
+    id={`field-${name}`} 
+    name={name} 
+    label={label} 
+    value={form[name]} 
+    onChange={onChange} 
+    inputClassName="md:h-14 md:text-lg md:px-4 md:bg-surface"
+    {...rest} 
+  />
 );
 
 const Area = ({ label, name, form, onChange }) => (
-  <div className="formGroup">
-    <label className="formLabel">{label}</label>
-    <textarea rows="2" name={name} value={form[name]} onChange={onChange} />
+  <div className="space-y-1.5">
+    <label htmlFor={`field-${name}`} className="block text-sm font-medium text-ink md:text-base">
+      {label}
+    </label>
+    <textarea
+      id={`field-${name}`}
+      rows={3}
+      name={name}
+      value={form[name]}
+      onChange={onChange}
+      className="w-full rounded-ctl bg-surface-2 px-3.5 py-3 text-base text-ink ring-1 ring-line-strong transition-shadow placeholder:text-ink-3 focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 md:text-lg md:px-4 md:py-4 md:bg-surface"
+    />
   </div>
 );
 
-const Pick = ({ label, name, form, setField, options }) => {
+const Select = ({ label, name, form, setField, options }) => {
   const current = form[name];
-  const opts = current && !options.some((o) => o.value === current)
-    ? [{ value: current, label: current }, ...options]
-    : options;
+  const opts = current && !options.some((o) => o.value === current) ? [{ value: current, label: current }, ...options] : options;
   return (
-  <div className="formGroup">
-    <label className="formLabel">{label}</label>
-    <Dropdown
-      options={opts}
-      value={form[name]}
-      onChange={(val) => setField(name, val)}
-      placeholder="-- Select --"
-    />
-  </div>
+    <div className="space-y-1.5">
+      <label htmlFor={`field-${name}`} className="block text-sm font-medium text-ink md:text-base">
+        {label}
+      </label>
+      <select
+        id={`field-${name}`}
+        name={name}
+        value={current}
+        onChange={(e) => setField(name, e.target.value)}
+        className="h-12 w-full rounded-ctl bg-surface-2 px-3.5 text-base text-ink ring-1 ring-line-strong transition-shadow focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 md:h-14 md:text-lg md:px-4 md:bg-surface"
+      >
+        {opts.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 };
 
-const subHeading = { color: 'var(--text-secondary)', marginTop: '20px', marginBottom: '8px' };
+const SectionHeading = ({ children }) => (
+  <h3 className="mb-4 mt-2 font-display text-lg font-semibold text-ink md:text-xl">{children}</h3>
+);
+
+const SubHeading = ({ children }) => (
+  <h4 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-ink-3">{children}</h4>
+);
+
+/* ---------------- Component ---------------- */
 
 function SProfile() {
   const [form, setForm] = useState(null);
@@ -192,14 +223,16 @@ function SProfile() {
         if (d.success) {
           const mapped = mapProfile(d.data);
           setForm(mapped);
-          setInitialForm(mapped); 
+          setInitialForm(mapped);
         } else {
           setLoadError(d.message || 'Failed to load profile.');
         }
       })
       .catch(() => !cancelled && setLoadError('Network error. Could not load your profile.'))
       .finally(() => !cancelled && setLoading(false));
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const closeModal = () => setModal({ isOpen: false });
@@ -213,13 +246,15 @@ function SProfile() {
       setForm((prev) => ({
         ...prev,
         sameAsPermanent: checked,
-        ...(checked ? {
-          provHouseNo: prev.permHouseNo,
-          provStreet: prev.permStreet,
-          provBarangay: prev.permBarangay,
-          provCity: prev.permCity,
-          provProvince: prev.permProvince,
-        } : {}),
+        ...(checked
+          ? {
+              provHouseNo: prev.permHouseNo,
+              provStreet: prev.permStreet,
+              provBarangay: prev.permBarangay,
+              provCity: prev.permCity,
+              provProvince: prev.permProvince,
+            }
+          : {}),
       }));
       return;
     }
@@ -233,9 +268,7 @@ function SProfile() {
     scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDiscard = () => {
-    setForm(initialForm); 
-  };
+  const handleDiscard = () => setForm(initialForm);
 
   const validate = () => {
     if (form.personalEmail && !/^\S+@\S+\.\S+$/.test(form.personalEmail)) return 'Enter a valid personal email address.';
@@ -362,9 +395,8 @@ function SProfile() {
       const data = await res.json();
 
       if (data.success || res.ok) {
-        setInitialForm(form); // Update baseline
-        goTo(1); // <--- THIS RESETS THE PAGE TO STEP 1
-        
+        setInitialForm(form);
+        goTo(1);
         setModal({
           isOpen: true,
           title: 'Profile Updated',
@@ -385,236 +417,306 @@ function SProfile() {
     }
   };
 
-  if (loading) return <div className="InnerContainer"><p>Loading profile...</p></div>;
-  if (loadError || !form) {
-    return <div className="InnerContainer"><p style={{ color: 'var(--status-danger-text)' }}>{loadError || 'Error loading profile.'}</p></div>;
+  if (loading) {
+    return (
+      <div className="ax space-y-4 p-4 md:p-6 lg:flex lg:gap-6">
+        <div className="hidden w-64 shrink-0 space-y-4 lg:block">
+          <div className="h-48 animate-pulse rounded-panel bg-surface-2" />
+          <div className="h-64 animate-pulse rounded-panel bg-surface-2" />
+        </div>
+        <div className="flex-1 space-y-4 rounded-panel border !border-line bg-surface p-6">
+          <div className="h-8 w-48 animate-pulse rounded bg-surface-2" />
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-14 w-full animate-pulse rounded-ctl bg-surface-2" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
-  const progressPercent = ((step - 1) / (totalSteps - 1)) * 100;
+  if (loadError || !form) {
+    return (
+      <div className="ax p-4">
+        <Alert tone="danger">{loadError || 'Error loading profile.'}</Alert>
+      </div>
+    );
+  }
+
   const f = { form, onChange: handleChange };
   const p = { form, setField };
 
   return (
-    <div className="InnerContainer" ref={scrollRef} style={{ justifyContent: 'flex-start', overflowY: 'auto' }}>
-      <div className="SProfileZoom">
-      <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--border-light)', borderRadius: '3px', marginBottom: '12px', flexShrink: 0 }}>
-        <div style={{ width: `${progressPercent}%`, height: '100%', backgroundColor: 'var(--branding-maroon)', borderRadius: '3px', transition: 'width 0.3s ease' }} />
-      </div>
-      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-        Step {step} of {totalSteps} &middot; {STEPS[step - 1]}
-      </span>
-
-      <div className="FormContent" style={{ minHeight: '400px', flexShrink: 1 }}>
-        {step === 1 && (
-          <div className="stepContent">
-            <h4 className="sectionHeading">Primary Details</h4>
-            <div className="formRow split3">
-              <Text label="FIRST NAME" name="firstName" {...f} />
-              <Text label="MIDDLE NAME" name="middleName" {...f} />
-              <Text label="LAST NAME" name="lastName" {...f} />
+    <div className="ax min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
+      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-4 py-6 pb-32 md:pb-6 lg:flex-row lg:px-8">
+        
+        {/* LEFT COLUMN: Identity & Stepper Navigation */}
+        <div className="w-full shrink-0 lg:w-64 flex flex-col gap-4">
+          {/* Profile Card */}
+          <div className="flex flex-row items-center gap-4 rounded-panel border !border-line bg-surface p-4 sm:p-5 lg:flex-col lg:text-center">
+            <div className="shrink-0">
+              <Avatar first={form.firstName} last={form.lastName} size="lg" className="h-16 w-16 text-xl lg:h-20 lg:w-20" />
             </div>
-            <div className="formRow split3">
-              <Text label="SUFFIX" name="suffix" {...f} />
-              <Text label="STUDENT NUMBER" name="studentNumber" {...f} />
-              <Text label="SCHOOL EMAIL" name="schoolEmail" {...f} />
-            </div>
-            <div className="formRow split3">
-              <Text label="PROGRAM" name="program" {...f} />
-              <Text label="YEAR LEVEL" name="yearLevel" {...f} />
-              <Text label="SECTION" name="section" {...f} />
-            </div>
-            <div className="formRow split3">
-              <Text label="CLASSIFICATION" name="classification" {...f} />
-              <Text label="STANDING" name="standing" {...f} />
-              <Text label="SEX" name="sex" {...f} />
+            <div className="min-w-0 flex-1 lg:w-full">
+              <h2 className="truncate font-semibold text-ink lg:whitespace-normal lg:text-lg">
+                {form.firstName} {form.lastName}
+              </h2>
+              <p className="mt-0.5 text-sm text-ink-3">{form.studentNumber || 'No Student Number'}</p>
             </div>
           </div>
-        )}
 
-        {step === 2 && (
-          <div className="stepContent">
-            <h4 className="sectionHeading">Personal Information</h4>
-            <div className="formRow split3">
-              <Text label="DATE OF BIRTH" type="date" name="birthDate" {...f} />
-              <Text label="PLACE OF BIRTH" name="placeOfBirth" {...f} />
-              <Text label="PERSONAL EMAIL" name="personalEmail" {...f} />
+          {/* Vertical Stepper (desktop) */}
+          <nav className="hidden lg:flex flex-col gap-1 rounded-panel border !border-line bg-surface p-3">
+            {STEPS.map((label, i) => {
+              const num = i + 1;
+              const active = step === num;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => goTo(num)}
+                  className={`flex items-center gap-3 rounded-ctl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                    active ? 'bg-brand-soft text-brand-ink' : 'text-ink-2 hover:bg-surface-2'
+                  }`}
+                >
+                  <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs ${
+                    active ? 'bg-brand text-brand-on' : 'bg-surface-2 text-ink-3'
+                  }`}>
+                    {num}
+                  </span>
+                  <span className="truncate">{label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Mobile Progress bar */}
+          <div className="lg:hidden space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-ink">Step {step} of {totalSteps}</span>
+              <span className="text-ink-3">{STEPS[step - 1]}</span>
             </div>
-            <div className="formRow split3">
-              <Text label="PHONE (MOBILE)" name="phoneNumber" {...f} />
-              <Text label="LANDLINE" name="landline" {...f} />
-              <Pick label="CIVIL STATUS" name="civilStatus" options={CIVIL} {...p} />
-            </div>
-            <div className="formRow split3">
-              <Text label="RELIGION" name="religion" {...f} />
-              <Text label="NATIONALITY" name="nationality" {...f} />
-              <Text label="LANGUAGE / DIALECT" name="language" {...f} />
-            </div>
-            <div className="formRow split3">
-              <Text label="HEIGHT" name="height" placeholder="e.g. 170 cm" {...f} />
-              <Text label="WEIGHT" name="weight" placeholder="e.g. 65 kg" {...f} />
-              <Text label="VISUAL PROBLEM" name="visualProblems" placeholder="e.g. N/A or Glasses" {...f} />
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+              <div
+                className="h-full rounded-full bg-brand transition-[width] duration-300"
+                style={{ width: `${((step - 1) / (totalSteps - 1)) * 100}%` }}
+              />
             </div>
           </div>
-        )}
+        </div>
 
-        {step === 3 && (
-          <div className="stepContent">
-            <h4 className="sectionHeading">Permanent Address</h4>
-            <div className="formRow split3">
-              <Text label="HOUSE NO. / STREET" name="permHouseNo" {...f} />
-              <Text label="SUBDIVISION / STREET" name="permStreet" {...f} />
-              <Text label="BARANGAY" name="permBarangay" {...f} />
-            </div>
-            <div className="formRow split2">
-              <Text label="CITY / MUNICIPALITY" name="permCity" {...f} />
-              <Text label="PROVINCE" name="permProvince" {...f} />
+        {/* RIGHT COLUMN: The Form */}
+        <div className="flex-1 min-w-0 flex flex-col gap-4">
+          <div className="rounded-panel border !border-line bg-surface p-4 sm:p-6 md:p-8">
+            <div className="mb-6 border-b !border-line pb-4">
+              <h2 className="font-display text-2xl font-bold text-ink">{STEPS[step - 1]}</h2>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '20px', marginBottom: '8px' }}>
-              <h4 className="sectionHeading" style={{ margin: 0 }}>Provincial Address</h4>
-              <label style={{ fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <input type="checkbox" name="sameAsPermanent" checked={form.sameAsPermanent} onChange={handleChange} />
-                Same as Permanent Address
-              </label>
-            </div>
-            {!form.sameAsPermanent && (
-              <>
-                <div className="formRow split3">
-                  <Text label="HOUSE NO. / STREET" name="provHouseNo" {...f} />
-                  <Text label="SUBDIVISION / STREET" name="provStreet" {...f} />
-                  <Text label="BARANGAY" name="provBarangay" {...f} />
+            {step === 1 && (
+              <div className="space-y-5 md:space-y-6">
+                <SectionHeading>Primary Details</SectionHeading>
+                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                  <div className="md:col-span-4"><Field label="First name" name="firstName" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Middle name" name="middleName" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Last name" name="lastName" {...f} /></div>
+                  
+                  <div className="md:col-span-4"><Field label="Suffix" name="suffix" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Student number" name="studentNumber" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="School email" type="email" name="schoolEmail" {...f} /></div>
+                  
+                  <div className="md:col-span-4"><Field label="Program" name="program" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Year level" name="yearLevel" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Section" name="section" {...f} /></div>
+                  
+                  <div className="md:col-span-4"><Field label="Classification" name="classification" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Standing" name="standing" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Sex" name="sex" {...f} /></div>
                 </div>
-                <div className="formRow split2">
-                  <Text label="CITY / MUNICIPALITY" name="provCity" {...f} />
-                  <Text label="PROVINCE" name="provProvince" {...f} />
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-5 md:space-y-6">
+                <SectionHeading>Personal Information</SectionHeading>
+                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                  <div className="md:col-span-4"><Field label="Date of birth" type="date" name="birthDate" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Place of birth" name="placeOfBirth" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Personal email" type="email" name="personalEmail" {...f} /></div>
+
+                  <div className="md:col-span-4"><Field label="Phone (mobile)" type="tel" name="phoneNumber" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Landline" name="landline" {...f} /></div>
+                  <div className="md:col-span-4"><Select label="Civil status" name="civilStatus" options={CIVIL} {...p} /></div>
+
+                  <div className="md:col-span-4"><Field label="Religion" name="religion" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Nationality" name="nationality" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Language / dialect" name="language" {...f} /></div>
+
+                  <div className="md:col-span-4"><Field label="Height" name="height" placeholder="e.g. 170 cm" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Weight" name="weight" placeholder="e.g. 65 kg" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Visual problem" name="visualProblems" placeholder="e.g. N/A or Glasses" {...f} /></div>
                 </div>
-              </>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-5 md:space-y-6">
+                <SectionHeading>Permanent Address</SectionHeading>
+                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                  <div className="md:col-span-4"><Field label="House no. / street" name="permHouseNo" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Subdivision / street" name="permStreet" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Barangay" name="permBarangay" {...f} /></div>
+                  
+                  <div className="md:col-span-6"><Field label="City / municipality" name="permCity" {...f} /></div>
+                  <div className="md:col-span-6"><Field label="Province" name="permProvince" {...f} /></div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t !border-line mt-6">
+                  <SectionHeading>Provincial Address</SectionHeading>
+                  <label className="flex items-center gap-2 text-sm font-medium text-ink-2">
+                    <input
+                      type="checkbox"
+                      name="sameAsPermanent"
+                      checked={form.sameAsPermanent}
+                      onChange={handleChange}
+                      className="h-5 w-5 rounded border-line-strong text-brand focus:ring-brand/40"
+                    />
+                    Same as permanent address
+                  </label>
+                </div>
+                {!form.sameAsPermanent && (
+                  <div className="space-y-5 md:space-y-6 pt-2">
+                    <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                      <div className="md:col-span-4"><Field label="House no. / street" name="provHouseNo" {...f} /></div>
+                      <div className="md:col-span-4"><Field label="Subdivision / street" name="provStreet" {...f} /></div>
+                      <div className="md:col-span-4"><Field label="Barangay" name="provBarangay" {...f} /></div>
+                      
+                      <div className="md:col-span-6"><Field label="City / municipality" name="provCity" {...f} /></div>
+                      <div className="md:col-span-6"><Field label="Province" name="provProvince" {...f} /></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {step === 4 && (
+              <div className="space-y-5 md:space-y-6">
+                <SectionHeading>Family Information</SectionHeading>
+
+                <SubHeading>Father's Details</SubHeading>
+                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                  <div className="md:col-span-4"><Field label="First name" name="fatherFirstName" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Middle name" name="fatherMiddleName" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Last name" name="fatherLastName" {...f} /></div>
+
+                  <div className="md:col-span-4"><Field label="Suffix" name="fatherSuffix" placeholder="Jr., III" {...f} /></div>
+                  <div className="md:col-span-4"><Select label="Status" name="fatherStatus" options={LIVING} {...p} /></div>
+                  <div className="md:col-span-4"><Field label="Contact number" type="tel" name="fatherContact" {...f} /></div>
+
+                  <div className="md:col-span-12"><Field label="Occupation" name="fatherOccupation" {...f} /></div>
+                </div>
+
+                <SubHeading>Mother's Details</SubHeading>
+                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                  <div className="md:col-span-4"><Field label="First name" name="motherFirstName" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Middle name" name="motherMiddleName" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Last name" name="motherLastName" {...f} /></div>
+
+                  <div className="md:col-span-4"><Field label="Suffix" name="motherSuffix" placeholder="Jr., III" {...f} /></div>
+                  <div className="md:col-span-4"><Select label="Status" name="motherStatus" options={LIVING} {...p} /></div>
+                  <div className="md:col-span-4"><Field label="Contact number" type="tel" name="motherContact" {...f} /></div>
+
+                  <div className="md:col-span-12"><Field label="Occupation" name="motherOccupation" {...f} /></div>
+                </div>
+
+                <SubHeading>Guardian's Details (if any)</SubHeading>
+                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                  <div className="md:col-span-4"><Field label="First name" name="guardianFirstName" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Middle name" name="guardianMiddleName" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Last name" name="guardianLastName" {...f} /></div>
+
+                  <div className="md:col-span-3"><Field label="Suffix" name="guardianSuffix" placeholder="Jr., III" {...f} /></div>
+                  <div className="md:col-span-5"><Field label="Occupation" name="guardianOccupation" {...f} /></div>
+                  <div className="md:col-span-4"><Field label="Contact number" type="tel" name="guardianContact" {...f} /></div>
+                </div>
+              </div>
+            )}
+
+            {step === 5 && (
+              <div className="space-y-5 md:space-y-6">
+                <SectionHeading>Family Background</SectionHeading>
+                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                  <div className="md:col-span-4"><Select label="Who supports your education?" name="support" options={SUPPORT} {...p} /></div>
+                  <div className="md:col-span-4"><Select label="Parents' joint monthly income" name="parentsIncome" options={INCOME} {...p} /></div>
+                  <div className="md:col-span-4"><Select label="While studying, will you live in" name="livingIn" options={LIVING_IN} {...p} /></div>
+
+                  <div className="md:col-span-4"><Select label="Daily transportation expense" name="dailyTranspoExpense" options={TRANSPO} {...p} /></div>
+                  <div className="md:col-span-4"><Field label="Number of siblings" type="number" min="0" name="noSiblings" {...f} /></div>
+                  <div className="md:col-span-4"><Select label="Ordinal position" name="ordinalPosition" options={ORDINAL} {...p} /></div>
+                </div>
+              </div>
+            )}
+
+            {step === 6 && (
+              <div className="space-y-5 md:space-y-6">
+                <SectionHeading>Program and Education</SectionHeading>
+                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                  <div className="md:col-span-6"><Field label="High school graduated" name="highschoolGraduated" {...f} /></div>
+                  <div className="md:col-span-6"><Select label="Private or public" name="pubprivHS" options={PUBPRIV} {...p} /></div>
+
+                  <div className="md:col-span-6"><Field label="School address" name="schoolAddress" {...f} /></div>
+                  <div className="md:col-span-6">
+                    <Field
+                      label="4th year HS final GWA"
+                      type="number"
+                      step="0.01"
+                      name="hsFinalGWA"
+                      placeholder="e.g. 88.50"
+                      {...f}
+                    />
+                  </div>
+                </div>
+
+                <SectionHeading>Achievements, hobbies &amp; interests</SectionHeading>
+                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                  <div className="md:col-span-6"><Area label="Awards / honors received" name="awardsHonors" {...f} /></div>
+                  <div className="md:col-span-6"><Area label="Career / work you want to pursue" name="futureCareer" {...f} /></div>
+                  
+                  <div className="md:col-span-6"><Area label="Hobbies / sports / interests" name="hobbiesInterests" {...f} /></div>
+                  <div className="md:col-span-6"><Area label="Academic clubs / extracurriculars" name="academicClubsExtracurr" {...f} /></div>
+                </div>
+              </div>
             )}
           </div>
-        )}
 
-        {step === 4 && (
-          <div className="stepContent">
-            <h4 className="sectionHeading">Family Information</h4>
-
-            <h5 className="subSectionHeading" style={{ ...subHeading, marginTop: 0 }}>Father's Details</h5>
-            <div className="formRow split3">
-              <Text label="First Name" name="fatherFirstName" {...f} />
-              <Text label="Middle Name" name="fatherMiddleName" {...f} />
-              <Text label="Last Name" name="fatherLastName" {...f} />
-            </div>
-            <div className="formRow split2">
-              <Text label="Suffix" name="fatherSuffix" placeholder="Jr., III" {...f} />
-              <Pick label="Status" name="fatherStatus" options={LIVING} {...p} />
-            </div>
-            <div className="formRow split2">
-              <Text label="Occupation" name="fatherOccupation" {...f} />
-              <Text label="Contact Number" name="fatherContact" {...f} />
-            </div>
-
-            <h5 className="subSectionHeading" style={subHeading}>Mother's Details</h5>
-            <div className="formRow split3">
-              <Text label="First Name" name="motherFirstName" {...f} />
-              <Text label="Middle Name" name="motherMiddleName" {...f} />
-              <Text label="Last Name" name="motherLastName" {...f} />
-            </div>
-            <div className="formRow split2">
-              <Text label="Suffix" name="motherSuffix" placeholder="Jr., III" {...f} />
-              <Pick label="Status" name="motherStatus" options={LIVING} {...p} />
-            </div>
-            <div className="formRow split2">
-              <Text label="Occupation" name="motherOccupation" {...f} />
-              <Text label="Contact Number" name="motherContact" {...f} />
-            </div>
-
-            <h5 className="subSectionHeading" style={subHeading}>Guardian's Details (if any)</h5>
-            <div className="formRow split3">
-              <Text label="First Name" name="guardianFirstName" {...f} />
-              <Text label="Middle Name" name="guardianMiddleName" {...f} />
-              <Text label="Last Name" name="guardianLastName" {...f} />
-            </div>
-            <div className="formRow split3">
-              <Text label="Suffix" name="guardianSuffix" placeholder="Jr., III" {...f} />
-              <Text label="Occupation" name="guardianOccupation" {...f} />
-              <Text label="Contact Number" name="guardianContact" {...f} />
-            </div>
-          </div>
-        )}
-
-        {step === 5 && (
-          <div className="stepContent">
-            <h4 className="sectionHeading">Family Background</h4>
-            <div className="formRow split3">
-              <Pick label="WHO SUPPORTS YOUR EDUCATION?" name="support" options={SUPPORT} {...p} />
-              <Pick label="PARENTS' JOINT MONTHLY INCOME" name="parentsIncome" options={INCOME} {...p} />
-              <Pick label="WHILE STUDYING, WILL YOU LIVE IN" name="livingIn" options={LIVING_IN} {...p} />
-            </div>
-            <div className="formRow split3">
-              <Pick label="DAILY TRANSPORTATION EXPENSE" name="dailyTranspoExpense" options={TRANSPO} {...p} />
-              <div className="formGroup">
-                <label className="formLabel">NUMBER OF SIBLINGS</label>
-                <input type="number" min="0" name="noSiblings" value={form.noSiblings} onChange={handleChange} />
+          {/* Sticky Footer Actions */}
+          <div className="fixed inset-x-0 bottom-0 z-10 border-t !border-line bg-surface px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 md:static md:border-0 md:bg-transparent md:p-0">
+            <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-2 lg:pl-[18rem]">
+              <div>
+                {step > 1 && (
+                  <Button variant="ghost" onClick={() => goTo(step - 1)} disabled={saving} className="md:h-12">
+                    <BiLeftArrowAlt className="text-lg" /> Back
+                  </Button>
+                )}
               </div>
-              <Pick label="ORDINAL POSITION" name="ordinalPosition" options={ORDINAL} {...p} />
-            </div>
-          </div>
-        )}
-
-        {step === 6 && (
-          <div className="stepContent">
-            <h4 className="sectionHeading">Program and Education</h4>
-            <div className="formRow split2">
-              <Text label="HIGH SCHOOL GRADUATED" name="highschoolGraduated" {...f} />
-              <Pick label="PRIVATE OR PUBLIC" name="pubprivHS" options={PUBPRIV} {...p} />
-            </div>
-            <div className="formRow split2">
-              <Text label="SCHOOL ADDRESS" name="schoolAddress" {...f} />
-              <div className="formGroup">
-                <label className="formLabel">4TH YEAR HS FINAL GWA</label>
-                <input type="number" step="0.01" name="hsFinalGWA" value={form.hsFinalGWA} onChange={handleChange} placeholder="e.g. 88.50" />
+              <div className="flex items-center gap-2">
+                {isDirty && !saving && (
+                  <Button variant="secondary" onClick={handleDiscard} title="Discard changes" className="md:h-12">
+                    <BiUndo className="text-lg" /> Discard
+                  </Button>
+                )}
+                {step < totalSteps ? (
+                  <Button variant="primary" onClick={() => goTo(step + 1)} className="md:h-12 md:px-6">
+                    Next <BiRightArrowAlt className="text-lg" />
+                  </Button>
+                ) : (
+                  <Button variant="primary" onClick={handleSave} disabled={saving || !isDirty} loading={saving} className="md:h-12 md:px-6">
+                    {!saving && <BiSave className="text-lg" />}
+                    {saving ? 'Saving…' : 'Save changes'}
+                  </Button>
+                )}
               </div>
             </div>
-
-            <h4 className="sectionHeading" style={{ marginTop: '20px' }}>Achievements, Hobbies &amp; Interests</h4>
-            <div className="formRow split2">
-              <Area label="AWARDS / HONORS RECEIVED" name="awardsHonors" {...f} />
-              <Area label="CAREER / WORK YOU WANT TO PURSUE" name="futureCareer" {...f} />
-            </div>
-            <div className="formRow split2">
-              <Area label="HOBBIES / SPORTS / INTERESTS" name="hobbiesInterests" {...f} />
-              <Area label="ACADEMIC CLUBS / EXTRACURRICULARS" name="academicClubsExtracurr" {...f} />
-            </div>
           </div>
-        )}
-      </div>
-
-      <div className="SProfileNav">
-        <div>
-          {step > 1 && (
-            <button type="button" className="cancelBtn" onClick={() => goTo(step - 1)} disabled={saving}>
-              <BiLeftArrowAlt style={{ marginRight: '5px', fontSize: '1.2rem' }} /> BACK
-            </button>
-          )}
         </div>
-
-        <div className="flex gap-2 items-center">
-          {isDirty && !saving && (
-            <button type="button" className="cancelBtn" onClick={handleDiscard} title="Discard Changes">
-              <BiUndo style={{ marginRight: '5px', fontSize: '1.2rem' }} /> DISCARD
-            </button>
-          )}
-
-          {step < totalSteps ? (
-            <button type="button" className="submitBtn" onClick={() => goTo(step + 1)}>
-              NEXT <BiRightArrowAlt style={{ marginLeft: '5px', fontSize: '1.2rem' }} />
-            </button>
-          ) : (
-            <button type="button" className="submitBtn" onClick={handleSave} disabled={saving || !isDirty}>
-              {saving ? 'SAVING...' : <><BiSave style={{ marginRight: '5px', fontSize: '1.2rem' }} /> SAVE CHANGES</>}
-            </button>
-          )}
-        </div>
-      </div>
 
       </div>
 

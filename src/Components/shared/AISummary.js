@@ -149,7 +149,7 @@ export default function AISummary() {
   }
 
   return (
-    <section className="flex flex-col rounded-panel border !border-line bg-surface p-4 shadow-lift sm:p-5">
+    <section className="flex flex-col rounded-panel border !border-line bg-surface p-4 ">
       <header className="mb-3 flex items-center justify-between gap-3">
         <div className="min-w-0 flex items-center gap-2">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-ctl bg-brand-soft text-brand-ink">

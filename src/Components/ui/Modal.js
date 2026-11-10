@@ -90,7 +90,7 @@ export default function Modal({
           aria-describedby={description ? descId : undefined}
           onClick={(e) => e.stopPropagation()}
           className={cx(
-            'relative flex w-full flex-col bg-surface shadow-lift focus:outline-none',
+            'relative flex w-full flex-col overflow-hidden bg-surface shadow-lift focus:outline-none', // <-- FIXED: Added overflow-hidden
             'h-full rounded-none md:h-auto md:max-h-[min(90dvh,820px)] md:rounded-panel',
             sizeClass
           )}

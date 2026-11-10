@@ -1,25 +1,24 @@
 const db = require('../config/db');
 
+// "1,2" (or a legacy "{1,2}") -> ['1', '2']. getAll and getById each had their own
+// copy of this parsing, and only getById handled the braces.
+const parsePrereqTokens = (value) =>
+  String(value ?? '').replace(/[{}]/g, '').split(',').map((s) => s.trim()).filter(Boolean);
+
+const isNumericToken = (t) => /^\d+$/.test(t);
+
+const toPrereqString = (prerequisites) =>
+  Array.isArray(prerequisites) ? prerequisites.join(',') : prerequisites || null;
+
+// Every method that writes takes an optional `client` so it can join a transaction.
 class CourseModel {
-   static async getAll(includeArchived = false) {
-    const result = await db.query(`
-      SELECT 
-        c.course_id,
-        c.course_code,
-        c.course_name,
-        c.lec_units,
-        c.lab_units,
-        c.total_units,
-        c.course_desc,
-        c.is_active,
-        c.is_archived,
-        c.archived_at,
-        c.created_at,
-        c.updated_at,
-        c.prerequisites,
-        c.grading_scheme,
+  static async getAll(includeArchived = false) {
+    const { rows } = await db.query(`
+      SELECT
+        c.course_id, c.course_code, c.course_name, c.lec_units, c.lab_units, c.total_units,
+        c.course_desc, c.is_active, c.is_archived, c.archived_at, c.created_at, c.updated_at,
+        c.prerequisites, c.grading_scheme,
         array_agg(DISTINCT p.program_abbr) FILTER (WHERE p.program_abbr IS NOT NULL) AS program_abbrs,
-        
         (
           SELECT json_agg(json_build_object(
             'curriculum_id', cc2.curriculum_id,
@@ -33,7 +32,6 @@ class CourseModel {
           LEFT JOIN semester s2 ON cc2.semester_id = s2.semester_id
           WHERE cc2.course_id = c.course_id
         ) AS assignments
-
       FROM courses c
       LEFT JOIN curriculum_courses cc ON c.course_id = cc.course_id
       LEFT JOIN curricula cur ON cc.curriculum_id = cur.curriculum_id
@@ -43,188 +41,140 @@ class CourseModel {
       ORDER BY c.course_code ASC
     `);
 
-    const rows = result.rows;
-    const allPrereqTokens = new Set();
-    const parsed = rows.map((row) => {
-      const str = (row.prerequisites || '').trim();
-      if (!str) return { ...row, prerequisite_codes: '' };
+    // Prerequisites are stored as ids ("1,2"); show their course codes alongside.
+    const tokens = rows.map((r) => parsePrereqTokens(r.prerequisites));
+    const ids = [...new Set(tokens.flat().filter(isNumericToken).map(Number))];
 
-      const parts = str.split(',').map((s) => s.trim()).filter(Boolean);
-      parts.forEach((p) => allPrereqTokens.add(p));
-      return { ...row, _prereqParts: parts };
-    });
-
-    const numericIds = [];
-    const stringCodes = [];
-    for (const token of allPrereqTokens) {
-      if (/^\d+$/.test(token)) numericIds.push(Number(token));
-      else stringCodes.push(token);
-    }
-
-    const idToCode = new Map();
-    if (numericIds.length > 0) {
-      const idRes = await db.query(
-        `SELECT course_id, course_code FROM courses WHERE course_id = ANY($1::int[])`,
-        [numericIds]
+    let idToCode = new Map();
+    if (ids.length > 0) {
+      const { rows: found } = await db.query(
+        'SELECT course_id, course_code FROM courses WHERE course_id = ANY($1::int[])',
+        [ids]
       );
-      idRes.rows.forEach((r) => idToCode.set(String(r.course_id), r.course_code));
+      idToCode = new Map(found.map((r) => [String(r.course_id), r.course_code]));
     }
 
-    for (const code of stringCodes) idToCode.set(code, code);
-
-    return parsed.map((row) => {
-      const { _prereqParts, ...clean } = row;
-      const codes = (_prereqParts || [])
-        .map((tok) => idToCode.get(tok) || tok)
-        .filter(Boolean);
-      return { ...clean, prerequisite_codes: codes.join(', ') };
-    });
+    return rows.map((row, i) => ({
+      ...row,
+      prerequisite_codes: tokens[i].map((t) => idToCode.get(t) || t).join(', '),
+    }));
   }
 
   static async getById(courseId) {
-    const courseResult = await db.query(`
-      SELECT 
-        c.course_id,
-        c.course_code,
-        c.course_name,
-        c.lec_units,
-        c.lab_units,
-        c.total_units,
-        c.course_desc,
-        c.is_active,
-        c.is_archived,
-        c.archived_at,
-        c.prerequisites,
-        c.grading_scheme,
-        c.created_at,
-        c.updated_at
-      FROM courses c
-      WHERE c.course_id = $1
-    `, [courseId]);
-
-    const course = courseResult.rows[0];
+    const { rows } = await db.query('SELECT * FROM courses WHERE course_id = $1', [courseId]);
+    const course = rows[0];
     if (!course) return null;
 
-    if (course.prerequisites) {
-      let prereqStr = course.prerequisites;
-      prereqStr = prereqStr.replace(/^{|}$/g, '');
-      const parts = prereqStr.split(',').map(s => s.trim()).filter(Boolean);
-      const idsOrCodes = parts.map(p => {
-        const num = Number(p);
-        return isNaN(num) ? p : num;
-      });
-      const numericIds = idsOrCodes.filter(p => typeof p === 'number');
-      const stringCodes = idsOrCodes.filter(p => typeof p === 'string');
-      let allIds = [...numericIds];
-      if (stringCodes.length > 0) {
-        const placeholders = stringCodes.map((_, i) => `$${i+1}`).join(',');
-        const res = await db.query(
-          `SELECT course_id FROM courses WHERE course_code IN (${placeholders})`,
-          stringCodes
-        );
-        const codeIds = res.rows.map(r => r.course_id);
-        allIds = [...allIds, ...codeIds];
-      }
-      course.prerequisites = allIds;
-    } else {
-      course.prerequisites = [];
-    }
+    const [prerequisites, assignments] = await Promise.all([
+      CourseModel.resolvePrerequisiteIds(course.prerequisites),
+      CourseModel.getAssignments(courseId),
+    ]);
+    return { ...course, prerequisites, assignments };
+  }
 
-    const assignments = await this.getAssignments(courseId);
-    course.assignments = assignments;
+  /** "1,2" or a mix of ids and course codes -> array of course ids. */
+  static async resolvePrerequisiteIds(value) {
+    const tokens = parsePrereqTokens(value);
+    const ids = tokens.filter(isNumericToken).map(Number);
+    const codes = tokens.filter((t) => !isNumericToken(t));
+    if (codes.length === 0) return ids;
 
-    return course;
+    const { rows } = await db.query(
+      'SELECT course_id FROM courses WHERE course_code = ANY($1::text[])',
+      [codes]
+    );
+    return [...ids, ...rows.map((r) => r.course_id)];
   }
 
   static async getAssignments(courseId) {
-    const result = await db.query(`
-      SELECT 
-        cc.curriculum_id,
-        cc.year_level,
-        cc.semester_id,
-        cur.program_id,
-        p.program_name,
-        p.program_abbr,
-        cur.version_name,
-        cur.start_year,
-        s.semester_label
+    const { rows } = await db.query(`
+      SELECT
+        cc.curriculum_id, cc.year_level, cc.semester_id,
+        cur.program_id, p.program_name, p.program_abbr,
+        cur.version_name, cur.start_year, s.semester_label
       FROM curriculum_courses cc
       LEFT JOIN curricula cur ON cc.curriculum_id = cur.curriculum_id
       LEFT JOIN programs p ON cur.program_id = p.program_id
       LEFT JOIN semester s ON cc.semester_id = s.semester_id
       WHERE cc.course_id = $1
     `, [courseId]);
-    return result.rows;
+    return rows;
   }
 
   static async getByCode(courseCode) {
-    const result = await db.query(`
-      SELECT * FROM courses WHERE course_code = $1
-    `, [courseCode]);
-    return result.rows[0];
+    const { rows } = await db.query('SELECT * FROM courses WHERE course_code = $1', [courseCode]);
+    return rows[0];
   }
 
-  static async create(courseData) {
-    const { course_code, course_name, lec_units, lab_units, course_desc, is_active, prerequisites } = courseData;
-    const prereqStr = Array.isArray(prerequisites) ? prerequisites.join(',') : prerequisites || null;
-    const result = await db.query(`
-      INSERT INTO courses (course_code, course_name, lec_units, lab_units, course_desc, is_active, prerequisites)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+  // total_units used to be left NULL on every course; it is now lec + lab.
+  static async create(data, client = db) {
+    const { course_code, course_name, lec_units, lab_units, course_desc, is_active, prerequisites } = data;
+    const { rows } = await client.query(`
+      INSERT INTO courses
+        (course_code, course_name, lec_units, lab_units, total_units, course_desc, is_active, prerequisites)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
-    `, [course_code, course_name, lec_units, lab_units, course_desc, is_active, prereqStr]);
-    return result.rows[0];
+    `, [course_code, course_name, lec_units, lab_units, (lec_units || 0) + (lab_units || 0),
+        course_desc, is_active, toPrereqString(prerequisites)]);
+    return rows[0];
   }
 
-  static async update(courseId, courseData) {
-    const { course_code, course_name, lec_units, lab_units, course_desc, prerequisites, grading_scheme } = courseData;
-    const prereqStr = Array.isArray(prerequisites) ? prerequisites.join(',') : prerequisites || null;
-    const result = await db.query(`
+  static async update(courseId, data, client = db) {
+    const { course_code, course_name, lec_units, lab_units, course_desc, prerequisites, grading_scheme } = data;
+    const { rows } = await client.query(`
       UPDATE courses
-      SET course_code = $1,
-          course_name = $2,
-          lec_units = $3,
-          lab_units = $4,
-          course_desc = $5,
-          prerequisites = $6,
-          grading_scheme = $7,
-          updated_at = NOW()
-      WHERE course_id = $8
-      RETURNING *
-    `, [course_code, course_name, lec_units, lab_units, course_desc, prereqStr, grading_scheme || null, courseId]);
-    return result.rows[0];
+         SET course_code = $1, course_name = $2, lec_units = $3, lab_units = $4,
+             total_units = $5, course_desc = $6, prerequisites = $7, grading_scheme = $8,
+             updated_at = NOW()
+       WHERE course_id = $9
+       RETURNING *
+    `, [course_code, course_name, lec_units, lab_units, (lec_units || 0) + (lab_units || 0),
+        course_desc, toPrereqString(prerequisites), grading_scheme || null, courseId]);
+    return rows[0] || null;
   }
 
-  // Soft-delete: mark as archived, don't actually remove the row
-  static async archive(courseId) {
-    const result = await db.query(`
-      UPDATE courses
-      SET is_archived = true, archived_at = NOW(), updated_at = NOW()
-      WHERE course_id = $1
-      RETURNING *
+  // Soft delete: the row stays, so grades and curricula that point to it keep working.
+  static async archive(courseId, client = db) {
+    const { rows } = await client.query(`
+      UPDATE courses SET is_archived = true, archived_at = NOW(), updated_at = NOW()
+       WHERE course_id = $1 RETURNING *
     `, [courseId]);
-    return result.rows[0] || null;
+    return rows[0] || null;
   }
 
-  // Restore from archive
-  static async restore(courseId) {
-    const result = await db.query(`
-      UPDATE courses
-      SET is_archived = false, archived_at = NULL, updated_at = NOW()
-      WHERE course_id = $1
-      RETURNING *
+  static async restore(courseId, client = db) {
+    const { rows } = await client.query(`
+      UPDATE courses SET is_archived = false, archived_at = NULL, updated_at = NOW()
+       WHERE course_id = $1 RETURNING *
     `, [courseId]);
-    return result.rows[0] || null;
+    return rows[0] || null;
   }
 
-  static async addToCurriculum(curriculumId, courseId, yearLevel, semesterId) {
-    const result = await db.query(`
+  static async addToCurriculum(curriculumId, courseId, yearLevel, semesterId, client = db) {
+    const { rows } = await client.query(`
       INSERT INTO curriculum_courses (curriculum_id, course_id, year_level, semester_id)
       VALUES ($1, $2, $3, $4)
-      ON CONFLICT (curriculum_id, course_id) DO UPDATE 
-      SET year_level = EXCLUDED.year_level, semester_id = EXCLUDED.semester_id
+      ON CONFLICT (curriculum_id, course_id) DO UPDATE
+        SET year_level = EXCLUDED.year_level, semester_id = EXCLUDED.semester_id, updated_at = NOW()
       RETURNING id
     `, [curriculumId, courseId, yearLevel, semesterId]);
-    return result.rows[0];
+    return rows[0];
+  }
+
+  /**
+   * Make the course's curriculum assignments exactly `assignments`.
+   * Removes only the ones no longer listed and upserts the rest, instead of
+   * deleting everything and re-inserting, so existing rows keep their ids.
+   */
+  static async replaceAssignments(courseId, assignments, client = db) {
+    const keep = assignments.map((a) => a.curriculum_id);
+    await client.query(
+      'DELETE FROM curriculum_courses WHERE course_id = $1 AND curriculum_id <> ALL($2::int[])',
+      [courseId, keep]
+    );
+    for (const a of assignments) {
+      await CourseModel.addToCurriculum(a.curriculum_id, courseId, a.year_level, a.semester_id, client);
+    }
   }
 }
 
