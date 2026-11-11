@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { BiLeftArrowAlt, BiRightArrowAlt, BiSave, BiUndo } from 'react-icons/bi';
-
+import React, { useEffect, useState, useRef } from 'react';
+import { BiLeftArrowAlt, BiRightArrowAlt, BiSave, BiUndo, BiCamera, BiTrash, BiBookAlt, BiBuildings, BiMapPin, BiPhone } from 'react-icons/bi';
 import TextField from '../../Components/ui/Textfield';
 import Button from '../../Components/ui/Button';
 import Alert from '../../Components/ui/Alert';
 import ConfirmationModal from '../../Components/shared/ConfirmationModal';
-import Avatar from '../../Components/ui/Avatar';
+import PhotoCropper from '../../Components/shell/Profile/PhotoCropper';
+import useAvatar from '../../Components/shell/Profile/UseAvatar';
+import Dropdown from '../../Components/shared/Dropdown';
 
 const STEPS = [
   'Basic Details',
@@ -15,6 +16,10 @@ const STEPS = [
   'Family Background',
   'Education & Achievements',
 ];
+
+const ACCEPT = 'image/png,image/jpeg,image/webp';
+const ACCEPTED_TYPES = ACCEPT.split(',');
+const MAX_FILE_BYTES = 15 * 1024 * 1024;
 
 const opt = (...vals) => vals.map((v) => (Array.isArray(v) ? { value: v[0], label: v[1] } : { value: v, label: v }));
 const BLANK = { value: '', label: '-- Select --' };
@@ -148,9 +153,7 @@ const Field = ({ label, name, form, onChange, ...rest }) => (
 
 const Area = ({ label, name, form, onChange }) => (
   <div className="space-y-1.5">
-    <label htmlFor={`field-${name}`} className="block text-sm font-medium text-ink md:text-base">
-      {label}
-    </label>
+    <label htmlFor={`field-${name}`} className="block text-sm font-medium text-ink md:text-base">{label}</label>
     <textarea
       id={`field-${name}`}
       rows={3}
@@ -165,37 +168,24 @@ const Area = ({ label, name, form, onChange }) => (
 const Select = ({ label, name, form, setField, options }) => {
   const current = form[name];
   const opts = current && !options.some((o) => o.value === current) ? [{ value: current, label: current }, ...options] : options;
+  
   return (
     <div className="space-y-1.5">
-      <label htmlFor={`field-${name}`} className="block text-sm font-medium text-ink md:text-base">
-        {label}
-      </label>
-      <select
-        id={`field-${name}`}
-        name={name}
-        value={current}
-        onChange={(e) => setField(name, e.target.value)}
-        className="h-12 w-full rounded-ctl bg-surface-2 px-3.5 text-base text-ink ring-1 ring-line-strong transition-shadow focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 md:h-14 md:text-lg md:px-4 md:bg-surface"
-      >
-        {opts.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      <label htmlFor={`field-${name}`} className="block text-sm font-medium text-ink md:text-base">{label}</label>
+      <div className="md:[&_div[role='button']]:h-14 md:[&_div[role='button']]:text-lg md:[&_div[role='button']]:px-4 md:[&_div[role='button']]:bg-surface">
+        <Dropdown
+          options={opts}
+          value={current}
+          onChange={(val) => setField(name, val)}
+          placeholder="-- Select --"
+        />
+      </div>
     </div>
   );
 };
 
-const SectionHeading = ({ children }) => (
-  <h3 className="mb-4 mt-2 font-display text-lg font-semibold text-ink md:text-xl">{children}</h3>
-);
-
-const SubHeading = ({ children }) => (
-  <h4 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-ink-3">{children}</h4>
-);
-
-/* ---------------- Component ---------------- */
+const SectionHeading = ({ children }) => <h3 className="mb-4 mt-2 font-display text-lg font-semibold text-ink md:text-xl">{children}</h3>;
+const SubHeading = ({ children }) => <h4 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-ink-3">{children}</h4>;
 
 function SProfile() {
   const [form, setForm] = useState(null);
@@ -207,9 +197,15 @@ function SProfile() {
   const [modal, setModal] = useState({ isOpen: false });
   const scrollRef = useRef(null);
 
+  // Avatar logic
+  const { src, onError, setAvatarPath } = useAvatar();
+  const fileInput = useRef(null);
+  const [cropFile, setCropFile] = useState(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+
   const totalSteps = STEPS.length;
   const getToken = () => sessionStorage.getItem('token') || localStorage.getItem('token');
-
   const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm);
 
   useEffect(() => {
@@ -235,25 +231,72 @@ function SProfile() {
     };
   }, []);
 
+  // --- Avatar Handlers ---
+  const handleAvatarFile = (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setModal({ isOpen: true, title: 'Invalid File', message: 'Please choose a PNG, JPEG or WebP image.', variant: 'danger', isAlert: true, onConfirm: () => setModal({ isOpen: false }), onCancel: () => setModal({ isOpen: false }) });
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      setModal({ isOpen: true, title: 'File Too Large', message: 'That photo is too large. Please choose one under 15 MB.', variant: 'danger', isAlert: true, onConfirm: () => setModal({ isOpen: false }), onCancel: () => setModal({ isOpen: false }) });
+      return;
+    }
+    setCropFile(file);
+  };
+
+  const handleUploadAvatar = async (image) => {
+    setCropFile(null);
+    setAvatarBusy(true);
+    setAvatarPreview(image);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/avatars/me`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ image }),
+      });
+      const body = await res.json();
+      if (!res.ok || !body.success) throw new Error(body.message || 'Upload failed.');
+      setAvatarPath(body.avatarUrl);
+    } catch (err) {
+      setModal({ isOpen: true, title: 'Upload Failed', message: err.message, variant: 'danger', isAlert: true, onConfirm: () => setModal({ isOpen: false }), onCancel: () => setModal({ isOpen: false }) });
+    } finally {
+      setAvatarPreview(null);
+      setAvatarBusy(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    setAvatarBusy(true);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/avatars/me`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const body = await res.json();
+      if (!res.ok || !body.success) throw new Error(body.message || 'Remove failed.');
+      setAvatarPath(null);
+    } catch (err) {
+      setModal({ isOpen: true, title: 'Remove Failed', message: err.message, variant: 'danger', isAlert: true, onConfirm: () => setModal({ isOpen: false }), onCancel: () => setModal({ isOpen: false }) });
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
   const closeModal = () => setModal({ isOpen: false });
   const openAlert = (title, message, variant = 'info') =>
     setModal({ isOpen: true, title, message, variant, isAlert: true, onConfirm: closeModal, onCancel: closeModal });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-
     if (name === 'sameAsPermanent') {
       setForm((prev) => ({
         ...prev,
         sameAsPermanent: checked,
         ...(checked
-          ? {
-              provHouseNo: prev.permHouseNo,
-              provStreet: prev.permStreet,
-              provBarangay: prev.permBarangay,
-              provCity: prev.permCity,
-              provProvince: prev.permProvince,
-            }
+          ? { provHouseNo: prev.permHouseNo, provStreet: prev.permStreet, provBarangay: prev.permBarangay, provCity: prev.permCity, provProvince: prev.permProvince }
           : {}),
       }));
       return;
@@ -419,16 +462,17 @@ function SProfile() {
 
   if (loading) {
     return (
-      <div className="ax space-y-4 p-4 md:p-6 lg:flex lg:gap-6">
-        <div className="hidden w-64 shrink-0 space-y-4 lg:block">
-          <div className="h-48 animate-pulse rounded-panel bg-surface-2" />
-          <div className="h-64 animate-pulse rounded-panel bg-surface-2" />
-        </div>
-        <div className="flex-1 space-y-4 rounded-panel border !border-line bg-surface p-6">
-          <div className="h-8 w-48 animate-pulse rounded bg-surface-2" />
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-14 w-full animate-pulse rounded-ctl bg-surface-2" />
-          ))}
+      <div className="InnerContainer">
+        <div className="ax flex w-full gap-6">
+          <div className="hidden w-72 shrink-0 space-y-4 lg:block">
+            <div className="h-80 animate-pulse rounded-panel bg-surface-2" />
+          </div>
+          <div className="flex-1 space-y-4 rounded-panel border !border-line bg-surface p-6">
+            <div className="h-8 w-48 animate-pulse rounded bg-surface-2" />
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-14 w-full animate-pulse rounded-ctl bg-surface-2" />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -436,36 +480,110 @@ function SProfile() {
 
   if (loadError || !form) {
     return (
-      <div className="ax p-4">
-        <Alert tone="danger">{loadError || 'Error loading profile.'}</Alert>
+      <div className="InnerContainer">
+        <div className="ax p-4 w-full">
+          <Alert tone="danger">{loadError || 'Error loading profile.'}</Alert>
+        </div>
       </div>
     );
   }
 
   const f = { form, onChange: handleChange };
   const p = { form, setField };
+  const shown = avatarPreview || src;
+  const initial = (form.firstName || '?').trim().charAt(0).toUpperCase();
 
   return (
-    <div className="ax min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
-      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-4 py-6 pb-32 md:pb-6 lg:flex-row lg:px-8">
+    <div className="InnerContainer">
+      <div className="ax flex w-full flex-1 min-h-0 flex-col gap-4 md:gap-6 lg:flex-row pb-4">
         
-        {/* LEFT COLUMN: Identity & Stepper Navigation */}
-        <div className="w-full shrink-0 lg:w-64 flex flex-col gap-4">
-          {/* Profile Card */}
-          <div className="flex flex-row items-center gap-4 rounded-panel border !border-line bg-surface p-4 sm:p-5 lg:flex-col lg:text-center">
-            <div className="shrink-0">
-              <Avatar first={form.firstName} last={form.lastName} size="lg" className="h-16 w-16 text-xl lg:h-20 lg:w-20" />
+        {/* LEFT COLUMN: Identity Card */}
+
+        <div className="w-full shrink-0 lg:w-72 flex flex-col gap-4 h-full">
+          <div className="flex h-full flex-col items-center text-center rounded-panel border !border-line bg-surface p-5">
+            
+            {/* Large Centered Picture */}
+            <div className="relative mb-4 h-32 w-32 shrink-0">
+              <div className="h-full w-full overflow-hidden rounded-full ring-4 ring-line bg-surface-2">
+                {shown ? (
+                  <img src={shown} alt="" onError={avatarPreview ? undefined : onError} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="grid h-full w-full place-items-center bg-brand text-5xl font-semibold text-brand-on">
+                    {initial}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="min-w-0 flex-1 lg:w-full">
-              <h2 className="truncate font-semibold text-ink lg:whitespace-normal lg:text-lg">
-                {form.firstName} {form.lastName}
-              </h2>
-              <p className="mt-0.5 text-sm text-ink-3">{form.studentNumber || 'No Student Number'}</p>
+
+            {/* Name & Student Number */}
+            <h2 className="font-display text-xl font-bold text-ink">{form.firstName} {form.lastName}</h2>
+            <p className="mt-1 text-sm text-ink-2 tabular-nums">{form.studentNumber || 'No Student Number'}</p>
+
+            {/* Action Buttons */}
+            <div className="mt-6 w-full space-y-2">
+              <Button 
+                variant="secondary" 
+                className="w-full !border-line" 
+                onClick={() => fileInput.current?.click()}
+                disabled={avatarBusy}
+              >
+                <BiCamera className="text-lg" /> Upload Photo
+              </Button>
+              
+              {src && (
+                <Button 
+                  variant="danger" 
+                  className="w-full" 
+                  onClick={handleRemoveAvatar}
+                  disabled={avatarBusy}
+                >
+                  <BiTrash className="text-lg" /> Remove Photo
+                </Button>
+              )}
+              
+              <input ref={fileInput} type="file" accept={ACCEPT} onChange={handleAvatarFile} className="hidden" />
+            </div>
+
+            {/* Additional Context Fields */}
+            <div className="mt-8 w-full space-y-4 text-sm text-left">
+              <div className="flex flex-col gap-1 border-t !border-line pt-4">
+                <span className="font-semibold text-brand flex items-center gap-2">
+                  <BiBookAlt className="text-lg text-brand" /> Program
+                </span>
+                <span className="text-ink">{form.program || 'N/A'}</span>
+              </div>
+              
+              <div className="flex flex-col gap-1 border-t !border-line pt-4">
+                <span className="font-semibold text-brand flex items-center gap-2">
+                  <BiBuildings className="text-lg text-brand" /> Year Level
+                </span>
+                <span className="text-ink">{form.yearLevel || 'N/A'}</span>
+              </div>
+              
+              <div className="flex flex-col gap-1 border-t !border-line pt-4">
+                <span className="font-semibold text-brand flex items-center gap-2">
+                  <BiMapPin className="text-lg text-brand" /> Location
+                </span>
+                <span className="text-ink">
+                  {form.permCity ? `${form.permCity}, ${form.permProvince}` : 'N/A'}
+                </span>
+              </div>
+              
+              <div className="flex flex-col gap-1 border-t !border-line pt-4">
+                <span className="font-semibold text-brand flex items-center gap-2">
+                  <BiPhone className="text-lg text-brand" /> Contact No.
+                </span>
+                <span className="text-ink">{form.phoneNumber || 'N/A'}</span>
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Vertical Stepper (desktop) */}
-          <nav className="hidden lg:flex flex-col gap-1 rounded-panel border !border-line bg-surface p-3">
+        {/* RIGHT COLUMN: Fixed Header + Scrollable Form */}
+        <div className="flex-1 min-w-0 flex flex-col gap-4 h-full">
+          
+          {/* HORIZONTAL STEPPER (Fixed at the top) */}
+          <nav className="flex shrink-0 overflow-x-auto rounded-panel border !border-line bg-surface p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {STEPS.map((label, i) => {
               const num = i + 1;
               const active = step === num;
@@ -474,7 +592,7 @@ function SProfile() {
                   key={label}
                   type="button"
                   onClick={() => goTo(num)}
-                  className={`flex items-center gap-3 rounded-ctl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                  className={`flex flex-1 min-w-fit items-center justify-center gap-2 rounded-ctl px-4 py-2.5 text-sm font-medium transition-colors ${
                     active ? 'bg-brand-soft text-brand-ink' : 'text-ink-2 hover:bg-surface-2'
                   }`}
                 >
@@ -483,242 +601,234 @@ function SProfile() {
                   }`}>
                     {num}
                   </span>
-                  <span className="truncate">{label}</span>
+                  <span className="whitespace-nowrap">{label}</span>
                 </button>
               );
             })}
           </nav>
 
-          {/* Mobile Progress bar */}
-          <div className="lg:hidden space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-ink">Step {step} of {totalSteps}</span>
-              <span className="text-ink-3">{STEPS[step - 1]}</span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
-              <div
-                className="h-full rounded-full bg-brand transition-[width] duration-300"
-                style={{ width: `${((step - 1) / (totalSteps - 1)) * 100}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: The Form */}
-        <div className="flex-1 min-w-0 flex flex-col gap-4">
-          <div className="rounded-panel border !border-line bg-surface p-4 sm:p-6 md:p-8">
-            <div className="mb-6 border-b !border-line pb-4">
-              <h2 className="font-display text-2xl font-bold text-ink">{STEPS[step - 1]}</h2>
-            </div>
-
-            {step === 1 && (
-              <div className="space-y-5 md:space-y-6">
-                <SectionHeading>Primary Details</SectionHeading>
-                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
-                  <div className="md:col-span-4"><Field label="First name" name="firstName" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Middle name" name="middleName" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Last name" name="lastName" {...f} /></div>
-                  
-                  <div className="md:col-span-4"><Field label="Suffix" name="suffix" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Student number" name="studentNumber" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="School email" type="email" name="schoolEmail" {...f} /></div>
-                  
-                  <div className="md:col-span-4"><Field label="Program" name="program" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Year level" name="yearLevel" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Section" name="section" {...f} /></div>
-                  
-                  <div className="md:col-span-4"><Field label="Classification" name="classification" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Standing" name="standing" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Sex" name="sex" {...f} /></div>
-                </div>
+          {/* SCROLLABLE FORM AREA (Only this part scrolls) */}
+          <div className="flex-1 min-h-0 overflow-y-auto rounded-panel border !border-line bg-surface [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" ref={scrollRef}>
+            <div className="p-4 sm:p-6 md:p-8">
+              <div className="mb-6 border-b !border-line pb-4">
+                <h2 className="font-display text-2xl font-bold text-brand">{STEPS[step - 1]}</h2>
               </div>
-            )}
 
-            {step === 2 && (
-              <div className="space-y-5 md:space-y-6">
-                <SectionHeading>Personal Information</SectionHeading>
-                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
-                  <div className="md:col-span-4"><Field label="Date of birth" type="date" name="birthDate" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Place of birth" name="placeOfBirth" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Personal email" type="email" name="personalEmail" {...f} /></div>
-
-                  <div className="md:col-span-4"><Field label="Phone (mobile)" type="tel" name="phoneNumber" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Landline" name="landline" {...f} /></div>
-                  <div className="md:col-span-4"><Select label="Civil status" name="civilStatus" options={CIVIL} {...p} /></div>
-
-                  <div className="md:col-span-4"><Field label="Religion" name="religion" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Nationality" name="nationality" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Language / dialect" name="language" {...f} /></div>
-
-                  <div className="md:col-span-4"><Field label="Height" name="height" placeholder="e.g. 170 cm" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Weight" name="weight" placeholder="e.g. 65 kg" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Visual problem" name="visualProblems" placeholder="e.g. N/A or Glasses" {...f} /></div>
+              {step === 1 && (
+                <div className="space-y-5 md:space-y-6">
+                  <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                    <div className="md:col-span-4"><Field label="First name" name="firstName" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Middle name" name="middleName" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Last name" name="lastName" {...f} /></div>
+                    
+                    <div className="md:col-span-4"><Field label="Suffix" name="suffix" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Student number" name="studentNumber" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="School email" type="email" name="schoolEmail" {...f} /></div>
+                    
+                    <div className="md:col-span-4"><Field label="Program" name="program" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Year level" name="yearLevel" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Section" name="section" {...f} /></div>
+                    
+                    <div className="md:col-span-4"><Field label="Classification" name="classification" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Standing" name="standing" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Sex" name="sex" {...f} /></div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {step === 3 && (
-              <div className="space-y-5 md:space-y-6">
-                <SectionHeading>Permanent Address</SectionHeading>
-                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
-                  <div className="md:col-span-4"><Field label="House no. / street" name="permHouseNo" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Subdivision / street" name="permStreet" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Barangay" name="permBarangay" {...f} /></div>
-                  
-                  <div className="md:col-span-6"><Field label="City / municipality" name="permCity" {...f} /></div>
-                  <div className="md:col-span-6"><Field label="Province" name="permProvince" {...f} /></div>
-                </div>
+              {step === 2 && (
+                <div className="space-y-5 md:space-y-6">
+                  <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                    <div className="md:col-span-4"><Field label="Date of birth" type="date" name="birthDate" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Place of birth" name="placeOfBirth" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Personal email" type="email" name="personalEmail" {...f} /></div>
 
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t !border-line mt-6">
-                  <SectionHeading>Provincial Address</SectionHeading>
-                  <label className="flex items-center gap-2 text-sm font-medium text-ink-2">
-                    <input
-                      type="checkbox"
-                      name="sameAsPermanent"
-                      checked={form.sameAsPermanent}
-                      onChange={handleChange}
-                      className="h-5 w-5 rounded border-line-strong text-brand focus:ring-brand/40"
-                    />
-                    Same as permanent address
-                  </label>
+                    <div className="md:col-span-4"><Field label="Phone (mobile)" type="tel" name="phoneNumber" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Landline" name="landline" {...f} /></div>
+                    <div className="md:col-span-4"><Select label="Civil status" name="civilStatus" options={CIVIL} {...p} /></div>
+
+                    <div className="md:col-span-4"><Field label="Religion" name="religion" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Nationality" name="nationality" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Language / dialect" name="language" {...f} /></div>
+
+                    <div className="md:col-span-4"><Field label="Height" name="height" placeholder="e.g. 170 cm" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Weight" name="weight" placeholder="e.g. 65 kg" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Visual problem" name="visualProblems" placeholder="e.g. N/A or Glasses" {...f} /></div>
+                  </div>
                 </div>
-                {!form.sameAsPermanent && (
-                  <div className="space-y-5 md:space-y-6 pt-2">
-                    <div className="grid gap-5 md:grid-cols-12 md:gap-6">
-                      <div className="md:col-span-4"><Field label="House no. / street" name="provHouseNo" {...f} /></div>
-                      <div className="md:col-span-4"><Field label="Subdivision / street" name="provStreet" {...f} /></div>
-                      <div className="md:col-span-4"><Field label="Barangay" name="provBarangay" {...f} /></div>
-                      
-                      <div className="md:col-span-6"><Field label="City / municipality" name="provCity" {...f} /></div>
-                      <div className="md:col-span-6"><Field label="Province" name="provProvince" {...f} /></div>
+              )}
+
+              {step === 3 && (
+                <div className="space-y-5 md:space-y-6">
+                  <SectionHeading>Permanent Address</SectionHeading>
+                  <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                    <div className="md:col-span-4"><Field label="House no. / street" name="permHouseNo" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Subdivision / street" name="permStreet" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Barangay" name="permBarangay" {...f} /></div>
+                    
+                    <div className="md:col-span-6"><Field label="City / municipality" name="permCity" {...f} /></div>
+                    <div className="md:col-span-6"><Field label="Province" name="permProvince" {...f} /></div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t !border-line mt-6">
+                    <SectionHeading>Provincial Address</SectionHeading>
+                    <label className="flex items-center gap-2 text-sm font-medium text-ink-2">
+                      <input
+                        type="checkbox"
+                        name="sameAsPermanent"
+                        checked={form.sameAsPermanent}
+                        onChange={handleChange}
+                        className="h-5 w-5 rounded border-line-strong text-brand focus:ring-brand/40"
+                      />
+                      Same as permanent address
+                    </label>
+                  </div>
+                  {!form.sameAsPermanent && (
+                    <div className="space-y-5 md:space-y-6 pt-2">
+                      <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                        <div className="md:col-span-4"><Field label="House no. / street" name="provHouseNo" {...f} /></div>
+                        <div className="md:col-span-4"><Field label="Subdivision / street" name="provStreet" {...f} /></div>
+                        <div className="md:col-span-4"><Field label="Barangay" name="provBarangay" {...f} /></div>
+                        
+                        <div className="md:col-span-6"><Field label="City / municipality" name="provCity" {...f} /></div>
+                        <div className="md:col-span-6"><Field label="Province" name="provProvince" {...f} /></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {step === 4 && (
+                <div className="space-y-5 md:space-y-6">
+                  <SectionHeading>Family Information</SectionHeading>
+
+                  <SubHeading>Father's Details</SubHeading>
+                  <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                    <div className="md:col-span-4"><Field label="First name" name="fatherFirstName" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Middle name" name="fatherMiddleName" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Last name" name="fatherLastName" {...f} /></div>
+
+                    <div className="md:col-span-4"><Field label="Suffix" name="fatherSuffix" placeholder="Jr., III" {...f} /></div>
+                    <div className="md:col-span-4"><Select label="Status" name="fatherStatus" options={LIVING} {...p} /></div>
+                    <div className="md:col-span-4"><Field label="Contact number" type="tel" name="fatherContact" {...f} /></div>
+
+                    <div className="md:col-span-12"><Field label="Occupation" name="fatherOccupation" {...f} /></div>
+                  </div>
+
+                  <SubHeading>Mother's Details</SubHeading>
+                  <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                    <div className="md:col-span-4"><Field label="First name" name="motherFirstName" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Middle name" name="motherMiddleName" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Last name" name="motherLastName" {...f} /></div>
+
+                    <div className="md:col-span-4"><Field label="Suffix" name="motherSuffix" placeholder="Jr., III" {...f} /></div>
+                    <div className="md:col-span-4"><Select label="Status" name="motherStatus" options={LIVING} {...p} /></div>
+                    <div className="md:col-span-4"><Field label="Contact number" type="tel" name="motherContact" {...f} /></div>
+
+                    <div className="md:col-span-12"><Field label="Occupation" name="motherOccupation" {...f} /></div>
+                  </div>
+
+                  <SubHeading>Guardian's Details (if any)</SubHeading>
+                  <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                    <div className="md:col-span-4"><Field label="First name" name="guardianFirstName" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Middle name" name="guardianMiddleName" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Last name" name="guardianLastName" {...f} /></div>
+
+                    <div className="md:col-span-3"><Field label="Suffix" name="guardianSuffix" placeholder="Jr., III" {...f} /></div>
+                    <div className="md:col-span-5"><Field label="Occupation" name="guardianOccupation" {...f} /></div>
+                    <div className="md:col-span-4"><Field label="Contact number" type="tel" name="guardianContact" {...f} /></div>
+                  </div>
+                </div>
+              )}
+
+              {step === 5 && (
+                <div className="space-y-5 md:space-y-6">
+                  <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                    <div className="md:col-span-4"><Select label="Who supports your education?" name="support" options={SUPPORT} {...p} /></div>
+                    <div className="md:col-span-4"><Select label="Parents' joint monthly income" name="parentsIncome" options={INCOME} {...p} /></div>
+                    <div className="md:col-span-4"><Select label="While studying, will you live in" name="livingIn" options={LIVING_IN} {...p} /></div>
+
+                    <div className="md:col-span-4"><Select label="Daily transportation expense" name="dailyTranspoExpense" options={TRANSPO} {...p} /></div>
+                    <div className="md:col-span-4"><Field label="Number of siblings" type="number" min="0" name="noSiblings" {...f} /></div>
+                    <div className="md:col-span-4"><Select label="Ordinal position" name="ordinalPosition" options={ORDINAL} {...p} /></div>
+                  </div>
+                </div>
+              )}
+
+              {step === 6 && (
+                <div className="space-y-5 md:space-y-6">
+                  <SectionHeading>Program and Education</SectionHeading>
+                  <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                    <div className="md:col-span-6"><Field label="High school graduated" name="highschoolGraduated" {...f} /></div>
+                    <div className="md:col-span-6"><Select label="Private or public" name="pubprivHS" options={PUBPRIV} {...p} /></div>
+
+                    <div className="md:col-span-6"><Field label="School address" name="schoolAddress" {...f} /></div>
+                    <div className="md:col-span-6">
+                      <Field
+                        label="4th year HS final GWA"
+                        type="number"
+                        step="0.01"
+                        name="hsFinalGWA"
+                        placeholder="e.g. 88.50"
+                        {...f}
+                      />
                     </div>
                   </div>
-                )}
-              </div>
-            )}
 
-            {step === 4 && (
-              <div className="space-y-5 md:space-y-6">
-                <SectionHeading>Family Information</SectionHeading>
-
-                <SubHeading>Father's Details</SubHeading>
-                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
-                  <div className="md:col-span-4"><Field label="First name" name="fatherFirstName" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Middle name" name="fatherMiddleName" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Last name" name="fatherLastName" {...f} /></div>
-
-                  <div className="md:col-span-4"><Field label="Suffix" name="fatherSuffix" placeholder="Jr., III" {...f} /></div>
-                  <div className="md:col-span-4"><Select label="Status" name="fatherStatus" options={LIVING} {...p} /></div>
-                  <div className="md:col-span-4"><Field label="Contact number" type="tel" name="fatherContact" {...f} /></div>
-
-                  <div className="md:col-span-12"><Field label="Occupation" name="fatherOccupation" {...f} /></div>
-                </div>
-
-                <SubHeading>Mother's Details</SubHeading>
-                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
-                  <div className="md:col-span-4"><Field label="First name" name="motherFirstName" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Middle name" name="motherMiddleName" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Last name" name="motherLastName" {...f} /></div>
-
-                  <div className="md:col-span-4"><Field label="Suffix" name="motherSuffix" placeholder="Jr., III" {...f} /></div>
-                  <div className="md:col-span-4"><Select label="Status" name="motherStatus" options={LIVING} {...p} /></div>
-                  <div className="md:col-span-4"><Field label="Contact number" type="tel" name="motherContact" {...f} /></div>
-
-                  <div className="md:col-span-12"><Field label="Occupation" name="motherOccupation" {...f} /></div>
-                </div>
-
-                <SubHeading>Guardian's Details (if any)</SubHeading>
-                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
-                  <div className="md:col-span-4"><Field label="First name" name="guardianFirstName" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Middle name" name="guardianMiddleName" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Last name" name="guardianLastName" {...f} /></div>
-
-                  <div className="md:col-span-3"><Field label="Suffix" name="guardianSuffix" placeholder="Jr., III" {...f} /></div>
-                  <div className="md:col-span-5"><Field label="Occupation" name="guardianOccupation" {...f} /></div>
-                  <div className="md:col-span-4"><Field label="Contact number" type="tel" name="guardianContact" {...f} /></div>
-                </div>
-              </div>
-            )}
-
-            {step === 5 && (
-              <div className="space-y-5 md:space-y-6">
-                <SectionHeading>Family Background</SectionHeading>
-                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
-                  <div className="md:col-span-4"><Select label="Who supports your education?" name="support" options={SUPPORT} {...p} /></div>
-                  <div className="md:col-span-4"><Select label="Parents' joint monthly income" name="parentsIncome" options={INCOME} {...p} /></div>
-                  <div className="md:col-span-4"><Select label="While studying, will you live in" name="livingIn" options={LIVING_IN} {...p} /></div>
-
-                  <div className="md:col-span-4"><Select label="Daily transportation expense" name="dailyTranspoExpense" options={TRANSPO} {...p} /></div>
-                  <div className="md:col-span-4"><Field label="Number of siblings" type="number" min="0" name="noSiblings" {...f} /></div>
-                  <div className="md:col-span-4"><Select label="Ordinal position" name="ordinalPosition" options={ORDINAL} {...p} /></div>
-                </div>
-              </div>
-            )}
-
-            {step === 6 && (
-              <div className="space-y-5 md:space-y-6">
-                <SectionHeading>Program and Education</SectionHeading>
-                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
-                  <div className="md:col-span-6"><Field label="High school graduated" name="highschoolGraduated" {...f} /></div>
-                  <div className="md:col-span-6"><Select label="Private or public" name="pubprivHS" options={PUBPRIV} {...p} /></div>
-
-                  <div className="md:col-span-6"><Field label="School address" name="schoolAddress" {...f} /></div>
-                  <div className="md:col-span-6">
-                    <Field
-                      label="4th year HS final GWA"
-                      type="number"
-                      step="0.01"
-                      name="hsFinalGWA"
-                      placeholder="e.g. 88.50"
-                      {...f}
-                    />
+                  <SectionHeading>Achievements, hobbies &amp; interests</SectionHeading>
+                  <div className="grid gap-5 md:grid-cols-12 md:gap-6">
+                    <div className="md:col-span-6"><Area label="Awards / honors received" name="awardsHonors" {...f} /></div>
+                    <div className="md:col-span-6"><Area label="Career / work you want to pursue" name="futureCareer" {...f} /></div>
+                    
+                    <div className="md:col-span-6"><Area label="Hobbies / sports / interests" name="hobbiesInterests" {...f} /></div>
+                    <div className="md:col-span-6"><Area label="Academic clubs / extracurriculars" name="academicClubsExtracurr" {...f} /></div>
                   </div>
                 </div>
-
-                <SectionHeading>Achievements, hobbies &amp; interests</SectionHeading>
-                <div className="grid gap-5 md:grid-cols-12 md:gap-6">
-                  <div className="md:col-span-6"><Area label="Awards / honors received" name="awardsHonors" {...f} /></div>
-                  <div className="md:col-span-6"><Area label="Career / work you want to pursue" name="futureCareer" {...f} /></div>
-                  
-                  <div className="md:col-span-6"><Area label="Hobbies / sports / interests" name="hobbiesInterests" {...f} /></div>
-                  <div className="md:col-span-6"><Area label="Academic clubs / extracurriculars" name="academicClubsExtracurr" {...f} /></div>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
-          {/* Sticky Footer Actions */}
-          <div className="fixed inset-x-0 bottom-0 z-10 border-t !border-line bg-surface px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 md:static md:border-0 md:bg-transparent md:p-0">
-            <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-2 lg:pl-[18rem]">
-              <div>
-                {step > 1 && (
-                  <Button variant="ghost" onClick={() => goTo(step - 1)} disabled={saving} className="md:h-12">
-                    <BiLeftArrowAlt className="text-lg" /> Back
-                  </Button>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {isDirty && !saving && (
-                  <Button variant="secondary" onClick={handleDiscard} title="Discard changes" className="md:h-12">
-                    <BiUndo className="text-lg" /> Discard
-                  </Button>
-                )}
-                {step < totalSteps ? (
-                  <Button variant="primary" onClick={() => goTo(step + 1)} className="md:h-12 md:px-6">
-                    Next <BiRightArrowAlt className="text-lg" />
-                  </Button>
-                ) : (
-                  <Button variant="primary" onClick={handleSave} disabled={saving || !isDirty} loading={saving} className="md:h-12 md:px-6">
-                    {!saving && <BiSave className="text-lg" />}
-                    {saving ? 'Saving…' : 'Save changes'}
-                  </Button>
-                )}
-              </div>
+          {/* FIXED FOOTER (Outside the scroll area) */}
+          <div className="shrink-0 flex w-full items-center justify-between gap-2 pt-2 pb-2">
+            <div>
+              {step > 1 && (
+                <Button variant="ghost" onClick={() => goTo(step - 1)} disabled={saving} className="md:h-12">
+                  <BiLeftArrowAlt className="text-lg" /> Back
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {isDirty && !saving && (
+                <Button variant="secondary" onClick={handleDiscard} title="Discard changes" className="md:h-12">
+                  <BiUndo className="text-lg" /> Discard
+                </Button>
+              )}
+              {step < totalSteps ? (
+                <Button variant="primary" onClick={() => goTo(step + 1)} className="md:h-12 md:px-6">
+                  Next <BiRightArrowAlt className="text-lg" />
+                </Button>
+              ) : (
+                <Button variant="primary" onClick={handleSave} disabled={saving || !isDirty} loading={saving} className="md:h-12 md:px-6">
+                  {!saving && <BiSave className="text-lg" />}
+                  {saving ? 'Saving…' : 'Save changes'}
+                </Button>
+              )}
             </div>
           </div>
         </div>
-
       </div>
+
+      {/* Image Crop Modal */}
+      {cropFile && (
+        <PhotoCropper 
+          file={cropFile} 
+          onCancel={(msg) => {
+            setCropFile(null);
+            if (msg) openAlert('Error', msg, 'danger');
+          }} 
+          onConfirm={handleUploadAvatar} 
+        />
+      )}
 
       <ConfirmationModal
         isOpen={modal.isOpen}

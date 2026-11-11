@@ -1,12 +1,13 @@
 'use strict';
 
-
 /**
- * ============================================================================
- * DocumentModel
- * ============================================================================
- * Data shaping for printable/generated documents.
- * ============================================================================
+ * DocumentModel: assembles the data for printable documents.
+ *
+ *  - Student form       (getStudentFormData)
+ *  - Term grade report  (getTermGradeData)
+ *  - Course outline     (getCourseOutlineData, getCourseOutlineDataByStudent)
+ *
+ * This model only reads. Grade arithmetic lives in services/gradingEngine.js.
  */
 
 const StudentManageModel = require('./studentmanageModel');
@@ -14,102 +15,241 @@ const GradeManageModel = require('./grademanageModel');
 const GradingEngine = require('../services/gradingEngine');
 const db = require('../config/db');
 
-class DocumentModel {
+/** Student-form codes for the "who supports your studies" answer. */
+const SUPPORT_CODES = {
+  Parents: 'PARENTS',
+  Relatives: 'RELATIVES',
+  'Brother or Sister': 'BROTHER/SISTER',
+  Benefactors: 'BENEFACTORS',
+  Scholarship: 'SCHOLARSHIPS',
+};
 
-  // ---------- Helper: build the document object from a context ----------
-  static async _buildFromContext(studentId, context) {
+/** Student-form codes for the daily transportation expense ranges. */
+const TRANSPO_CODES = {
+  '< P50': '<P50',
+  'P51-P100': 'BETWEEN P51-P100',
+  '> P100': '>P100',
+};
+
+const upper = (value) => (value ? value.toUpperCase() : null);
+const emptyScores = () => ({ Prelim: {}, Midterm: {}, Final: {} });
+const unitsOf = (row) => ({
+  lec: row.lec_units || 0,
+  lab: row.lab_units || 0,
+  total: row.total_units || (row.lec_units || 0) + (row.lab_units || 0),
+});
+
+/** Columns shared by the two enrolment-context queries. */
+const CONTEXT_SELECT = `
+  SELECT se.curriculum_id, se.year_level, se.semester_id, se.year_id,
+         sem.semester_label, sec.section_name,
+         f.first_name AS adviser_first_name, f.last_name AS adviser_last_name
+    FROM student_education se
+    LEFT JOIN semester sem ON sem.semester_id = se.semester_id
+    LEFT JOIN section_assignments sa ON sa.assignment_id = se.assignment_id
+    LEFT JOIN sections sec ON sec.section_id = sa.section_id
+    LEFT JOIN faculties f ON f.faculty_id = sa.adviser_id`;
+
+class DocumentModel {
+  // -------------------------------------------------------------------------
+  // Student form
+  // -------------------------------------------------------------------------
+
+  /**
+   * The student's profile with the answer codes the printed form expects.
+   * @param {number} studentId
+   * @returns {Promise<object|null>}
+   */
+  static async getStudentFormData(studentId) {
     const student = await StudentManageModel.getById(studentId);
     if (!student) return null;
 
-    const adviserName = context.adviser_first_name
-      ? `${context.adviser_first_name} ${context.adviser_last_name}`.trim()
-      : null;
+    return {
+      ...student,
+      language_dialects: student.language_dialect,
+      pubpriv_hs: student.pub_priv_hs,
+      father_alive: upper(student.father_status),
+      mother_alive: upper(student.mother_status),
+      support: student.support ? [SUPPORT_CODES[student.support] || student.support.toUpperCase()] : [],
+      parents_income: upper(student.parents_income),
+      living_in: upper(student.living_in),
+      daily_transpo_expense: student.daily_transpo_expense
+        ? (TRANSPO_CODES[student.daily_transpo_expense] || student.daily_transpo_expense.toUpperCase())
+        : null,
+      ordinal_position: upper(student.ordinal_position),
+    };
+  }
 
-    // Guardian info
-    const guardianRes = await db.query(`
-      SELECT first_name, middle_name, last_name, contact_no
-      FROM student_family_members
-      WHERE student_id = $1 AND is_guardian = true
-      LIMIT 1
-    `, [studentId]);
+  /**
+   * student_id for a login account, or null.
+   * @param {number} userId
+   * @returns {Promise<number|null>}
+   */
+  static async findStudentIdByUserId(userId) {
+    const { rows } = await db.query('SELECT student_id FROM students WHERE user_id = $1', [userId]);
+    return rows[0]?.student_id ?? null;
+  }
+
+  // -------------------------------------------------------------------------
+  // Term grade report
+  // -------------------------------------------------------------------------
+
+  /**
+   * Term grade report for one enrolment period.
+   *
+   * The period is the student's current enrolment unless `yearLevel` and/or
+   * `semesterId` are given. If no enrolment matches, the most recent enrolment is
+   * used with the requested period applied to it. Returns null if the student has
+   * no enrolment at all.
+   *
+   * @param {number} studentId
+   * @param {{ yearLevel?: number, semesterId?: number }|null} [period]
+   * @returns {Promise<object|null>}
+   */
+  static async getTermGradeData(studentId, period = null) {
+    const student = await StudentManageModel.getById(studentId);
+    if (!student) return null;
+
+    const context = await this._findEnrolmentContext(studentId, period);
+    if (!context) return null;
+
+    return this._buildTermGradeDocument(student, context);
+  }
+
+  /**
+   * @private
+   * @returns {Promise<object|null>}
+   */
+  static async _findEnrolmentContext(studentId, period) {
+    const conditions = ['se.student_id = $1', 'se.semester_id IS NOT NULL'];
+    const params = [studentId];
+
+    if (period?.yearLevel) {
+      params.push(period.yearLevel);
+      conditions.push(`se.year_level = $${params.length}`);
+    }
+    if (period?.semesterId) {
+      params.push(period.semesterId);
+      conditions.push(`se.semester_id = $${params.length}`);
+    }
+    if (!period?.yearLevel && !period?.semesterId) {
+      conditions.push('se.is_current = true');
+    }
+
+    const { rows } = await db.query(
+      `${CONTEXT_SELECT}
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY se.is_current DESC NULLS LAST, se.education_id DESC
+        LIMIT 1`,
+      params
+    );
+    if (rows[0]) return rows[0];
+
+    // Fallback: the most recent enrolment, with the requested period applied.
+    const { rows: fallback } = await db.query(
+      `${CONTEXT_SELECT}
+        WHERE se.student_id = $1
+        ORDER BY se.created_at DESC, se.education_id DESC
+        LIMIT 1`,
+      [studentId]
+    );
+    const context = fallback[0];
+    if (!context) return null;
+
+    if (period?.yearLevel) context.year_level = period.yearLevel;
+    if (period?.semesterId) context.semester_id = period.semesterId;
+
+    const [semester, activeYear] = await Promise.all([
+      db.query('SELECT semester_label FROM semester WHERE semester_id = $1', [context.semester_id]),
+      context.year_id
+        ? Promise.resolve(null)
+        : db.query('SELECT year_id FROM academic_year WHERE is_active = true LIMIT 1'),
+    ]);
+    context.semester_label = semester.rows[0]?.semester_label || 'Unknown';
+    if (!context.year_id) context.year_id = activeYear?.rows[0]?.year_id || null;
+
+    return context;
+  }
+
+  /**
+   * Build the term grade document: student details plus one row per curriculum
+   * course for each of the Prelim, Midterm and Final tables.
+   * @private
+   */
+  static async _buildTermGradeDocument(student, context) {
+    const studentId = student.student_id;
+
+    const [guardianRes, standingMap, residencyRes, coursesRes] = await Promise.all([
+      db.query(
+        `SELECT first_name, middle_name, last_name, contact_no
+           FROM student_family_members
+          WHERE student_id = $1 AND is_guardian = true
+          LIMIT 1`,
+        [studentId]
+      ),
+      GradeManageModel.getAcademicStandingMap([Number(studentId)]),
+      db.query(
+        `SELECT residency_status, residency_year
+           FROM student_status
+          WHERE student_id = $1
+          ORDER BY verification_date DESC NULLS LAST, status_id DESC
+          LIMIT 1`,
+        [studentId]
+      ),
+      db.query(
+        `SELECT co.course_id, co.course_code, co.course_name,
+                co.lec_units, co.lab_units, co.grading_scheme
+           FROM curriculum_courses cc
+           JOIN courses co ON co.course_id = cc.course_id
+          WHERE cc.curriculum_id = $1 AND cc.year_level = $2 AND cc.semester_id = $3
+          ORDER BY co.course_code ASC`,
+        [context.curriculum_id, context.year_level, context.semester_id]
+      ),
+    ]);
+
     const guardian = guardianRes.rows[0];
-    const guardianName = guardian
-      ? `${guardian.first_name} ${guardian.middle_name || ''} ${guardian.last_name}`.replace(/\s+/g, ' ').trim()
-      : null;
-    const guardianContact = guardian?.contact_no || null;
-
-    // Academic standing
-    const standingMap = await GradeManageModel.getAcademicStandingMap();
-    const standing = standingMap.get(Number(studentId));
-    const probationStatus = standing?.status || 'None';
-
-    // Residency
-    const residencyRes = await db.query(`
-      SELECT residency_status, residency_year
-      FROM student_status
-      WHERE student_id = $1
-      ORDER BY verification_date DESC NULLS LAST, status_id DESC
-      LIMIT 1
-    `, [studentId]);
     const residency = residencyRes.rows[0] || { residency_status: null, residency_year: null };
 
-    // Courses for this period
-    const coursesRes = await db.query(`
-      SELECT co.course_id, co.course_code, co.course_name,
-             co.lec_units, co.lab_units, co.grading_scheme
-      FROM curriculum_courses cc
-      JOIN courses co ON co.course_id = cc.course_id
-      WHERE cc.curriculum_id = $1 AND cc.year_level = $2 AND cc.semester_id = $3
-      ORDER BY co.course_code ASC
-    `, [context.curriculum_id, context.year_level, context.semester_id]);
+    const header = {
+      ...student,
+      semesterLabel: context.semester_label || 'Unknown',
+      section: context.section_name || null,
+      adviserName: context.adviser_first_name
+        ? `${context.adviser_first_name} ${context.adviser_last_name}`.trim()
+        : null,
+      guardianName: guardian
+        ? `${guardian.first_name} ${guardian.middle_name || ''} ${guardian.last_name}`
+          .replace(/\s+/g, ' ').trim()
+        : null,
+      guardianContact: guardian?.contact_no || null,
+      probationStatus: standingMap.get(Number(studentId))?.status || 'None',
+      residencyStatus: residency.residency_status,
+      residencyYear: residency.residency_year,
+    };
 
-    if (coursesRes.rows.length === 0) {
+    const courses = coursesRes.rows;
+    if (courses.length === 0) {
+      return { ...header, prelimCourses: [], midtermCourses: [], finalCourses: [] };
+    }
+
+    const { scoresByCourse, facultyByCourse } = await this._loadScores(studentId, courses, context);
+
+    // Grade maths per course, once: shared by the three term tables.
+    const gradedCourses = courses.map((course) => {
+      const scoresByTerm = scoresByCourse.get(course.course_id) || emptyScores();
       return {
-        ...student,
-        semesterLabel: context.semester_label || 'Unknown',
-        section: context.section_name || null,
-        adviserName,
-        guardianName,
-        guardianContact,
-        probationStatus,
-        residencyStatus: residency.residency_status,
-        residencyYear: residency.residency_year,
-        prelimCourses: [],
-        midtermCourses: [],
-        finalCourses: []
+        course,
+        category: GradingEngine.getCourseCategory(course),
+        scoresByTerm,
+        cumulative: GradingEngine.computeCumulativeGrade(course, scoresByTerm),
       };
-    }
+    });
 
-    const courseIds = coursesRes.rows.map((c) => c.course_id);
-
-    // Grade components
-    const componentsRes = await db.query(`
-      SELECT g.course_id, gc.term, gc.component_name, gc.score, g.faculty_id,
-             f.last_name AS faculty_last_name, f.first_name AS faculty_first_name
-      FROM grades g
-      JOIN grade_components gc ON gc.grade_id = g.grade_id
-      LEFT JOIN faculties f ON f.faculty_id = g.faculty_id
-      WHERE g.student_id = $1 AND g.course_id = ANY($2::int[])
-        AND g.year_id = $3 AND g.semester_id = $4
-    `, [studentId, courseIds, context.year_id || null, context.semester_id]);
-
-    const scoresByCourse = new Map();
-    const facultyByCourse = new Map();
-    for (const row of componentsRes.rows) {
-      if (!scoresByCourse.has(row.course_id)) scoresByCourse.set(row.course_id, { Prelim: {}, Midterm: {}, Final: {} });
-      scoresByCourse.get(row.course_id)[row.term][row.component_name] = row.score;
-      if (row.faculty_last_name) {
-        facultyByCourse.set(row.course_id, `${row.faculty_first_name || ''} ${row.faculty_last_name}`.trim());
-      }
-    }
-
-    const buildTermRows = (term) => coursesRes.rows.map((course) => {
-      const category = GradingEngine.getCourseCategory(course);
-      const scoresByTerm = scoresByCourse.get(course.course_id) || { Prelim: {}, Midterm: {}, Final: {} };
+    const buildTermRows = (term) => gradedCourses.map(({ course, category, scoresByTerm, cumulative }) => {
       const termScores = scoresByTerm[term] || {};
       const { average, transmuted, pointGrade } = GradingEngine.computeTermGrade(category, term, scoresByTerm);
-      const cumulative = GradingEngine.computeCumulativeGrade(course, scoresByTerm);
 
+      // The Final table shows the official cumulative grade; the others a snapshot.
       const isFinal = term === 'Final';
       const periodRemarks = pointGrade === null ? null : (pointGrade === 5.0 ? 'F' : 'P');
 
@@ -126,325 +266,106 @@ class DocumentModel {
         transmuted,
         pointGrade: isFinal ? cumulative.finalGrade : pointGrade,
         remarks: isFinal ? cumulative.remarks : periodRemarks,
-        faculty: facultyByCourse.get(course.course_id) || null
+        faculty: facultyByCourse.get(course.course_id) || null,
       };
     });
 
     return {
-      ...student,
-      semesterLabel: context.semester_label || 'Unknown',
-      section: context.section_name || null,
-      adviserName,
-      guardianName,
-      guardianContact,
-      probationStatus,
-      residencyStatus: residency.residency_status,
-      residencyYear: residency.residency_year,
+      ...header,
       prelimCourses: buildTermRows('Prelim'),
       midtermCourses: buildTermRows('Midterm'),
-      finalCourses: buildTermRows('Final')
+      finalCourses: buildTermRows('Final'),
     };
   }
 
-  // ---------- Public: Student Form data ----------
-  static async getStudentFormData(studentId) {
-    const student = await StudentManageModel.getById(studentId);
-    if (!student) return null;
+  /**
+   * Score components and grading faculty per course for the period. Archived
+   * grades are ignored.
+   * @private
+   */
+  static async _loadScores(studentId, courses, context) {
+    const { rows } = await db.query(
+      `SELECT g.course_id, gc.term, gc.component_name, gc.score,
+              f.last_name AS faculty_last_name, f.first_name AS faculty_first_name
+         FROM grades g
+         JOIN grade_components gc ON gc.grade_id = g.grade_id
+         LEFT JOIN faculties f ON f.faculty_id = g.faculty_id
+        WHERE g.student_id = $1 AND g.course_id = ANY($2::int[])
+          AND g.year_id = $3 AND g.semester_id = $4
+          AND g.archived_at IS NULL`,
+      [studentId, courses.map((c) => c.course_id), context.year_id || null, context.semester_id]
+    );
 
-    const SUPPORT_CODES = {
-      'Parents': 'PARENTS',
-      'Relatives': 'RELATIVES',
-      'Brother or Sister': 'BROTHER/SISTER',
-      'Benefactors': 'BENEFACTORS',
-      'Scholarship': 'SCHOLARSHIPS'
-    };
+    const scoresByCourse = new Map();
+    const facultyByCourse = new Map();
+    for (const row of rows) {
+      if (!scoresByCourse.has(row.course_id)) scoresByCourse.set(row.course_id, emptyScores());
+      scoresByCourse.get(row.course_id)[row.term][row.component_name] = row.score;
 
-    const TRANSPO_CODES = {
-      '< P50': '<P50',
-      'P51-P100': 'BETWEEN P51-P100',
-      '> P100': '>P100'
-    };
-
-    return {
-      ...student,
-      language_dialects: student.language_dialect,
-      pubpriv_hs: student.pub_priv_hs,
-      father_alive: student.father_status ? student.father_status.toUpperCase() : null,
-      mother_alive: student.mother_status ? student.mother_status.toUpperCase() : null,
-      support: student.support ? [SUPPORT_CODES[student.support] || student.support.toUpperCase()] : [],
-      parents_income: student.parents_income ? student.parents_income.toUpperCase() : null,
-      living_in: student.living_in ? student.living_in.toUpperCase() : null,
-      daily_transpo_expense: student.daily_transpo_expense
-        ? (TRANSPO_CODES[student.daily_transpo_expense] || student.daily_transpo_expense.toUpperCase())
-        : null,
-      ordinal_position: student.ordinal_position ? student.ordinal_position.toUpperCase() : null
-    };
-  }
-
-  // ---------- Public: Term Grade document ----------
-  static async getTermGradeData(studentId, period = null) {
-    const student = await StudentManageModel.getById(studentId);
-    if (!student) return null;
-
-    // ------------------------------------------------------------
-    // STEP 1: Try to find a matching student_education record
-    // ------------------------------------------------------------
-    let contextQuery = `
-      SELECT se.curriculum_id, se.year_level, se.semester_id, se.year_id,
-             sem.semester_label, sec.section_name,
-             f.first_name AS adviser_first_name, f.last_name AS adviser_last_name
-      FROM student_education se
-      JOIN semester sem ON sem.semester_id = se.semester_id
-      LEFT JOIN section_assignments sa ON sa.assignment_id = se.assignment_id
-      LEFT JOIN sections sec ON sec.section_id = sa.section_id
-      LEFT JOIN faculties f ON f.faculty_id = sa.adviser_id
-      WHERE se.student_id = $1
-    `;
-    const params = [studentId];
-
-    if (period?.yearLevel) {
-      contextQuery += ` AND se.year_level = $${params.length + 1}`;
-      params.push(period.yearLevel);
-    }
-    if (period?.semesterId) {
-      contextQuery += ` AND se.semester_id = $${params.length + 1}`;
-      params.push(period.semesterId);
-    }
-    if (!period?.yearLevel && !period?.semesterId) {
-      contextQuery += ` AND se.is_current = true`;
-    }
-    contextQuery += ` LIMIT 1`;
-
-    let contextRes = await db.query(contextQuery, params);
-    let context = contextRes.rows[0];
-
-    // ------------------------------------------------------------
-    // STEP 2: Fallback to most recent student_education if none found
-    // ------------------------------------------------------------
-    if (!context) {
-      const fallbackRes = await db.query(`
-        SELECT se.curriculum_id, se.year_level, se.semester_id, se.year_id,
-               sem.semester_label, sec.section_name,
-               f.first_name AS adviser_first_name, f.last_name AS adviser_last_name
-        FROM student_education se
-        LEFT JOIN semester sem ON sem.semester_id = se.semester_id
-        LEFT JOIN section_assignments sa ON sa.assignment_id = se.assignment_id
-        LEFT JOIN sections sec ON sec.section_id = sa.section_id
-        LEFT JOIN faculties f ON f.faculty_id = sa.adviser_id
-        WHERE se.student_id = $1
-        ORDER BY se.created_at DESC
-        LIMIT 1
-      `, [studentId]);
-
-      if (fallbackRes.rows.length > 0) {
-        context = fallbackRes.rows[0];
-        // Override with requested period if provided
-        if (period?.yearLevel) context.year_level = period.yearLevel;
-        if (period?.semesterId) context.semester_id = period.semesterId;
-        // Ensure semester_label is set
-        const semRes = await db.query(`SELECT semester_label FROM semester WHERE semester_id = $1`, [context.semester_id]);
-        context.semester_label = semRes.rows[0]?.semester_label || 'Unknown';
-        // Ensure year_id is set (fallback to active academic year)
-        if (!context.year_id) {
-          const ayRes = await db.query(`SELECT year_id FROM academic_year WHERE is_active = true LIMIT 1`);
-          context.year_id = ayRes.rows[0]?.year_id || null;
-        }
+      if (row.faculty_last_name) {
+        facultyByCourse.set(
+          row.course_id,
+          `${row.faculty_first_name || ''} ${row.faculty_last_name}`.trim()
+        );
       }
     }
-
-    if (!context) {
-      return null; // No enrollment exists for this student
-    }
-
-    // Build the document using the context
-    return await this._buildFromContext(studentId, context);
+    return { scoresByCourse, facultyByCourse };
   }
 
-  // ---------- Internal: build a course outline from a curriculum id ----------
-  static async _buildCourseOutline(curriculumId) {
-    // 1. Get the curriculum + program header
-    const headRes = await db.query(`
-      SELECT 
-        c.curriculum_id,
-        c.version_name,
-        c.start_year,
-        p.program_id,
-        p.program_name,
-        p.program_abbr,
-        p.total_year
-      FROM curricula c
-      JOIN programs p ON p.program_id = c.program_id
-      WHERE c.curriculum_id = $1
-    `, [curriculumId]);
+  // -------------------------------------------------------------------------
+  // Course outline
+  // -------------------------------------------------------------------------
 
-    const head = headRes.rows[0];
-    if (!head) return null;
-
-    // 2. Get all courses in this curriculum with prerequisites as a
-    //    comma-separated string of course codes.
-    const coursesRes = await db.query(`
-      SELECT 
-        cc.year_level,
-        cc.semester_id,
-        s.semester_label,
-        co.course_id,
-        co.course_code,
-        co.course_name,
-        co.lec_units,
-        co.lab_units,
-        co.total_units,
-        co.prerequisites
-      FROM curriculum_courses cc
-      JOIN courses co ON co.course_id = cc.course_id
-      JOIN semester s ON s.semester_id = cc.semester_id
-      WHERE cc.curriculum_id = $1
-      ORDER BY cc.year_level ASC, cc.semester_id ASC, co.course_code ASC
-    `, [curriculumId]);
-
-    // 3. Group by year, then by semester
-    const yearMap = new Map();
-
-    for (const row of coursesRes.rows) {
-      const yl = Number(row.year_level);
-      const semId = Number(row.semester_id);
-
-      if (!yearMap.has(yl)) {
-        yearMap.set(yl, {
-          yearLevel: yl,
-          semesters: new Map(),
-        });
-      }
-
-      const yearBlock = yearMap.get(yl);
-      if (!yearBlock.semesters.has(semId)) {
-        yearBlock.semesters.set(semId, {
-          semesterId: semId,
-          semesterLabel: row.semester_label,
-          courses: [],
-        });
-      }
-
-      yearBlock.semesters.get(semId).courses.push({
-        courseId: row.course_id,
-        courseCode: row.course_code,
-        courseName: row.course_name,
-        lecUnits: row.lec_units || 0,
-        labUnits: row.lab_units || 0,
-        totalUnits: row.total_units || (row.lec_units || 0) + (row.lab_units || 0),
-        prerequisites: (row.prerequisites || '').trim() || 'None',
-      });
-    }
-
-    // 4. Calculate totals for each semester
-    const computeTotals = (courses) =>
-      courses.reduce(
-        (acc, c) => ({
-          lec: acc.lec + (c.lecUnits || 0),
-          lab: acc.lab + (c.labUnits || 0),
-          total: acc.total + (c.totalUnits || 0),
-        }),
-        { lec: 0, lab: 0, total: 0 }
-      );
-
-    const years = Array.from(yearMap.values())
-      .sort((a, b) => a.yearLevel - b.yearLevel)
-      .map((yb) => {
-        const sems = Array.from(yb.semesters.values())
-          .sort((a, b) => a.semesterId - b.semesterId)
-          .map((s) => ({
-            ...s,
-            totals: computeTotals(s.courses),
-          }));
-        return {
-          yearLevel: yb.yearLevel,
-          semesters: sems,
-        };
-      });
-
-    // 5. Grand totals across the whole curriculum
-    const allCourses = coursesRes.rows.map((r) => ({
-      lecUnits: r.lec_units || 0,
-      labUnits: r.lab_units || 0,
-      totalUnits: r.total_units || (r.lec_units || 0) + (r.lab_units || 0),
-    }));
-    const grandTotals = {
-      totalUnits: allCourses.reduce((s, c) => s + c.totalUnits, 0),
-      totalCourses: allCourses.length,
-    };
-
-    const currentYear = new Date().getFullYear();
-
-    return {
-      curriculumId: head.curriculum_id,
-      programName: head.program_name,
-      programAbbr: head.program_abbr,
-      versionName: head.version_name,
-      startYear: head.start_year,
-      effectiveYear: `${currentYear} - ${currentYear + 1}`,
-      years,
-      grandTotals,
-    };
-  }
-
-  // ---------- Public: Course Outline document (by curriculum) ----------
+  /**
+   * Course outline of a curriculum: courses grouped by year and semester, with
+   * unit totals.
+   * @param {number} curriculumId
+   * @returns {Promise<object|null>} null if the curriculum does not exist
+   */
   static async getCourseOutlineData(curriculumId) {
-    return await this._buildCourseOutline(curriculumId);
+    return this._buildCourseOutline(curriculumId);
   }
 
- // ---------- Public: Course Outline document (by student) ----------
+  /**
+   * Course outline for a student's curriculum, with their latest final grade per
+   * course (archived grades ignored), the evaluator's name and the school year.
+   *
+   * @param {number} studentId
+   * @param {{ id?: number, user_id?: number, faculty_id?: number }|null} [evaluator]
+   *   the signed-in user, named on the document
+   * @returns {Promise<object|null>} null if the student or their curriculum is missing
+   */
   static async getCourseOutlineDataByStudent(studentId, evaluator = null) {
     const student = await StudentManageModel.getById(studentId);
     if (!student) return null;
 
-    // Resolve the student's curriculum + enrollment context
-    const ctxRes = await db.query(`
-      SELECT se.curriculum_id,
-            se.year_id,
-            se.semester_id,
-            se.year_level,
-            ay.year_label AS academic_year_label
-      FROM student_education se
-      LEFT JOIN academic_year ay ON ay.year_id = se.year_id
-      WHERE se.student_id = $1
-      ORDER BY se.is_current DESC NULLS LAST, se.created_at DESC
-      LIMIT 1
-    `, [studentId]);
+    const { rows: [context] } = await db.query(
+      `SELECT se.curriculum_id, se.year_id, se.semester_id, se.year_level,
+              ay.year_label AS academic_year_label
+         FROM student_education se
+         LEFT JOIN academic_year ay ON ay.year_id = se.year_id
+        WHERE se.student_id = $1
+        ORDER BY se.is_current DESC NULLS LAST, se.created_at DESC
+        LIMIT 1`,
+      [studentId]
+    );
+    if (!context?.curriculum_id) return null;
 
-    const ctx = ctxRes.rows[0];
-    if (!ctx?.curriculum_id) return null;
-
-    const outline = await this._buildCourseOutline(ctx.curriculum_id);
+    const outline = await this._buildCourseOutline(context.curriculum_id);
     if (!outline) return null;
 
-    // Evaluator = the logged-in user (dean / program head / faculty)
-    const { facultyName } = await this._resolveEvaluator(evaluator);
-
-    // School year: from enrollment, else active AY
-    let schoolYear = ctx.academic_year_label || null;
-    if (!schoolYear) {
-      const ayRes = await db.query(
-        `SELECT year_label FROM academic_year WHERE is_active = true LIMIT 1`
-      );
-      schoolYear = ayRes.rows[0]?.year_label || null;
-    }
-
-    // Per-course final grades for this student, LATEST attempt only.
-    // DISTINCT ON keeps exactly one row per course - the one with the
-    // highest year_id (then highest semester_id) - so a course that was
-    // failed and later retaken shows the retake's grade on the outline.
-    const gradeRes = await db.query(`
-      SELECT DISTINCT ON (course_id)
-        course_id,
-        final_grade
-      FROM grades
-      WHERE student_id = $1
-      ORDER BY course_id, year_id DESC, semester_id DESC
-    `, [studentId]);
-    const gradeMap = new Map(gradeRes.rows.map(r => [r.course_id, r.final_grade]));
+    const [{ facultyName }, schoolYear, gradeMap] = await Promise.all([
+      this._resolveEvaluator(evaluator),
+      context.academic_year_label
+        ? Promise.resolve(context.academic_year_label)
+        : db.query('SELECT year_label FROM academic_year WHERE is_active = true LIMIT 1')
+          .then((r) => r.rows[0]?.year_label || null),
+      this._loadLatestFinalGrades(studentId),
+    ]);
 
     for (const year of outline.years) {
-      for (const sem of year.semesters) {
-        for (const course of sem.courses) {
+      for (const semester of year.semesters) {
+        for (const course of semester.courses) {
           course.finalGrade = gradeMap.get(course.courseId) ?? null;
         }
       }
@@ -464,32 +385,126 @@ class DocumentModel {
     };
   }
 
-    static async _resolveEvaluator(user) {
-    if (!user) return { facultyName: null };
+  /**
+   * Final grade per course, latest attempt only (a failed then retaken course
+   * shows the retake). Archived grades are ignored.
+   * @private
+   * @returns {Promise<Map<number, number|null>>}
+   */
+  static async _loadLatestFinalGrades(studentId) {
+    const { rows } = await db.query(
+      `SELECT DISTINCT ON (course_id) course_id, final_grade
+         FROM grades
+        WHERE student_id = $1 AND archived_at IS NULL
+        ORDER BY course_id, year_id DESC, semester_id DESC`,
+      [studentId]
+    );
+    return new Map(rows.map((r) => [r.course_id, r.final_grade]));
+  }
 
-    const facultyId = user.faculty_id || null;
-    const userId = user.id || user.user_id || null;
+  /** @private */
+  static async _buildCourseOutline(curriculumId) {
+    const { rows: [head] } = await db.query(
+      `SELECT c.curriculum_id, c.version_name, c.start_year,
+              p.program_id, p.program_name, p.program_abbr, p.total_year
+         FROM curricula c
+         JOIN programs p ON p.program_id = c.program_id
+        WHERE c.curriculum_id = $1`,
+      [curriculumId]
+    );
+    if (!head) return null;
 
+    const { rows } = await db.query(
+      `SELECT cc.year_level, cc.semester_id, s.semester_label,
+              co.course_id, co.course_code, co.course_name,
+              co.lec_units, co.lab_units, co.total_units, co.prerequisites
+         FROM curriculum_courses cc
+         JOIN courses co ON co.course_id = cc.course_id
+         JOIN semester s ON s.semester_id = cc.semester_id
+        WHERE cc.curriculum_id = $1
+        ORDER BY cc.year_level ASC, cc.semester_id ASC, co.course_code ASC`,
+      [curriculumId]
+    );
+
+    // Group by year level, then semester. Rows arrive already ordered.
+    const years = new Map();
+    for (const row of rows) {
+      const yearLevel = Number(row.year_level);
+      const semesterId = Number(row.semester_id);
+      const units = unitsOf(row);
+
+      if (!years.has(yearLevel)) years.set(yearLevel, { yearLevel, semesters: new Map() });
+      const { semesters } = years.get(yearLevel);
+      if (!semesters.has(semesterId)) {
+        semesters.set(semesterId, {
+          semesterId,
+          semesterLabel: row.semester_label,
+          courses: [],
+          totals: { lec: 0, lab: 0, total: 0 },
+        });
+      }
+
+      const semester = semesters.get(semesterId);
+      semester.courses.push({
+        courseId: row.course_id,
+        courseCode: row.course_code,
+        courseName: row.course_name,
+        lecUnits: units.lec,
+        labUnits: units.lab,
+        totalUnits: units.total,
+        prerequisites: (row.prerequisites || '').trim() || 'None',
+      });
+      semester.totals.lec += units.lec;
+      semester.totals.lab += units.lab;
+      semester.totals.total += units.total;
+    }
+
+    const currentYear = new Date().getFullYear();
+
+    return {
+      curriculumId: head.curriculum_id,
+      programName: head.program_name,
+      programAbbr: head.program_abbr,
+      versionName: head.version_name,
+      startYear: head.start_year,
+      effectiveYear: `${currentYear} - ${currentYear + 1}`,
+      years: [...years.values()].map((year) => ({
+        yearLevel: year.yearLevel,
+        semesters: [...year.semesters.values()],
+      })),
+      grandTotals: {
+        totalUnits: rows.reduce((sum, row) => sum + unitsOf(row).total, 0),
+        totalCourses: rows.length,
+      },
+    };
+  }
+
+  /**
+   * The signed-in user's name as it appears on a document ("First M. Last Suffix").
+   * Only active faculty accounts have one.
+   * @private
+   * @returns {Promise<{ facultyName: string|null }>}
+   */
+  static async _resolveEvaluator(user) {
+    const facultyId = user?.faculty_id || null;
+    const userId = user?.id || user?.user_id || null;
     if (!facultyId && !userId) return { facultyName: null };
 
-    const res = await db.query(`
-      SELECT f.first_name, f.middle_name, f.last_name, f.suffix
-      FROM faculties f
-      WHERE f.account_status = true
-        AND ( ($1::int IS NOT NULL AND f.faculty_id = $1)
-          OR ($2::int IS NOT NULL AND f.user_id    = $2) )
-      LIMIT 1
-    `, [facultyId, userId]);
-
-    const f = res.rows[0];
+    const { rows: [f] } = await db.query(
+      `SELECT f.first_name, f.middle_name, f.last_name, f.suffix
+         FROM faculties f
+        WHERE f.account_status = true
+          AND ( ($1::int IS NOT NULL AND f.faculty_id = $1)
+             OR ($2::int IS NOT NULL AND f.user_id    = $2) )
+        LIMIT 1`,
+      [facultyId, userId]
+    );
     if (!f) return { facultyName: null };
 
-    const mi = f.middle_name ? ` ${f.middle_name.charAt(0)}.` : '';
-    const sfx = f.suffix ? ` ${f.suffix}` : '';
-    return { facultyName: `${f.first_name}${mi} ${f.last_name}${sfx}`.trim() };
+    const middleInitial = f.middle_name ? ` ${f.middle_name.charAt(0)}.` : '';
+    const suffix = f.suffix ? ` ${f.suffix}` : '';
+    return { facultyName: `${f.first_name}${middleInitial} ${f.last_name}${suffix}`.trim() };
   }
 }
-
-
 
 module.exports = DocumentModel;

@@ -865,20 +865,23 @@ class GradeManageModel {
    * Probationary 2; 2+ times or 3+ in a semester is Probationary 1; failing 2 or
    * more distinct courses is a Warning.
    *
+   * @param {number[]|null} [studentIds]  limit the work to these students (default: all)
    * @returns {Promise<Map<number, { status: string, isOverridden: boolean }>>}
    */
-  static async getAcademicStandingMap() {
+  static async getAcademicStandingMap(studentIds = null) {
     const aggRes = await db.query(`
       WITH course_repeats AS (
         SELECT student_id, course_id, COUNT(*)::int AS times_failed
         FROM grades
         WHERE remarks = 'F' AND archived_at IS NULL
+          AND ($1::int[] IS NULL OR student_id = ANY($1::int[]))
         GROUP BY student_id, course_id
       ),
       semester_fails AS (
         SELECT student_id, year_id, semester_id, COUNT(DISTINCT course_id)::int AS courses_failed
         FROM grades
         WHERE remarks = 'F' AND archived_at IS NULL
+          AND ($1::int[] IS NULL OR student_id = ANY($1::int[]))
         GROUP BY student_id, year_id, semester_id
       )
       SELECT 
@@ -889,8 +892,9 @@ class GradeManageModel {
       FROM students s
       LEFT JOIN course_repeats cr ON cr.student_id = s.student_id
       LEFT JOIN semester_fails sf ON sf.student_id = s.student_id
+      WHERE $1::int[] IS NULL OR s.student_id = ANY($1::int[])
       GROUP BY s.student_id
-    `);
+    `, [studentIds]);
 
     const overrideRes = await db.query(`
       SELECT DISTINCT ON (ss.student_id)
@@ -900,8 +904,9 @@ class GradeManageModel {
         AND ay.is_active = true
         AND ss.semester_id = ay.current_sem
       WHERE ss.verified_by_id IS NOT NULL
+        AND ($1::int[] IS NULL OR ss.student_id = ANY($1::int[]))
       ORDER BY ss.student_id, ss.verification_date DESC NULLS LAST, ss.status_id DESC
-    `);
+    `, [studentIds]);
 
     const overrides = new Map(
       overrideRes.rows.map((r) => [

@@ -1,87 +1,73 @@
-const db = require('../config/db');
+'use strict';
+
+/**
+ * Document controller: data for the printable documents (student form, term
+ * grade report, course outline). Read-only.
+ *
+ * Conventions: success is { success: true, data }; failures are thrown as
+ * HttpError and handled by the global error handler.
+ */
+
 const DocumentModel = require('../models/documentModel');
+const { HttpError } = require('../../utils/httpError');
+const { parseId } = require('../../utils/request');
 
-// ==========================================
-// DOCUMENT GENERATION
-// ==========================================
+/** Year levels and semester ids the documents accept. */
+const YEAR_LEVEL_RANGE = { min: 1, max: 5 };
+const SEMESTER_RANGE = { min: 1, max: 3 };
 
+/** Parse an optional whole-number query value within a range; undefined passes through. */
+function parseOptionalInRange(value, name, { min, max }) {
+  if (value === undefined) return undefined;
+  const n = Number.parseInt(value, 10);
+  if (Number.isNaN(n) || n < min || n > max) {
+    throw new HttpError(400, `Invalid ${name}: ${value}. Must be between ${min} and ${max}.`);
+  }
+  return n;
+}
+
+/** GET /student-form/:id */
 exports.getStudentFormById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const student = await DocumentModel.getStudentFormData(id);
-    if (!student) return res.status(404).json({ success: false, message: "Student record not found." });
-    res.status(200).json({ success: true, data: student });
-  } catch (error) {
-    console.error("Error fetching student form data:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  }
+  const student = await DocumentModel.getStudentFormData(parseId(req.params.id));
+  if (!student) throw new HttpError(404, 'Student record not found.');
+  res.status(200).json({ success: true, data: student });
 };
 
-exports.getTermGradeById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { yearLevel, semesterId } = req.query;
-
-    const period = {};
-    if (yearLevel !== undefined) {
-      const yl = parseInt(yearLevel, 10);
-      if (isNaN(yl) || yl < 1 || yl > 5) {
-        return res.status(400).json({ success: false, message: `Invalid yearLevel: ${yearLevel}. Must be between 1 and 5.` });
-      }
-      period.yearLevel = yl;
-    }
-    if (semesterId !== undefined) {
-      const sid = parseInt(semesterId, 10);
-      if (isNaN(sid) || sid < 1 || sid > 3) {
-        return res.status(400).json({ success: false, message: `Invalid semesterId: ${semesterId}. Must be between 1 and 3.` });
-      }
-      period.semesterId = sid;
-    }
-
-    const termGrade = await DocumentModel.getTermGradeData(id, period);
-    if (!termGrade) {
-      return res.status(404).json({
-        success: false,
-        message: "No enrollment record found for this student/period, so a term grade document could not be built."
-      });
-    }
-    res.status(200).json({ success: true, data: termGrade });
-  } catch (error) {
-    console.error('Error in getTermGradeById:', error);
-    res.status(500).json({ success: false, message: error.message || 'Internal server error.' });
-  }
-};
-
+/** GET  The signed-in student's own form. */
 exports.getStudentFormMe = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const studentRes = await db.query(`SELECT student_id FROM students WHERE user_id = $1`, [userId]);
+  const studentId = req.user?.student_id ?? await DocumentModel.findStudentIdByUserId(req.user.id);
+  if (!studentId) throw new HttpError(404, 'Student record not found.');
 
-    if (studentRes.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "Student record not found." });
-    }
-
-    const student = await DocumentModel.getStudentFormData(studentRes.rows[0].student_id);
-    res.status(200).json({ success: true, data: student });
-  } catch (error) {
-    console.error("Error fetching student self record:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
-  }
+  const student = await DocumentModel.getStudentFormData(studentId);
+  if (!student) throw new HttpError(404, 'Student record not found.');
+  res.status(200).json({ success: true, data: student });
 };
 
-exports.getCourseOutlineById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const outline = await DocumentModel.getCourseOutlineDataByStudent(id, req.user);
-    if (!outline) {
-      return res.status(404).json({
-        success: false,
-        message: 'No curriculum found for this student, so a course outline could not be built.',
-      });
-    }
-    res.status(200).json({ success: true, data: outline });
-  } catch (error) {
-    console.error('Error fetching student course outline:', error);
-    res.status(500).json({ success: false, message: 'Internal server error.' });
+/** GET /term-grade/:id?yearLevel=&semesterId= */
+exports.getTermGradeById = async (req, res) => {
+  const studentId = parseId(req.params.id);
+
+  const period = {};
+  const yearLevel = parseOptionalInRange(req.query.yearLevel, 'yearLevel', YEAR_LEVEL_RANGE);
+  const semesterId = parseOptionalInRange(req.query.semesterId, 'semesterId', SEMESTER_RANGE);
+  if (yearLevel !== undefined) period.yearLevel = yearLevel;
+  if (semesterId !== undefined) period.semesterId = semesterId;
+
+  const termGrade = await DocumentModel.getTermGradeData(studentId, period);
+  if (!termGrade) {
+    throw new HttpError(
+      404,
+      'No enrollment record found for this student/period, so a term grade document could not be built.'
+    );
   }
+  res.status(200).json({ success: true, data: termGrade });
+};
+
+/** GET /course-outline/:id  The signed-in user is named as evaluator. */
+exports.getCourseOutlineById = async (req, res) => {
+  const outline = await DocumentModel.getCourseOutlineDataByStudent(parseId(req.params.id), req.user);
+  if (!outline) {
+    throw new HttpError(404, 'No curriculum found for this student, so a course outline could not be built.');
+  }
+  res.status(200).json({ success: true, data: outline });
 };

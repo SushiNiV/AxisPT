@@ -100,7 +100,7 @@ exports.getStudentMasterlist = async (req, res) => {
     offset: parseIntInRange(offset, { name: 'offset', min: 0, max: Number.MAX_SAFE_INTEGER, fallback: 0 }),
   });
 
-  const standingMap = await GradeManageModel.getAcademicStandingMap();
+  const standingMap = await GradeManageModel.getAcademicStandingMap(masterlist.map((s) => s.student_id));
   res.json({ success: true, data: masterlist.map((s) => withStanding(s, standingMap)) });
 };
 
@@ -109,7 +109,7 @@ exports.getStudentById = async (req, res) => {
   const student = await StudentManageModel.getById(parseId(req.params.id));
   if (!student) throw new HttpError(404, 'Student record not found.');
 
-  const standingMap = await GradeManageModel.getAcademicStandingMap();
+  const standingMap = await GradeManageModel.getAcademicStandingMap([student.student_id]);
   res.status(200).json({ success: true, data: withStanding(student, standingMap) });
 };
 
