@@ -9,7 +9,7 @@
  * failures are thrown as HttpError and handled by the global error handler.
  */
 
-const StudentPortalModel = require('../models/studentPortalModel');
+const StudentPortalModel = require('../models/studentportalModel');
 const HttpError = require('../../utils/httpError');
 
 /** The student id from the token; 403 if the account is not a student account. */
