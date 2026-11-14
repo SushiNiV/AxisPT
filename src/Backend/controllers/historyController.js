@@ -9,7 +9,7 @@
  */
 
 const HistoryModel = require('../models/historyModel');
-const { formatHistoryEntry } = require('../services/historyFormatter');
+const { formatHistoryEntry } = require('../services/historyformatter');
 const HttpError = require('../../utils/httpError');
 
 const DEFAULT_PAGE_SIZE = 100;
