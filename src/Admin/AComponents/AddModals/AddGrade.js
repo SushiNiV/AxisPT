@@ -669,6 +669,8 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
       return raw !== '' || trans !== '';
     });
 
+    // Remarks are worked out from the scores (or left over after clearing them), so they
+    // do not make a course "non-empty".
     const isCompletelyEmpty = !hasScores && !hasManualGrades;
 
     // If it's empty (or was never saved), hard delete it.
@@ -683,7 +685,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
           try {
             const token = sessionStorage.getItem('token') || localStorage.getItem('token');
             const res = await fetch(
-              `${process.env.REACT_APP_API_URL}/admin/students/${studentId}/grades/${entry.courseId}/empty?yearLevel=${yearLevel}&semesterId=${semesterId}${entry.gradeId ? `&gradeId=${entry.gradeId}` : ''}`,
+              `${process.env.REACT_APP_API_URL}/admin/students/${studentId}/grades/${entry.courseId}/empty?yearLevel=${yearLevel}&semesterId=${semesterId}`,
               { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
             );
             const data = await res.json();

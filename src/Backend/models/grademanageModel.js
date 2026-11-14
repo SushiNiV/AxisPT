@@ -753,61 +753,37 @@ class GradeManageModel {
   // -------------------------------------------------------------------------
 
   /**
-   * Delete a course assignment that has no scores entered. Rows that have
-   * component scores are never deleted.
-   * @returns {Promise<boolean>} whether a row was deleted
+   * Delete a course assignment that has no grades saved: no component scores and
+   * no manual raw/transmuted marks. A row with any saved grade is never deleted;
+   * it has to be archived instead.
+   *
+   * @returns {Promise<{ deleted: boolean, hasGrades: boolean }>}
+   *   `hasGrades` is true when a matching row exists but was kept because it has grades
    */
   static async deleteEmptyAssignment(studentId, courseId, yearLevel, semesterId) {
-    const { rowCount } = await db.query(
-      `DELETE FROM grades g
-        WHERE g.student_id = $1
-          AND g.course_id = $2
-          AND g.year_level = $3
-          AND g.semester_id = $4
-          AND NOT EXISTS (SELECT 1 FROM grade_components gc WHERE gc.grade_id = g.grade_id)`,
+    const { rows } = await db.query(
+      `WITH target AS (
+         SELECT g.grade_id,
+                (EXISTS (SELECT 1 FROM grade_components gc WHERE gc.grade_id = g.grade_id)
+                 OR g.prelim_raw IS NOT NULL OR g.prelim_transmuted IS NOT NULL
+                 OR g.midterm_raw IS NOT NULL OR g.midterm_transmuted IS NOT NULL
+                 OR g.final_raw IS NOT NULL OR g.final_transmuted IS NOT NULL) AS has_grades
+           FROM grades g
+          WHERE g.student_id = $1 AND g.course_id = $2
+            AND g.year_level = $3 AND g.semester_id = $4
+       ),
+       removed AS (
+         DELETE FROM grades
+          WHERE grade_id IN (SELECT grade_id FROM target WHERE NOT has_grades)
+          RETURNING grade_id
+       )
+       SELECT (SELECT COUNT(*) FROM removed)::int AS deleted,
+              (SELECT COUNT(*) FROM target WHERE has_grades)::int AS kept`,
       [studentId, courseId, yearLevel, semesterId]
     );
-    return rowCount > 0;
+    return { deleted: rows[0].deleted > 0, hasGrades: rows[0].kept > 0 };
   }
-    /**
-   * Permanently delete one of a student's grades together with its component
-   * scores. Used when the user has cleared a saved course and confirmed removal.
-   * (Prerequisite overrides are removed by the foreign key cascade.)
-   *
-   * @param {number} gradeId
-   * @param {{ studentId: number }} options  the grade must belong to this student
-   * @returns {Promise<object|null>} what was deleted (including its component scores,
-   *   for the audit log), or null if there was no such grade
-   */
-  static async deleteGradeById(gradeId, { studentId }) {
-    let deleted = null;
 
-    await withTransaction(async (client) => {
-      const { rows } = await client.query(
-        `SELECT g.grade_id, g.student_id, g.course_id, g.year_level, g.semester_id,
-                g.final_grade, g.remarks, c.course_code,
-                COALESCE(
-                  (SELECT json_agg(json_build_object(
-                            'term', gc.term, 'component', gc.component_name, 'score', gc.score))
-                     FROM grade_components gc WHERE gc.grade_id = g.grade_id),
-                  '[]'::json
-                ) AS components
-           FROM grades g
-           LEFT JOIN courses c ON c.course_id = g.course_id
-          WHERE g.grade_id = $1 AND g.student_id = $2
-            FOR UPDATE OF g`,
-        [gradeId, studentId]
-      );
-      if (rows.length === 0) return;
-
-      await client.query('DELETE FROM grade_components WHERE grade_id = $1', [gradeId]);
-      await client.query('DELETE FROM grades WHERE grade_id = $1', [gradeId]);
-      deleted = rows[0];
-    });
-
-    return deleted;
-  }
-  
   /**
    * Archive a grade with a reason.
    * @param {number} gradeId

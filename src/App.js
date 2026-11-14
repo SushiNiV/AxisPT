@@ -30,8 +30,6 @@ import AArchive from './Admin/APages/Archived/AArchive';
 
 import ProtectedRoute from './Components/ProtectedRoute';
 import ALayout from './Admin/AComponents/ALayout';
-import AssistantWidget from './Admin/AComponents/Assistant/AssistantWidget';
-
 // Unified Sign In
 import SignIn from './Components/SignIn/SignIn';
 
@@ -39,8 +37,6 @@ import SignIn from './Components/SignIn/SignIn';
 import SLayout from './Student/SComponents/SLayout';
 import SDashboard from './Student/SPages/SDashboard';
 import SAcademics from './Student/SPages/SAcademics';
-import SGrades from './Student/SPages/SGrades';
-import SSubjects from './Student/SPages/SSubjects';
 import SProfile from './Student/SPages/SProfile';
 
 

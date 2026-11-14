@@ -150,56 +150,31 @@ exports.updateStudentGrades = async (req, res) => {
 
   res.status(200).json({ success: true, message: 'Student grades updated successfully.' });
 };
+
 /**
- * DELETE /students/:id/grades/:courseId/empty?yearLevel=&semesterId=[&gradeId=]
- *
- * Without gradeId: removes an assignment that has no scores saved.
- * With gradeId: permanently deletes that saved grade (the user cleared it and
- * confirmed), recording what was deleted in the audit log.
- * Succeeds even if there was nothing left to delete.
+ * DELETE /students/:id/grades/:courseId/empty?yearLevel=&semesterId=
+ * Removes an assignment that has no grades saved. Succeeds even if it was already
+ * gone. A course with saved grades is kept (409): it has to be archived instead.
  */
 exports.deleteEmptyStudentGrade = async (req, res) => {
   const studentId = parseId(req.params.id);
   const courseId = parseId(req.params.courseId);
-  const { yearLevel, semesterId, gradeId } = req.query;
-
-  if (gradeId) {
-    const deleted = await GradeManageModel.deleteGradeById(parseId(gradeId), { studentId });
-
-    if (deleted) {
-      await audit(req, {
-        tableName: 'grades',
-        recordId: deleted.grade_id,
-        action: 'GRADE_DELETED',
-        oldValues: {
-          student_id: deleted.student_id,
-          course_id: deleted.course_id,
-          course_code: deleted.course_code,
-          year_level: deleted.year_level,
-          semester_id: deleted.semester_id,
-          final_grade: deleted.final_grade,
-          remarks: deleted.remarks,
-          components: deleted.components,
-        },
-        newValues: {
-          student_id: deleted.student_id,
-          course_code: deleted.course_code,
-          year_level: deleted.year_level,
-          semester_id: deleted.semester_id,
-        },
-      });
-    }
-
-    return res.status(200).json({ success: true, message: deleted ? 'Course deleted.' : 'Course already empty.' });
-  }
+  const { yearLevel, semesterId } = req.query;
 
   if (!yearLevel || !semesterId) {
     throw new HttpError(400, 'yearLevel and semesterId are required.');
   }
 
-  const deleted = await GradeManageModel.deleteEmptyAssignment(
+  const { deleted, hasGrades } = await GradeManageModel.deleteEmptyAssignment(
     studentId, courseId, parseId(yearLevel), parseId(semesterId)
   );
+
+  if (!deleted && hasGrades) {
+    throw new HttpError(
+      409,
+      'This course still has saved grades. Save your changes first if you cleared them, or archive it instead.'
+    );
+  }
 
   res.status(200).json({ success: true, message: deleted ? 'Course deleted.' : 'Course already empty.' });
 };
