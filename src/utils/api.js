@@ -37,15 +37,34 @@ window.fetch = async function(url, options = {}) {
 
   // Only auto-logout on 401/403 for AUTHENTICATED endpoints
   if ((response.status === 401 || response.status === 403) && !isPublic) {
-    console.log('Token expired! Clearing session.');
-    sessionStorage.clear();
-localStorage.clear();
-    localStorage.clear();
-    window.dispatchEvent(new CustomEvent('sessionExpired'));
-    throw new Error('Session expired');
+    
+    // Clone the response so we can read the backend's message without consuming the body
+    const clonedRes = response.clone();
+    let errorMessage = '';
+    try {
+      const data = await clonedRes.json();
+      errorMessage = data.message || '';
+    } catch (e) {
+      // Ignore if response body isn't valid JSON
+    }
+
+    // ONLY clear the session if the token is actually bad/expired
+    const isTokenError = errorMessage === 'Invalid or expired token.' || 
+                         errorMessage === 'Access denied. No token provided.';
+
+    if (isTokenError) {
+      console.log('Token expired! Clearing session.');
+      sessionStorage.clear();
+      localStorage.clear();
+      window.dispatchEvent(new CustomEvent('sessionExpired'));
+      throw new Error('Session expired');
+    }
+    
+    // If it's a role permission issue (e.g., Faculty hitting Admin route), 
+    // we do NOT clear the session. We let the response fall through so the 
+    // specific component (like ADashboard.js) can catch the 403 and show an error.
   }
 
-  // For public endpoints, pass the response through untouched
   return response;
 };
 

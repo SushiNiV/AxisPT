@@ -11,7 +11,7 @@
 const DashboardModel = require('../models/dashboardModel');
 const { resolveScope } = require('../services/insights/scope');
 const { getSummary } = require('../services/insights/summaryService');
-const { HttpError } = require('../../utils/httpError');
+const HttpError = require('../../utils/httpError');
 
 /** The user's dashboard scope; 403 if the account has none. */
 async function requireScope(user) {

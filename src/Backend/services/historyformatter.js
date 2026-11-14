@@ -98,6 +98,8 @@ const DETAIL_BUILDERS = {
   // Grades
   GRADE_ARCHIVED: ({ who, values }) =>
     `${who} archived a grade for ${values.course_code || `course #${values.course_id}`}${values.reason ? ` (${values.reason})` : ''}`,
+    GRADE_DELETED: ({ who, values }) =>
+    `${who} deleted a grade for ${values.course_code || `course #${values.course_id}`}`,
   GRADE_RESTORED: ({ who, values }) =>
     `${who} restored a grade for ${values.course_code || `course #${values.course_id}`}`,
   PREREQ_OVERRIDE: ({ who, values }) =>

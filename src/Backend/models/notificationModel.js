@@ -12,7 +12,7 @@
  */
 
 const pool = require('../config/db');
-const { HttpError } = require('../../utils/httpError');
+const HttpError = require('../../utils/httpError');
 const { withTransaction } = require('../../utils/transaction');
 
 const NOTIFICATION_RETENTION_DAYS = 45;

@@ -14,7 +14,7 @@
 
 const StudentManageModel = require('../models/studentmanageModel');
 const GradeManageModel = require('../models/grademanageModel');
-const { HttpError } = require('../../utils/httpError');
+const HttpError = require('../../utils/httpError');
 const { parseId } = require('../../utils/request');
 const { audit } = require('../../utils/audit');
 

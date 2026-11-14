@@ -1,7 +1,22 @@
 'use strict';
 
+/**
+ * Section controller: HTTP layer for sections and section assignments.
+ *
+ * Conventions (shared with the rest of the cleaned backend):
+ *  - Success: { success: true, data } or { success: true, message }.
+ *  - Failures are thrown as HttpError; Express 5 forwards rejected promises to
+ *    the global error handler, so handlers have no try/catch.
+ *  - Writes run in withTransaction; audit entries are written after commit.
+ *  - Database constraint violations are translated into 400 responses, so the
+ *    unique index on (section_id, year_id, semester_id) is the single arbiter
+ *    of duplicate assignments (no racy check-then-insert).
+ *
+ * Assignments are archived (is_active = false), never deleted.
+ */
+
 const SectionModel = require('../models/sectionModel');
-const { HttpError } = require('../../utils/httpError');
+const HttpError = require('../../utils/httpError');
 const { parseId } = require('../../utils/request');
 const { withTransaction } = require('../../utils/transaction');
 const { audit } = require('../../utils/audit');
@@ -115,7 +130,7 @@ async function changeActive(req, res, { active, action, message }) {
 // ---------------------------------------------------------------------------
 
 /**
- * GET ?program_id=  Active sections of a program in the current term.
+ * GET /sections, /sections/active, /sections/all?program_id=  Active sections of a program in the current term.
  * Serves the three route names the frontend already uses.
  */
 const listActiveByProgram = async (req, res) => {
@@ -128,7 +143,7 @@ exports.getActiveSectionsByProgram = listActiveByProgram;
 exports.getAllSectionsByProgram = listActiveByProgram;
 exports.getSectionsByProgram = listActiveByProgram;
 
-/** GET /programs/:programId/sections?yearId=&semesterId=&yearLevel=&includeArchived= */
+/** GET /sections/by-program/:programId?yearId=&semesterId=&yearLevel=&includeArchived= */
 exports.getSectionsByProgramId = async (req, res) => {
   const programId = parseId(req.params.programId);
   const { yearId, semesterId, yearLevel, includeArchived } = req.query;
@@ -144,7 +159,7 @@ exports.getSectionsByProgramId = async (req, res) => {
   res.json({ success: true, data: sections });
 };
 
-/** GET  Every archived assignment across programs. */
+/** GET /sections/archived  Every archived assignment across programs. */
 exports.getArchivedSections = async (req, res) => {
   const sections = await SectionModel.getAllArchived();
   res.json({ success: true, data: sections });
@@ -154,7 +169,7 @@ exports.getArchivedSections = async (req, res) => {
 // Handlers: writing
 // ---------------------------------------------------------------------------
 
-/** POST  Create an assignment, creating the section first when section_option is "new". */
+/** POST /section-assignments  Create an assignment, creating the section first when section_option is "new". */
 exports.addSectionAssignment = async (req, res) => {
   const body = req.body ?? {};
   let assignment;
@@ -194,7 +209,7 @@ exports.addSectionAssignment = async (req, res) => {
   });
 };
 
-/** PUT /:assignment_id  Omitted fields are left unchanged; adviser_id: null clears the adviser. */
+/** PUT /section-assignments/:assignment_id  Omitted fields are left unchanged; adviser_id: null clears the adviser. */
 exports.updateSectionAssignment = async (req, res) => {
   const assignmentId = parseId(req.params.assignment_id);
   const body = req.body ?? {};
@@ -225,7 +240,7 @@ exports.updateSectionAssignment = async (req, res) => {
   res.json({ success: true, message: 'Section assignment updated successfully.', data: after });
 };
 
-/** DELETE /:assignment_id  Archives the assignment. */
+/** DELETE /section-assignments/:assignment_id  Archives the assignment. */
 exports.deleteSectionAssignment = (req, res) =>
   changeActive(req, res, {
     active: false,
@@ -233,7 +248,7 @@ exports.deleteSectionAssignment = (req, res) =>
     message: 'Section archived successfully.',
   });
 
-/** PUT/POST /:assignment_id/restore */
+/** POST /section-assignments/:assignment_id/restore */
 exports.restoreSectionAssignment = (req, res) =>
   changeActive(req, res, {
     active: true,

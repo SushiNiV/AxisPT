@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { BiChevronDown, BiChevronUp } from 'react-icons/bi';
-import '../../GlobalStyle/Global.css';
-import '../../GlobalStyle/GlobalAccordion.css';
-import '../../ResponsiveStyle/ResponsiveComponent.css'
+import { BiChevronDown, BiChevronUp, BiBookAlt, BiBarChart } from 'react-icons/bi';
+import Badge from '../../Components/ui/Badge';
+import EmptyState from '../../Components/ui/Emptystate';
 
 function SGrades() {
   const [grades, setGrades] = useState([]);
@@ -14,115 +13,170 @@ function SGrades() {
     fetch(`${process.env.REACT_APP_API_URL}/student/grades`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.json())
-      .then(d => { if (d.success) setGrades(d.data); })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setGrades(d.data); })
       .finally(() => setLoading(false));
   }, []);
 
   const toggleTerm = (termKey) => {
-    setExpandedTerms(prev => ({
-      ...prev,
-      [termKey]: !prev[termKey]
-    }));
+    setExpandedTerms((prev) => ({ ...prev, [termKey]: !prev[termKey] }));
   };
 
-  if (loading) return <div className="InnerContainer"><p>Loading grades...</p></div>;
-
-  if (grades.length === 0) {
+  /* ---------- LOADING SKELETON ---------- */
+  if (loading) {
     return (
       <div className="InnerContainer">
-        <div className="emptyState">
-          <h3 className="emptyStateTitle">No Grades Yet</h3>
-          <p className="emptyStateText">Your grades will appear here once posted.</p>
+        <div className="ax space-y-4 p-4 md:p-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="space-y-3">
+              <div className="h-12 w-full animate-pulse rounded-panel bg-surface-2" />
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className="h-32 animate-pulse rounded-panel bg-surface-2" />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
   }
 
-  // Group grades by Year Level and Semester
+  /* ---------- EMPTY STATE ---------- */
+  if (grades.length === 0) {
+    return (
+      <div className="InnerContainer">
+        <div className="ax p-4 md:p-6 h-full flex items-center justify-center">
+          <EmptyState
+            icon={BiBarChart}
+            title="No Grades Yet"
+            text="Your grades will appear here once posted by the faculty."
+          />
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------- GROUP BY YEAR + SEMESTER ---------- */
   const groupedGrades = grades.reduce((acc, grade) => {
     const semLabel = grade.semester_label || `Semester ${grade.semester_id}`;
     const groupKey = `Year ${grade.year_level} - ${semLabel}`;
-    
-    if (!acc[groupKey]) {
-      acc[groupKey] = [];
-    }
+    if (!acc[groupKey]) acc[groupKey] = [];
     acc[groupKey].push(grade);
     return acc;
   }, {});
 
-  // Sort the groups
   const sortedGroupKeys = Object.keys(groupedGrades).sort((a, b) => {
     const yearA = parseInt(a.match(/Year (\d+)/)[1], 10);
     const yearB = parseInt(b.match(/Year (\d+)/)[1], 10);
     if (yearA !== yearB) return yearA - yearB;
     return a.localeCompare(b);
   });
+
+  /* ---------- RENDER ---------- */
   return (
-    <div className="InnerContainer" style={{ justifyContent: 'flex-start', overflowY: 'auto' }}>
-      <div className="GradesAccordion">
+    <div className="InnerContainer">
+      <div className="ax min-h-0 flex-1 space-y-4 overflow-y-auto p-4 md:p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sortedGroupKeys.map((groupKey) => {
-          // THIS IS THE FIX: Default to closed unless explicitly toggled open
-          const isExpanded = expandedTerms[groupKey] === true; 
+          const isExpanded = expandedTerms[groupKey] === true;
+          const courses = groupedGrades[groupKey];
+          const totalUnits = courses.reduce(
+            (sum, c) => sum + Number(c.lec_units || 0) + Number(c.lab_units || 0),
+            0
+          );
 
           return (
-            <div key={groupKey} className="GradesGroup">
+            <div key={groupKey} className="rounded-panel border !border-line bg-surface overflow-hidden shadow-sm">
+              
               {/* Accordion Header */}
-              <button 
-                className="GradesGroupHeader"
+              <button
+                type="button"
                 onClick={() => toggleTerm(groupKey)}
+                className={`relative flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-2 ${
+                  isExpanded ? 'border-b !border-line' : ''
+                }`}
+                aria-expanded={isExpanded}
               >
-                <span>{groupKey}</span>
-                {isExpanded ? <BiChevronUp size={20} /> : <BiChevronDown size={20} />}
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
+                  <BiBookAlt className="text-lg" />
+                </div>
+                
+                <div className="min-w-0 pr-8">
+                  <h3 className="truncate text-sm font-semibold text-ink">{groupKey}</h3>
+                  <p className="text-xs text-ink-3">
+                    {courses.length} course{courses.length !== 1 ? 's' : ''} &middot; {totalUnits} units
+                  </p>
+                </div>
+                
+                {/* Chevron perfectly centered on the right */}
+                <span className="absolute inset-y-0 right-4 flex items-center text-ink-2">
+                  {isExpanded ? <BiChevronUp size={20} /> : <BiChevronDown size={20} />}
+                </span>
               </button>
 
-              {/* Table Content */}
+              {/* Cards Container */}
               {isExpanded && (
-                <div className="GradesTableWrapper">
-                  <table className="GradesTable">
-                    <thead>
-                      <tr>
-                        <th>CODE</th>
-                        <th>COURSE</th>
-                        <th className="centered">PRELIM</th>
-                        <th className="centered">MIDTERM</th>
-                        <th className="centered">FINAL</th>
-                        <th className="centered">FINAL GRADE</th>
-                        <th className="centered">REMARKS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {groupedGrades[groupKey].map(g => {
-                        const prelim = g.components.find(c => 
-                          c.term === 'Prelim' && (c.component_name === 'Prelim Exam' || c.component_name === 'Unit Practical Exam')
-                        );
-                        const midterm = g.components.find(c => 
-                          c.term === 'Midterm' && (c.component_name === 'Midterm Exam' || c.component_name === 'Unit Practical Exam')
-                        );
-                        const final = g.components.find(c => 
-                          c.term === 'Final' && (c.component_name === 'Final Exam' || c.component_name === 'Unit Practical Exam')
-                        );
+                <div className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {courses.map((g) => {
+                    const prelim = g.components.find(
+                      (c) => c.term === 'Prelim' && (c.component_name === 'Prelim Exam' || c.component_name === 'Unit Practical Exam')
+                    );
+                    const midterm = g.components.find(
+                      (c) => c.term === 'Midterm' && (c.component_name === 'Midterm Exam' || c.component_name === 'Unit Practical Exam')
+                    );
+                    const final = g.components.find(
+                      (c) => c.term === 'Final' && (c.component_name === 'Final Exam' || c.component_name === 'Unit Practical Exam')
+                    );
+                    const isPassed = g.remarks === 'P';
 
-                        return (
-                          <tr key={g.grade_id}>
-                            <td style={{ fontWeight: 500 }}>{g.course_code}</td>
-                            <td>{g.course_name}</td>
-                            <td className="centered">{prelim?.score ?? '—'}</td>
-                            <td className="centered">{midterm?.score ?? '—'}</td>
-                            <td className="centered">{final?.score ?? '—'}</td>
-                            <td className="centered">
-                              <span className="GradesFinalGrade">{g.final_grade ?? '—'}</span>
-                            </td>
-                            <td className="centered">
-                              <span className={g.remarks === 'P' ? 'statusBadge active-bg' : 'statusBadge inactive-bg'}>
-                                {g.remarks === 'P' ? 'Passed' : g.remarks}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                    return (
+                      <div 
+                        key={g.grade_id} 
+                        className="flex flex-col rounded-panel border !border-line bg-surface overflow-hidden shadow-sm transition-shadow hover:shadow-md"
+                      >
+                        {/* MAROON HEADER MOTIF */}
+                        <div className="flex items-start justify-between gap-2 bg-gradient-to-r from-brand to-[#4a0a14] px-4 py-3 text-brand-on">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-brand-on/80">
+                              {g.course_code}
+                            </p>
+                            <h4 className="mt-0.5 line-clamp-2 text-sm font-semibold">
+                              {g.course_name}
+                            </h4>
+                          </div>
+                          
+                          <Badge 
+                            tone="neutral" 
+                            className="!bg-white/15 !text-white !ring-white/20 backdrop-blur-sm shrink-0"
+                          >
+                            {isPassed ? 'Passed' : (g.remarks || 'Failed')}
+                          </Badge>
+                        </div>
+
+                        {/* Score Row */}
+                        <div className="mt-auto grid grid-cols-4 gap-2 p-4">
+                          <div className="text-center">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">Prelim</p>
+                            <p className="mt-0.5 text-sm font-medium tabular-nums text-ink">{prelim?.score ?? '—'}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">Midterm</p>
+                            <p className="mt-0.5 text-sm font-medium tabular-nums text-ink">{midterm?.score ?? '—'}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">Final</p>
+                            <p className="mt-0.5 text-sm font-medium tabular-nums text-ink">{final?.score ?? '—'}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-3">Grade</p>
+                            <p className={`mt-0.5 text-base font-bold tabular-nums ${isPassed ? 'text-brand' : 'text-danger'}`}>
+                              {g.final_grade ?? '—'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

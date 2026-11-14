@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
+import { HiSparkles } from 'react-icons/hi';
 import AssistantMessage from './AssistantMessage';
 import AssistantTypingIndicator from './AssistantTypingIndicator';
 import AssistantSuggestedChips from './AssistantSuggestedChips';
 
-function AssistantMessageList({ messages, isAsking, error, onSuggestedQuestion }) {
+export default function AssistantMessageList({ messages, isAsking, error, onSuggestedQuestion }) {
   const listRef = useRef(null);
   const bottomRef = useRef(null);
   const stickToBottomRef = useRef(true);
@@ -23,22 +24,22 @@ function AssistantMessageList({ messages, isAsking, error, onSuggestedQuestion }
 
   if (messages.length === 0 && !isAsking && !error) {
     return (
-      <div className="AssistantEmptyState">
-        <div className="emptyState">
-          <div className="emptyStateIcon">🎓</div>
-          <h3 className="emptyStateTitle">Ask About Academic Policy</h3>
-          <p className="emptyStateText">
-            Get answers from the Student Handbook, with citations to the exact section.
-          </p>
-          <AssistantSuggestedChips onSelect={onSuggestedQuestion} />
+      <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto p-6 text-center [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="mb-4 grid h-16 w-16 place-items-center rounded-full bg-brand-soft text-brand">
+          <HiSparkles className="text-3xl" />
         </div>
+        <h3 className="mb-2 font-display text-lg font-semibold text-ink">How can I help?</h3>
+        <p className="mb-6 text-sm text-ink-2">
+          Ask about academic policies, grading, or anything from the CPT Handbook.
+        </p>
+        <AssistantSuggestedChips onSelect={onSuggestedQuestion} />
       </div>
     );
   }
 
   return (
     <div
-      className="AssistantMessageList"
+      className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       ref={listRef}
       onScroll={handleScroll}
       aria-live="polite"
@@ -46,18 +47,15 @@ function AssistantMessageList({ messages, isAsking, error, onSuggestedQuestion }
       {messages.map((m) => (
         <AssistantMessage key={m.id} message={m} />
       ))}
-
       {isAsking && <AssistantTypingIndicator />}
-
       {error && (
-        <div className="AssistantMessage AssistantMessage--error">
-          <span className="AssistantErrorText">{error}</span>
+        <div className="mt-2 flex justify-start">
+          <div className="rounded-panel bg-danger-soft px-3.5 py-2.5 text-sm text-danger">
+            {error}
+          </div>
         </div>
       )}
-
       <div ref={bottomRef} />
     </div>
   );
 }
-
-export default AssistantMessageList;

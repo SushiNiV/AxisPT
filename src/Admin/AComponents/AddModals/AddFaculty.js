@@ -10,10 +10,11 @@ import cx from '../../../Components/ui/Cx';
 function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
   const [formData, setFormData] = useState({
     last_name: "", first_name: "", middle_name: "", suffix: "", username: "", email: "",
-    role_id: "", designation_id: "", new_designation_name: "", is_active: true
+    role_id: "", designation_id: "", program_id: "", new_designation_name: "", is_active: true
   });
   const [roles, setRoles] = useState([]);
   const [designations, setDesignations] = useState([]);
+  const [programs, setPrograms] = useState([]); 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [isNewDesignation, setIsNewDesignation] = useState(false);
@@ -32,19 +33,25 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const headers = { 'Authorization': `Bearer ${token}` };
       try {
-        const [rolesRes, designationsRes] = await Promise.all([
+        const [rolesRes, designationsRes, programsRes] = await Promise.all([
           fetch(`${process.env.REACT_APP_API_URL}/admin/roles`, { headers }),
-          fetch(`${process.env.REACT_APP_API_URL}/admin/designations`, { headers })
+          fetch(`${process.env.REACT_APP_API_URL}/admin/designations`, { headers }),
+          fetch(`${process.env.REACT_APP_API_URL}/admin/programs`, { headers }) 
         ]);
+        
         const rolesData = await rolesRes.json();
         const designationsData = await designationsRes.json();
+        const programsData = await programsRes.json();
+        
+        console.log("Programs Data:", programsData);
+
         if (rolesData.success) setRoles(rolesData.data);
         if (designationsData.success) setDesignations(designationsData.data);
+        if (programsData.success) setPrograms(programsData.data); 
       } catch (err) { console.error("Error fetching data:", err); }
     };
     fetchData();
   }, []);
-
   useEffect(() => {
     if (isEditMode && facultyToEdit) {
       setFormData({
@@ -53,6 +60,7 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
         username: facultyToEdit.username || "", email: facultyToEdit.email || "",
         role_id: facultyToEdit.role_id != null ? String(facultyToEdit.role_id) : "",
         designation_id: facultyToEdit.designation_id != null ? String(facultyToEdit.designation_id) : "",
+        program_id: facultyToEdit.program_id != null ? String(facultyToEdit.program_id) : "", 
         new_designation_name: "", is_active: facultyToEdit.is_active !== undefined ? facultyToEdit.is_active : true
       });
       setIsActive(facultyToEdit.is_active !== undefined ? facultyToEdit.is_active : true);
@@ -74,7 +82,7 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
   };
 
   const handleSubmit = async () => {
-    const { last_name, first_name, username, email, role_id, designation_id, new_designation_name } = formData;
+    const { last_name, first_name, username, email, role_id, designation_id, program_id, new_designation_name } = formData;
     if (!last_name || !first_name || !username || !email || !role_id) { openAlert('Missing Fields', 'Please fill in all required fields.', 'warning'); return; }
     if (!isNewDesignation && !designation_id) { openAlert('Missing Designation', 'Please select a designation.', 'warning'); return; }
     if (isNewDesignation && !new_designation_name) { openAlert('Missing Designation Name', 'Please enter the new designation name.', 'warning'); return; }
@@ -93,6 +101,7 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
         body: JSON.stringify({
           last_name, first_name, middle_name: formData.middle_name, suffix: formData.suffix, username, email,
           role_id: parseInt(role_id), designation_id: isNewDesignation ? null : parseInt(designation_id),
+          program_id: program_id ? parseInt(program_id) : null,
           new_designation_name: isNewDesignation ? new_designation_name : null, is_active: isActive
         })
       });
@@ -116,6 +125,7 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
 
   const roleOptions = [{ value: "", label: "Select Role" }, ...roles.map(role => ({ value: role.role_id, label: role.role_name === 'SUPERADMIN' ? 'Super Admin' : role.role_name }))];
   const designationOptions = [{ value: "", label: "Select Designation" }, ...designations.map(d => ({ value: d.designation_id, label: d.designation_name })), { value: "new", label: "+ Add New Designation" }];
+  const programOptions = [{ value: "", label: "Select Program" }, ...programs.map(p => ({ value: p.program_id, label: p.program_abbr }))];
   const suffixOptions = [{ value: "", label: "None" }, { value: "Jr.", label: "Jr." }, { value: "Sr.", label: "Sr." }, { value: "III", label: "III" }, { value: "IV", label: "IV" }];
 
   return (
@@ -140,22 +150,25 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
         )}
       >
         <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2">
+          {/* Row 1: Name details (3 columns) */}
+          <div className="grid gap-4 sm:grid-cols-3">
             <TextField label={<>Last Name <span className="text-danger">*</span></>} name="last_name" placeholder="Dela Cruz" value={formData.last_name} onChange={handleChange} />
             <TextField label={<>First Name <span className="text-danger">*</span></>} name="first_name" placeholder="Juan" value={formData.first_name} onChange={handleChange} />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
             <TextField label="Middle Name" name="middle_name" placeholder="Santos" value={formData.middle_name} onChange={handleChange} />
+          </div>
+
+          {/* Row 2: Suffix, Username, Email (3 columns) */}
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-ink">Suffix</label>
               <Dropdown options={suffixOptions} value={formData.suffix} onChange={(val) => handleChange({ target: { name: 'suffix', value: val } })} placeholder="Select Suffix" />
             </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
             <TextField label={<>Username <span className="text-danger">*</span></>} name="username" placeholder="juandelacruz" value={formData.username} onChange={handleChange} />
             <TextField label={<>School Email <span className="text-danger">*</span></>} name="email" type="email" placeholder="juan@school.edu" value={formData.email} onChange={handleChange} />
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+
+          {/* Row 3: Role, Designation, Program (3 columns) */}
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-ink">Role <span className="text-danger">*</span></label>
               <Dropdown options={roleOptions} value={formData.role_id} onChange={(val) => handleChange({ target: { name: 'role_id', value: val } })} placeholder="Select Role" />
@@ -164,10 +177,20 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
               <label className="block text-sm font-medium text-ink">Designation <span className="text-danger">*</span></label>
               <Dropdown options={designationOptions} value={isNewDesignation ? "new" : formData.designation_id} onChange={(val) => handleChange({ target: { name: 'designation_id', value: val } })} placeholder="Select Designation" />
             </div>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-ink">Program</label>
+              <Dropdown options={programOptions} value={formData.program_id} onChange={(val) => handleChange({ target: { name: 'program_id', value: val } })} placeholder="Select Program" />
+            </div>
           </div>
+
+          {/* Conditional Row: New Designation Name */}
           {isNewDesignation && (
-            <TextField label={<>New Designation Name <span className="text-danger">*</span></>} name="new_designation_name" placeholder="e.g., Department Chair" value={formData.new_designation_name} onChange={handleChange} />
+            <div className="grid gap-4 sm:grid-cols-3">
+              <TextField label={<>New Designation Name <span className="text-danger">*</span></>} name="new_designation_name" placeholder="e.g., Department Chair" value={formData.new_designation_name} onChange={handleChange} />
+            </div>
           )}
+
+          {/* Row 4: Account Status */}
           <div className="space-y-3 pt-2">
             <label className="block text-sm font-medium text-ink">Account Status <span className="text-danger">*</span></label>
             <div className="flex cursor-pointer items-center gap-3" onClick={() => { setIsDirty(true); setIsActive(!isActive); }}>

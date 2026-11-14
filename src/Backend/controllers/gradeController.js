@@ -14,7 +14,7 @@
  */
 
 const GradeManageModel = require('../models/grademanageModel');
-const { HttpError } = require('../../utils/httpError');
+const HttpError = require('../../utils/httpError');
 const { parseId } = require('../../utils/request');
 const { audit } = require('../../utils/audit');
 
@@ -150,15 +150,48 @@ exports.updateStudentGrades = async (req, res) => {
 
   res.status(200).json({ success: true, message: 'Student grades updated successfully.' });
 };
-
 /**
- * DELETE /students/:id/grades/:courseId/empty?yearLevel=&semesterId=
- * Removes an assignment that has no scores. Succeeds even if it was already gone.
+ * DELETE /students/:id/grades/:courseId/empty?yearLevel=&semesterId=[&gradeId=]
+ *
+ * Without gradeId: removes an assignment that has no scores saved.
+ * With gradeId: permanently deletes that saved grade (the user cleared it and
+ * confirmed), recording what was deleted in the audit log.
+ * Succeeds even if there was nothing left to delete.
  */
 exports.deleteEmptyStudentGrade = async (req, res) => {
   const studentId = parseId(req.params.id);
   const courseId = parseId(req.params.courseId);
-  const { yearLevel, semesterId } = req.query;
+  const { yearLevel, semesterId, gradeId } = req.query;
+
+  if (gradeId) {
+    const deleted = await GradeManageModel.deleteGradeById(parseId(gradeId), { studentId });
+
+    if (deleted) {
+      await audit(req, {
+        tableName: 'grades',
+        recordId: deleted.grade_id,
+        action: 'GRADE_DELETED',
+        oldValues: {
+          student_id: deleted.student_id,
+          course_id: deleted.course_id,
+          course_code: deleted.course_code,
+          year_level: deleted.year_level,
+          semester_id: deleted.semester_id,
+          final_grade: deleted.final_grade,
+          remarks: deleted.remarks,
+          components: deleted.components,
+        },
+        newValues: {
+          student_id: deleted.student_id,
+          course_code: deleted.course_code,
+          year_level: deleted.year_level,
+          semester_id: deleted.semester_id,
+        },
+      });
+    }
+
+    return res.status(200).json({ success: true, message: deleted ? 'Course deleted.' : 'Course already empty.' });
+  }
 
   if (!yearLevel || !semesterId) {
     throw new HttpError(400, 'yearLevel and semesterId are required.');

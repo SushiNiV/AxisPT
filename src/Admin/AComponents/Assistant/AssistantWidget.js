@@ -1,86 +1,151 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BiX } from 'react-icons/bi';
 import { HiSparkles } from 'react-icons/hi';
 import AssistantPanel from './AssistantPanel';
-import '../../../GlobalStyle/Assistant.css';
 
 const NUDGE_KEY = 'axispt_assistant_nudge_seen';
-const NUDGE_DELAY_MS = 1500;   // wait after page load before showing
-const NUDGE_VISIBLE_MS = 9000; // auto-hide after this long
+const NUDGE_DELAY_MS = 1500;
+const NUDGE_VISIBLE_MS = 9000;
 
-// Storage can be blocked (private mode, policies). If so, skip the nudge entirely.
+const DEFAULT_BOTTOM = 24; 
+const HEADER_OFFSET = 140; // Approximate height of the PageHeader + Tabs to keep it below
+
 const hasSeenNudge = () => {
-  try {
-    return localStorage.getItem(NUDGE_KEY) === '1';
-  } catch {
-    return true;
-  }
+  try { return localStorage.getItem(NUDGE_KEY) === '1'; } catch { return true; }
 };
-
 const markNudgeSeen = () => {
-  try {
-    localStorage.setItem(NUDGE_KEY, '1');
-  } catch {
-    /* ignore */
-  }
+  try { localStorage.setItem(NUDGE_KEY, '1'); } catch {}
 };
 
-function AssistantWidget() {
+export default function AssistantWidget() {
   const [open, setOpen] = useState(false);
   const [showNudge, setShowNudge] = useState(false);
+  
+  const [bottomPos, setBottomPos] = useState(DEFAULT_BOTTOM);
+  const [isDragging, setIsDragging] = useState(false);
+  
+  const dragRef = useRef(null);
+  const savedPosRef = useRef(DEFAULT_BOTTOM);
+  
+  const currentPosRef = useRef(DEFAULT_BOTTOM);
+  const rafRef = useRef(null);
 
-  // Close the panel on Escape
+  const handleClose = () => {
+    setBottomPos(savedPosRef.current);
+    currentPosRef.current = savedPosRef.current;
+    setOpen(false);
+  };
+
   useEffect(() => {
     if (!open) return;
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') setOpen(false);
+    const onKey = (e) => {
+      if (e.key === 'Escape') handleClose();
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [open]);
 
-  // One-time speech bubble. Marked as seen the moment it appears,
-  // so a reload mid-display won't show it again.
   useEffect(() => {
     if (hasSeenNudge()) return undefined;
-
-    const showTimer = setTimeout(() => {
-      setShowNudge(true);
-      markNudgeSeen();
-    }, NUDGE_DELAY_MS);
+    const showTimer = setTimeout(() => { setShowNudge(true); markNudgeSeen(); }, NUDGE_DELAY_MS);
     const hideTimer = setTimeout(() => setShowNudge(false), NUDGE_DELAY_MS + NUDGE_VISIBLE_MS);
-
-    return () => {
-      clearTimeout(showTimer);
-      clearTimeout(hideTimer);
-    };
+    return () => { clearTimeout(showTimer); clearTimeout(hideTimer); };
   }, []);
 
-  const toggle = useCallback(() => {
+  const toggleOpen = () => {
+    if (!open) {
+      savedPosRef.current = bottomPos;
+      setBottomPos(DEFAULT_BOTTOM);
+      currentPosRef.current = DEFAULT_BOTTOM;
+      setOpen(true);
+    } else {
+      handleClose();
+    }
     setShowNudge(false);
-    setOpen((o) => !o);
-  }, []);
+  };
+
+  const startDrag = (e) => {
+    if (e.button !== 0) return;
+    dragRef.current = {
+      startY: e.clientY,
+      origY: bottomPos,
+      moved: false,
+    };
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const onMove = (e) => {
+      if (!dragRef.current) return;
+      
+      const dy = dragRef.current.startY - e.clientY;
+      
+      if (Math.abs(dy) > 3) dragRef.current.moved = true;
+
+      // 1. Calculate the max height (window height - header offset)
+      // 2. Ensure it doesn't go below 16px (bottom safe zone)
+      const maxTop = window.innerHeight - HEADER_OFFSET;
+      const newY = Math.max(16, Math.min(maxTop, dragRef.current.origY + dy));
+      
+      currentPosRef.current = newY;
+
+      if (!rafRef.current) {
+        rafRef.current = requestAnimationFrame(() => {
+          setBottomPos(currentPosRef.current);
+          rafRef.current = null;
+        });
+      }
+    };
+
+    const onUp = () => {
+      if (!dragRef.current) return;
+
+      setIsDragging(false);
+      
+      if (dragRef.current.moved) {
+        savedPosRef.current = currentPosRef.current;
+      } else {
+        toggleOpen();
+      }
+      
+      dragRef.current = null;
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [isDragging]);
 
   return (
-    <div className="AssistantWidgetRoot">
+    <div className="ax fixed inset-0 z-[899] pointer-events-none print:hidden">
+      
+      {/* FLOATING PANEL (Anchored exactly above the default button pos) */}
       {open && (
-        <div
-          className="AssistantFloatingPanel"
-          role="dialog"
-          aria-label="Academic policy assistant"
+        <div 
+          className="pointer-events-auto absolute bottom-[88px] right-6 flex h-[min(600px,80vh)] w-[min(400px,calc(100vw-3rem))] flex-col overflow-hidden rounded-panel border !border-line bg-surface shadow-2xl animate-in slide-in-from-bottom-10 zoom-in-95 fade-in duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
         >
-          <AssistantPanel onClose={() => setOpen(false)} />
+          <AssistantPanel onClose={handleClose} />
         </div>
       )}
 
+      {/* NUDGE BUBBLE */}
       {showNudge && !open && (
-        <div className="AssistantNudge" role="status">
-          <button type="button" className="AssistantNudgeText" onClick={toggle}>
+        <div 
+          className="pointer-events-auto absolute flex items-center gap-2 rounded-panel border !border-line bg-surface p-2 shadow-lift animate-in slide-in-from-bottom-5 fade-in duration-300"
+          style={{ right: '24px', bottom: bottomPos + 64 }}
+        >
+          <button type="button" className="text-sm font-medium text-ink hover:text-brand px-2" onClick={toggleOpen}>
             Ask me about academic policy
           </button>
           <button
             type="button"
-            className="AssistantNudgeClose"
+            className="grid h-7 w-7 place-items-center rounded-full text-ink-3 hover:bg-surface-2 hover:text-ink"
             onClick={() => setShowNudge(false)}
             aria-label="Dismiss tip"
           >
@@ -89,20 +154,38 @@ function AssistantWidget() {
         </div>
       )}
 
+      {/* LAUNCHER BUTTON (Vertical Drag) */}
       <button
         type="button"
-        className={`AssistantLauncherBtn${open ? ' AssistantLauncherBtn--open' : ''}`}
-        onClick={toggle}
+        onMouseDown={startDrag}
+        style={{ right: '24px', bottom: bottomPos }}
+        className={`pointer-events-auto absolute flex h-14 items-center gap-2 rounded-full pl-2 pr-5 shadow-[0_8px_30px_rgb(110,26,43,0.4)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/25 bg-gradient-to-br from-brand to-[#4a0a14] text-brand-on ${
+          open 
+            ? 'scale-95 shadow-xl'
+            : 'hover:scale-105 hover:shadow-[0_12px_40px_rgb(110,26,43,0.6)]'
+        } ${
+          isDragging 
+            ? 'cursor-grabbing' 
+            : 'cursor-grab transition-all duration-300'
+        }`}
         aria-expanded={open}
-        aria-label={open ? 'Close assistant' : 'Ask AI: open academic policy assistant'}
+        aria-label={open ? 'Close assistant' : 'Ask AI'}
       >
-        <span className="AssistantLauncherIcon" aria-hidden="true">
-          {open ? <BiX /> : <HiSparkles />}
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10">
+          <div className="relative flex h-full w-full items-center justify-center">
+            <HiSparkles 
+              className={`absolute text-xl transition-all duration-300 ${open ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'}`} 
+            />
+            <BiX 
+              className={`absolute text-xl transition-all duration-300 ${open ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'}`} 
+            />
+          </div>
+        </div>
+        <span className="whitespace-nowrap font-semibold tracking-wide">
+          {open ? 'Close' : 'Ask AI'}
         </span>
-        <span className="AssistantLauncherLabel">{open ? 'Close' : 'Ask AI'}</span>
       </button>
+      
     </div>
   );
 }
-
-export default AssistantWidget;

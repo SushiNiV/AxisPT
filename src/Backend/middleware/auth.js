@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 
-// Fail fast at startup instead of returning confusing 403s on every request.
+
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET is not set. Check your .env file.');
 }

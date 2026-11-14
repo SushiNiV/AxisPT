@@ -17,7 +17,7 @@
 
 const AcademicYearModel = require('../models/acadyearModel');
 const CurriculumModel = require('../models/curriculumModel');
-const { HttpError } = require('../../utils/httpError');
+const HttpError = require('../../utils/httpError');
 const { parseId } = require('../../utils/request');
 const { withTransaction } = require('../../utils/transaction');
 const { audit } = require('../../utils/audit');

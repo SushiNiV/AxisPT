@@ -361,7 +361,7 @@ function Masterlist() {
     archiveSelectionRef.current = { category: '', other: '' };
 
     openConfirm({
-      title: 'Delete Student Record',
+      title: 'Archive Student Record',
       summary: <>Delete <strong>{studentName}</strong> ({student.student_number})?</>,
       message: 'Their account will be deactivated and they will be hidden from the default Masterlist. All their grades, enrollment history, and personal records are preserved. You can restore them later.',
       variant: 'danger',
@@ -433,13 +433,13 @@ function Masterlist() {
           } else {
             setErrorState({
               isOpen: true,
-              title: 'Delete Failed',
-              message: data.message || 'Failed to delete student.',
+              title: 'Archive Failed',
+              message: data.message || 'Failed to archive student.',
               variant: 'danger'
             });
           }
         } catch (err) {
-          console.error('Error deleting student:', err);
+          console.error('Error archiving student:', err);
           setConfirmState({ isOpen: false });
           resetArchiveReason();
           setErrorState({
@@ -473,11 +473,11 @@ function Masterlist() {
     const handleBulkDelete = () => {
     setArchiveReason('');
     openConfirm({
-      title: 'Delete Students',
+      title: 'Archive Students',
       summary: <>Delete <strong>{selectedIds.length}</strong> selected student record(s)?</>,
       message: 'Their accounts will be deactivated and they will be hidden from the default Masterlist. All data is preserved and can be restored later.',
       variant: 'danger',
-      confirmLabel: 'DELETE',
+      confirmLabel: 'Archive',
 
       inputLabel: 'REASON FOR ARCHIVING',
       inputPlaceholder: 'e.g. Transferred out, dropped, graduated…',
@@ -1021,7 +1021,7 @@ function Masterlist() {
                 <BiPencil className="text-xl" aria-hidden="true" /> Edit student
               </Button>
               <Button variant="danger" size="lg" onClick={() => runFromSheet(handleDelete)}>
-                <BiTrash className="text-xl" aria-hidden="true" /> Delete student
+                <BiTrash className="text-xl" aria-hidden="true" /> Archive student
               </Button>
             </div>
           </div>

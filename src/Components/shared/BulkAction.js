@@ -188,7 +188,7 @@ const BulkAction = ({
                 className="flex items-center gap-1.5 rounded-full bg-surface px-4 py-2 text-base font-semibold text-danger transition hover:opacity-80 active:scale-95 !border-0"
               >
                 <BiTrash className="text-base" aria-hidden="true" />
-                Delete Selected
+                Archive Selected
               </button>
             )}
             

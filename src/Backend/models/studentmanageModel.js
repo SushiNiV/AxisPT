@@ -24,7 +24,7 @@
 
 const bcrypt = require('bcrypt');
 const db = require('../config/db');
-const { HttpError } = require('../../utils/httpError');
+const HttpError = require('../../utils/httpError');
 const { withTransaction } = require('../../utils/transaction');
 
 const BCRYPT_ROUNDS = 10;

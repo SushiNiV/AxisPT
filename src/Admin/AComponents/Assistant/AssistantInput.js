@@ -4,11 +4,10 @@ import { BiSend } from 'react-icons/bi';
 const MAX_LEN = 500;
 const WARN_THRESHOLD = 450;
 
-function AssistantInput({ onSend, disabled }) {
+export default function AssistantInput({ onSend, disabled }) {
   const [value, setValue] = useState('');
   const textareaRef = useRef(null);
 
-  // Auto-grow textarea up to ~5 rows
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -37,10 +36,9 @@ function AssistantInput({ onSend, disabled }) {
   };
 
   return (
-    <div className="AssistantInputBar">
+    <div className="flex shrink-0 items-end gap-2 border-t !border-line bg-surface p-3">
       <textarea
         ref={textareaRef}
-        className="AssistantInputField"
         value={value}
         onChange={(e) => setValue(e.target.value.slice(0, MAX_LEN))}
         onKeyDown={handleKeyDown}
@@ -48,25 +46,22 @@ function AssistantInput({ onSend, disabled }) {
         rows={1}
         disabled={disabled}
         aria-label="Ask the assistant a question"
+        className="min-h-[44px] flex-1 resize-none rounded-ctl border !border-line bg-surface-2 px-3 py-2.5 text-base text-ink placeholder:text-ink-3 focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 disabled:cursor-not-allowed disabled:opacity-60 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       />
-      <div className="AssistantInputMeta">
+      <div className="flex flex-col items-end gap-1">
         {value.length > WARN_THRESHOLD && (
-          <span className="AssistantCharCount">
-            {value.length}/{MAX_LEN}
-          </span>
+          <span className="text-[10px] text-ink-3">{value.length}/{MAX_LEN}</span>
         )}
         <button
           type="button"
-          className="AssistantSendBtn"
           onClick={submit}
           disabled={disabled || !value.trim()}
           aria-label="Send question"
+          className="grid h-[44px] w-[44px] place-items-center rounded-ctl bg-brand text-brand-on transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-45"
         >
-          <BiSend />
+          <BiSend className="text-xl" />
         </button>
       </div>
     </div>
   );
 }
-
-export default AssistantInput;

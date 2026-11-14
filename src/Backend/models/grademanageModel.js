@@ -23,7 +23,7 @@
 
 const db = require('../config/db');
 const GradingEngine = require('../services/gradingEngine');
-const { HttpError } = require('../../utils/httpError');
+const HttpError = require('../../utils/httpError');
 const { withTransaction } = require('../../utils/transaction');
 
 const ACADEMIC_STANDING = {
@@ -367,7 +367,7 @@ class GradeManageModel {
       )[0] || null;
 
       semester.courses.push(
-        this._buildCourseRow(course, exact || latest, attempts, eligibilityMap)
+        this._buildCourseRow(course, exact || latest, attempts, eligibilityMap, true)
       );
     }
 
@@ -394,7 +394,7 @@ class GradeManageModel {
         );
         if (alreadyShown) continue;
 
-        semester.courses.push(this._buildCourseRow(courseMeta, attempt, attempts, eligibilityMap));
+        semester.courses.push(this._buildCourseRow(courseMeta, attempt, attempts, eligibilityMap, false));
       }
     }
 
@@ -418,10 +418,12 @@ class GradeManageModel {
 
   /**
    * One course row of the grade sheet. Computed values are used only when the
-   * stored attempt has none.
+   * stored attempt has none. `inCurriculum` is true for the curriculum's own
+   * slot (always listed, so it cannot be removed from the sheet) and false for
+   * extra attempts such as retakes and off-curriculum courses.
    * @private
    */
-  static _buildCourseRow(courseMeta, attempt, allAttempts, eligibilityMap) {
+  static _buildCourseRow(courseMeta, attempt, allAttempts, eligibilityMap, inCurriculum) {
     const category = GradingEngine.getCourseCategory(courseMeta);
     const scoresByTerm = attempt?.scoresByTerm || emptyScores();
     const cumulative = attempt
@@ -433,6 +435,7 @@ class GradeManageModel {
 
     return {
       courseId: courseMeta.course_id,
+      inCurriculum,
       courseCode: courseMeta.course_code,
       courseName: courseMeta.course_name,
       units: courseMeta.total_units,
@@ -615,11 +618,12 @@ class GradeManageModel {
     const course = courseRows[0];
     if (!course) throw new HttpError(400, `Course ${courseId} not found.`);
 
-    // Reject grades for year levels the student has not reached.
-    if (context && Number(yearLevel) > Number(context.current_year_level)) {
+    // A student may hold grades for a year they have not reached (advance or
+    // off-curriculum courses), but not for a year beyond the program's length.
+    if (context?.total_year && Number(yearLevel) > Number(context.total_year)) {
       throw new HttpError(
         400,
-        `Cannot save grades for Year ${yearLevel} — student is currently Year ${context.current_year_level}.`
+        `Year ${yearLevel} is beyond the length of the program (${context.total_year} years).`
       );
     }
 
@@ -765,7 +769,45 @@ class GradeManageModel {
     );
     return rowCount > 0;
   }
+    /**
+   * Permanently delete one of a student's grades together with its component
+   * scores. Used when the user has cleared a saved course and confirmed removal.
+   * (Prerequisite overrides are removed by the foreign key cascade.)
+   *
+   * @param {number} gradeId
+   * @param {{ studentId: number }} options  the grade must belong to this student
+   * @returns {Promise<object|null>} what was deleted (including its component scores,
+   *   for the audit log), or null if there was no such grade
+   */
+  static async deleteGradeById(gradeId, { studentId }) {
+    let deleted = null;
 
+    await withTransaction(async (client) => {
+      const { rows } = await client.query(
+        `SELECT g.grade_id, g.student_id, g.course_id, g.year_level, g.semester_id,
+                g.final_grade, g.remarks, c.course_code,
+                COALESCE(
+                  (SELECT json_agg(json_build_object(
+                            'term', gc.term, 'component', gc.component_name, 'score', gc.score))
+                     FROM grade_components gc WHERE gc.grade_id = g.grade_id),
+                  '[]'::json
+                ) AS components
+           FROM grades g
+           LEFT JOIN courses c ON c.course_id = g.course_id
+          WHERE g.grade_id = $1 AND g.student_id = $2
+            FOR UPDATE OF g`,
+        [gradeId, studentId]
+      );
+      if (rows.length === 0) return;
+
+      await client.query('DELETE FROM grade_components WHERE grade_id = $1', [gradeId]);
+      await client.query('DELETE FROM grades WHERE grade_id = $1', [gradeId]);
+      deleted = rows[0];
+    });
+
+    return deleted;
+  }
+  
   /**
    * Archive a grade with a reason.
    * @param {number} gradeId

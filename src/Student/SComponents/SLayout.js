@@ -1,20 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { BiGridAlt, BiBarChart, BiBookAlt, BiUser } from 'react-icons/bi';
+import { BiGridAlt, BiBookAlt, BiUser } from 'react-icons/bi';
 import AppShell from '../../Components/shell/AppShell';
 import AssistantWidget from '../../Admin/AComponents/Assistant/AssistantWidget';
 import cptLogo from '../../assets/cpt-logo.png';
 
-// `title` overrides the header title when it differs from the sidebar label.
 const NAV = [
   { to: '/student/dashboard', label: 'Dashboard', icon: BiGridAlt },
-  { to: '/student/grades', label: 'Grades', title: 'My Grades', icon: BiBarChart },
-  { to: '/student/subjects', label: 'Subjects', title: 'Current Subjects', icon: BiBookAlt },
+  { to: '/student/academics', label: 'Academics', title: 'My Academics', icon: BiBookAlt },
   { to: '/student/profile', label: 'My Profile', icon: BiUser },
 ];
 
 const getToken = () => sessionStorage.getItem('token') || localStorage.getItem('token');
 
-/** Loads the signed-in student's basic info for the profile drawer. */
 function useStudentUser() {
   const [user, setUser] = useState(null);
 

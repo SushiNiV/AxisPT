@@ -226,14 +226,16 @@ function GradeTable({
                   <div className="font-bold text-ink">{entry.courseCode}</div>
                   <div className="text-xs text-ink-2">{entry.courseName}</div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onRemove(yearLevel, semesterId, attemptKey)}
-                  aria-label={`Remove ${entry.courseCode}`}
-                  className="grid h-10 w-10 place-items-center text-ink-3 hover:text-danger"
-                >
-                  <BiX />
-                </button>
+                {(!entry.inCurriculum || entry.gradeId) && (
+                  <button
+                    type="button"
+                    onClick={() => onRemove(yearLevel, semesterId, attemptKey)}
+                    aria-label={`Remove ${entry.courseCode}`}
+                    className="grid h-10 w-10 place-items-center text-ink-3 hover:text-danger"
+                  >
+                    <BiX />
+                  </button>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3 mb-4">
                 {allComponents.map(comp => {
@@ -375,15 +377,17 @@ function GradeTable({
                 )}
                 
                 <td className="w-8 px-1 py-3 text-center">
-                  <button
-                    type="button"
-                    onClick={() => onRemove(yearLevel, semesterId, attemptKey)}
-                    aria-label={`Remove ${entry.courseCode}`}
-                    title="Remove course"
-                    className="text-ink-3 hover:text-danger mt-2"
-                  >
-                    <BiX className="text-lg" />
-                  </button>
+                  {(!entry.inCurriculum || entry.gradeId) && (
+                    <button
+                      type="button"
+                      onClick={() => onRemove(yearLevel, semesterId, attemptKey)}
+                      aria-label={`Remove ${entry.courseCode}`}
+                      title="Remove course"
+                      className="text-ink-3 hover:text-danger mt-2"
+                    >
+                      <BiX className="text-lg" />
+                    </button>
+                  )}
                 </td>
               </tr>
             );
@@ -471,12 +475,15 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
         });
         setYears(sheet.years);
 
+        // Start on the student's current year; if the sheet has no block for it,
+        // fall back to the first year so a year AND a semester are always selected.
         const currentYearNum = Number(sheet.currentYearLevel) || 1;
-        setActiveYear(currentYearNum);
-
-        const currentYearData = sheet.years.find(y => y.yearLevel === currentYearNum);
-        if (currentYearData?.semesters?.length) {
-          setActiveSemester(currentYearData.semesters[0].semesterId);
+        const startYear = sheet.years.find(y => y.yearLevel === currentYearNum) || sheet.years[0];
+        if (startYear) {
+          setActiveYear(startYear.yearLevel);
+          if (startYear.semesters?.length) {
+            setActiveSemester(startYear.semesters[0].semesterId);
+          }
         }
 
         const map = {};
@@ -624,14 +631,51 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
     insertCourse(course, yearLevel, semesterId);
   };
 
+  // A curriculum course is always listed, so after its grade is deleted or archived the
+  // row is reset to empty instead of being removed from the sheet.
+  const clearCourseRow = (attemptKey) => {
+    setGradesMap((prev) => ({
+      ...prev,
+      [attemptKey]: {
+        ...prev[attemptKey],
+        gradeId: null,
+        finalGrade: null,
+        remarks: '',
+        scoresByTerm: { Prelim: {}, Midterm: {}, Final: {} },
+        grades: {
+          Prelim: { raw: '', transmuted: '' },
+          Midterm: { raw: '', transmuted: '' },
+          Final: { raw: '', transmuted: '' },
+        },
+      },
+    }));
+  };
+
   const handleRemoveCourse = (yearLevel, semesterId, attemptKey) => {
     const entry = gradesMap[attemptKey];
     if (!entry) return;
 
-    if (!entry.gradeId) {
+    // ✅ Bulletproof check for emptiness
+    const hasScores = TERMS.some((t) => 
+      Object.values(entry.scoresByTerm?.[t] || {}).some((val) => {
+        const s = String(val ?? '').trim();
+        return s !== '';
+      })
+    );
+
+    const hasManualGrades = TERMS.some((t) => {
+      const raw = String(entry.grades?.[t]?.raw ?? '').trim();
+      const trans = String(entry.grades?.[t]?.transmuted ?? '').trim();
+      return raw !== '' || trans !== '';
+    });
+
+    const isCompletelyEmpty = !hasScores && !hasManualGrades;
+
+    // If it's empty (or was never saved), hard delete it.
+    if (!entry.gradeId || isCompletelyEmpty) {
       openConfirm({
         title: 'Remove Course',
-        message: `Remove "${entry.courseCode}" from this semester?`,
+        message: `Remove "${entry.courseCode}" from this semester? Since it has no grades entered, it will be permanently deleted.`,
         variant: 'warning', confirmLabel: 'REMOVE',
         onConfirm: async () => {
           closeConfirm();
@@ -639,14 +683,19 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
           try {
             const token = sessionStorage.getItem('token') || localStorage.getItem('token');
             const res = await fetch(
-              `${process.env.REACT_APP_API_URL}/admin/students/${studentId}/grades/${entry.courseId}/empty?yearLevel=${yearLevel}&semesterId=${semesterId}`,
+              `${process.env.REACT_APP_API_URL}/admin/students/${studentId}/grades/${entry.courseId}/empty?yearLevel=${yearLevel}&semesterId=${semesterId}${entry.gradeId ? `&gradeId=${entry.gradeId}` : ''}`,
               { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
             );
             const data = await res.json();
             if (data.success || res.status === 404) {
-              const semKey = `${yearLevel}-${semesterId}`;
-              setAttemptKeysBySemester((prev) => ({ ...prev, [semKey]: (prev[semKey] || []).filter((k) => k !== attemptKey) }));
-              setGradesMap((prev) => { const next = { ...prev }; delete next[attemptKey]; return next; });
+              if (entry.inCurriculum) {
+                clearCourseRow(attemptKey);
+              } else {
+                const semKey = `${yearLevel}-${semesterId}`;
+                setAttemptKeysBySemester((prev) => ({ ...prev, [semKey]: (prev[semKey] || []).filter((k) => k !== attemptKey) }));
+                setGradesMap((prev) => { const next = { ...prev }; delete next[attemptKey]; return next; });
+              }
+              setIsDirty(true);
             } else {
               openAlert('Delete Failed', data.message || 'Failed to delete course.', 'danger');
             }
@@ -661,6 +710,7 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
       return;
     }
 
+    // If it HAS grades, trigger the Archive flow.
     setArchiveReason('');
     setArchiveState({ isOpen: true, entry, attemptKey, yearLevel, semesterId });
   };
@@ -680,9 +730,13 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
       );
       const data = await response.json();
       if (data.success) {
-        const semKey = `${yearLevel}-${semesterId}`;
-        setAttemptKeysBySemester((prev) => ({ ...prev, [semKey]: (prev[semKey] || []).filter((k) => k !== attemptKey) }));
-        setGradesMap((prev) => { const next = { ...prev }; delete next[attemptKey]; return next; });
+        if (entry.inCurriculum) {
+          clearCourseRow(attemptKey);
+        } else {
+          const semKey = `${yearLevel}-${semesterId}`;
+          setAttemptKeysBySemester((prev) => ({ ...prev, [semKey]: (prev[semKey] || []).filter((k) => k !== attemptKey) }));
+          setGradesMap((prev) => { const next = { ...prev }; delete next[attemptKey]; return next; });
+        }
         setArchiveState({ isOpen: false, entry: null, attemptKey: null, yearLevel: null, semesterId: null });
         setArchiveReason('');
         showSuccess('Grade Archived', `The grade for "${entry.courseCode}" has been archived.`);
@@ -697,13 +751,22 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   };
 
   const submitGrades = async (entries) => {
+    if (!activeSemester || !activeYear) {
+      openAlert(
+        'Missing Semester',
+        'Please make sure a year and semester are selected before saving.',
+        'warning'
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/students/${studentId}/grades`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ semester_id: activeSemester, grades: entries })
+        body: JSON.stringify({ semester_id: Number(activeSemester), grades: entries })
       });
       const data = await response.json();
       if (data.success) {
@@ -722,6 +785,8 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
   const handleSubmit = async () => {
     const problems = [];
     Object.values(gradesMap).forEach((v) => {
+      if (Number(v.semesterId) !== Number(activeSemester)) return;
+
       TERMS.forEach((t) => {
         const r = validateGrade('raw', v.grades?.[t]?.raw);
         const tr = validateGrade('transmuted', v.grades?.[t]?.transmuted);
@@ -736,6 +801,8 @@ const AddGrade = ({ onClose, onSuccess, student }) => {
 
     const entries = Object.entries(gradesMap)
       .filter(([, v]) => {
+        if (Number(v.semesterId) !== Number(activeSemester)) return false;
+
         const hasScores = TERMS.some((t) => Object.values(v.scoresByTerm[t] || {}).some((val) => val !== '' && val !== undefined));
         const hasGrades = TERMS.some((t) => v.grades?.[t]?.raw !== '' || v.grades?.[t]?.transmuted !== '');
         return hasScores || hasGrades || !!v.remarks;

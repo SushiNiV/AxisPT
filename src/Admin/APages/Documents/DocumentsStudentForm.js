@@ -8,6 +8,7 @@ import useMediaQuery from '../../../Components/useMediaQuery';
 import Button from '../../../Components/ui/Button';
 import EmptyState from '../../../Components/ui/Emptystate';
 import Pagination from '../../../Components/ui/Pagination';
+import Filter from '../../../Components/shared/Filter';
 
 const DEFAULT_PREVIEW_SCALE = 1;
 const MIN_PREVIEW_SCALE = 0.5;
@@ -35,6 +36,10 @@ function DocumentsStudentForm() {
   const [printError, setPrintError] = useState(null);
   const [showBulkPrintConfirm, setShowBulkPrintConfirm] = useState(false);
 
+  // Filter State
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({ program: '', section: '' });
+
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -61,13 +66,80 @@ function DocumentsStudentForm() {
     fetchStudents();
   }, [fetchStudents]);
 
+  // Derive filter options
+  const programOptions = useMemo(() => {
+    const unique = new Map();
+    students.forEach((s) => {
+      if (s.program_abbr && !unique.has(s.program_abbr)) {
+        unique.set(s.program_abbr, { value: s.program_abbr, label: s.program_abbr });
+      }
+    });
+    return Array.from(unique.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [students]);
+
+  const sectionOptions = useMemo(() => {
+    const unique = new Set();
+    students.forEach((s) => {
+      if (!s.section_name) return;
+      // Cascade: only show sections belonging to the selected program
+      if (filters.program && s.program_abbr !== filters.program) return;
+      unique.add(s.section_name);
+    });
+    return Array.from(unique).sort().map((s) => ({ value: s, label: s }));
+  }, [students, filters.program]);
+
+  const activeFilterConfig = [
+    {
+      name: 'program',
+      label: 'Program',
+      options: programOptions,
+      placeholder: 'All programs',
+      value: filters.program,
+    },
+    {
+      name: 'section',
+      label: 'Section',
+      options: sectionOptions,
+      placeholder: 'All sections',
+      value: filters.section,
+    },
+  ];
+
+  const handleFilterChange = (name, value) => {
+    setFilters((prev) => {
+      const next = { ...prev, [name]: value };
+      // If program changes, clear section so it doesn't point to a stale option
+      if (name === 'program') next.section = '';
+      return next;
+    });
+  };
+
+  const handleFilterReset = () => {
+    setFilters({ program: '', section: '' });
+  };
+
+  const handleFilterApply = () => {
+    setIsFilterOpen(false);
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = !!(filters.program || filters.section);
+
+  // Apply filters and search
   const filteredStudents = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return students.filter((std) => {
+      // 1. Program filter
+      if (filters.program && std.program_abbr !== filters.program) return false;
+      
+      // 2. Section filter
+      if (filters.section && std.section_name !== filters.section) return false;
+
+      // 3. Search filter
       const fullName = `${std.first_name} ${std.last_name}`.toLowerCase();
       return !term || fullName.includes(term) || std.student_number?.toLowerCase().includes(term) || std.personal_email?.toLowerCase().includes(term);
     });
-  }, [students, searchTerm]);
+  }, [students, searchTerm, filters]);
 
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / STUDENTS_PER_PAGE));
   const indexOfFirstStudent = (currentPage - 1) * STUDENTS_PER_PAGE;
@@ -198,6 +270,8 @@ function DocumentsStudentForm() {
 
         {/* Left Pane */}
         <div className="flex w-full shrink-0 flex-col overflow-hidden rounded-panel border !border-line bg-surface md:w-[340px]">
+          
+          {/* Search + Filter Row */}
           <div className="flex shrink-0 items-center gap-2 border-b !border-line p-3">
             <div className="relative min-w-0 flex-1">
               <BiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg text-ink-3" />
@@ -212,6 +286,16 @@ function DocumentsStudentForm() {
                 </button>
               )}
             </div>
+            
+            <Filter
+              isOpen={isFilterOpen}
+              setIsOpen={setIsFilterOpen}
+              hasActiveFilters={hasActiveFilters}
+              filters={activeFilterConfig}
+              onFilterChange={handleFilterChange}
+              onReset={handleFilterReset}
+              onApply={handleFilterApply}
+            />
           </div>
 
           <div className="shrink-0 border-b !border-line bg-surface-2 px-4 py-2 text-xs font-semibold text-ink-2">
@@ -220,7 +304,6 @@ function DocumentsStudentForm() {
 
           <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {loading ? (
-              // --- LEFT PANE SKELETON ---
               <ul className="m-0 list-none divide-y divide-line p-0">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <li key={i} className="flex items-center gap-3 px-4 py-3">
@@ -235,6 +318,8 @@ function DocumentsStudentForm() {
               </ul>
             ) : error ? (
               <p className="p-4 text-center text-sm text-danger">{error}</p>
+            ) : filteredStudents.length === 0 ? (
+              <p className="p-4 text-center text-sm text-ink-3">No students match your filters.</p>
             ) : (
               <ul className="m-0 list-none divide-y divide-line p-0">
                 {currentStudents.map((std) => {

@@ -1,3 +1,5 @@
+'use strict';
+
 const db = require('../config/db');
 const { withTransaction } = require('../../utils/transaction');
 
@@ -44,15 +46,14 @@ class FacultyModel {
     return rows[0] || null;
   }
 
-  // This method did not exist before, but addFaculty called it.
   static async create(data, client = db) {
-    const { user_id, last_name, first_name, middle_name, suffix, designation_id, account_status } = data;
+    const { user_id, last_name, first_name, middle_name, suffix, designation_id, program_id, account_status } = data;
     const { rows } = await client.query(`
       INSERT INTO faculties
-        (user_id, last_name, first_name, middle_name, suffix, designation, account_status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+        (user_id, last_name, first_name, middle_name, suffix, designation, program_id, account_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
-    `, [user_id, last_name, first_name, middle_name ?? null, suffix ?? null, designation_id ?? null, account_status]);
+    `, [user_id, last_name, first_name, middle_name ?? null, suffix ?? null, designation_id ?? null, program_id ?? null, account_status]);
     return rows[0];
   }
 
@@ -74,6 +75,7 @@ class FacultyModel {
     if (data.middle_name !== undefined) set('middle_name', data.middle_name);
     if (data.suffix !== undefined) set('suffix', data.suffix);
     if (data.designation_id !== undefined) set('designation', data.designation_id);
+    if (data.program_id !== undefined) set('program_id', data.program_id); // <-- Added program_id
     if (typeof data.account_status === 'boolean') set('account_status', data.account_status);
 
     sets.push('updated_at = NOW()');

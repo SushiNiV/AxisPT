@@ -9,7 +9,7 @@
  */
 
 const notificationModel = require('../models/notificationModel');
-const { HttpError } = require('../../utils/httpError');
+const HttpError = require('../../utils/httpError');
 const { parseId } = require('../../utils/request');
 const { audit } = require('../../utils/audit');
 

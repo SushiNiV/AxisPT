@@ -9,6 +9,7 @@ import Button from '../../../Components/ui/Button';
 import EmptyState from '../../../Components/ui/Emptystate';
 import Pagination from '../../../Components/ui/Pagination';
 import Dropdown from '../../../Components/shared/Dropdown';
+import Filter from '../../../Components/shared/Filter';
 
 const DEFAULT_PREVIEW_SCALE = 1;
 const MIN_PREVIEW_SCALE = 0.5;
@@ -44,6 +45,10 @@ function DocumentsTermGrade() {
   const [selectedYearLevel, setSelectedYearLevel] = useState(null);
   const [selectedSemesterId, setSelectedSemesterId] = useState(null);
   const [academicPeriods, setAcademicPeriods] = useState([]);
+
+  // Filter State
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({ program: '', section: '' });
 
   const fetchStudents = useCallback(async () => {
     setLoading(true); setError(null);
@@ -114,13 +119,76 @@ function DocumentsTermGrade() {
     fetchTermGrade();
   }, [selectedStudentId, selectedYearLevel, selectedSemesterId]);
 
+  // Derive filter options
+  const programOptions = useMemo(() => {
+    const unique = new Map();
+    students.forEach((s) => {
+      if (s.program_abbr && !unique.has(s.program_abbr)) {
+        unique.set(s.program_abbr, { value: s.program_abbr, label: s.program_abbr });
+      }
+    });
+    return Array.from(unique.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [students]);
+
+  const sectionOptions = useMemo(() => {
+    const unique = new Set();
+    students.forEach((s) => {
+      if (!s.section_name) return;
+      // Cascade: only show sections belonging to the selected program
+      if (filters.program && s.program_abbr !== filters.program) return;
+      unique.add(s.section_name);
+    });
+    return Array.from(unique).sort().map((s) => ({ value: s, label: s }));
+  }, [students, filters.program]);
+
+  const activeFilterConfig = [
+    {
+      name: 'program',
+      label: 'Program',
+      options: programOptions,
+      placeholder: 'All programs',
+      value: filters.program,
+    },
+    {
+      name: 'section',
+      label: 'Section',
+      options: sectionOptions,
+      placeholder: 'All sections',
+      value: filters.section,
+    },
+  ];
+
+  const handleFilterChange = (name, value) => {
+    setFilters((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === 'program') next.section = '';
+      return next;
+    });
+  };
+
+  const handleFilterReset = () => {
+    setFilters({ program: '', section: '' });
+  };
+
+  const handleFilterApply = () => {
+    setIsFilterOpen(false);
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = !!(filters.program || filters.section);
+
   const filteredStudents = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return students.filter((std) => {
+      // Filters
+      if (filters.program && std.program_abbr !== filters.program) return false;
+      if (filters.section && std.section_name !== filters.section) return false;
+
+      // Search
       const fullName = `${std.first_name} ${std.last_name}`.toLowerCase();
       return !term || fullName.includes(term) || std.student_number?.toLowerCase().includes(term) || std.personal_email?.toLowerCase().includes(term);
     });
-  }, [students, searchTerm]);
+  }, [students, searchTerm, filters]);
 
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / STUDENTS_PER_PAGE));
   const indexOfFirstStudent = (currentPage - 1) * STUDENTS_PER_PAGE;
@@ -276,6 +344,16 @@ function DocumentsTermGrade() {
                 </button>
               )}
             </div>
+            
+            <Filter
+              isOpen={isFilterOpen}
+              setIsOpen={setIsFilterOpen}
+              hasActiveFilters={hasActiveFilters}
+              filters={activeFilterConfig}
+              onFilterChange={handleFilterChange}
+              onReset={handleFilterReset}
+              onApply={handleFilterApply}
+            />
           </div>
 
           <div className="shrink-0 border-b !border-line bg-surface-2 px-4 py-2 text-xs font-semibold text-ink-2">
@@ -284,7 +362,6 @@ function DocumentsTermGrade() {
 
           <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {loading ? (
-              // --- LEFT PANE SKELETON ---
               <ul className="m-0 list-none divide-y divide-line p-0">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <li key={i} className="flex items-center gap-3 px-4 py-3">
@@ -297,7 +374,9 @@ function DocumentsTermGrade() {
                   </li>
                 ))}
               </ul>
-            ) : error ? <p className="p-4 text-center text-sm text-danger">{error}</p> : (
+            ) : error ? <p className="p-4 text-center text-sm text-danger">{error}</p> : filteredStudents.length === 0 ? (
+              <p className="p-4 text-center text-sm text-ink-3">No students match your filters.</p>
+            ) : (
               <ul className="m-0 list-none divide-y divide-line p-0">
                 {currentStudents.map((std) => {
                   const isSelected = selectedStudentIdSet.has(std.student_id);
@@ -368,7 +447,6 @@ function DocumentsTermGrade() {
                   <EmptyState icon={BiChevronRight} title="No student selected" text="Select a student from the list." className="!border-0 !bg-transparent" />
                 </div>
               ) : gradeLoading ? (
-                // --- RIGHT PANE DOCUMENT SKELETON ---
                 <div className="mx-auto flex w-fit shrink-0 justify-center mt-12">
                   <div 
                     className="shadow-lift transition-transform duration-200 bg-white"
@@ -415,7 +493,6 @@ function DocumentsTermGrade() {
                 <div className="flex h-full items-center justify-center"><p className="text-sm font-medium text-danger">{gradeError}</p></div>
               ) : (
                 <div className="mx-auto flex w-fit shrink-0 justify-center mt-12">
-                  {/* FORCED LIGHT MODE PREVIEW */}
                   <div 
                     className="shadow-lift transition-transform duration-200" 
                     style={{ 
@@ -438,7 +515,6 @@ function DocumentsTermGrade() {
                       <TermGrade data={termGradeData} />
                     </div>
                   </div>
-
                 </div>
               )}
             </div>
@@ -446,7 +522,6 @@ function DocumentsTermGrade() {
         )}
       </div>
 
-      {/* ---------- BULK ACTION FLOATING BAR ---------- */}
       <BulkAction
         studentIds={selectedStudentIds}
         showBar
@@ -459,7 +534,6 @@ function DocumentsTermGrade() {
         onDelete={null} 
       />
 
-      {/* ---------- CONFIRMATION MODAL ---------- */}
       <ConfirmationModal
         isOpen={showBulkPrintConfirm}
         title={`Print ${selectedStudentIds.length} Student Grades?`}
@@ -473,7 +547,6 @@ function DocumentsTermGrade() {
         onCancel={() => setShowBulkPrintConfirm(false)}
       />
 
-      {/* The Print Portal */}
       {printForms.length > 0 && createPortal(
         <div id="print-portal-root">
           {printForms.map(({ studentId, data }) => (

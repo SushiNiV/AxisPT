@@ -8,6 +8,7 @@ import useMediaQuery from '../../../Components/useMediaQuery';
 import Button from '../../../Components/ui/Button';
 import EmptyState from '../../../Components/ui/Emptystate';
 import Pagination from '../../../Components/ui/Pagination';
+import Filter from '../../../Components/shared/Filter';
 
 const DEFAULT_PREVIEW_SCALE = 1;
 const MIN_PREVIEW_SCALE = 0.3;
@@ -43,6 +44,10 @@ function DocumentsCourseOutline() {
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
   const [printError, setPrintError] = useState(null);
   const [showBulkPrintConfirm, setShowBulkPrintConfirm] = useState(false);
+
+  // Filter State
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({ program: '', section: '' });
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -93,13 +98,78 @@ function DocumentsCourseOutline() {
     fetchOutline();
   }, [selectedStudentId]);
 
+  // Derive filter options
+  const programOptions = useMemo(() => {
+    const unique = new Map();
+    students.forEach((s) => {
+      if (s.program_abbr && !unique.has(s.program_abbr)) {
+        unique.set(s.program_abbr, { value: s.program_abbr, label: s.program_abbr });
+      }
+    });
+    return Array.from(unique.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [students]);
+
+  const sectionOptions = useMemo(() => {
+    const unique = new Set();
+    students.forEach((s) => {
+      if (!s.section_name) return;
+      // Cascade: only show sections belonging to the selected program
+      if (filters.program && s.program_abbr !== filters.program) return;
+      unique.add(s.section_name);
+    });
+    return Array.from(unique).sort().map((s) => ({ value: s, label: s }));
+  }, [students, filters.program]);
+
+  const activeFilterConfig = [
+    {
+      name: 'program',
+      label: 'Program',
+      options: programOptions,
+      placeholder: 'All programs',
+      value: filters.program,
+    },
+    {
+      name: 'section',
+      label: 'Section',
+      options: sectionOptions,
+      placeholder: 'All sections',
+      value: filters.section,
+    },
+  ];
+
+  const handleFilterChange = (name, value) => {
+    setFilters((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === 'program') next.section = '';
+      return next;
+    });
+  };
+
+  const handleFilterReset = () => {
+    setFilters({ program: '', section: '' });
+  };
+
+  const handleFilterApply = () => {
+    setIsFilterOpen(false);
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = !!(filters.program || filters.section);
+
   const filteredStudents = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return students.filter((s) => {
+      // 1. Program filter
+      if (filters.program && s.program_abbr !== filters.program) return false;
+
+      // 2. Section filter
+      if (filters.section && s.section_name !== filters.section) return false;
+
+      // 3. Search filter
       const label = `${s.first_name || ''} ${s.last_name || ''} ${s.student_number || ''} ${s.program_abbr || ''}`.toLowerCase();
       return !term || label.includes(term);
     });
-  }, [students, searchTerm]);
+  }, [students, searchTerm, filters]);
 
   // PAGINATION LOGIC
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / STUDENTS_PER_PAGE));
@@ -246,6 +316,16 @@ function DocumentsCourseOutline() {
                 </button>
               )}
             </div>
+            
+            <Filter
+              isOpen={isFilterOpen}
+              setIsOpen={setIsFilterOpen}
+              hasActiveFilters={hasActiveFilters}
+              filters={activeFilterConfig}
+              onFilterChange={handleFilterChange}
+              onReset={handleFilterReset}
+              onApply={handleFilterApply}
+            />
           </div>
 
           <div className="shrink-0 border-b !border-line bg-surface-2 px-4 py-2 text-xs font-semibold text-ink-2">
@@ -254,7 +334,6 @@ function DocumentsCourseOutline() {
 
           <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {loading ? (
-              // --- LEFT PANE SKELETON ---
               <ul className="m-0 list-none divide-y divide-line p-0">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <li key={i} className="flex items-center gap-3 px-4 py-3">
@@ -270,7 +349,7 @@ function DocumentsCourseOutline() {
             ) : error ? (
               <p className="p-4 text-center text-sm text-danger">{error}</p>
             ) : filteredStudents.length === 0 ? (
-              <p className="p-4 text-center text-sm text-ink-3">No students found.</p>
+              <p className="p-4 text-center text-sm text-ink-3">No students match your filters.</p>
             ) : (
               <ul className="m-0 list-none divide-y divide-line p-0">
                 {currentStudents.map((std) => {
@@ -321,7 +400,6 @@ function DocumentsCourseOutline() {
                   <EmptyState icon={BiChevronRight} title="No student selected" text="Select a student to preview its course outline." className="!border-0 !bg-transparent" />
                 </div>
               ) : outlineLoading ? (
-                // --- RIGHT PANE DOCUMENT SKELETON ---
                 <div className="mx-auto flex w-fit shrink-0 justify-center">
                   <div 
                     className="shadow-lift transition-transform duration-200 bg-white"
@@ -341,13 +419,11 @@ function DocumentsCourseOutline() {
                         backgroundColor: '#ffffff'
                       }}
                     >
-                      {/* Fake Header */}
                       <div className="flex flex-col items-center gap-2 border-b-2 border-gray-300 pb-4">
                         <div className="h-4 w-64 animate-pulse rounded bg-gray-200" />
                         <div className="h-3 w-48 animate-pulse rounded bg-gray-200" />
                         <div className="h-3 w-32 animate-pulse rounded bg-gray-200" />
                       </div>
-                      {/* Fake Table Rows */}
                       <div className="mt-4 flex flex-col gap-3">
                         <div className="h-6 w-full animate-pulse rounded bg-gray-300" />
                         {Array.from({ length: 12 }).map((_, i) => (
@@ -367,7 +443,6 @@ function DocumentsCourseOutline() {
                 <div className="flex h-full items-center justify-center"><p className="text-sm font-medium text-danger">{outlineError}</p></div>
               ) : (
                 <div className="mx-auto flex w-fit shrink-0 justify-center">
-                  {/* FORCED LIGHT MODE PREVIEW */}
                   <div 
                     className="shadow-lift transition-transform duration-200" 
                     style={{ 
@@ -390,7 +465,6 @@ function DocumentsCourseOutline() {
                       <CourseOutline data={outlineData} />
                     </div>
                   </div>
-
                 </div>
               )}
             </div>
@@ -398,7 +472,6 @@ function DocumentsCourseOutline() {
         )}
       </div>
 
-      {/* ---------- BULK ACTION FLOATING BAR ---------- */}
       <BulkAction
         studentIds={selectedIds}
         showBar
@@ -411,7 +484,6 @@ function DocumentsCourseOutline() {
         onDelete={null} 
       />
 
-      {/* ---------- CONFIRMATION MODAL ---------- */}
       <ConfirmationModal
         isOpen={showBulkPrintConfirm}
         title={`Print ${selectedIds.length} Course Outlines?`}
@@ -425,7 +497,6 @@ function DocumentsCourseOutline() {
         onCancel={() => setShowBulkPrintConfirm(false)}
       />
 
-      {/* THE PRINT PORTAL */}
       {printForms.length > 0 && createPortal(
         <div id="print-portal-root">
           {printForms.map(({ studentId, data }) => (

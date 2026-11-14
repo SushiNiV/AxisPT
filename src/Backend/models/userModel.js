@@ -1,8 +1,10 @@
+'use strict';
+
 const db = require('../config/db');
 
 class UserModel {
-  static async getAllUsers() {
-    const result = await db.query(`
+  static async getAllUsers(client = db) {
+    const result = await client.query(`
       SELECT 
         u.user_id,
         u.username,
@@ -38,8 +40,8 @@ class UserModel {
     return result.rows;
   }
 
-  static async getUserById(userId) {
-    const result = await db.query(`
+  static async getUserById(userId, client = db) {
+    const result = await client.query(`
       SELECT 
         u.user_id,
         u.username,
@@ -71,8 +73,8 @@ class UserModel {
     return result.rows[0];
   }
 
-  static async getAllRoles() {
-    const result = await db.query(`
+  static async getAllRoles(client = db) {
+    const result = await client.query(`
       SELECT role_id, role_name FROM roles 
       WHERE UPPER(role_name) != 'STUDENT'
       ORDER BY role_name ASC
@@ -80,13 +82,60 @@ class UserModel {
     return result.rows;
   }
 
-  static async getAllDesignations() {
-    const result = await db.query(`
+  static async getAllDesignations(client = db) {
+    const result = await client.query(`
       SELECT designation_id, designation_name FROM designations 
       WHERE designation_name != 'Developer'
       ORDER BY designation_name ASC
     `);
     return result.rows;
+  }
+
+  // ------------------------------------------------------------------
+  // WRITE METHODS (Required for facultyController)
+  // ------------------------------------------------------------------
+
+  static async createAccount({ username, passwordHash, email, isActive = true }, client = db) {
+    const { rows } = await client.query(
+      `INSERT INTO users (username, password_hash, school_email, is_active, changed_pass)
+       VALUES ($1, $2, $3, $4, false)
+       RETURNING user_id`,
+      [username, passwordHash, email, isActive]
+    );
+    return rows[0].user_id;
+  }
+
+  static async updateAccount(userId, { username, email, isActive }, client = db) {
+    const updates = [];
+    const values = [];
+    
+    if (username !== undefined) { values.push(username); updates.push(`username = $${values.length}`); }
+    if (email !== undefined) { values.push(email); updates.push(`school_email = $${values.length}`); }
+    if (isActive !== undefined) { values.push(isActive); updates.push(`is_active = $${values.length}`); }
+    
+    if (updates.length === 0) return;
+
+    values.push(userId);
+    await client.query(
+      `UPDATE users SET ${updates.join(', ')}, updated_at = NOW() WHERE user_id = $${values.length}`,
+      values
+    );
+  }
+
+  static async setRole(userId, roleId, client = db) {
+    await client.query('DELETE FROM user_roles WHERE user_id = $1', [userId]);
+    await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [userId, roleId]);
+  }
+
+  static async findOrCreateDesignation(name, client = db) {
+    const { rows } = await client.query(
+      `INSERT INTO designations (designation_name) 
+       VALUES ($1) 
+       ON CONFLICT (designation_name) DO UPDATE SET designation_name = EXCLUDED.designation_name 
+       RETURNING designation_id`,
+      [name]
+    );
+    return rows[0].designation_id;
   }
 }
 

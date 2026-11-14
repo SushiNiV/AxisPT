@@ -9,7 +9,7 @@
  */
 
 const DocumentModel = require('../models/documentModel');
-const { HttpError } = require('../../utils/httpError');
+const HttpError = require('../../utils/httpError');
 const { parseId } = require('../../utils/request');
 
 /** Year levels and semester ids the documents accept. */

@@ -1,6 +1,20 @@
 'use strict';
+
+/**
+ * Program controller: HTTP layer for managing academic programs.
+ *
+ * Conventions (shared with the rest of the cleaned backend):
+ *  - Success: { success: true, data } or { success: true, message }.
+ *  - Failures are thrown as HttpError; Express 5 forwards rejected promises to
+ *    the global error handler, so there is no try/catch here.
+ *  - Writes that check-then-write run inside withTransaction.
+ *  - Audit entries are written after the transaction commits.
+ *
+ * Programs are archived (program_status = false), never deleted.
+ */
+
 const ProgramModel = require('../models/programModel');
-const { HttpError } = require('../../utils/httpError');
+const HttpError = require('../../utils/httpError');
 const { parseId } = require('../../utils/request');
 const { withTransaction } = require('../../utils/transaction');
 const { audit } = require('../../utils/audit');
@@ -174,7 +188,7 @@ exports.deleteProgram = (req, res) =>
     message: 'Program archived successfully.',
   });
 
-/** PUT/POST /programs/:program_id/restore */
+/** POST /programs/:program_id/restore */
 exports.restoreProgram = (req, res) =>
   changeStatus(req, res, {
     active: true,

@@ -1,42 +1,32 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BiBook } from 'react-icons/bi';
 
-function AssistantSources({ sources, messageId }) {
-  const [expanded, setExpanded] = useState(false);
-
+export default function AssistantSources({ sources, messageId }) {
   if (!sources || sources.length === 0) return null;
 
-  return (
-    <div className="AssistantSourcesBlock">
-      <button
-        type="button"
-        className="AssistantSourcesToggle"
-        onClick={() => setExpanded((e) => !e)}
-        aria-expanded={expanded}
-      >
-        <BiBook className="AssistantSourcesIcon" />
-        <span>
-          {sources.length} SOURCE{sources.length > 1 ? 'S' : ''}
-        </span>
-        <span className={`arrow ${expanded ? 'open' : ''}`}>&#9660;</span>
-      </button>
+  const handleCiteClick = (n) => {
+    const el = document.getElementById(`msg-${messageId}-source-${n}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    el.classList.add('bg-warn-soft', 'text-warn', 'ring-warn/30');
+    setTimeout(() => el.classList.remove('bg-warn-soft', 'text-warn', 'ring-warn/30'), 1500);
+  };
 
-      {expanded && (
-        <ul className="AssistantSourcesList">
-          {sources.map((s) => (
-            <li
-              key={s.n}
-              id={`msg-${messageId}-source-${s.n}`}
-              className="AssistantSourceRow"
-            >
-              <span className="AssistantSourceNum">[{s.n}]</span>
-              <span className="AssistantSourceTitle">{s.title}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+  return (
+    <div className="AssistantSourcesBlock flex w-full flex-col gap-1.5">
+      <div className="flex flex-wrap gap-1.5">
+        {sources.map((s) => (
+          <button
+            key={s.n}
+            id={`msg-${messageId}-source-${s.n}`}
+            onClick={() => handleCiteClick(s.n)}
+            className="flex items-center gap-1.5 rounded-full border !border-line bg-surface px-2.5 py-1 text-xs text-ink-2 transition-colors hover:border-brand hover:bg-brand-soft hover:text-brand-ink"
+          >
+            <BiBook className="text-[10px] text-brand" />
+            <span className="max-w-[120px] truncate">{s.title}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
-
-export default AssistantSources;

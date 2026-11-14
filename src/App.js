@@ -38,9 +38,11 @@ import SignIn from './Components/SignIn/SignIn';
 // Student Imports
 import SLayout from './Student/SComponents/SLayout';
 import SDashboard from './Student/SPages/SDashboard';
+import SAcademics from './Student/SPages/SAcademics';
 import SGrades from './Student/SPages/SGrades';
 import SSubjects from './Student/SPages/SSubjects';
 import SProfile from './Student/SPages/SProfile';
+
 
 const ADMIN_AND_FACULTY = ['admin', 'faculty'];
 const ADMIN_ONLY = ['admin'];
@@ -114,6 +116,7 @@ function AppContent() {
 
         {/* AUTHENTICATED AREA */}
         <Route element={<ProtectedRoute />}>
+          
           <Route path="/change-password" element={<ChangePass />} />
 
           {/* --- ADMIN & FACULTY SHELL --- */}
@@ -191,12 +194,11 @@ function AppContent() {
             </Route>
           </Route>
 
-          {/* --- STUDENT SHELL --- */}
+         {/* --- STUDENT SHELL --- */}
           <Route element={<ProtectedRoute allowedRoles={STUDENT_ONLY} />}>
             <Route element={<SLayout />}>
               <Route path="/student/dashboard" element={<SDashboard />} />
-              <Route path="/student/grades" element={<SGrades />} />
-              <Route path="/student/subjects" element={<SSubjects />} />
+              <Route path="/student/academics" element={<SAcademics />} />
               <Route path="/student/profile" element={<SProfile />} />
             </Route>
           </Route>
