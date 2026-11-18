@@ -92,7 +92,6 @@ function AArchive() {
   const currentItems = filteredRecords.slice(indexOfFirstItem, indexOfLastItem);
 
   const handleRestore = (record) => {
-    const typeConfig = TYPES.find(t => t.id === activeType);
     let title = '', summary = '', message = '', url = '';
     let confirmLabel = 'RESTORE';
     let variant = 'info';
