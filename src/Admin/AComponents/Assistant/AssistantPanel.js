@@ -7,8 +7,7 @@ import AssistantInput from './AssistantInput';
 
 export default function AssistantPanel({ onClose }) {
   const { messages, isAsking, error, ask, clearHistory } = useAssistant();
-  const lastLive = [...messages].reverse().find((m) => m.role === 'assistant' && m.liveData)?.liveData;
-
+  
   return (
     <div className="ax flex h-full w-full flex-col bg-surface">
       {/* GRADIENT HEADER */}

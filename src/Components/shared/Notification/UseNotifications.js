@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'unreadCount';
 const CHANGE_EVENT = 'axispt:notifications-changed';
@@ -13,7 +13,6 @@ export function setUnreadCount(count) {
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
-let syncedToken = null;
 let pollTimer = null;
 
 export function syncNotifications() {

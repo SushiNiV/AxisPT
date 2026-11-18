@@ -22,21 +22,7 @@ function ACurricula() {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = isMobile ? 10 : 15; 
 
-  const [confirmState, setConfirmState] = useState({ isOpen: false });
-
-  const closeConfirm = () => setConfirmState({ isOpen: false });
-
-  const openConfirm = (config) => {
-    setConfirmState({
-      isOpen: true,
-      variant: 'info',
-      confirmLabel: 'CONFIRM',
-      cancelLabel: 'CANCEL',
-      isAlert: false,
-      loading: false,
-      ...config,
-    });
-  };
+  const [confirmState] = useState({ isOpen: false });
 
   const fetchCurricula = useCallback(async () => {
     setLoading(true);

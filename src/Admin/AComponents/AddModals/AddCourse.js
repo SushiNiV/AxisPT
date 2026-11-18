@@ -6,7 +6,6 @@ import Modal from '../../../Components/ui/Modal';
 import Button from '../../../Components/ui/Button';
 import TextField from '../../../Components/ui/Textfield';
 import NumberInput from '../../../Components/ui/NumberInput';
-import cx from '../../../Components/ui/Cx';
 
 function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
   const [formData, setFormData] = useState({

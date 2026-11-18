@@ -70,11 +70,15 @@ function AProgSec() {
   useEffect(() => { fetchPrograms(); }, [fetchPrograms]);
 
   useEffect(() => {
-    if (selectedProgram) {
-      const stillThere = programs.find(p => p.program_id === selectedProgram.program_id);
-      if (stillThere) setSelectedProgram(stillThere);
-      else { setSelectedProgram(null); setSections([]); }
-    }
+    // Re-sync selectedProgram with the latest programs list.
+    // If the selected program no longer exists (e.g. was archived elsewhere), clear it.
+    setSelectedProgram((current) => {
+      if (!current) return current;
+      const stillThere = programs.find(p => p.program_id === current.program_id);
+      if (stillThere) return stillThere;
+      setSections([]);
+      return null;
+    });
   }, [programs]);
 
   const fetchSections = useCallback(async (programId) => {

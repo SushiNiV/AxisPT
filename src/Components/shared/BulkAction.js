@@ -23,7 +23,7 @@ const BulkAction = ({
   const [programId, setProgramId] = useState('');
   const [sectionId, setSectionId] = useState('');
   const [yearLevel, setYearLevel] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   const [confirmState, setConfirmState] = useState({ isOpen: false });

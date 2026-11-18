@@ -107,7 +107,20 @@ export default function AssistantWidget() {
       if (dragRef.current.moved) {
         savedPosRef.current = currentPosRef.current;
       } else {
-        toggleOpen();
+        // Use the latest state via a closure safe call
+        setOpen((prevOpen) => {
+          if (!prevOpen) {
+            savedPosRef.current = bottomPos;
+            setBottomPos(DEFAULT_BOTTOM);
+            currentPosRef.current = DEFAULT_BOTTOM;
+            setShowNudge(false);
+            return true;
+          }
+          setBottomPos(savedPosRef.current);
+          currentPosRef.current = savedPosRef.current;
+          setShowNudge(false);
+          return false;
+        });
       }
       
       dragRef.current = null;
@@ -120,7 +133,8 @@ export default function AssistantWidget() {
       window.removeEventListener('mouseup', onUp);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [isDragging]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDragging, bottomPos]); 
 
   return (
     <div className="ax fixed inset-0 z-[899] pointer-events-none print:hidden">
