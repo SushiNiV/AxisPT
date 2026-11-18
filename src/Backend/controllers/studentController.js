@@ -46,8 +46,9 @@ function translateDbError(error) {
   }
 }
 
-/** Admins may see archived students; everyone else only gets active ones. */
-const canSeeArchived = (req) => req.user?.role === 'admin';
+/** Admins and faculty may see archived students; everyone else only gets active ones. */
+const ARCHIVE_VIEWER_ROLES = ['admin', 'superadmin', 'faculty'];
+const canSeeArchived = (req) => ARCHIVE_VIEWER_ROLES.includes(String(req.user?.role || '').toLowerCase());
 
 function parseIntInRange(value, { name, min, max, fallback }) {
   if (value === undefined || value === '') return fallback;

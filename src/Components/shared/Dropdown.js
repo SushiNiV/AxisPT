@@ -16,19 +16,39 @@ function Dropdown({
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
 
-  const calculatePosition = () => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const openUpwards = spaceBelow < 250;
+  const getClipRect = (el) => {
+  let node = el.parentElement;
+  while (node && node !== document.body) {
+    if (/(auto|scroll)/.test(getComputedStyle(node).overflowY)) {
+      return node.getBoundingClientRect();
+    }
+    node = node.parentElement;
+  }
+  return { top: 0, bottom: window.innerHeight };
+};
 
-    setCoords({
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: rect.width,
-      openUpwards
-    });
-  };
+  const calculatePosition = () => {
+  const el = triggerRef.current;
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const clip = getClipRect(el);
+
+  // trigger scrolled out of view -> close instead of floating over other UI
+  if (rect.bottom < clip.top + 8 || rect.top > clip.bottom - 8) {
+    setIsOpen(false);
+    return;
+  }
+
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const spaceAbove = rect.top;
+  setCoords({
+    top: rect.bottom + 4,
+    bottom: window.innerHeight - rect.top + 4,
+    left: rect.left,
+    width: rect.width,
+    openUpwards: spaceBelow < 250 && spaceAbove > spaceBelow,
+  });
+};
 
   const toggleOpen = () => {
     if (!isOpen) {
@@ -38,28 +58,18 @@ function Dropdown({
   };
 
   useEffect(() => {
-    if (!isOpen) return;
-    
-    const handleScroll = () => {
-      if (triggerRef.current) {
-        const rect = triggerRef.current.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        setCoords(prev => ({
-          ...prev,
-          top: rect.bottom + 4,
-          left: rect.left,
-          openUpwards: spaceBelow < 250
-        }));
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, true);
-    window.addEventListener('resize', handleScroll);
-    return () => {
-      window.removeEventListener('scroll', handleScroll, true);
-      window.removeEventListener('resize', handleScroll);
-    };
-  }, [isOpen]);
+  if (!isOpen) return;
+  const onScroll = (e) => {
+    if (menuRef.current?.contains(e.target)) return;
+    calculatePosition();
+  };
+  window.addEventListener('scroll', onScroll, true);
+  window.addEventListener('resize', calculatePosition);
+  return () => {
+    window.removeEventListener('scroll', onScroll, true);
+    window.removeEventListener('resize', calculatePosition);
+  };
+}, [isOpen]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -98,10 +108,10 @@ function Dropdown({
       style={{
         position: 'fixed',
         top: coords.openUpwards ? 'auto' : coords.top,
-        bottom: coords.openUpwards ? (window.innerHeight - coords.top) + 4 : 'auto',
+        bottom: coords.openUpwards ? coords.bottom : 'auto',
         left: coords.left,
         width: coords.width,
-        zIndex: 99999
+        zIndex: 99999,
       }}
       className="ax max-h-60 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden rounded-ctl bg-surface p-1 shadow-xl ring-1 ring-line-strong select-none"
       role="listbox"
