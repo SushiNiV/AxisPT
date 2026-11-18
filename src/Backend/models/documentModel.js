@@ -38,6 +38,11 @@ const unitsOf = (row) => ({
   lab: row.lab_units || 0,
   total: row.total_units || (row.lec_units || 0) + (row.lab_units || 0),
 });
+const parsePrereqTokens = (value) => {
+  if (value == null) return [];
+  const list = Array.isArray(value) ? value : String(value).split(/[,;/]+/);
+  return list.map((t) => String(t).trim()).filter(Boolean);
+};
 
 /** Columns shared by the two enrolment-context queries. */
 const CONTEXT_SELECT = `
@@ -402,7 +407,7 @@ class DocumentModel {
     return new Map(rows.map((r) => [r.course_id, r.final_grade]));
   }
 
-  /** @private */
+    /** @private */
   static async _buildCourseOutline(curriculumId) {
     const { rows: [head] } = await db.query(
       `SELECT c.curriculum_id, c.version_name, c.start_year,
@@ -425,6 +430,30 @@ class DocumentModel {
         ORDER BY cc.year_level ASC, cc.semester_id ASC, co.course_code ASC`,
       [curriculumId]
     );
+
+    // Resolve prerequisite ids to course codes.
+    const prereqIds = [
+      ...new Set(
+        rows
+          .flatMap((r) => parsePrereqTokens(r.prerequisites))
+          .filter((t) => /^\d+$/.test(t))
+          .map(Number)
+      ),
+    ];
+    const codeById = new Map();
+    if (prereqIds.length) {
+      const { rows: codeRows } = await db.query(
+        'SELECT course_id, course_code FROM courses WHERE course_id = ANY($1::int[])',
+        [prereqIds]
+      );
+      for (const r of codeRows) codeById.set(Number(r.course_id), r.course_code);
+    }
+    const formatPrereqs = (value) => {
+      const codes = parsePrereqTokens(value).map((t) =>
+        /^\d+$/.test(t) ? (codeById.get(Number(t)) || t) : t
+      );
+      return codes.length ? codes.join(', ') : 'None';
+    };
 
     // Group by year level, then semester. Rows arrive already ordered.
     const years = new Map();
@@ -452,7 +481,7 @@ class DocumentModel {
         lecUnits: units.lec,
         labUnits: units.lab,
         totalUnits: units.total,
-        prerequisites: (row.prerequisites || '').trim() || 'None',
+        prerequisites: formatPrereqs(row.prerequisites),
       });
       semester.totals.lec += units.lec;
       semester.totals.lab += units.lab;
