@@ -138,6 +138,19 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
   const labUnits = parseInt(formData.lab_units) || 0;
   const totalUnits = lecUnits + labUnits;
 
+  // Strip characters that don't belong in each field.
+  const sanitizeInput = (name, value) => {
+    // Course code: letters, numbers, spaces, hyphens (e.g. "PT 101", "PT-101")
+    if (name === 'course_code') {
+      return value.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s{2,}/g, ' ').toUpperCase();
+    }
+    // Course name: letters, numbers, spaces and common title punctuation
+    if (name === 'course_name') {
+      return value.replace(/[^a-zA-Z0-9\s.,&()'/:-]/g, '').replace(/\s{2,}/g, ' ');
+    }
+    return value;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setIsDirty(true);
@@ -145,7 +158,7 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
       const n = parseInt(value, 10);
       setFormData(prev => ({ ...prev, [name]: Number.isNaN(n) ? 0 : Math.max(0, n) }));
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      setFormData(prev => ({ ...prev, [name]: sanitizeInput(name, value) }));
     }
   };
 

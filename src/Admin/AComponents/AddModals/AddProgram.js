@@ -38,6 +38,10 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
     }
   }, [programToEdit]);
 
+  // Strip characters that don't belong in each field.
+  const sanitizeProgramName = (v) => v.replace(/[^a-zA-Z\s.,&()'-]/g, '').replace(/\s{2,}/g, ' ');
+  const sanitizeAbbreviation = (v) => v.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase();
+
   const getYearSuffix = (year) => year === 1 ? "st" : year === 2 ? "nd" : year === 3 ? "rd" : "th";
 
   const handleYearClick = (clickedYear) => {
@@ -51,7 +55,7 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
   };
 
   const handleSubmit = async () => {
-    if (!programName || !abbreviation || selectedYears.length === 0) {
+    if (!programName.trim() || !abbreviation.trim() || selectedYears.length === 0) {
       openAlert('Missing Fields', 'Please fill in Program Name, Abbreviation, and Total Year.', 'warning');
       return;
     }
@@ -66,7 +70,7 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
         method,
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
-          program_name: programName,
+          program_name: programName.trim(),
           program_abbr: abbreviation,
           total_year: selectedYears.length,
           program_description: description,
@@ -113,8 +117,8 @@ function AddProgram({ onClose, onSuccess, programToEdit = null }) {
       >
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">
-            <TextField label={<>Program Name <span className="text-danger">*</span></>} placeholder="Physical Therapy" value={programName} onChange={(e) => { setIsDirty(true); setProgramName(e.target.value); }} />
-            <TextField label={<>Abbreviation <span className="text-danger">*</span></>} placeholder="BSPT" value={abbreviation} onChange={(e) => { setIsDirty(true); setAbbreviation(e.target.value.toUpperCase()); }} />
+            <TextField label={<>Program Name <span className="text-danger">*</span></>} placeholder="Physical Therapy" value={programName} onChange={(e) => { setIsDirty(true); setProgramName(sanitizeProgramName(e.target.value)); }} />
+            <TextField label={<>Abbreviation <span className="text-danger">*</span></>} placeholder="BSPT" value={abbreviation} onChange={(e) => { setIsDirty(true); setAbbreviation(sanitizeAbbreviation(e.target.value)); }} />
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-ink">Total Years <span className="text-danger">*</span></label>

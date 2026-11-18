@@ -68,10 +68,31 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
     }
   }, [isEditMode, facultyToEdit]);
 
+  // Strip characters that don't belong in each field.
+  const sanitizeInput = (name, value) => {
+    // Names: letters (incl. ñ and accents), spaces, periods, apostrophes, hyphens
+    if (['last_name', 'first_name', 'middle_name'].includes(name)) {
+      return value.replace(/[^\p{L}\s.'-]/gu, '').replace(/\s{2,}/g, ' ');
+    }
+    // Username: letters, numbers, dots, underscores, hyphens (no spaces)
+    if (name === 'username') {
+      return value.replace(/[^a-zA-Z0-9._-]/g, '');
+    }
+    // Email: standard email characters only (no spaces)
+    if (name === 'email') {
+      return value.replace(/[^a-zA-Z0-9@._%+-]/g, '');
+    }
+    // Designation name: letters, numbers, spaces and common title punctuation
+    if (name === 'new_designation_name') {
+      return value.replace(/[^a-zA-Z0-9\s.,&()'/-]/g, '').replace(/\s{2,}/g, ' ');
+    }
+    return value;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setIsDirty(true);
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: sanitizeInput(name, value) }));
     if (name === "designation_id" && value === "new") {
       setIsNewDesignation(true);
       setFormData(prev => ({ ...prev, designation_id: "" }));
@@ -86,7 +107,7 @@ function AddFaculty({ onClose, onSuccess, facultyToEdit = null }) {
     if (!last_name || !first_name || !username || !email || !role_id) { openAlert('Missing Fields', 'Please fill in all required fields.', 'warning'); return; }
     if (!isNewDesignation && !designation_id) { openAlert('Missing Designation', 'Please select a designation.', 'warning'); return; }
     if (isNewDesignation && !new_designation_name) { openAlert('Missing Designation Name', 'Please enter the new designation name.', 'warning'); return; }
-    if (!email.includes('@')) { openAlert('Invalid Email', 'Please enter a valid email address.', 'warning'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { openAlert('Invalid Email', 'Please enter a valid email address.', 'warning'); return; }
 
     setIsSubmitting(true);
     try {

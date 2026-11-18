@@ -53,8 +53,13 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     }
 
     // 3. Phone/Number fields (Numbers, +, -, spaces)
-    const contactFields = ['phoneNumber', 'landline', 'fatherContact', 'motherContact', 'guardianContact'];
-    if (contactFields.includes(name)) {
+    // Mobile numbers: digits only, max 11 (e.g. 09171234567)
+    const mobileFields = ['phoneNumber', 'fatherContact', 'motherContact', 'guardianContact'];
+    if (mobileFields.includes(name)) {
+      return value.replace(/\D/g, '').slice(0, 11);
+    }
+    // Landline: numbers, +, -, spaces, parentheses (formats vary)
+    if (name === 'landline') {
       return value.replace(/[^0-9+\-\s()]/g, '');
     }
 
@@ -226,6 +231,12 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     e.preventDefault();
     if (!formData.firstName || !formData.lastName || !formData.studentNumber || !formData.email || !formData.programId || !formData.yearLevel) {
       openAlert('Missing Fields', 'Please fill in all required primary fields.', 'warning');
+      return;
+    }
+    const badMobile = ['phoneNumber', 'fatherContact', 'motherContact', 'guardianContact']
+      .some((f) => formData[f] && formData[f].length !== 11);
+    if (badMobile) {
+      openAlert('Invalid Phone Number', 'Mobile and contact numbers must be exactly 11 digits (e.g. 09171234567).', 'warning');
       return;
     }
     if (hasStatusChanges && !formData.statusReason.trim()) {
