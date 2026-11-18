@@ -13,9 +13,12 @@ import StudentBreakdown from '../../../Components/charts/StudentBreakdown';
 import AISummary from '../../../Components/shared/AISummary';
 import BottomSheet from '../../../Components/ui/Bottomsheet';
 
+// Inside Dashboard.js
 const ROUTES = {
   students: '/admin/student-management/masterlist',
-  academics: '/admin/academics/programs&sections',
+  academicsPrograms: '/admin/academics/programs&sections?tab=programs',
+  academicsSections: '/admin/academics/programs&sections?tab=sections',
+  academicsCourses: '/admin/academics/courses',
 };
 
 function Dashboard() {
@@ -106,11 +109,15 @@ function Dashboard() {
           />
 
           {/* MOBILE: 2-up grid on mobile, 4-up on lg */}
+
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatCard featured label="Active students" value={totals.active_students} hint={`${totals.total_students} total enrolled`} to={ROUTES.students} />
-            <StatCard label="Programs" value={totals.active_programs} hint="Active academic programs" to={ROUTES.academics} />
-            <StatCard featured label="Courses" value={totals.active_courses} hint="Active in the catalog" to={ROUTES.academics} />
-            <StatCard label="Sections" value={totals.total_sections} hint="All sections on file" to={ROUTES.academics} />
+            
+            <StatCard label="Programs" value={totals.active_programs} hint="Active academic programs" to={ROUTES.academicsPrograms} />
+            
+            <StatCard featured label="Courses" value={totals.active_courses} hint="Active in the catalog" to={ROUTES.academicsCourses} />
+            
+            <StatCard label="Sections" value={totals.total_sections} hint="All sections on file" to={ROUTES.academicsSections} />
           </div>
 
           {/* MOBILE: min-w-0 guards against chart overflow */}

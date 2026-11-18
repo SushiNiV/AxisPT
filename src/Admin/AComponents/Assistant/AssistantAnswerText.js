@@ -18,36 +18,35 @@ function AssistantAnswerText({ text, sources, messageId }) {
     }
   };
 
-  // Custom renderer for text nodes: split on [n] and inject buttons.
-  const renderTextWithCitations = (children) => {
-    // children may be a string or an array; flatten to string
-    const raw = Array.isArray(children)
-      ? children.map((c) => (typeof c === 'string' ? c : '')).join('')
-      : String(children);
+  // Splits string children on [n] and swaps in citation buttons. Anything that
+  // is not a string (bold, nested lists, links...) is passed through untouched,
+  // so it renders normally instead of becoming "[object Object]" or vanishing.
+  const renderTextWithCitations = (children) =>
+    React.Children.map(children, (child, idx) => {
+      if (typeof child !== 'string') return child;
 
-    const parts = raw.split(/(\[\d+\])/g);
+      return child.split(/(\[\d+\])/g).map((part, i) => {
+        const key = `${idx}-${i}`;
+        const match = part.match(/^\[(\d+)\]$/);
+        if (!match) return <React.Fragment key={key}>{part}</React.Fragment>;
 
-    return parts.map((part, i) => {
-      const match = part.match(/^\[(\d+)\]$/);
-      if (!match) return <React.Fragment key={i}>{part}</React.Fragment>;
+        const n = Number(match[1]);
+        const source = sources.find((s) => s.n === n);
+        if (!source) return <React.Fragment key={key}>{part}</React.Fragment>;
 
-      const n = Number(match[1]);
-      const source = sources.find((s) => s.n === n);
-      if (!source) return <React.Fragment key={i}>{part}</React.Fragment>;
-
-      return (
-        <button
-          key={i}
-          type="button"
-          className="CitationChip"
-          onClick={() => handleCiteClick(n)}
-          aria-label={`View source ${n}: ${source.title}`}
-        >
-          {n}
-        </button>
-      );
+        return (
+          <button
+            key={key}
+            type="button"
+            className="CitationChip"
+            onClick={() => handleCiteClick(n)}
+            aria-label={`View source ${n}: ${source.title}`}
+          >
+            {n}
+          </button>
+        );
+      });
     });
-  };
 
   return (
     <div className="AssistantAnswerBody">

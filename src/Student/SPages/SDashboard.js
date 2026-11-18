@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { BiBookAlt, BiUser, BiTrendingUp, BiCheckCircle, BiBookOpen } from 'react-icons/bi';
 import { Link, useNavigate } from 'react-router-dom';
-import WelcomeBanner from '../../Components/shared/WelcomeBanner'; // NEW
-import Announcements from '../../Components/shared/Notification/Announcements'; // NEW
-
-// Assuming these are from your standard Tailwind components
+import WelcomeBanner from '../../Components/shared/WelcomeBanner';
+import Announcements from '../../Components/shared/Notification/Announcements';
 import Card from '../../Components/ui/Card';
 
 function SDashboard() {
@@ -16,14 +14,12 @@ function SDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // DUMMY ANNOUNCEMENTS
   const [announcements] = useState([
     { id: 1, title: "HEYHEYHEY!", body: "Ano yan", date: "2026-10-23T22:34:00" },
     { id: 2, title: "DEADLINE FOR THE RESUME", body: "Dear students, The deadline for the resume is set today.", date: "2026-10-23T14:07:00" },
   ]);
 
   useEffect(() => {
-    // ... (Keep your exact same useEffect fetching logic here) ...
     const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (!token) {
       setError("No token found. Please log in again.");
@@ -84,16 +80,36 @@ function SDashboard() {
   if (loading) return <div className="InnerContainer"><p>Loading dashboard...</p></div>;
   if (error) return <div className="InnerContainer"><p style={{ color: 'red' }}>Error: {error}</p></div>;
 
+  const getStandingStyle = (standing) => {
+      switch (standing) {
+        case 'Regular': 
+          return { dot: 'bg-emerald-500', text: 'text-emerald-700' };
+        case 'Warning': 
+          return { dot: 'bg-amber-500', text: 'text-amber-700' };
+        case 'Probationary 1':
+        case 'Probationary 2': 
+          return { dot: 'bg-rose-500', text: 'text-rose-700' };
+        default: 
+          return { dot: 'bg-gray-400', text: 'text-gray-700' };
+      }
+    };
+
   return (
     <div className="InnerContainer ArchiveLayout">
       <div className="ax min-h-0 flex-1 space-y-4 overflow-y-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         
-        {/* NEW: Welcome Banner */}
+        {/* Welcome Banner with Clean White Pill */}
         <WelcomeBanner
           name={profile?.first_name || 'Student'}
-          subtext="Next up: Complete Course Evaluation from the Registrar's Office. 44 still to upload."
-          actionText="Upload now"
-          onAction={() => navigate('/student/documents')} // Adjust route if needed
+          subtext="Here is your academic overview for the current term."
+          actionNode={
+            <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold">
+              <span className={`h-2.5 w-2.5 rounded-full ${getStandingStyle(stats.standing).dot}`} />
+              <span className={getStandingStyle(stats.standing).text}>
+                Standing: {stats.standing}
+              </span>
+            </div>
+          }
         />
 
         {/* KPI Row */}
@@ -146,10 +162,8 @@ function SDashboard() {
         {/* Main Content Grid */}
         <div className="grid gap-4 lg:grid-cols-3">
           
-          {/* Left Column (Grades & Subjects) */}
           <div className="lg:col-span-2 space-y-4">
             
-            {/* Recent Grades */}
             <Card title="Recent Grades" action={<Link to="/student/grades" className="text-sm font-medium text-brand-ink hover:underline">View All</Link>}>
               {recentGrades.length === 0 ? (
                 <p className="text-sm text-ink-3 py-4 text-center">No grades recorded yet.</p>
@@ -173,7 +187,6 @@ function SDashboard() {
               )}
             </Card>
 
-            {/* Current Subjects */}
             <Card title="Current Subjects" action={<Link to="/student/subjects" className="text-sm font-medium text-brand-ink hover:underline">View All</Link>}>
               {subjects.length === 0 ? (
                 <p className="text-sm text-ink-3 py-4 text-center">No active subjects enrolled.</p>
@@ -198,7 +211,6 @@ function SDashboard() {
             </Card>
           </div>
 
-          {/* Right Column (Announcements) */}
           <div className="lg:col-span-1">
             <Announcements 
               announcements={announcements} 

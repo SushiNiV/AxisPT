@@ -57,7 +57,7 @@ function SLayout() {
   return (
     <AppShell
       nav={NAV}
-      portalRole="Student"
+      portalRole="Student" // <--- Hardcoded correctly
       product="Axis CPT Portal"
       logo={cptLogo}
       subtitle="Our Lady of Fatima University · College of Physical Therapy"

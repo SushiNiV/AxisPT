@@ -4,6 +4,9 @@ import { BiCheckCircle, BiErrorCircle, BiInfoCircle, BiRefresh } from 'react-ico
 
 const OPEN_EVENT = 'axispt:open-assistant';
 
+const openAssistant = (question) =>
+  window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: { question } }));
+
 const TONES = {
   good: { Icon: BiCheckCircle, badge: 'bg-[var(--status-success-bg)] text-[var(--status-success-text)]' },
   warn: { Icon: BiErrorCircle, badge: 'bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]' },
@@ -177,8 +180,7 @@ export default function AISummary() {
           <span className="text-xs text-ink-3">Updated {ago(data.ageMs || 0)}</span>
           <button
             type="button"
-            onClick={() => window.dispatchEvent(new Event(OPEN_EVENT))}
-            // MOBILE: min-h-[40px] touch target
+            onClick={() => openAssistant("Can you explain the dashboard summary and priorities in more detail?")}
             className="inline-flex min-h-[40px] items-center gap-2 rounded-ctl bg-brand px-3.5 py-2 text-sm font-medium text-brand-on transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
           >
             <HiSparkles className="h-4 w-4" aria-hidden="true" />

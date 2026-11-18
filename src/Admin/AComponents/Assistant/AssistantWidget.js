@@ -8,7 +8,11 @@ const NUDGE_DELAY_MS = 1500;
 const NUDGE_VISIBLE_MS = 9000;
 
 const DEFAULT_BOTTOM = 80; 
-const HEADER_OFFSET = 140; // Approximate height of the PageHeader + Tabs to keep it below
+const HEADER_OFFSET = 140; 
+
+const BUTTON_HEIGHT = 56; 
+const PANEL_GAP = 16; 
+const PANEL_OFFSET = BUTTON_HEIGHT + PANEL_GAP; // 72px
 
 const hasSeenNudge = () => {
   try { return localStorage.getItem(NUDGE_KEY) === '1'; } catch { return true; }
@@ -25,14 +29,26 @@ export default function AssistantWidget() {
   const [isDragging, setIsDragging] = useState(false);
   
   const dragRef = useRef(null);
-  const savedPosRef = useRef(DEFAULT_BOTTOM);
-  
-  const currentPosRef = useRef(DEFAULT_BOTTOM);
   const rafRef = useRef(null);
 
+  const OPEN_EVENT = 'axispt:open-assistant';
+
+  const [pendingQuestion, setPendingQuestion] = useState(null);
+  const openRef = useRef(false);
+  openRef.current = open;
+
+  useEffect(() => {
+    const onOpenRequest = (e) => {
+      const q = e?.detail?.question?.trim();
+      setOpen(true); 
+      setShowNudge(false);
+      if (q) setPendingQuestion(q);
+    };
+    window.addEventListener(OPEN_EVENT, onOpenRequest);
+    return () => window.removeEventListener(OPEN_EVENT, onOpenRequest);
+  }, []);
+
   const handleClose = () => {
-    setBottomPos(savedPosRef.current);
-    currentPosRef.current = savedPosRef.current;
     setOpen(false);
   };
 
@@ -53,14 +69,7 @@ export default function AssistantWidget() {
   }, []);
 
   const toggleOpen = () => {
-    if (!open) {
-      savedPosRef.current = bottomPos;
-      setBottomPos(DEFAULT_BOTTOM);
-      currentPosRef.current = DEFAULT_BOTTOM;
-      setOpen(true);
-    } else {
-      handleClose();
-    }
+    setOpen(!open);
     setShowNudge(false);
   };
 
@@ -84,16 +93,12 @@ export default function AssistantWidget() {
       
       if (Math.abs(dy) > 3) dragRef.current.moved = true;
 
-      // 1. Calculate the max height (window height - header offset)
-      // 2. Ensure it doesn't go below 16px (bottom safe zone)
       const maxTop = window.innerHeight - HEADER_OFFSET;
       const newY = Math.max(16, Math.min(maxTop, dragRef.current.origY + dy));
       
-      currentPosRef.current = newY;
-
       if (!rafRef.current) {
         rafRef.current = requestAnimationFrame(() => {
-          setBottomPos(currentPosRef.current);
+          setBottomPos(newY);
           rafRef.current = null;
         });
       }
@@ -104,23 +109,8 @@ export default function AssistantWidget() {
 
       setIsDragging(false);
       
-      if (dragRef.current.moved) {
-        savedPosRef.current = currentPosRef.current;
-      } else {
-        // Use the latest state via a closure safe call
-        setOpen((prevOpen) => {
-          if (!prevOpen) {
-            savedPosRef.current = bottomPos;
-            setBottomPos(DEFAULT_BOTTOM);
-            currentPosRef.current = DEFAULT_BOTTOM;
-            setShowNudge(false);
-            return true;
-          }
-          setBottomPos(savedPosRef.current);
-          currentPosRef.current = savedPosRef.current;
-          setShowNudge(false);
-          return false;
-        });
+      if (!dragRef.current.moved) {
+        toggleOpen();
       }
       
       dragRef.current = null;
@@ -133,18 +123,37 @@ export default function AssistantWidget() {
       window.removeEventListener('mouseup', onUp);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDragging, bottomPos]); 
+
+  // --- PANEL REPOSITION LOGIC ---
+  // Panel base height is min(600px, 80vh)
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const panelHeight = Math.min(600, vh * 0.8);
+  
+  // The desired bottom position
+  const desiredPanelBottom = bottomPos + PANEL_OFFSET;
+  
+  // The maximum bottom we can allow before hitting the top header
+  // (window height - panel height - header offset)
+  const maxPanelBottom = vh - panelHeight - HEADER_OFFSET;
+
+  // If the button is dragged too high, clamp the panel's bottom so it slides down
+  const actualPanelBottom = Math.min(desiredPanelBottom, maxPanelBottom);
 
   return (
     <div className="ax fixed inset-0 z-[899] pointer-events-none print:hidden">
       
-      {/* FLOATING PANEL (Anchored exactly above the default button pos) */}
+      {/* FLOATING PANEL */}
       {open && (
         <div 
-          className="pointer-events-auto absolute bottom-[88px] right-6 flex h-[min(600px,80vh)] w-[min(400px,calc(100vw-3rem))] flex-col overflow-hidden rounded-panel border !border-line bg-surface shadow-2xl animate-in slide-in-from-bottom-10 zoom-in-95 fade-in duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+          style={{ bottom: `${Math.max(16, actualPanelBottom)}px` }} // Don't let it go below 16px
+          className="pointer-events-auto absolute right-6 flex h-[min(600px,80vh)] w-[min(400px,calc(100vw-3rem))] flex-col overflow-hidden rounded-panel border !border-line bg-surface shadow-2xl animate-in slide-in-from-bottom-8 zoom-in-95 fade-in duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] transition-all duration-200"
         >
-          <AssistantPanel onClose={handleClose} />
+          <AssistantPanel
+            onClose={handleClose}
+            autoAsk={pendingQuestion}
+            onAutoAskHandled={() => setPendingQuestion(null)}
+          />
         </div>
       )}
 
@@ -152,7 +161,7 @@ export default function AssistantWidget() {
       {showNudge && !open && (
         <div 
           className="pointer-events-auto absolute flex items-center gap-2 rounded-panel border !border-line bg-surface p-2 shadow-lift animate-in slide-in-from-bottom-5 fade-in duration-300"
-          style={{ right: '24px', bottom: bottomPos + 64 }}
+          style={{ right: '24px', bottom: bottomPos + PANEL_OFFSET }}
         >
           <button type="button" className="text-sm font-medium text-ink hover:text-brand px-2" onClick={toggleOpen}>
             Ask me about academic policy
@@ -168,7 +177,7 @@ export default function AssistantWidget() {
         </div>
       )}
 
-      {/* LAUNCHER BUTTON (Vertical Drag) */}
+      {/* LAUNCHER BUTTON */}
       <button
         type="button"
         onMouseDown={startDrag}

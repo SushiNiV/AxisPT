@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 const MAX_STORED_MESSAGES = 50;
 const STORAGE_VERSION = 1;
+const HISTORY_TURNS = 6; // how many earlier messages are sent with each question
 
 const storageKey = (userId) =>
   `axispt_assistant_history_v${STORAGE_VERSION}_${userId || 'anon'}`;
@@ -50,26 +51,34 @@ function readUserId() {
 let idCounter = 0;
 const nextId = () => `msg-${Date.now()}-${idCounter++}`;
 
-export default function useAssistant() {   // ← lowercase 'use'
+export default function useAssistant() {
   const userId = readUserId();
   const [messages, setMessages] = useState(() => loadHistory(userId));
   const [isAsking, setIsAsking] = useState(false);
   const [error, setError] = useState(null);
   const abortRef = useRef(null);
 
+  // Always holds the latest messages so `ask` can stay stable (empty deps).
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
   useEffect(() => {
     saveHistory(userId, messages);
   }, [messages, userId]);
 
-  useEffect(() => {
-    return () => {
-      if (abortRef.current) abortRef.current.abort();
-    };
-  }, []);
+  // NOTE: deliberately no abort-on-unmount cleanup. React StrictMode simulates
+  // an unmount right after mount in development, which cancelled the request
+  // started by the dashboard "Ask a follow-up" button. A request is now only
+  // aborted when a newer ask replaces it.
 
-const ask = useCallback(async (question) => {
+  const ask = useCallback(async (question) => {
     const text = (question || '').trim();
     if (!text) return;
+
+    // Earlier turns only (taken before the new question is added).
+    const history = messagesRef.current
+      .slice(-HISTORY_TURNS)
+      .map(({ role, text: t }) => ({ role, text: t }));
 
     setError(null);
     setMessages((m) => [
@@ -84,7 +93,7 @@ const ask = useCallback(async (question) => {
 
     try {
       const role = sessionStorage.getItem('role') || localStorage.getItem('role');
-      const endpoint = role === 'student' 
+      const endpoint = role === 'student'
         ? `${process.env.REACT_APP_API_URL}/student/assistant/ask`
         : `${process.env.REACT_APP_API_URL}/admin/assistant/ask`;
 
@@ -94,7 +103,7 @@ const ask = useCallback(async (question) => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${readToken()}`,
         },
-        body: JSON.stringify({ question: text }),
+        body: JSON.stringify({ question: text, history }),
         signal: controller.signal,
       });
       const data = await res.json();
@@ -121,7 +130,11 @@ const ask = useCallback(async (question) => {
         setError('Connection error. Please try again.');
       }
     } finally {
-      setIsAsking(false);
+      // Only the newest request may clear the spinner.
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        setIsAsking(false);
+      }
     }
   }, []);
 

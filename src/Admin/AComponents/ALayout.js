@@ -6,7 +6,6 @@ import cptLogo from '../../assets/cpt-logo.png';
 
 const stored = (key) => sessionStorage.getItem(key) || localStorage.getItem(key);
 
-// `match` keeps a section highlighted for every nested route under it.
 const NAV = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: BiGridAlt },
   { to: '/admin/student-management/masterlist', match: '/admin/student-management', label: 'Student Management', icon: BiUser },
@@ -20,13 +19,17 @@ const NAV = [
 const EXTRA_TITLES = [{ match: '/settings', title: 'Settings' }];
 
 function ALayout() {
-  const role = stored('role') || 'admin';
-  const isAdmin = role === 'admin' || role === 'superadmin';
+  const rawRole = stored('role') || 'admin';
+  const roleStr = String(rawRole).toLowerCase();
+  const isAdmin = roleStr.includes('admin') || roleStr.includes('superadmin');
+  
+  // Determine display string
+  const portalRoleText = roleStr.includes('faculty') ? 'Faculty' : 'Administrator';
 
   const user = {
     name: stored('username') || 'Administrator',
     email: stored('email') || '—',
-    role,
+    role: roleStr,
     profileUrl: stored('profileUrl') || null,
   };
 
@@ -34,7 +37,7 @@ function ALayout() {
     <AppShell
       nav={NAV.filter((item) => !item.adminOnly || isAdmin)}
       extraTitles={EXTRA_TITLES}
-      portalRole="Administrator"
+      portalRole={portalRoleText} // <--- Dynamic String
       product="Axis CPT Portal"
       logo={cptLogo}
       subtitle="Our Lady of Fatima University · College of Physical Therapy"

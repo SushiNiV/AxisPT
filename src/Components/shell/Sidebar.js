@@ -16,7 +16,7 @@ const GOLD = '#ffcb57';
 const FOCUS = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40';
 const FOCUS_ON_DARK = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60';
 
-export default function Sidebar({ nav, product, pathname, mobileOpen, onClose, onLogout, promo }) {
+export default function Sidebar({ nav, product, pathname, mobileOpen, onClose, onLogout, promo, portalRole }) {
   const [dark, toggleTheme] = useTheme();
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const [collapsedPref, setCollapsedPref] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
@@ -25,9 +25,8 @@ export default function Sidebar({ nav, product, pathname, mobileOpen, onClose, o
 
   const rail = collapsedPref && isDesktop;
   
-  // Get the role directly from storage
-  const role = sessionStorage.getItem('role') || localStorage.getItem('role');
-  const displayRole = role === 'faculty' ? 'Faculty' : 'Administrator';
+  // Use the portalRole prop directly, fallback to Administrator just in case
+  const displayRole = portalRole || 'Administrator';
 
   const toggleCollapse = () => {
     const next = !collapsedPref;
@@ -67,10 +66,9 @@ export default function Sidebar({ nav, product, pathname, mobileOpen, onClose, o
             <img src={dark ? markGold : markMaroon} alt="" className="h-10 w-10 shrink-0 object-contain" />
             <div className="min-w-0">
               <p 
-                className={`truncate font-display text-xl font-semibold leading-tight ${dark ? '' : 'text-brand-ink'}`}
-                style={dark ? { color: GOLD } : {}}
+                className="truncate font-display text-xl font-semibold leading-tight"
+                style={{ color: dark ? GOLD : DEEP }}
               >
-                {/* Displays "Administrator" or "Faculty" dynamically */}
                 {displayRole}
               </p>
               <p className="truncate text-sm text-ink-2">{product}</p>

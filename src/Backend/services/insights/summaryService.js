@@ -165,4 +165,20 @@ function getSummary(scope, { force = false } = {}) {
   return p;
 }
 
-module.exports = { getSummary };
+/**
+ * Read the cached summary for a scope without ever calling the model.
+ * Used by the assistant, so chatting can never trigger a generation.
+ * @returns {Promise<{summary: string, ageMs: number} | null>}
+ */
+async function getCachedSummary(scope) {
+  const { rows } = await db.query(
+    `SELECT summary,
+            (EXTRACT(EPOCH FROM (now() - generated_at)) * 1000)::bigint AS age_ms
+     FROM ai_summary_cache WHERE scope_key = $1`,
+    [scope.key]
+  );
+  return rows[0] ? { summary: rows[0].summary, ageMs: Number(rows[0].age_ms) } : null;
+}
+
+module.exports = { getSummary, getCachedSummary };
+
