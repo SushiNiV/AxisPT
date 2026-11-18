@@ -58,7 +58,7 @@ exports.designations = async (req, res) => {
 exports.create = async (req, res) => {
   const {
     last_name, first_name, middle_name, suffix, username, email,
-    role_id, designation_id, new_designation_name, is_active = true,
+    role_id, designation_id, new_designation_name, program_id, is_active = true,
   } = req.body ?? {};
 
   if (!last_name || !first_name || !username || !email || !role_id) {
@@ -78,7 +78,9 @@ exports.create = async (req, res) => {
       return FacultyModel.create({
         user_id: userId, last_name, first_name,
         middle_name: middle_name || null, suffix: suffix || null,
-        designation_id: designationId ?? null, account_status: active,
+        designation_id: designationId ?? null,
+        program_id: program_id || null,
+        account_status: active,
       }, client);
     });
   } catch (err) {
@@ -98,8 +100,8 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   const userId = parseId(req.params.id);
   const {
-    last_name, first_name, middle_name, suffix, username, email,
-    role_id, designation_id, new_designation_name, is_active,
+  last_name, first_name, middle_name, suffix, username, email,
+  role_id, designation_id, new_designation_name, is_active, program_id,
   } = req.body ?? {};
 
   const before = await FacultyModel.getByUserId(userId);
@@ -114,6 +116,7 @@ exports.update = async (req, res) => {
       return FacultyModel.updateByUserId(userId, {
         last_name, first_name, middle_name, suffix,
         designation_id: designationId,
+        program_id: program_id === '' ? null : program_id,
         account_status: typeof is_active === 'boolean' ? is_active : undefined,
       }, client);
     });
