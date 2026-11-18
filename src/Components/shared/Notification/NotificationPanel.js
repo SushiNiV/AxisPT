@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BottomSheet from '../../ui/Bottomsheet';
 import { syncNotifications } from './UseNotifications';
+import { resolveNotificationLink } from './notificationRoutes';
 
 const API = process.env.REACT_APP_API_URL;
 const readToken = () => sessionStorage.getItem('token') || localStorage.getItem('token');
@@ -122,9 +123,11 @@ export default function NotificationPanel({ open, onClose, unreadCount = 0 }) {
         // still navigate below
       }
     }
-    if (item.link) {
+    // Resolved from type + role + data, so every role lands on a route that exists.
+    const to = resolveNotificationLink(item);
+    if (to) {
       onClose();
-      navigate(item.link);
+      navigate(to);
     }
   };
 
@@ -165,7 +168,18 @@ export default function NotificationPanel({ open, onClose, unreadCount = 0 }) {
                     className={`block w-full p-4 text-left transition-colors hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none ${!item.read_at ? 'bg-brand/5' : ''}`}
                   >
                     <div className="flex justify-between items-start gap-2">
-                      <p className={`text-sm text-ink ${!item.read_at ? 'font-semibold' : 'font-medium'}`}>{item.title}</p>
+                      <p className={`text-sm text-ink ${!item.read_at ? 'font-semibold' : 'font-medium'}`}>
+                        {item.severity && item.severity !== 'info' && (
+                          <>
+                            <span
+                              aria-hidden="true"
+                              className={`mr-1.5 inline-block h-2 w-2 rounded-full align-middle ${item.severity === 'critical' ? 'bg-danger' : 'bg-warn'}`}
+                            />
+                            <span className="sr-only">{item.severity}: </span>
+                          </>
+                        )}
+                        {item.title}
+                      </p>
                       <span className="text-[10px] text-ink-3 whitespace-nowrap">{timeAgo(item.created_at)}</span>
                     </div>
                     {item.body && <p className="mt-1 text-xs text-ink-2 line-clamp-2">{item.body}</p>}

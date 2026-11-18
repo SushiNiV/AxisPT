@@ -26,20 +26,22 @@ const announcementDedupeKey = (announcementId) => `announcement-${announcementId
 // ---------------------------------------------------------------------------
 
 /**
- * Create a notification, or mark an existing one with the same dedupe key unread
- * again. Without a `dedupeKey` a new row is always created.
+ * Create a notification, or re-raise an existing one with the same dedupe key
+ * (marked unread again, content and time refreshed). Without a `dedupeKey` a new row is always created.
  * @param {{ userId: number, type: string, title: string, body?: string, link?: string,
  *           data?: object, dedupeKey?: string }} notification
  * @returns {Promise<object>} the notification row
  */
-async function upsertNotification({ userId, type, title, body, link, data = {}, dedupeKey }) {
+async function upsertNotification({ userId, type, title, body, link, data = {}, severity = 'info', dedupeKey }) {
   const { rows } = await pool.query(
-    `INSERT INTO notifications (user_id, type, title, body, link, data, dedupe_key)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO notifications (user_id, type, title, body, link, data, severity, dedupe_key)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (user_id, dedupe_key) WHERE dedupe_key IS NOT NULL
-     DO UPDATE SET read_at = NULL
+     DO UPDATE SET read_at = NULL, title = EXCLUDED.title, body = EXCLUDED.body,
+                   link = EXCLUDED.link, data = EXCLUDED.data, severity = EXCLUDED.severity,
+                   created_at = now()
      RETURNING *`,
-    [userId, type, title, body, link, data, dedupeKey]
+    [userId, type, title, body, link, data, severity, dedupeKey]
   );
   return rows[0];
 }
@@ -78,7 +80,7 @@ async function getNotifications(userId, limit = 20, cursor = null) {
 
   values.push(limit + 1); // one extra row tells us whether there is a next page
   const { rows } = await pool.query(
-    `SELECT notification_id, type, title, body, link, data, created_at, read_at,
+    `SELECT notification_id, type, title, body, link, data, severity, created_at, read_at,
             to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_ts
        FROM notifications
       WHERE user_id = $1 ${cursorFilter}

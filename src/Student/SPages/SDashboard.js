@@ -7,7 +7,7 @@ import Card from '../../Components/ui/Card';
 
 function SDashboard() {
   const [profile, setProfile] = useState(null);
-  const [stats, setStats] = useState({ gwa: '—', subjectsCount: 0, standing: 'Regular' });
+  const [stats, setStats] = useState({ gwa: '—', subjectsCount: 0, standing: 'None' });
   const [recentGrades, setRecentGrades] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +37,8 @@ function SDashboard() {
         if (profileData.success) setProfile(profileData.data);
 
         let gwa = '—';
-        let standing = profileData.data?.standing || 'Regular';
+        // Taken from the server so manual changes by staff are respected.
+        const standing = profileData.data?.academic_status || 'None';
 
         if (gradesData.success && gradesData.data.length > 0) {
           const grades = gradesData.data;
@@ -54,11 +55,6 @@ function SDashboard() {
             const sum = validGrades.reduce((acc, curr) => acc + parseFloat(curr.final_grade), 0);
             gwa = (sum / validGrades.length).toFixed(2);
           }
-
-          const failedCourses = grades.filter(g => g.remarks === 'F').length;
-          if (failedCourses >= 5) standing = 'Probationary 2';
-          else if (failedCourses >= 3) standing = 'Probationary 1';
-          else if (failedCourses >= 1) standing = 'Warning';
         }
 
         let subjectsCount = 0;
@@ -81,6 +77,7 @@ function SDashboard() {
 
   const getStandingStyle = (standing) => {
       switch (standing) {
+        case 'None':
         case 'Regular': 
           return { dot: 'bg-emerald-500', text: 'text-emerald-700' };
         case 'Warning': 
@@ -105,7 +102,7 @@ function SDashboard() {
             <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold">
               <span className={`h-2.5 w-2.5 rounded-full ${getStandingStyle(stats.standing).dot}`} />
               <span className={getStandingStyle(stats.standing).text}>
-                Standing: {stats.standing}
+                Standing: {stats.standing === 'None' ? 'Regular' : stats.standing}
               </span>
             </div>
           }
@@ -152,7 +149,7 @@ function SDashboard() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-ink-3 uppercase tracking-wider">Standing</p>
-              <h3 className="font-display text-xl font-bold text-ink">{stats.standing}</h3>
+              <h3 className="font-display text-xl font-bold text-ink">{stats.standing === 'None' ? 'Good Standing' : stats.standing}</h3>
               <p className="text-xs text-ink-2">Academic status</p>
             </div>
           </Card>

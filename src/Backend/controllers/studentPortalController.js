@@ -10,6 +10,7 @@
  */
 
 const StudentPortalModel = require('../models/studentportalModel');
+const GradeManageModel = require('../models/grademanageModel');
 const HttpError = require('../../utils/httpError');
 
 /** The student id from the token; 403 if the account is not a student account. */
@@ -35,7 +36,20 @@ exports.getMySubjects = async (req, res) => {
 exports.getMyProfile = async (req, res) => {
   const profile = await StudentPortalModel.getProfile(currentStudentId(req));
   if (!profile) throw new HttpError(404, 'Profile not found.');
-  res.json({ success: true, data: profile });
+
+  // Same source as the staff masterlist, so a manual probation status
+  // (including "None") shows up here too.
+  const standingMap = await GradeManageModel.getAcademicStandingMap([profile.student_id]);
+  const standing = standingMap.get(profile.student_id);
+
+  res.json({
+    success: true,
+    data: {
+      ...profile,
+      academic_status: standing?.status || 'None',
+      academic_status_overridden: standing?.isOverridden || false,
+    },
+  });
 };
 
 /** PUT  Update my profile. Only the sections that appear in the body are changed. */
