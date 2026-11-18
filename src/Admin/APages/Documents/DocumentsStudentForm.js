@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BiSearch, BiX, BiPrinter, BiFullscreen, BiChevronRight } from 'react-icons/bi';
 import BulkAction from '../../../Components/shared/BulkAction';
@@ -29,7 +29,7 @@ function DocumentsStudentForm() {
   const [currentPage, setCurrentPage] = useState(1);
   const [previewScale, setPreviewScale] = useState(DEFAULT_PREVIEW_SCALE);
   const [printForms, setPrintForms] = useState([]);
-  const [printReady, setPrintReady] = useState(false);
+  const printStartedRef = useRef(false);
   const [readyCount, setReadyCount] = useState(0);
   
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
@@ -163,7 +163,7 @@ function DocumentsStudentForm() {
     setIsPreparingPrint(true);
     setPrintError(null);
     setReadyCount(0);
-    setPrintReady(false);
+    printStartedRef.current = false;
     setShowBulkPrintConfirm(false);
 
     try {
@@ -190,25 +190,22 @@ function DocumentsStudentForm() {
   }, []);
 
   useEffect(() => {
-    if (printForms.length === 0) return;
-    if (readyCount < printForms.length) return;
-    if (printReady) return;
+  if (printForms.length === 0) return;
+  if (readyCount < printForms.length) return;
+  if (printStartedRef.current) return;
+  printStartedRef.current = true;
 
-    setPrintReady(true);
-
-    const raf = requestAnimationFrame(() => {
-      window.print();
-      setTimeout(() => {
-        setIsPreparingPrint(false);
-        setPrintForms([]);
-        setPrintReady(false);
-        setReadyCount(0);
-        clearSelection();
-      }, 500);
-    });
-
-    return () => cancelAnimationFrame(raf);
-  }, [printForms, readyCount, printReady]);
+  requestAnimationFrame(() => {
+    window.print();
+    setTimeout(() => {
+      setIsPreparingPrint(false);
+      setPrintForms([]);
+      setReadyCount(0);
+      clearSelection();
+      printStartedRef.current = false;
+    }, 500);
+  });
+}, [printForms, readyCount]);
 
   const changePreviewScale = (amount) => {
     setPreviewScale((scale) => Math.min(MAX_PREVIEW_SCALE, Math.max(MIN_PREVIEW_SCALE, Number((scale + amount).toFixed(1)))));

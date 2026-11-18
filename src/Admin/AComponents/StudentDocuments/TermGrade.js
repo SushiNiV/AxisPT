@@ -1,19 +1,70 @@
 import React, { useEffect } from 'react';
 import './TermGrade.css';
 
-const TermGrade = ({ data, onReady }) => {
-  
-  // Notify the parent when the form has actually rendered with data.
+
+const Sk = ({ w = '100%', h = 12 }) => (
+  <span className="tg-sk" aria-hidden="true" style={{ width: w, height: h }} />
+);
+
+const INFO_ROWS = [
+  ['Name', 'Student No.', 'border'],
+  ['Year Level & Section:', 'Semester:', 'border-bottom'],
+  ['Parent/Legal Guardian Name:', 'Contact No:', 'border spacer'],
+  ['Email:', 'Adviser:', 'border-bottom'],
+];
+const TERMS = ['PRELIMINARY TERM', 'MIDTERM', 'FINAL']; // match your actual third label
+
+const TermGradeSkeleton = () => (
+  <div className="term-container density-cozy tg-sk-root" role="status" aria-busy="true" aria-label="Loading term grades">
+    <div className="term-title">STUDENT TERM GRADE RECORDS</div>
+
+    {INFO_ROWS.map(([a, b, cls]) => (
+      <div key={a} className={`grid-row four-columns ${cls}`}>
+        <div className="label-group"><span className="field-label">{a}</span></div>
+        <div className="input-group"><Sk w="70%" /></div>
+        <div className="label-group"><span className="field-label">{b}</span></div>
+        <div className="input-group last-cell"><Sk w="60%" /></div>
+      </div>
+    ))}
+
+    <div className="part-title align-left spacer">Grading System</div>
+    <div className="border" style={{ padding: 8, display: 'grid', gap: 6 }}>
+      <Sk w="90%" /><Sk w="75%" /><Sk w="60%" />
+    </div>
+
+    <div className="part-title align-left spacer">Probationary and Residency Policy</div>
+    <div className="grid-row two-columns right-heavy border" style={{ padding: 8 }}>
+      <div style={{ display: 'grid', gap: 6 }}><Sk w="85%" /><Sk w="80%" /><Sk w="82%" /></div>
+      <div style={{ display: 'grid', gap: 6 }}><Sk w="70%" /><Sk w="50%" /></div>
+    </div>
+
+    {TERMS.map((term) => (
+      <React.Fragment key={term}>
+        <div className="part-title spacer">{term}</div>
+        <table className="grade-table">
+          <thead>
+            <tr>{Array.from({ length: 11 }).map((_, i) => <th key={i}><Sk h={10} /></th>)}</tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 6 }).map((_, r) => (
+              <tr key={r}>{Array.from({ length: 11 }).map((_, c) => <td key={c}><Sk h={10} /></td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="grid-row no-border small-spacer"><Sk w="60%" h={10} /></div>
+      </React.Fragment>
+    ))}
+  </div>
+);
+
+const TermGrade = ({ data, loading = false, error = null, onReady }) => {
   useEffect(() => {
-    if (data && typeof onReady === 'function') {
-      onReady();
-    }
-  }, [data, onReady]);
+    if (!loading && data && typeof onReady === 'function') onReady();
+  }, [loading, data, onReady]);
 
-  if (!data) {
-    return <div className="term-container">No data available</div>;
-  }
-
+  if (loading) return <TermGradeSkeleton />;
+  if (error)   return <div className="term-container" role="alert">{error}</div>;
+  if (!data)   return <div className="term-container">No data available</div>;
   /**
    * The document must fit one physical page (215.9mm x 330.2mm) regardless
    * of how many courses a semester has - rather than letting print either

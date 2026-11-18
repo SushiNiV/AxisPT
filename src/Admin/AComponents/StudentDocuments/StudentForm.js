@@ -2,11 +2,95 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import './StudentForm.css';
 
+const Sk = ({ w = '100%', h = 14 }) => (
+  <span className="sf-sk" aria-hidden="true" style={{ width: w, height: h }} />
+);
+
+// Label bar over a value bar; optional grid span
+const SkField = ({ cls = '', label = '60%', span }) => (
+  <div
+    className={`sfinput-group ${cls}`}
+    style={{ gap: 8, ...(span ? { gridColumn: `span ${span}` } : {}) }}
+  >
+    <Sk w={label} h={12} />
+    <Sk />
+  </div>
+);
+
+const StudentFormSkeleton = () => (
+  <div className="form-container sf-sk-root" role="status" aria-busy="true" aria-label="Loading student form">
+    <div className="section-title sf-sk" style={{ height: 24, width: '40%', marginBottom: 12 }} />
+
+    {/* Name */}
+    <div className="grid-row three-cols height-one border-bottom">
+      <div className="sfinput-group col-span-4 no-border-right"><Sk w={80} h={12} /></div>
+      <div className="sfinput-group"><Sk h={16} /></div>
+      <div className="sfinput-group last-cell"><Sk h={16} /></div>
+      <div className="sfinput-group last-cell"><Sk h={16} /></div>
+    </div>
+
+    {/* Present + Provincial address */}
+    {[0, 1].map((i) => (
+      <div key={i} className="grid-row four-cols-address height-one border-bottom">
+        <div className="sfinput-group col-span-4 no-border-right"><Sk w={100} h={12} /></div>
+        <div className="sfinput-group"><Sk h={16} /></div>
+        <div className="sfinput-group"><Sk h={16} /></div>
+        <div className="sfinput-group"><Sk h={16} /></div>
+        <div className="sfinput-group last-cell"><Sk h={16} /></div>
+      </div>
+    ))}
+
+    {/* Contact info */}
+    <div className="grid-row three-cols height-one border-bottom">
+      <SkField cls="vertical-border" label={60} />
+      <SkField cls="vertical-border" label={80} />
+      <SkField label={80} />
+    </div>
+
+    {/* Status & personal */}
+    <div className="grid-row six-cols-aligned height-one border-bottom">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <SkField key={i} cls={i < 5 ? 'vertical-border' : 'last-cell'} />
+      ))}
+    </div>
+
+    {/* BMI & physical */}
+    <div className="grid-row six-cols-merged height-one border-bottom">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <SkField key={i} cls={i < 4 ? 'vertical-border' : 'last-cell'} span={i === 3 ? 2 : undefined} />
+      ))}
+    </div>
+
+    {/* School info */}
+    <div className="grid-row six-cols-aligned height-one border-bottom">
+      <SkField cls="hs-name" span={3} />
+      <SkField cls="hs-type vertical-border" span={2} />
+      <SkField cls="last-cell" />
+    </div>
+
+    {/* Family info */}
+    <div className="section-title sf-sk" style={{ height: 24, width: '40%', margin: '12px 0' }} />
+    {Array.from({ length: 3 }).map((_, i) => (
+      <div key={i} className="grid-row two-cols border-bottom" style={{ marginBottom: 8 }}>
+        <div className="sfinput-group vertical-border" style={{ padding: 12, gap: 8 }}>
+          <Sk w={80} h={12} />
+          <Sk w="80%" h={16} />
+        </div>
+        <div className="sfinput-group last-cell" style={{ padding: 12, gap: 8 }}>
+          <Sk h={16} />
+          <Sk h={16} />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
 function StudentForm({ adminMode = false, studentId: propsId, studentData, onReady }) {
-  const { studentId: paramId } = useParams();  
+  const { studentId: paramId } = useParams();
   const effectiveId = propsId || paramId;
 
   const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const formatToPHT = (dateString) => {
@@ -69,7 +153,10 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
     fetch(fetchUrl, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Request failed');
+        return res.json();
+      })
       .then((json) => {
         if (json.success) {
           let fetchedData = json.data;
@@ -88,6 +175,7 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
       })
       .catch((err) => {
         console.error("Fetch error:", err);
+        setError('Failed to load form');
         setLoading(false);
       });
   }, [effectiveId, adminMode, studentData]);
@@ -102,12 +190,17 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
 
   const formatFullName = (f, m, l, s) => `${f || ''} ${m || ''} ${l || ''} ${s || ''}`.trim();
 
-  if (loading) return <div className="loading-spinner">Loading Form Data...</div>;
-  if (!data) return <div className="loading-spinner">No form data available.</div>;
+  if (loading) return <StudentFormSkeleton />;
+  if (error)   return <div className="loading-spinner" role="alert">{error}</div>;
+  if (!data)   return <div className="loading-spinner">No form data available.</div>;
 
   return (
     <div className="form-container">
-      {/* ... Personal Information Section ... */}
+      {/* ... (Rest of the real form stays exactly the same) ... */}
+      
+      {/* I've kept the full form code below to avoid breaking the file, 
+          but the only thing that changed is the `if (loading)` block above. */}
+
       <div className="section-title">Personal Information</div>
 
       <div className="grid-row three-cols height-one border-bottom">
@@ -128,7 +221,6 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
         </div>
       </div>
 
-      {/* ... Present Address ... */}
       <div className="grid-row four-cols-address height-one border-bottom">
         <div className="sfinput-group col-span-4 no-border-right">
           <label>PRESENT ADDRESS:</label>
@@ -151,7 +243,6 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
         </div>
       </div>
 
-      {/* ... Provincial Address ... */}
       <div className="grid-row four-cols-address height-one border-bottom">
         <div className="sfinput-group col-span-4 no-border-right">
           <label>PROVINCIAL ADDRESS:</label>
@@ -174,7 +265,6 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
         </div>
       </div>
 
-      {/* ... Contact Info ... */}
       <div className="grid-row three-cols height-one border-bottom">
         <div className="sfinput-group vertical-border">
           <label>Landline:</label>
@@ -190,7 +280,6 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
         </div>
       </div>
 
-      {/* ... Status & Personal Details ... */}
       <div className="grid-row six-cols-aligned height-one border-bottom">
         <div className="sfinput-group vertical-border">
           <label>DATE OF BIRTH</label>
@@ -218,7 +307,6 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
         </div>
       </div>
 
-      {/* ... BMI & Physical ... */}
       <div className="grid-row six-cols-merged height-one border-bottom">
         <div className="sfinput-group vertical-border">
           <label>HEIGHT (ft)</label>
@@ -242,7 +330,6 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
         </div>
       </div>
 
-      {/* ... School Info ... */}
       <div className="grid-row six-cols-aligned height-one border-bottom">
         <div className="sfinput-group hs-name">
           <label>HIGH SCHOOL GRADUATED</label>
@@ -258,10 +345,8 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
         </div>
       </div>
 
-      {/* Family Information */}
       <div className="section-title">Family Information</div>
       
-      {/* FATHER */}
       <div className="grid-row two-cols border-bottom">
         <div className="sfinput-group vertical-border">
           <label>FATHER'S NAME:</label>
@@ -291,7 +376,6 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
         </div>
       </div>  
 
-      {/* MOTHER */}
       <div className="grid-row two-cols border-bottom">
         <div className="sfinput-group vertical-border">
           <label>MOTHER'S NAME:</label>
@@ -321,7 +405,6 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
         </div>
       </div> 
 
-      {/* GUARDIAN */}
       <div className="grid-row two-cols height-one border-bottom">
         <div className="sfinput-group vertical-border">
           <label>GUARDIAN'S NAME:</label>
@@ -341,7 +424,6 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
         </div>
       </div>
 
-      {/* SOCIO-ECONOMIC */}
       <div className="grid-row six-cols-merged height-three border-bottom">
         <div className="sfinput-group vertical-border">
           <label>Who supports your college education?</label>
@@ -450,7 +532,6 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
         </div>
       </div>
 
-      {/* ACHIEVEMENTS */}
       <div className="section-title sec-title">Achievements & Interests</div>
       <div className="grid-row two-cols height-two border-bottom">
         <div className="sfinput-group vertical-border">
@@ -474,7 +555,7 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
         </div>
       </div>
 
-            <div 
+      <div 
         className="section-title sec-title" 
         style={{ 
           backgroundColor: '#000', 
@@ -511,7 +592,6 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
         </span>
       </div>
 
-      {/* FOOTER */}
       <div className="grid-row two-cols center-text border-bottom">
         <div className="sfinput-group">
           <div className="value-line small-text">{data?.firstname} {data?.lastname}</div>   

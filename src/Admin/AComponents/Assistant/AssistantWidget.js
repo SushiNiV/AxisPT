@@ -7,7 +7,7 @@ const NUDGE_KEY = 'axispt_assistant_nudge_seen';
 const NUDGE_DELAY_MS = 1500;
 const NUDGE_VISIBLE_MS = 9000;
 
-const DEFAULT_BOTTOM = 24; 
+const DEFAULT_BOTTOM = 80; 
 const HEADER_OFFSET = 140; // Approximate height of the PageHeader + Tabs to keep it below
 
 const hasSeenNudge = () => {

@@ -331,7 +331,7 @@ function AAcadYear() {
 
                     {/* Right Side: Actions */}
                     <div className="flex items-center gap-2 shrink-0 sm:self-center self-end mt-2 sm:mt-0">
-                      {!isActive && status !== 'past' && (
+                      {!isActive && (
                         <Button size="sm" variant="secondary" onClick={() => handleSetActive(year)}>
                           <BiCheckCircle className="text-base" /> Set Active
                         </Button>

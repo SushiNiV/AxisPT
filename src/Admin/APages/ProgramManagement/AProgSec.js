@@ -397,7 +397,61 @@ function AProgSec() {
               {/* Sections Results */}
               <div className="min-h-0 flex-1 overflow-hidden">
                 {loadingSections ? (
-                  <p className="p-6 text-center text-sm text-ink-3">Loading sections…</p>
+                  /* --- SECTIONS SKELETON LOADER --- */
+                  isMobile ? (
+                    <ul className="divide-y divide-line overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden h-full">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <li key={i} className="flex items-center gap-3 px-3 py-3">
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 w-3/4 animate-pulse rounded bg-surface-2" />
+                            <div className="h-3 w-1/2 animate-pulse rounded bg-surface-2" />
+                            <div className="h-3 w-1/4 animate-pulse rounded bg-surface-2" />
+                          </div>
+                          <div className="h-6 w-6 shrink-0 animate-pulse rounded bg-surface-2" />
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="min-h-0 flex-1 overflow-hidden h-full">
+                      <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+                        <thead>
+                          <tr>
+                            <th scope="col" className={TH}>Section</th>
+                            <th scope="col" className={TH}>Year</th>
+                            <th scope="col" className={TH}>Semester</th>
+                            <th scope="col" className={TH}>Students</th>
+                            {isAdmin && <th scope="col" className={`${TH} w-44`}><span className="sr-only">Actions</span></th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <tr key={i} className="border-t !border-line">
+                              <td className="px-3 py-3">
+                                <div className="h-4 w-3/4 animate-pulse rounded bg-surface-2" />
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="h-4 w-12 animate-pulse rounded bg-surface-2" />
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="h-4 w-24 animate-pulse rounded bg-surface-2" />
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="h-4 w-8 animate-pulse rounded bg-surface-2" />
+                              </td>
+                              {isAdmin && (
+                                <td className="py-2 pl-3 pr-3">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <div className="h-8 w-20 animate-pulse rounded-ctl bg-surface-2" />
+                                    <div className="h-8 w-20 animate-pulse rounded-ctl bg-surface-2" />
+                                  </div>
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
                 ) : filteredSections.length === 0 ? (
                   <div className="py-12"><EmptyState icon={BiBook} title="No sections found" text={searchSection ? `No sections matching "${searchSection}"` : "This program doesn't have any sections yet."} /></div>
                 ) : isMobile ? (

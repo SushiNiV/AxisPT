@@ -134,7 +134,7 @@ function AHistory() {
   // --- SKELETON LOADER ---
   if (loading) {
     return (
-      <div className="ax flex h-full min-h-0 flex-col gap-3 pb-4">
+      <div className="ax flex min-h-0 flex-1 flex-col gap-3 pb-4">
         <div className="flex shrink-0 items-center gap-2">
           <div className="h-10 flex-1 animate-pulse rounded-ctl bg-surface-2" />
           <div className="h-10 w-24 shrink-0 animate-pulse rounded-ctl bg-surface-2" />
@@ -159,10 +159,10 @@ function AHistory() {
     );
   }
 
-  if (error) return <div className="ax flex h-full flex-col justify-center"><EmptyState icon={BiErrorCircle} title="Error Loading History" text={error} action={<Button onClick={() => window.location.reload()}>Try again</Button>} /></div>;
+  if (error) return <div className="ax flex min-h-0 flex-1 flex-col justify-center"><EmptyState icon={BiErrorCircle} title="Error Loading History" text={error} action={<Button onClick={() => window.location.reload()}>Try again</Button>} /></div>;
 
   return (
-    <div className="ax flex h-full min-h-0 flex-col gap-3 pb-4 relative">
+    <div className="ax flex min-h-0 flex-1 flex-col gap-3 pb-4 relative">
       
       {/* Toolbar */}
       <div className="flex shrink-0 items-center gap-2">
@@ -262,7 +262,16 @@ function AHistory() {
             </div>
           )}
 
-          <Pagination page={currentPage} pageCount={totalPages} total={filteredHistory.length} pageSize={rowsPerPage} onPageChange={setCurrentPage} />
+          {/* The fix: Move Pagination out of scroll area and lock it with shrink-0 */}
+          <div className="shrink-0">
+            <Pagination 
+              page={currentPage} 
+              pageCount={totalPages} 
+              total={filteredHistory.length} 
+              pageSize={rowsPerPage} 
+              onPageChange={setCurrentPage} 
+            />
+          </div>
         </section>
       )}
 

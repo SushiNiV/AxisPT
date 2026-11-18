@@ -1,10 +1,6 @@
 const AuthService = require('../services/authService');
 const { getClientInfo } = require('../../utils/request');
 
-// HTTP only. Business rules live in services/authService.js.
-// Express 5 forwards thrown/rejected errors to the global error handler,
-// so no try/catch is needed here.
-
 exports.login = async (req, res) => {
   const { username, password, rememberMe, birthday } = req.body ?? {};
   res.json(await AuthService.loginWithPassword({ username, password, rememberMe, birthday }));

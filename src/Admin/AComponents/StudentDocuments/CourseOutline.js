@@ -1,10 +1,86 @@
 import React from 'react';
 import './CourseOutline.css';
 
-const CourseOutline = ({ data }) => {
-  if (!data) {
-    return <div className="course-outline">No curriculum data available.</div>;
-  }
+// --- Render column header row (CODE | TITLE | LEC | LAB | TOTAL | PRE) ---
+const renderColumnLabels = () => (
+  <div className="row-cells">
+    <div className="cell col-empty"></div>
+    <div className="cell col-code">CODE</div>
+    <div className="cell col-title text-center">SUBJECT TITLE</div>
+    <div className="units-container">
+      <div className="units-label">UNITS</div>
+      <div className="units-sub-cells">
+        <div className="cell col-unit">LEC</div>
+        <div className="cell col-unit">LAB</div>
+      </div>
+    </div>
+    <div className="cell col-total text-center">TOTAL <br /> UNITS</div>
+    <div className="cell col-pre text-center no-border-right">PRE REQUISITE/S</div>
+  </div>
+);
+
+// --- Header for one or two semesters side by side ---
+const renderHeader = (leftLabel, rightLabel = null) => (
+  <div className="dynamic-row header-row">
+    <div className={`semester-side ${rightLabel ? 'sem-left' : ''}`}>
+      <div className="semester-label">{leftLabel}</div>
+      {renderColumnLabels()}
+    </div>
+    {rightLabel && (
+      <div className="semester-side sem-right">
+        <div className="semester-label">{rightLabel}</div>
+        {renderColumnLabels()}
+      </div>
+    )}
+  </div>
+);
+
+const Sk = ({ w = '100%', h = 12 }) => (
+  <span className="co-sk" aria-hidden="true" style={{ width: w, height: h }} />
+);
+
+const SkCells = () => (
+  <div className="row-cells">
+    <div className="cell col-empty" />
+    <div className="cell col-code"><Sk w="80%" /></div>
+    <div className="cell col-title"><Sk w="70%" /></div>
+    <div className="cell col-unit"><Sk w="50%" /></div>
+    <div className="cell col-unit"><Sk w="50%" /></div>
+    <div className="cell col-total"><Sk w="50%" /></div>
+    <div className="cell col-pre no-border-right"><Sk w="60%" /></div>
+  </div>
+);
+
+const CourseOutlineSkeleton = ({ years = 2, rows = 6 }) => (
+  <div className="course-outline co-sk-root" role="status" aria-busy="true" aria-label="Loading course outline">
+    <div className="header-text">
+      <p className="CO-title">
+        OUR LADY OF FATIMA UNIVERSITY <br />
+        COLLEGE OF PHYSICAL THERAPY <br />
+        <Sk w="45%" h={14} /> <br />
+        <Sk w="35%" h={14} />
+      </p>
+    </div>
+
+    {Array.from({ length: years }).map((_, y) => (
+      <div className="curriculum-container" key={y}>
+        <div className="year-header">YEAR {y + 1}</div>
+        {renderHeader('FIRST SEMESTER', 'SECOND SEMESTER')}
+        {Array.from({ length: rows }).map((_, i) => (
+          <div className="dynamic-row" key={i}>
+            <div className="semester-side sem-left"><SkCells /></div>
+            <div className="semester-side sem-right"><SkCells /></div>
+          </div>
+        ))}
+      </div>
+    ))}
+  </div>
+);
+
+const CourseOutline = ({ data, loading = false, error = null }) => {
+  if (loading) return <CourseOutlineSkeleton />;
+  if (error)   return <div className="course-outline" role="alert">{error}</div>;
+  if (!data)   return <div className="course-outline">No curriculum data available.</div>;
 
   const {
     programName,

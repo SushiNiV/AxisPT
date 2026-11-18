@@ -10,7 +10,7 @@ function getPages(page, count) {
 }
 
 const NAV_BTN =
-  'grid h-9 w-9 place-items-center rounded-ctl border border-line-strong bg-surface text-lg text-ink-2 ' +
+  'grid h-9 w-9 place-items-center rounded-ctl border !border-line bg-surface text-lg text-ink-2 ' +
   'transition-colors hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 ' +
   'disabled:hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40';
 

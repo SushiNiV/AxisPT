@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BiSearch, BiX, BiPrinter, BiFullscreen, BiChevronRight } from 'react-icons/bi';
 import BulkAction from '../../../Components/shared/BulkAction';
@@ -32,7 +32,7 @@ function DocumentsTermGrade() {
   
   // Print State
   const [printForms, setPrintForms] = useState([]);
-  const [printReady, setPrintReady] = useState(false);
+  const printStartedRef = useRef(false);
   const [readyCount, setReadyCount] = useState(0);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
   const [printError, setPrintError] = useState(null);
@@ -209,8 +209,11 @@ function DocumentsTermGrade() {
 
   const handlePrint = async () => {
     if (selectedStudentIds.length === 0 || isPreparingPrint) return;
-    setIsPreparingPrint(true); setPrintError(null);
-    setReadyCount(0); setPrintReady(false); setShowBulkPrintConfirm(false);
+    setIsPreparingPrint(true); 
+    setPrintError(null);
+    setReadyCount(0); 
+    printStartedRef.current = false;
+    setShowBulkPrintConfirm(false);
 
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
@@ -241,25 +244,22 @@ function DocumentsTermGrade() {
   }, []);
 
   useEffect(() => {
-    if (printForms.length === 0) return;
-    if (readyCount < printForms.length) return;
-    if (printReady) return;
+  if (printForms.length === 0) return;
+  if (readyCount < printForms.length) return;
+  if (printStartedRef.current) return;
+  printStartedRef.current = true;
 
-    setPrintReady(true);
-
-    const raf = requestAnimationFrame(() => {
-      window.print();
-      setTimeout(() => {
-        setIsPreparingPrint(false);
-        setPrintForms([]);
-        setPrintReady(false);
-        setReadyCount(0);
-        clearSelection();
-      }, 500);
-    });
-
-    return () => cancelAnimationFrame(raf);
-  }, [printForms, readyCount, printReady]);
+  requestAnimationFrame(() => {
+    window.print();
+    setTimeout(() => {
+      setIsPreparingPrint(false);
+      setPrintForms([]);
+      setReadyCount(0);
+      clearSelection();
+      printStartedRef.current = false;
+    }, 500);
+  });
+}, [printForms, readyCount]);
 
   const changePreviewScale = (amount) => setPreviewScale((s) => Math.min(MAX_PREVIEW_SCALE, Math.max(MIN_PREVIEW_SCALE, Number((s + amount).toFixed(1)))));
   const resetPreviewScale = () => setPreviewScale(DEFAULT_PREVIEW_SCALE);
