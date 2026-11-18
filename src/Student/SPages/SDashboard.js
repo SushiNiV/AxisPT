@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BiBookAlt, BiUser, BiTrendingUp, BiCheckCircle, BiBookOpen } from 'react-icons/bi';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import WelcomeBanner from '../../Components/shared/WelcomeBanner';
 import Announcements from '../../Components/shared/Notification/Announcements';
 import Card from '../../Components/ui/Card';

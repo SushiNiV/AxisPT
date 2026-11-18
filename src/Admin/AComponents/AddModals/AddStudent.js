@@ -33,6 +33,49 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
     awardsHonors: '', hobbiesInterests: '', futureCareer: '', academicClubsExtracurr: ''
   });
 
+  // --- VALIDATION HELPER ---
+  const sanitizeInput = (name, value) => {
+    // 1. Name fields (Letters, spaces, hyphens, periods, apostrophes only)
+    const nameFields = [
+      'firstName', 'middleName', 'lastName', 'suffix', 'placeOfBirth', 'religion', 
+      'fatherFirstName', 'fatherMiddleName', 'fatherLastName', 'fatherSuffix',
+      'motherFirstName', 'motherMiddleName', 'motherLastName', 'motherSuffix',
+      'guardianFirstName', 'guardianMiddleName', 'guardianLastName', 'guardianSuffix',
+      'permCity', 'permProvince', 'provCity', 'provProvince', 'highschoolGraduated'
+    ];
+    if (nameFields.includes(name)) {
+      return value.replace(/[^a-zA-Z\s.'-]/g, '');
+    }
+
+    // 2. Alphanumeric fields (Letters, numbers, hyphens, underscores)
+    if (name === 'studentNumber') {
+      return value.replace(/[^a-zA-Z0-9-]/g, '');
+    }
+
+    // 3. Phone/Number fields (Numbers, +, -, spaces)
+    const contactFields = ['phoneNumber', 'landline', 'fatherContact', 'motherContact', 'guardianContact'];
+    if (contactFields.includes(name)) {
+      return value.replace(/[^0-9+\-\s()]/g, '');
+    }
+
+    // 4. Pure numbers
+    const numberFields = ['height', 'weight', 'noSiblings', 'hsFinalGWA'];
+    if (numberFields.includes(name)) {
+      return value.replace(/[^0-9.]/g, '');
+    }
+
+    // 5. Address fields (Letters, numbers, spaces, hyphens, commas, #, periods)
+    const addressFields = [
+      'permHouseNo', 'permStreet', 'permBarangay', 'provHouseNo', 'provStreet', 'provBarangay', 'schoolAddress'
+    ];
+    if (addressFields.includes(name)) {
+      return value.replace(/[^a-zA-Z0-9\s.,#-]/g, '');
+    }
+
+    // Default: Return raw value for things like email, language, awards, etc.
+    return value;
+  };
+
   useEffect(() => {
     const fetchPrograms = async () => {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
@@ -163,6 +206,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setIsDirty(true);
+    
     if (name === 'sameAsPermanent') {
       setFormData(prev => ({ ...prev, sameAsPermanent: checked, ...(checked ? { provHouseNo: prev.permHouseNo, provStreet: prev.permStreet, provBarangay: prev.permBarangay, provCity: prev.permCity, provProvince: prev.permProvince } : {}) }));
       return;
@@ -171,7 +215,11 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
       setFormData(prev => ({ ...prev, [name]: value, sectionId: '' }));
       return;
     }
-    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+
+    // Apply sanitization for text inputs
+    const sanitizedValue = type === 'checkbox' ? checked : sanitizeInput(name, value);
+
+    setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
   };
 
   const handleSubmit = async (e) => {
@@ -200,7 +248,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         program_id: parseInt(formData.programId, 10),
       };
 
-      // Resolve "same as permanent" at submit so later edits to the permanent address carry over.
       if (formData.sameAsPermanent) {
         Object.assign(payload, {
           provHouseNo: formData.permHouseNo,
@@ -211,7 +258,6 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         });
       }
 
-      // Edit mode sends the section only when changed, so an untouched section is never cleared.
       const sectionChanged = String(formData.sectionId || '') !== String(studentData?.section_id || '');
       if (!isEditMode || sectionChanged) payload.section_id = formData.sectionId || '';
 
