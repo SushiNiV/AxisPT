@@ -163,21 +163,26 @@ async function createAnnouncement({ title, body, audience, programId, createdBy 
 }
 
 /**
- * Active announcements for an audience. An announcement with no program is for
- * everyone; one with a program is only returned when `programId` matches.
- * @param {'all'|'students'|'faculty'} audience
+ * Active announcements.
+ * - Students/faculty: pass their audience and their own program id. An
+ *   announcement with no program is for everyone; one with a program is only
+ *   returned when `programId` matches.
+ * - Admins: pass `audience = null` to see every audience, and `includeAll = true`
+ *   to see every program too (or a `programId` to filter to one program).
+ * @param {'all'|'students'|'faculty'|null} audience
  * @param {number|null} programId
+ * @param {{ includeAll?: boolean }} [options]
  * @returns {Promise<object[]>}
  */
-async function getAnnouncements(audience, programId) {
+async function getAnnouncements(audience, programId, { includeAll = false } = {}) {
   const { rows } = await pool.query(
     `SELECT announcement_id, title, body, audience, program_id, created_at
        FROM announcements
       WHERE archived_at IS NULL
-        AND (audience = 'all' OR audience = $1)
-        AND (program_id IS NULL OR program_id = $2)
+        AND ($1::text IS NULL OR audience::text IN ('all', $1::text))
+        AND ($3::boolean OR program_id IS NULL OR program_id = $2::int)
       ORDER BY created_at DESC`,
-    [audience, programId]
+    [audience, programId, includeAll]
   );
   return rows;
 }
@@ -231,7 +236,7 @@ async function fanOutAnnouncement({ announcementId, title, body, audience, progr
   };
 
   let recipients = `
-    SELECT u.user_id
+    SELECT DISTINCT u.user_id
     FROM users u
     JOIN user_roles ur ON ur.user_id = u.user_id
     JOIN roles r ON r.role_id = ur.role_id

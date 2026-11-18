@@ -83,8 +83,8 @@ export default function AISummary() {
 
   useEffect(() => { load(); }, [load]);
 
-  const { highlights, priorities } = parseSummary(data?.summary);
-  const chips = normalizeChips(data?.chips);
+  const { highlights, priorities } = parseSummary(data?.summary || '');
+  const chips = normalizeChips(data?.chips || []);
   const hasContent = highlights.length > 0;
 
   let body;

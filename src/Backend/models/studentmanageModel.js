@@ -128,18 +128,18 @@ const PII_FIELDS = [
 
 const ADDRESS_FIELDS = {
   Present: [
-    ['house_no', ['present_houseno', 'perm_house_no', 'house_no']],
-    ['street', ['present_street', 'perm_street', 'street']],
-    ['barangay', ['present_sbdvsn_brgy', 'perm_barangay', 'barangay']],
-    ['city_municipality', ['present_city_mncplty', 'perm_city', 'city_municipality']],
-    ['province', ['perm_province', 'province']],
+    ['house_no', ['present_houseno', 'perm_house_no', 'permHouseNo', 'house_no']],
+    ['street', ['present_street', 'perm_street', 'permStreet', 'street']],
+    ['barangay', ['present_sbdvsn_brgy', 'perm_barangay', 'permBarangay', 'barangay']],
+    ['city_municipality', ['present_city_mncplty', 'perm_city', 'permCity', 'city_municipality']],
+    ['province', ['perm_province', 'permProvince', 'province']],
   ],
   Provincial: [
-    ['house_no', ['provincial_houseno', 'prov_house_no']],
-    ['street', ['provincial_street', 'prov_street']],
-    ['barangay', ['provincial_sbdvsn_brgy', 'prov_barangay']],
-    ['city_municipality', ['provincial_city_mncplty', 'prov_city']],
-    ['province', ['prov_province']],
+    ['house_no', ['provincial_houseno', 'prov_house_no', 'provHouseNo']],
+    ['street', ['provincial_street', 'prov_street', 'provStreet']],
+    ['barangay', ['provincial_sbdvsn_brgy', 'prov_barangay', 'provBarangay']],
+    ['city_municipality', ['provincial_city_mncplty', 'prov_city', 'provCity']],
+    ['province', ['prov_province', 'provProvince']],
   ],
 };
 
@@ -199,18 +199,18 @@ function readStudentInput(data) {
   const members = [];
   for (const { relation, prefix, isGuardian } of FAMILY_MEMBERS) {
     // A member is only written when a first name (or a full name) was sent.
-    const first = pick(data, `${prefix}_firstname`, `${prefix}_name`);
+    const first = pick(data, `${prefix}_firstname`, `${prefix}FirstName`, `${prefix}_name`);
     if (isBlank(first)) continue;
     members.push({
       relation,
       isGuardian,
       first_name: first,
-      middle_name: pick(data, `${prefix}_middlename`) ?? null,
-      last_name: pick(data, `${prefix}_lastname`) ?? null,
-      suffix: pick(data, `${prefix}_suffix`) ?? null,
-      occupation: pick(data, `${prefix}_occupation`) ?? null,
-      contact_no: pick(data, `${prefix}_contact`, `${prefix}_contact_no`) ?? null,
-      status: isGuardian ? 'Living' : data[`${prefix}_status`],
+      middle_name: pick(data, `${prefix}_middlename`, `${prefix}MiddleName`) ?? null,
+      last_name: pick(data, `${prefix}_lastname`, `${prefix}LastName`) ?? null,
+      suffix: pick(data, `${prefix}_suffix`, `${prefix}Suffix`) ?? null,
+      occupation: pick(data, `${prefix}_occupation`, `${prefix}Occupation`) ?? null,
+      contact_no: pick(data, `${prefix}_contact`, `${prefix}Contact`, `${prefix}_contact_no`) ?? null,
+      status: isGuardian ? 'Living' : pick(data, `${prefix}_status`, `${prefix}Status`),
     });
   }
 
@@ -357,6 +357,7 @@ class StudentManageModel {
            s.student_id,
            s.birth_date,
            s.account_status,
+           s.standing,
            u.user_id,
            u.username AS student_number,
            u.school_email,
@@ -715,6 +716,9 @@ class StudentManageModel {
       const assignment = await this._findAssignmentForSection(client, data.section_id, yearId, semesterId);
       assignmentId = assignment?.assignment_id || null;
     }
+    if (data.section_id && !assignmentId) {
+      throw new HttpError(400, 'That section has no assignment in the active academic term.');
+    }
     await this._assertSectionMatchesYearLevel(client, assignmentId, yearLevel);
 
     await client.query(
@@ -764,13 +768,14 @@ class StudentManageModel {
         const assignment = await this._findAssignmentForSection(
           client, data.section_id, data.year_id || term.year_id, data.semester_id || term.current_sem
         );
-        if (assignment) {
-          assignmentId = assignment.assignment_id;
-          sectionYearId = assignment.year_id;
-          sectionSemesterId = assignment.semester_id;
+        if (!assignment) {
+          throw new HttpError(400, 'That section has no assignment in the active academic term.');
         }
+        assignmentId = assignment.assignment_id;
+        sectionYearId = assignment.year_id;
+        sectionSemesterId = assignment.semester_id;
       }
-      // If neither resolved, assignmentId stays null and the section is cleared.
+      // A blank section_id / assignment_id clears the section (assignmentId stays null).
     }
 
     const effectiveYearLevel = yearLevel || (await client.query(

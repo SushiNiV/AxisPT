@@ -6,7 +6,6 @@ import Announcements from '../../Components/shared/Notification/Announcements';
 import Card from '../../Components/ui/Card';
 
 function SDashboard() {
-  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ gwa: '—', subjectsCount: 0, standing: 'Regular' });
   const [recentGrades, setRecentGrades] = useState([]);

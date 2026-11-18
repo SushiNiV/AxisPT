@@ -4,6 +4,9 @@ import Button from '../../ui/Button'; // Adjust path
 import TextField from '../../ui/Textfield'; // Adjust path
 import Alert from '../../ui/Alert'; // Adjust path
 
+const MAX_TITLE = 200;  // matches the server limits
+const MAX_BODY = 5000;
+
 export default function AnnouncementForm({ isOpen, onClose, onSuccess }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -11,8 +14,32 @@ export default function AnnouncementForm({ isOpen, onClose, onSuccess }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  const handleClose = () => {
+    setError(null);
+    onClose();
+  };
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
+    if (isSubmitting) return;
+
+    // The footer button is not a submit button, so the browser's `required`
+    // check never runs. Validate here instead.
+    const cleanTitle = title.trim();
+    const cleanBody = body.trim();
+    if (!cleanTitle || !cleanBody) {
+      setError('Title and message are required.');
+      return;
+    }
+    if (cleanTitle.length > MAX_TITLE) {
+      setError(`Title must be at most ${MAX_TITLE} characters.`);
+      return;
+    }
+    if (cleanBody.length > MAX_BODY) {
+      setError(`Message must be at most ${MAX_BODY} characters.`);
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
@@ -24,12 +51,12 @@ export default function AnnouncementForm({ isOpen, onClose, onSuccess }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ title, body, audience, programId: null }),
+        body: JSON.stringify({ title: cleanTitle, body: cleanBody, audience, programId: null }),
       });
-      
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to post');
-      
+
       setTitle('');
       setBody('');
       setAudience('all');
@@ -43,9 +70,9 @@ export default function AnnouncementForm({ isOpen, onClose, onSuccess }) {
   };
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
       title="Post an Announcement"
       size="sm"
       footer={({ requestClose }) => (
@@ -79,6 +106,7 @@ export default function AnnouncementForm({ isOpen, onClose, onSuccess }) {
             id="announcement-body"
             required
             rows={4}
+            maxLength={MAX_BODY}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             className="w-full rounded-ctl bg-surface-2 px-3.5 py-3 text-base text-ink ring-1 ring-line-strong transition-shadow placeholder:text-ink-3 focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"

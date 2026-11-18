@@ -89,7 +89,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         birthDate: studentData.birth_date ? studentData.birth_date.split('T')[0] : '',
         placeOfBirth: studentData.place_of_birth || '',
         phoneNumber: studentData.mobile_no || '',
-        landline: studentData.landline || '',
+        landline: studentData.landline_no || studentData.landline || '',
         religion: studentData.religion || '',
         nationality: studentData.nationality || 'Filipino',
         civilStatus: studentData.civil_status || 'Single',
@@ -145,7 +145,7 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
         awardsHonors: studentData.awards_honors || '',
         hobbiesInterests: studentData.hobbies_interests || '',
         futureCareer: studentData.future_career || '',
-        academicClubsExtracurr: studentData.acad_extracurr || ''
+        academicClubsExtracurr: studentData.acad_clubs_extracurr || studentData.acad_extracurr || ''
       }));
     }
   }, [studentData]);
@@ -192,7 +192,28 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
       const url = isEditMode && studentId ? `${process.env.REACT_APP_API_URL}/admin/students/${studentId}` : `${process.env.REACT_APP_API_URL}/admin/students`;
       const method = isEditMode && studentId ? 'PUT' : 'POST';
 
-      const payload = { ...formData, student_number: formData.studentNumber, first_name: formData.firstName, last_name: formData.lastName, program_id: parseInt(formData.programId, 10) };
+      const payload = {
+        ...formData,
+        student_number: formData.studentNumber,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        program_id: parseInt(formData.programId, 10),
+      };
+
+      // Resolve "same as permanent" at submit so later edits to the permanent address carry over.
+      if (formData.sameAsPermanent) {
+        Object.assign(payload, {
+          provHouseNo: formData.permHouseNo,
+          provStreet: formData.permStreet,
+          provBarangay: formData.permBarangay,
+          provCity: formData.permCity,
+          provProvince: formData.permProvince,
+        });
+      }
+
+      // Edit mode sends the section only when changed, so an untouched section is never cleared.
+      const sectionChanged = String(formData.sectionId || '') !== String(studentData?.section_id || '');
+      if (!isEditMode || sectionChanged) payload.section_id = formData.sectionId || '';
 
       const response = await fetch(url, {
         method,
@@ -334,8 +355,8 @@ const AddStudent = ({ onClose, onSuccess, studentToEdit = null, initialData = nu
                     <TextField label="Religion" name="religion" value={formData.religion} onChange={handleChange} />
                     <TextField label="Nationality" name="nationality" value={formData.nationality} onChange={handleChange} />
                     <TextField label="Language / Dialect" name="language" value={formData.language} onChange={handleChange} />
-                    <TextField label="Height" name="height" value={formData.height} onChange={handleChange} placeholder="e.g. 170 cm" />
-                    <TextField label="Weight" name="weight" value={formData.weight} onChange={handleChange} placeholder="e.g. 65 kg" />
+                    <TextField label="Height (cm)" name="height" value={formData.height} onChange={handleChange} placeholder="e.g. 170" />
+                    <TextField label="Weight (kg)" name="weight" value={formData.weight} onChange={handleChange} placeholder="e.g. 65" />
                     <TextField label="Visual Problem" name="visualProblems" value={formData.visualProblems} onChange={handleChange} placeholder="e.g. N/A or Glasses" />
                   </div>
                 </div>

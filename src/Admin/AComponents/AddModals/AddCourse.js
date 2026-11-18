@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { BiBookContent, BiX } from 'react-icons/bi';
 import ConfirmationModal from '../../../Components/shared/ConfirmationModal';
 import Dropdown from '../../../Components/shared/Dropdown'; 
@@ -33,6 +33,16 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
 
   const [prereqSearch, setPrereqSearch] = useState("");
   const [showPrereqDropdown, setShowPrereqDropdown] = useState(false);
+
+  const prereqRef = useRef(null);
+  useEffect(() => {
+    if (!showPrereqDropdown) return;
+    const onPointerDown = (e) => {
+      if (prereqRef.current && !prereqRef.current.contains(e.target)) setShowPrereqDropdown(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [showPrereqDropdown]);
 
   const [confirmState, setConfirmState] = useState({ isOpen: false });
   const [successState, setSuccessState] = useState({ isOpen: false });
@@ -132,8 +142,8 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
     const { name, value } = e.target;
     setIsDirty(true);
     if (name === 'lec_units' || name === 'lab_units') {
-      const numValue = value === '' ? 0 : parseInt(value);
-      setFormData(prev => ({ ...prev, [name]: isNaN(numValue) ? 0 : numValue }));
+      const n = parseInt(value, 10);
+      setFormData(prev => ({ ...prev, [name]: Number.isNaN(n) ? 0 : Math.max(0, n) }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -201,10 +211,20 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
   };
 
   const handleSubmit = async () => {
-    if (!formData.course_code || !formData.course_name) {
+    if (!formData.course_code.trim() || !formData.course_name.trim()) {
       openAlert('Missing Fields', 'Please fill in Course Code and Course Name.', 'warning');
       return;
     }
+
+    const code = formData.course_code.trim().toUpperCase();
+    const duplicate = availableCourses.some(
+      (c) => c.course_code.toUpperCase() === code && (!isEditMode || c.course_id !== courseToEdit.course_id)
+    );
+    if (duplicate) {
+      openAlert('Duplicate Course Code', `${code} is already used by another course.`, 'warning');
+      return;
+    }
+
     if (lecUnits === 0 && labUnits === 0) {
       openAlert('Missing Units', 'Please specify at least one unit (Lecture or Lab).', 'warning');
       return;
@@ -223,8 +243,8 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
       const method = isEditMode ? 'PUT' : 'POST';
 
       const payload = {
-        course_code: formData.course_code.toUpperCase(),
-        course_name: formData.course_name.toUpperCase(),
+        course_code: code,
+        course_name: formData.course_name.trim().toUpperCase(),
         lec_units: lecUnits,
         lab_units: labUnits,
         course_desc: formData.course_desc || null,
@@ -333,7 +353,7 @@ function AddCourse({ onClose, onSuccess, courseToEdit = null }) {
           <div>
             <h4 className="mb-4 text-sm font-semibold text-ink border-t border-line pt-6">Prerequisites</h4>
             <div className="space-y-3">
-              <div className="relative">
+              <div className="relative" ref={prereqRef}>
                 <TextField label="Search Prerequisites" value={prereqSearch} onChange={(e) => { setPrereqSearch(e.target.value); setShowPrereqDropdown(true); }} onFocus={() => setShowPrereqDropdown(true)} placeholder="Type to search courses..." />
                 {showPrereqDropdown && filteredAvailable.length > 0 && (
                   <div className="absolute left-0 top-[calc(100%+4px)] z-50 max-h-48 w-full overflow-y-auto rounded-ctl border border-line bg-surface p-1 shadow-xl">

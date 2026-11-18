@@ -70,18 +70,27 @@ exports.markAllRead = async (req, res) => {
 
 /**
  * GET /announcements
- * Students and faculty get the announcements for their own program, looked up
- * from their account. Admins may filter with ?programId=.
+ * Students and faculty get the announcements for their own audience and
+ * program, looked up from their account. Admins see every audience and program
+ * (so they can manage them) and may narrow with ?programId=. Any other role
+ * only sees announcements addressed to everyone.
  */
 exports.getAnnouncements = async (req, res) => {
-  const { role, id: userId } = req.user;
-  const audience = AUDIENCE_BY_ROLE[role] || 'all';
+  const roles = [].concat(req.user.role ?? []).map((r) => String(r).toLowerCase());
+  const programBound = roles.find((r) => PROGRAM_BOUND_ROLES.includes(r));
+  const isAdmin = roles.includes('admin') || roles.includes('superadmin');
 
-  const programId = PROGRAM_BOUND_ROLES.includes(role)
-    ? await notificationModel.getProgramIdForUser(userId, role)
-    : (req.query.programId ? parseId(req.query.programId) : null);
+  let data;
+  if (programBound) {
+    const programId = await notificationModel.getProgramIdForUser(req.user.id, programBound);
+    data = await notificationModel.getAnnouncements(AUDIENCE_BY_ROLE[programBound], programId);
+  } else if (isAdmin) {
+    const programId = req.query.programId ? parseId(req.query.programId) : null;
+    data = await notificationModel.getAnnouncements(null, programId, { includeAll: programId === null });
+  } else {
+    data = await notificationModel.getAnnouncements('all', null);
+  }
 
-  const data = await notificationModel.getAnnouncements(audience, programId);
   res.json({ success: true, data });
 };
 

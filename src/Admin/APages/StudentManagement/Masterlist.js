@@ -127,11 +127,12 @@ function Masterlist() {
 
   const [, setArchiveReasonCategory] = useState('');
   const [, setArchiveReasonOther] = useState('');
-  const [archiveReason, setArchiveReason] = useState('');
  
   const [selectedProgram, setSelectedProgram] = useState("");
   const [selectedYearLevel, setSelectedYearLevel] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
+  const [tempSection, setTempSection] = useState("");
   const [tempProgram, setTempProgram] = useState("");
   const [tempYearLevel, setTempYearLevel] = useState("");
   const [tempStatus, setTempStatus] = useState("");
@@ -141,21 +142,22 @@ function Masterlist() {
   const [statusOptions] = useState(["No Probationary", "Warning", "Probationary 1", "Probationary 2"]);
  
   const hasActiveFilters =
-    selectedProgram !== "" || selectedYearLevel !== "" || selectedStatus !== "";
+    selectedProgram !== "" || selectedYearLevel !== "" || selectedSection !== "" || selectedStatus !== "";
  
   const archiveSelectionRef = useRef({ category: '', other: '' });
   
  
   const rowsPerPage = isMobile ? 10 : 30;
  
-  useEffect(() => {
+    useEffect(() => {
     if (isFilterOpen) {
       setTempProgram(selectedProgram);
       setTempYearLevel(selectedYearLevel);
+      setTempSection(selectedSection);
       setTempStatus(selectedStatus);
     }
-  }, [isFilterOpen, selectedProgram, selectedYearLevel, selectedStatus]);
- 
+  }, [isFilterOpen, selectedProgram, selectedYearLevel, selectedSection, selectedStatus]);
+
   const fetchPrograms = useCallback(async () => {
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
@@ -235,32 +237,44 @@ function Masterlist() {
     });
   };
  
+  const sectionOptions = [...new Set(
+    students
+      .filter((s) => !tempProgram || s.program_name === tempProgram)
+      .map((s) => s.section_name)
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
   const filters = [
     { name: "program", label: "Program", value: tempProgram, options: programOptions, placeholder: "All programs" },
     { name: "yearLevel", label: "Year level", value: tempYearLevel, options: yearLevelOptions, placeholder: "All year levels" },
+    { name: "section", label: "Section", value: tempSection, options: sectionOptions, placeholder: "All sections" },
     { name: "status", label: "Probation status", value: tempStatus, options: statusOptions, placeholder: "All statuses" },
   ];
- 
+
   const handleFilterChange = (name, value) => {
-    if (name === "program") setTempProgram(value);
+    if (name === "program") { setTempProgram(value); setTempSection(""); }
     else if (name === "yearLevel") setTempYearLevel(value);
+    else if (name === "section") setTempSection(value);
     else if (name === "status") setTempStatus(value);
   };
- 
+
   const resetFilters = () => {
     setTempProgram("");
     setTempYearLevel("");
+    setTempSection("");
     setTempStatus("");
     setSelectedProgram("");
     setSelectedYearLevel("");
+    setSelectedSection("");
     setSelectedStatus("");
     setIsFilterOpen(false);
     setCurrentPage(1);
   };
- 
+
   const applyFilters = () => {
     setSelectedProgram(tempProgram);
     setSelectedYearLevel(tempYearLevel);
+    setSelectedSection(tempSection);
     setSelectedStatus(tempStatus);
     setIsFilterOpen(false);
     setCurrentPage(1);
@@ -281,7 +295,8 @@ function Masterlist() {
     const matchesProgram = !selectedProgram || std.program_name === selectedProgram;
     const matchesYearLevel =
       !selectedYearLevel || std.year_level?.toString() === selectedYearLevel.charAt(0);
-    return matchesSearch && matchesProgram && matchesYearLevel;
+    const matchesSection = !selectedSection || std.section_name === selectedSection;
+    return matchesSearch && matchesProgram && matchesYearLevel && matchesSection;
   };
  
   // Everything except the probation filter: the status chips count from this set.
@@ -318,7 +333,8 @@ function Masterlist() {
   };
   const clearProgram = () => { setSelectedProgram(''); setTempProgram(''); setCurrentPage(1); };
   const clearYear = () => { setSelectedYearLevel(''); setTempYearLevel(''); setCurrentPage(1); };
- 
+  const clearSection = () => { setSelectedSection(''); setTempSection(''); setCurrentPage(1); };
+
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
     setCurrentPage(1);
@@ -471,73 +487,100 @@ function Masterlist() {
   const clearSelection = () => setSelectedIds([]);
  
     const handleBulkDelete = () => {
-    setArchiveReason('');
+    if (selectedIds.length === 0) return;
+    const ids = [...selectedIds];
+    resetArchiveReason();
+    archiveSelectionRef.current = { category: '', other: '' };
+
     openConfirm({
       title: 'Archive Students',
-      summary: <>Delete <strong>{selectedIds.length}</strong> selected student record(s)?</>,
+      summary: <>Archive <strong>{ids.length}</strong> selected student record(s)?</>,
       message: 'Their accounts will be deactivated and they will be hidden from the default Masterlist. All data is preserved and can be restored later.',
       variant: 'danger',
-      confirmLabel: 'Archive',
+      confirmLabel: 'ARCHIVE',
 
-      inputLabel: 'REASON FOR ARCHIVING',
-      inputPlaceholder: 'e.g. Transferred out, dropped, graduated…',
-      inputValue: archiveReason,
-      onInputChange: setArchiveReason,
+      selectLabel: 'REASON FOR ARCHIVING',
+      selectPlaceholder: 'Select a reason',
+      selectValue: '',
+      selectOptions: ARCHIVE_REASON_OPTIONS,
+      selectRequired: true,
+      onSelectChange: (value) => {
+        archiveSelectionRef.current.category = value;
+        if (value !== OTHERS) archiveSelectionRef.current.other = '';
+        setArchiveReasonCategory(value);
+        setConfirmState((s) => ({ ...s, selectValue: value, showInput: value === OTHERS }));
+      },
+
+      showInput: false,
+      inputLabel: 'SPECIFY REASON',
+      inputPlaceholder: 'Type the reason…',
+      inputValue: '',
       inputRequired: true,
+      onInputChange: (value) => {
+        archiveSelectionRef.current.other = value;
+        setArchiveReasonOther(value);
+        setConfirmState((s) => ({ ...s, inputValue: value }));
+      },
 
       onConfirm: async () => {
+        const { category, other } = archiveSelectionRef.current;
+        const finalReason = category === OTHERS ? other.trim() : category;
+        if (!finalReason) {
+          openAlert('Reason Required', 'Please select or specify a reason for archiving.', 'warning');
+          return;
+        }
+
         setConfirmState((s) => ({ ...s, loading: true }));
         try {
           const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-          const response = await fetch(
-            `${process.env.REACT_APP_API_URL}/admin/students/batch-delete`,
-            {
-              method: 'DELETE',
-              headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                studentIds: selectedIds,
-                reason: (confirmState.inputValue || '').trim() || null,
-              }),
-            }
-          );
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/students/batch-delete`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentIds: ids, reason: finalReason }),
+          });
           const data = await response.json();
           setConfirmState({ isOpen: false });
-          setArchiveReason('');
-          
-          if (data.success) {
+          resetArchiveReason();
+
+          if (!data.success) {
+            setErrorState({ isOpen: true, title: 'Archive Failed', message: data.message || 'Failed to archive selected students.', variant: 'danger' });
+            return;
+          }
+
+          const { archived = 0, failures = [] } = data.data || {};
+          fetchStudents();
+
+          if (failures.length === 0) {
             clearSelection();
-            fetchStudents();
             setSuccessState({
               isOpen: true,
-              title: 'Students Deleted',
+              title: 'Students Archived',
               summary: 'Action completed successfully.',
-              message: data.message || 'The selected student records have been archived.',
-              variant: 'success'
+              message: `${archived} student record(s) have been archived.`,
+              variant: 'success',
             });
           } else {
+            // Keep the failed students selected so they can be reviewed or retried.
+            setSelectedIds(failures.map((f) => f.id));
+            const nameOf = (id) => {
+              const s = students.find((x) => x.student_id === id);
+              return s ? `${s.last_name}, ${s.first_name}` : `#${id}`;
+            };
             setErrorState({
               isOpen: true,
-              title: 'Delete Failed',
-              message: data.message || 'Failed to delete selected students.',
-              variant: 'danger'
+              title: 'Some Students Were Not Archived',
+              message: `${archived} archived, ${failures.length} failed: ${failures.map((f) => `${nameOf(f.id)} (${f.error})`).join('; ')}`,
+              variant: 'warning',
             });
           }
         } catch (err) {
-          console.error('Error batch-deleting students:', err);
+          console.error('Error batch-archiving students:', err);
           setConfirmState({ isOpen: false });
-          setArchiveReason('');
-          setErrorState({
-            isOpen: true,
-            title: 'Error',
-            message: 'An unexpected error occurred.',
-            variant: 'danger'
-          });
+          resetArchiveReason();
+          setErrorState({ isOpen: true, title: 'Error', message: 'An unexpected error occurred.', variant: 'danger' });
         }
       },
-      onCancel: () => { setConfirmState({ isOpen: false }); setArchiveReason(''); },
+      onCancel: () => { setConfirmState({ isOpen: false }); resetArchiveReason(); },
     });
   };
  
@@ -769,11 +812,12 @@ function Masterlist() {
           ))}
         </div>
  
-        {(selectedProgram || selectedYearLevel) && (
+        {(selectedProgram || selectedYearLevel || selectedSection) && (
           <div className="flex shrink-0 flex-wrap items-center gap-2 text-sm">
             <span className="text-ink-2">Filtered by</span>
             {selectedProgram && <FilterTag onRemove={clearProgram}>{programLabel}</FilterTag>}
             {selectedYearLevel && <FilterTag onRemove={clearYear}>{selectedYearLevel}</FilterTag>}
+            {selectedSection && <FilterTag onRemove={clearSection}>{selectedSection}</FilterTag>}
             <button type="button" onClick={resetFilters} className="font-medium text-brand-ink hover:underline">
               Clear all
             </button>

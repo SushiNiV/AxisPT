@@ -169,7 +169,7 @@ export default function PhotoCropper({ file, onCancel, onConfirm }) {
   };
 
   return createPortal(
-    <div className="ax fixed inset-0 z-[300] grid place-items-center bg-black/60 p-4" onKeyDown={onKeyDown}>
+    <div className="ax fixed inset-0 z-[1100] grid place-items-center bg-black/60 p-4" onKeyDown={onKeyDown}>
       <div
         ref={dialogRef}
         role="dialog"

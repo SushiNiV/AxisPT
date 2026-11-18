@@ -167,6 +167,10 @@ exports.updateProgram = async (req, res) => {
     }
 
     after = await ProgramModel.update(programId, changes, client);
+
+    if (changes.program_abbr !== undefined && changes.program_abbr !== before.program_abbr) {
+      await ProgramModel.renameSectionPrefix(programId, before.program_abbr, changes.program_abbr, client);
+    }
   });
 
   await audit(req, {

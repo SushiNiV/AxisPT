@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import Card, { CardEmpty } from '../../ui/Card'; // Adjust path
-import Badge from '../../ui/Badge'; // Adjust path
+import Card, { CardEmpty } from '../../ui/Card'; 
+import Badge from '../../ui/Badge'; 
 import { BiMegaphone } from 'react-icons/bi';
 
 export default function AnnouncementFeed() {

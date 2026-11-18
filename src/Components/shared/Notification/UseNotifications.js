@@ -13,8 +13,6 @@ export function setUnreadCount(count) {
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
-let pollTimer = null;
-
 export function syncNotifications() {
   const token = readToken();
   if (!token) return Promise.resolve();
@@ -32,6 +30,32 @@ export function syncNotifications() {
     });
 }
 
+// --- Shared polling -------------------------------------------------------
+// One timer for the whole app, however many bells are mounted. It starts when
+// the first bell mounts and stops when the last one unmounts. (Before, every
+// bell reset a single module-level timer, so unmounting one bell, e.g. the
+// mobile header, silently stopped polling for the other.)
+let pollTimer = null;
+let subscribers = 0;
+
+function refreshIfVisible() {
+  if (document.visibilityState === 'visible') syncNotifications();
+}
+
+function startPolling() {
+  syncNotifications();
+  pollTimer = setInterval(refreshIfVisible, POLL_INTERVAL);
+  window.addEventListener('focus', refreshIfVisible);
+  document.addEventListener('visibilitychange', refreshIfVisible);
+}
+
+function stopPolling() {
+  clearInterval(pollTimer);
+  pollTimer = null;
+  window.removeEventListener('focus', refreshIfVisible);
+  document.removeEventListener('visibilitychange', refreshIfVisible);
+}
+
 export default function useNotifications() {
   const [count, setCount] = useState(readCachedCount);
 
@@ -42,33 +66,13 @@ export default function useNotifications() {
     return () => window.removeEventListener(CHANGE_EVENT, sync);
   }, []);
 
-  // Initial fetch + Setup polling
   useEffect(() => {
-    const token = readToken();
-    if (!token) return undefined;
-
-    // 1. Fetch immediately on mount
-    syncNotifications();
-
-    // 2. Setup polling (paused when tab is hidden)
-    if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        syncNotifications();
-      }
-    }, POLL_INTERVAL);
-
-    // 3. Refresh on focus/visibility change
-    const onFocus = () => {
-      if (document.visibilityState === 'visible') syncNotifications();
-    };
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onFocus);
-
+    if (!readToken()) return undefined;
+    subscribers += 1;
+    if (subscribers === 1) startPolling();
     return () => {
-      clearInterval(pollTimer);
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onFocus);
+      subscribers -= 1;
+      if (subscribers === 0) stopPolling();
     };
   }, []);
 

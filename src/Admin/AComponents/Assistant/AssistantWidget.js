@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BiX } from 'react-icons/bi';
 import { HiSparkles } from 'react-icons/hi';
 import AssistantPanel from './AssistantPanel';
@@ -12,8 +12,7 @@ const HEADER_OFFSET = 140;
 
 const BUTTON_HEIGHT = 56; 
 const PANEL_GAP = 16; 
-const PANEL_OFFSET = BUTTON_HEIGHT + PANEL_GAP; // 72px
-
+const PANEL_OFFSET = BUTTON_HEIGHT + PANEL_GAP; 
 const hasSeenNudge = () => {
   try { return localStorage.getItem(NUDGE_KEY) === '1'; } catch { return true; }
 };
@@ -68,10 +67,10 @@ export default function AssistantWidget() {
     return () => { clearTimeout(showTimer); clearTimeout(hideTimer); };
   }, []);
 
-  const toggleOpen = () => {
-    setOpen(!open);
+ const toggleOpen = useCallback(() => {
+    setOpen((prev) => !prev);
     setShowNudge(false);
-  };
+  }, []);
 
   const startDrag = (e) => {
     if (e.button !== 0) return;

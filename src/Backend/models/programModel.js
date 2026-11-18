@@ -139,6 +139,27 @@ class ProgramModel {
     return rows[0] ?? null;
   }
 
+    /**
+   * Re-prefix a program's section names after its abbreviation changes
+   * (e.g. "TEST 1-Y1-1" -> "NEW 1-Y1-1"). Sections whose name doesn't start with
+   * the old abbreviation (renamed by hand) are left alone.
+   * @param {number} programId
+   * @param {string} oldAbbr
+   * @param {string} newAbbr
+   * @param {import('pg').PoolClient} [client]
+   * @returns {Promise<number>} number of sections renamed
+   */
+  static async renameSectionPrefix(programId, oldAbbr, newAbbr, client = db) {
+    const { rowCount } = await client.query(
+      `UPDATE sections
+          SET section_name = $2 || SUBSTRING(section_name FROM LENGTH($1) + 1),
+              updated_at = NOW()
+        WHERE program_id = $3
+          AND LEFT(section_name, LENGTH($1)) = $1`,
+      [oldAbbr, newAbbr, programId]
+    );
+    return rowCount;
+  }
   /**
    * Archive (active = false) or restore (active = true) a program.
    * Programs are never hard-deleted: sections, curricula, faculties,
