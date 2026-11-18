@@ -3,9 +3,16 @@ import Modal from '../../ui/Modal'; // Adjust path
 import Button from '../../ui/Button'; // Adjust path
 import TextField from '../../ui/Textfield'; // Adjust path
 import Alert from '../../ui/Alert'; // Adjust path
+import Dropdown from '../Dropdown'; // Adjust path
 
 const MAX_TITLE = 200;  // matches the server limits
 const MAX_BODY = 5000;
+
+const AUDIENCE_OPTIONS = [
+  { value: 'all', label: 'Everyone' },
+  { value: 'students', label: 'Students Only' },
+  { value: 'faculty', label: 'Faculty Only' },
+];
 
 export default function AnnouncementForm({ isOpen, onClose, onSuccess }) {
   const [title, setTitle] = useState('');
@@ -115,19 +122,13 @@ export default function AnnouncementForm({ isOpen, onClose, onSuccess }) {
         </div>
 
         <div className="space-y-1.5">
-          <label htmlFor="announcement-audience" className="block text-sm font-medium text-ink">
-            Audience
-          </label>
-          <select
-            id="announcement-audience"
+          <span className="block text-sm font-medium text-ink">Audience</span>
+          <Dropdown
+            options={AUDIENCE_OPTIONS}
             value={audience}
-            onChange={(e) => setAudience(e.target.value)}
-            className="h-12 w-full rounded-ctl bg-surface-2 px-3.5 text-base text-ink ring-1 ring-line-strong transition-shadow focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
-          >
-            <option value="all">Everyone</option>
-            <option value="students">Students Only</option>
-            <option value="faculty">Faculty Only</option>
-          </select>
+            onChange={setAudience}
+            disabled={isSubmitting}
+          />
         </div>
       </form>
     </Modal>
