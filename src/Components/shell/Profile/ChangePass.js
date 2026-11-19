@@ -6,7 +6,7 @@ import Button from '../../ui/Button';
 import TextField from '../../ui/Textfield';
 import Avatar from '../../ui/Avatar';
 import Badge from '../../ui/Badge';
-import useAvatar from './UseAvatar'; // <-- Import the avatar hook
+import useAvatar from './UseAvatar'; 
 
 function ChangePass() {
   const navigate = useNavigate();

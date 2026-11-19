@@ -8,17 +8,15 @@ const { chunkText } = require('./chunker');
 
 const EMBED_BATCH_SIZE = 50;
 
-/** pgvector accepts vectors as the text literal '[0.1,0.2,...]'. */
+
 const toVectorLiteral = (vec) => `[${vec.join(',')}]`;
 
 /**
- * Chunk, embed and store a document. Re-ingesting the same `source`
- * replaces the previous version, so generated documents can be refreshed safely.
  *
  * @param {object} doc
  * @param {string} doc.title
- * @param {string} doc.source     Stable identifier, e.g. 'curriculum:12'
- * @param {number|null} [doc.programId]  null = visible to every program
+ * @param {string} doc.source     
+ * @param {number|null} [doc.programId] 
  * @param {string} doc.text
  * @returns {Promise<{documentId: number, chunks: number}>}
  */
@@ -28,7 +26,7 @@ async function ingestDocument({ title, source, programId = null, text }) {
   const chunks = chunkText(text);
   if (chunks.length === 0) throw new Error('ingestDocument: document has no text.');
 
-  // Embed before opening the transaction so no DB connection is held during network calls.
+  
   const vectors = [];
   for (let i = 0; i < chunks.length; i += EMBED_BATCH_SIZE) {
     const batch = chunks.slice(i, i + EMBED_BATCH_SIZE);

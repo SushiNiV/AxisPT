@@ -26,6 +26,7 @@ function AArchive() {
 
   const [activeType, setActiveType] = useState('students');
   const [records, setRecords] = useState([]);
+  const [recordsType, setRecordsType] = useState(null); // which type `records` belongs to
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,7 +41,7 @@ function AArchive() {
   const openConfirm = (config) => setConfirmState({ isOpen: true, variant: 'info', confirmLabel: 'CONFIRM', cancelLabel: 'CANCEL', isAlert: false, loading: false, ...config });
   const openAlert = (title, message, variant = 'info') => setConfirmState({ isOpen: true, title, message, variant, isAlert: true, onConfirm: closeConfirm, onCancel: closeConfirm });
 
-  const fetchRecords = useCallback(async () => {
+  const fetchRecords = useCallback(async (signal) => {
     const typeConfig = TYPES.find(t => t.id === activeType);
     if (!typeConfig) return;
 
@@ -49,31 +50,43 @@ function AArchive() {
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const res = await fetch(`${process.env.REACT_APP_API_URL}${typeConfig.endpoint}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        signal,
       });
       const data = await res.json();
+      if (signal?.aborted) return;
+
       if (data.success) {
         let filtered = data.data;
         if (typeConfig.id === 'students') filtered = data.data.filter(s => s.archived_at);
         if (typeConfig.filterFn) filtered = data.data.filter(typeConfig.filterFn);
         setRecords(filtered);
+        setRecordsType(typeConfig.id);
       } else {
+        setRecords([]);
         setError(data.message || `Failed to fetch archived ${typeConfig.label.toLowerCase()}.`);
       }
     } catch (err) {
+      if (err.name === 'AbortError') return;
+      setRecords([]);
       setError('Failed to connect to the server.');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [activeType]);
 
-  useEffect(() => { 
-    fetchRecords(); 
+  useEffect(() => {
+    const controller = new AbortController();
+    setRecords([]); // drop stale rows immediately
     setCurrentPage(1);
     setSearchTerm('');
-  }, [fetchRecords, isMobile]);
+    fetchRecords(controller.signal);
+    return () => controller.abort();
+  }, [fetchRecords]);
 
   const filteredRecords = useMemo(() => {
+    // Never render records under the wrong type
+    if (recordsType !== activeType) return [];
     const term = searchTerm.toLowerCase();
     return records.filter(r => {
       let text = '';
@@ -84,7 +97,7 @@ function AArchive() {
       if (activeType === 'users') text = `${r.username} ${r.first_name} ${r.last_name} ${r.email}`;
       return !term || text.toLowerCase().includes(term);
     });
-  }, [records, searchTerm, activeType]);
+  }, [records, recordsType, searchTerm, activeType]);
 
   const totalPages = Math.ceil(filteredRecords.length / rowsPerPage) || 1;
   const indexOfLastItem = currentPage * rowsPerPage;
@@ -135,9 +148,9 @@ function AArchive() {
             method: 'POST', headers: { Authorization: `Bearer ${token}` }
           });
           const data = await res.json();
-          
+
           setConfirmState({ isOpen: false });
-          
+
           if (data.success) {
             fetchRecords();
             setSuccessState({
@@ -160,11 +173,11 @@ function AArchive() {
   };
 
   const getRecordTitle = (record) => {
-    if (activeType === 'students') return `${record.last_name}, ${record.first_name}`;
-    if (activeType === 'programs') return record.program_name;
-    if (activeType === 'sections') return record.section_name;
-    if (activeType === 'courses') return `${record.course_code} — ${record.course_name}`;
-    if (activeType === 'users') return `${record.first_name} ${record.last_name || ''}`;
+    if (activeType === 'students') return `${record.last_name || ''}, ${record.first_name || ''}`;
+    if (activeType === 'programs') return record.program_name || '';
+    if (activeType === 'sections') return record.section_name || '';
+    if (activeType === 'courses') return `${record.course_code || ''} — ${record.course_name || ''}`;
+    if (activeType === 'users') return `${record.first_name || ''} ${record.last_name || ''}`.trim();
     return '';
   };
 
@@ -215,7 +228,7 @@ function AArchive() {
 
   return (
     <div className="ax flex h-full min-h-0 flex-col gap-3 pb-4 relative">
-      
+
       <ConfirmationModal {...confirmState} onConfirm={confirmState.onConfirm} onCancel={confirmState.onCancel} />
 
       <ConfirmationModal
@@ -265,12 +278,12 @@ function AArchive() {
       </div>
 
       {error ? (
-        <EmptyState icon={BiErrorCircle} title="Error Loading Archive" text={error} action={<Button onClick={fetchRecords}>Try again</Button>} />
+        <EmptyState icon={BiErrorCircle} title="Error Loading Archive" text={error} action={<Button onClick={() => fetchRecords()}>Try again</Button>} />
       ) : filteredRecords.length === 0 ? (
-        <EmptyState 
-          icon={BiArchive} 
-          title={searchTerm ? "No matching results" : `No Archived ${TYPES.find(t => t.id === activeType)?.label}`} 
-          text={searchTerm ? `No archived records found matching "${searchTerm}".` : `Records you archive will appear here.`} 
+        <EmptyState
+          icon={BiArchive}
+          title={searchTerm ? "No matching results" : `No Archived ${TYPES.find(t => t.id === activeType)?.label}`}
+          text={searchTerm ? `No archived records found matching "${searchTerm}".` : `Records you archive will appear here.`}
           action={searchTerm ? <Button variant="secondary" onClick={() => setSearchTerm('')}>Clear Search</Button> : null}
         />
       ) : (
@@ -281,7 +294,7 @@ function AArchive() {
               {currentItems.map((record) => (
                 <li key={record[TYPES.find(t => t.id === activeType).key]} className="flex items-center gap-3 px-3">
                   <button onClick={() => setSheetRecord(record)} className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
-                    <Avatar first={getRecordTitle(record)} last="" />
+                    <Avatar first={getRecordTitle(record) || '?'} last="" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium text-ink">{getRecordTitle(record)}</span>
                       <span className="block truncate text-xs text-ink-2">{getRecordSubtitle(record)}</span>
@@ -310,7 +323,7 @@ function AArchive() {
                     <tr key={record[TYPES.find(t => t.id === activeType).key]} className="border-t !border-line transition-colors hover:bg-surface-2">
                       <td className="px-3 py-3 pl-4">
                         <div className="flex items-center gap-3">
-                          <Avatar first={getRecordTitle(record)} last="" />
+                          <Avatar first={getRecordTitle(record) || '?'} last="" />
                           <p className="font-medium text-ink">{getRecordTitle(record)}</p>
                         </div>
                       </td>
@@ -337,7 +350,7 @@ function AArchive() {
         {sheetRecord && (
           <div className="space-y-5">
             <div className="flex items-center gap-3">
-              <Avatar size="lg" first={getRecordTitle(sheetRecord)} last="" />
+              <Avatar size="lg" first={getRecordTitle(sheetRecord) || '?'} last="" />
               <div>
                 <p className="text-lg font-semibold text-ink">{getRecordTitle(sheetRecord)}</p>
                 <p className="text-sm text-ink-2">{getRecordSubtitle(sheetRecord)}</p>

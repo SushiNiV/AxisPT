@@ -9,11 +9,9 @@ const { generate } = require('../geminiProvider');
 const { retrieve } = require('./ragStore');
 const { getLiveStats } = require('./liveStats');
 const { getStudentRecords } = require('./studentRecords');
-// Adjust the folder to wherever summaryService.js lives (it sits next to scope.js).
 const { getCachedSummary } = require('../insights/summaryService');
 
 const TOP_K = 5;
-// Cosine distance: lower = more similar. Tune this from real retrieval logs.
 const MAX_DISTANCE = Number(process.env.RAG_MAX_DISTANCE || 0.45);
 
 const NO_ANSWER = "I don't have that information in the current knowledge base.";
@@ -86,8 +84,7 @@ async function answerQuestion(
 ) {
   const isStaff = audience === 'staff';
 
-  // Short follow-ups ("and for year 2?") retrieve nothing useful on their own,
-  // so search with the previous user question as well.
+ 
   const lastUser = [...history].reverse().find((t) => t.role === 'user');
   const retrievalQuery =
     lastUser && question.length < 60 ? `${lastUser.text}\n${question}` : question;
@@ -121,7 +118,6 @@ async function answerQuestion(
   if (isStaff) {
     liveData = stats?.ok ? 'ok' : 'unavailable';
     const statsBlock = stats?.ok ? stats.text : 'Live data is currently unavailable.';
-    // Strip the [good]/[warn]/[info] UI tags so the model sees plain bullets.
     const summaryBlock = summary?.summary
       ? summary.summary.replace(/^- \[(?:good|warn|info)\]\s*/gim, '- ')
       : '(No dashboard summary available)';

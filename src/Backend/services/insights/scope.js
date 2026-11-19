@@ -2,10 +2,7 @@ const db = require('../../config/db');
 
 const rolesOf = (user) => [].concat(user?.role ?? []).map((r) => String(r).toLowerCase());
 
-/**
- * Resolve the data scope from the VERIFIED JWT (req.user).
- * Fails closed: returns null when no valid scope exists.
- */
+
 async function resolveScope(user) {
   if (!user) return null;
   const roles = rolesOf(user);
