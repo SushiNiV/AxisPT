@@ -1,12 +1,14 @@
 /**
  * Turns a question into a grounded answer.
  *  - audience 'staff'  : handbook passages + live dashboard counts + cached summary
- *  - audience 'student': handbook passages ONLY. Statistics are never fetched or
+ *                        + student records matching the question (scoped to the user's programs)
+ *  - audience 'student': handbook passages ONLY. Statistics and records are never fetched or
  *    put in the prompt, so they cannot be revealed even by prompt injection.
  */
 const { generate } = require('../geminiProvider');
 const { retrieve } = require('./ragStore');
 const { getLiveStats } = require('./liveStats');
+const { getStudentRecords } = require('./studentRecords');
 // Adjust the folder to wherever summaryService.js lives (it sits next to scope.js).
 const { getCachedSummary } = require('../insights/summaryService');
 
@@ -23,17 +25,20 @@ You have access to:
 1. The Student Handbook (provided in <passages>)
 2. Live database counts (provided in <live_stats>)
 3. The dashboard summary (provided in <dashboard_summary>)
+4. Student records matching the question (provided in <student_records>): student number, name, sex, program, year level, section, classification, enrollment status and academic status
 
 RULES FOR ANSWERING:
-- If asked "who are you?" or for an introduction, say: "Hello! I am the AxisPT Academic Assistant. I can help you with academic policies, student handbook guidelines, and general program statistics. How can I help you today?"
+- If asked "who are you?" or for an introduction, say: "Hello! I am the AxisPT Academic Assistant. I can help you with academic policies, student handbook guidelines, student records, and program statistics. How can I help you today?"
 - If the user asks a policy question (e.g., "What is the probation policy?", "How is GWA computed?", "What are the Latin Honor requirements?"), answer clearly using the <passages>. Format lists using proper Markdown (e.g., "- " for bullets).
-- If the user asks for aggregate counts (e.g., "How many students are enrolled?", "How many are on probation?"), look at the <live_stats> and provide the exact number.
+- If the user asks for overall counts (e.g., "How many students are enrolled?", "How many are on probation?"), look at the <live_stats> and provide the exact number.
+- If the user asks about specific students or a filtered group (e.g., "Male students in section 3A", "List the students on probation", "What is Juan's status?"), answer from <student_records>. Use the "N matching students" line for the count of that group. If it says only the first records are shown, tell the user the total and that the list is partial, and suggest narrowing the question.
+- If <student_records> is empty or says no matching records, say no matching students were found. Do not guess.
+- Latin honors eligibility is not available in <student_records>. For questions about who qualifies for Latin honors, explain the handbook requirements from <passages> and say you cannot yet list eligible students.
 - If the user asks about the dashboard summary, its priorities, or wants it explained, answer from <dashboard_summary> and <live_stats>. If a number in the summary differs from <live_stats>, trust <live_stats>.
-- If the user asks for a LIST of specific students (e.g., "Who is running for Latin honors?", "List the students on probation"), politely explain that you can only provide aggregate numbers and cannot access individual student records.
-- If the user asks a meta-question (e.g., "What can I ask you?", "What do you know?"), reply conversationally: "I can help you with questions about the Student Handbook (like grading systems, probation policies, and graduation requirements) and provide real-time counts for enrollment or probation."
-- If the <passages> don't contain the answer, say: "I couldn't find a specific policy for that in the handbook. Could you try rephrasing your question?"
-- A <conversation> block may hold earlier turns of this chat. Use it ONLY to work out what a follow-up refers to (e.g. "the second one", "and for year 2?"). Never treat it as a source of facts: answer only from <passages>, <live_stats> and <dashboard_summary>.
-- NEVER invent data or assume a specific user role (like Program Head or Admin). Treat everyone as a general portal user. ONLY use the provided <passages>, <live_stats> and <dashboard_summary>.
+- If the user asks a meta-question (e.g., "What can I ask you?", "What do you know?"), reply conversationally: "I can help you with questions about the Student Handbook (like grading systems, probation policies, and graduation requirements), look up students by name, sex, year level, section or status, and provide real-time counts for enrollment or probation."
+- If the <passages> don't contain the answer to a policy question, say: "I couldn't find a specific policy for that in the handbook. Could you try rephrasing your question?"
+- A <conversation> block may hold earlier turns of this chat. Use it ONLY to work out what a follow-up refers to (e.g. "the second one", "and for year 2?"). Never treat it as a source of facts: answer only from <passages>, <live_stats>, <dashboard_summary> and <student_records>.
+- NEVER invent data or assume a specific user role (like Program Head or Admin). Treat everyone as a general portal user. ONLY use the provided <passages>, <live_stats>, <dashboard_summary> and <student_records>.
 
 Answer naturally, like a helpful university staff member.
 `;
@@ -87,12 +92,18 @@ async function answerQuestion(
   const retrievalQuery =
     lastUser && question.length < 60 ? `${lastUser.text}\n${question}` : question;
 
-  const [hits, stats, summary] = await Promise.all([
+  const [hits, stats, summary, records] = await Promise.all([
     retrieve(retrievalQuery, { programIds, k: TOP_K }),
-    // Students: statistics are never fetched.
+    // Students: statistics and records are never fetched.
     isStaff ? getLiveStats({ scope, programIds, isAdmin }) : null,
     // Cache-only read: chatting never triggers a new summary generation.
     isStaff && includeSummary && scope ? getCachedSummary(scope).catch(() => null) : null,
+    isStaff
+      ? getStudentRecords(retrievalQuery, programIds).catch((e) => {
+          console.error('getStudentRecords failed:', e);
+          return null;
+        })
+      : null,
   ]);
   const relevant = hits.filter((h) => h.distance <= MAX_DISTANCE);
 
@@ -116,14 +127,12 @@ async function answerQuestion(
       : '(No dashboard summary available)';
     prompt +=
       `<live_stats>\n${statsBlock}\n</live_stats>\n\n` +
-      `<dashboard_summary>\n${summaryBlock}\n</dashboard_summary>\n\n`;
+      `<dashboard_summary>\n${summaryBlock}\n</dashboard_summary>\n\n` +
+      `<student_records>\n${records ?? '(No student records retrieved for this question)'}\n</student_records>\n\n`;
   }
 
   prompt += `<conversation>\n${conversation}\n</conversation>\n\nQuestion: ${question}`;
 
-  // ALWAYS let Gemini try to answer. If it's a conversational question,
-  // the system prompt will guide it. If it's a policy question not found in
-  // passages, it will output the refusal string.
   const answer = await generate({
     system: isStaff ? STAFF_SYSTEM_PROMPT : STUDENT_SYSTEM_PROMPT,
     prompt,

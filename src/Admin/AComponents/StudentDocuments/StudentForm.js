@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import './StudentForm.css';
+import FitText from './FitText';
 
 const Sk = ({ w = '100%', h = 14 }) => (
   <span className="sf-sk" aria-hidden="true" style={{ width: w, height: h }} />
@@ -196,10 +197,6 @@ function StudentForm({ adminMode = false, studentId: propsId, studentData, onRea
 
   return (
     <div className="form-container">
-      {/* ... (Rest of the real form stays exactly the same) ... */}
-      
-      {/* I've kept the full form code below to avoid breaking the file, 
-          but the only thing that changed is the `if (loading)` block above. */}
 
       <div className="section-title">Personal Information</div>
 
