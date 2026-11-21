@@ -1,26 +1,22 @@
-require('dotenv').config(); // load env first, once, before anything reads process.env
-
+require('dotenv').config(); 
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 
-const pool = require('./config/db'); // adjust path if your db.js lives elsewhere
+const pool = require('./config/db'); 
 const adminRoutes = require('./routes/adminRoutes');
 const studentRoutes = require('./routes/studentRoutes');
 const avatarRoutes = require('./routes/avatarRoutes');
 const authController = require('./controllers/authController');
-const notificationRoutes = require('./routes/notificationRoute'); // <-- Matches your singular file name
-const notificationModel = require('./models/notificationModel'); // <-- ADDED for cleanup job
-
+const notificationRoutes = require('./routes/notificationRoute'); 
+const notificationModel = require('./models/notificationModel'); 
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = process.env.BACK_PORT || 5000;
 
 const app = express();
 
-// If deployed behind a proxy (Render, Railway, Nginx...), set TRUST_PROXY=1
-// so rate limiting sees the real client IP instead of the proxy's.
 if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY));
 
 // ---------- Security & performance ----------
@@ -31,7 +27,6 @@ app.use(helmet({
 }));
 app.use(compression());
 
-// CORS_ORIGINS="https://app.example.com,http://localhost:5173"
 const allowedOrigins = (process.env.CORS_ORIGINS || '')
   .split(',')
   .map((o) => o.trim())
@@ -86,9 +81,13 @@ app.use((err, req, res, next) => {
   if (err.type === 'entity.too.large') {
     return res.status(413).json({ message: 'Request body too large.' });
   }
-  console.error(`[${req.method} ${req.originalUrl}]`, err);
-  res.status(err.status || 500).json({
-    message: isProd ? 'Internal server error.' : err.message,
+  const status = err.status || 500;
+  // Client errors (HttpError 4xx: wrong password, validation...) carry messages written
+  // for the user, so always show them. Only hide the details of real server errors.
+  const expose = status < 500 || !isProd;
+  if (status >= 500) console.error(`[${req.method} ${req.originalUrl}]`, err);
+  res.status(status).json({
+    message: expose ? err.message : 'Internal server error.',
   });
 });
 
@@ -107,8 +106,8 @@ const startCleanupJob = () => {
 // ---------- Start + graceful shutdown ----------
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  startCleanupJob(); // <-- Added here
-  require('./services/notification/jobs').startNotificationJobs(); // standing check + cleanup
+  startCleanupJob(); 
+  require('./services/notifications/jobs').startNotificationJobs();
 });
 
 const shutdown = (signal) => {
