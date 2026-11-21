@@ -25,15 +25,14 @@ import Curricula from './Admin/APages/AccessControl/Curricula';
 
 import AHistory from './Admin/APages/AHistory';
 
-// ONLY import the new unified AArchive
 import AArchive from './Admin/APages/Archived/AArchive';
-
 import ProtectedRoute from './Components/ProtectedRoute';
 import ALayout from './Admin/AComponents/ALayout';
-// Unified Sign In
-import SignIn from './Components/SignIn/SignIn';
 
-// Student Imports
+import SignIn from './Components/SignIn/SignIn';
+import ForgotPassword from './Components/SignIn/ForgotPassword';
+import ResetPassword from './Components/SignIn/ResetPassword';
+
 import SLayout from './Student/SComponents/SLayout';
 import SDashboard from './Student/SPages/SDashboard';
 import SAcademics from './Student/SPages/SAcademics';
@@ -105,6 +104,18 @@ function AppContent() {
             </PublicOnlyRoute>
           }
         />
+
+        {/* PASSWORD RESET (public) */}
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicOnlyRoute>
+              <ForgotPassword />
+            </PublicOnlyRoute>
+          }
+        />
+        {/* Not wrapped in PublicOnlyRoute: an emailed link must work even if a session exists. */}
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Optional: Add redirects for old sign-in links */}
         <Route path="/admin/signin" element={<Navigate to="/signin" replace />} />

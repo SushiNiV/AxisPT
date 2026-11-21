@@ -47,8 +47,9 @@ function studentMessage(previous, status) {
 
 async function loadStudents() {
   const { rows } = await db.query(
-    `SELECT DISTINCT ON (s.student_id) s.student_id, s.user_id, c.program_id
+    `SELECT DISTINCT ON (s.student_id) s.student_id, s.user_id, c.program_id, u.school_email
        FROM students s
+       LEFT JOIN users u ON u.user_id = s.user_id
        LEFT JOIN student_education se ON se.student_id = s.student_id AND se.is_current = true
        LEFT JOIN curricula c ON c.curriculum_id = se.curriculum_id
       WHERE s.archived_at IS NULL AND s.account_status = TRUE
@@ -116,6 +117,9 @@ async function checkStandings() {
       ...studentMessage(c.previous, c.status),
       data: { status: c.status, previous: c.previous },
       dedupeKey: `standing-${c.student_id}-${c.status}`,
+      email: c.school_email
+        ? { to: c.school_email, text: 'Your academic standing changed. Open Axis for details.\n\nAxis Portal' }
+        : null,
     });
   }
 

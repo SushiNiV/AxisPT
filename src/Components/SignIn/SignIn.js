@@ -283,7 +283,7 @@ function SignInForm() {
               />
 
               <div className="flex items-center justify-end text-sm">
-                <button type="button" className="font-medium text-brand-ink hover:underline dark:text-[#ffcb57] transition-colors">
+                <button type="button" onClick={() => navigate('/forgot-password')} className="font-medium text-brand-ink hover:underline dark:text-[#ffcb57] transition-colors">
                   Forgot password?
                 </button>
               </div>

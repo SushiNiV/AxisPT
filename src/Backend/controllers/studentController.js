@@ -17,6 +17,7 @@ const GradeManageModel = require('../models/grademanageModel');
 const HttpError = require('../../utils/httpError');
 const { parseId } = require('../../utils/request');
 const { audit } = require('../../utils/audit');
+const { notifyProbationChanged } = require('../services/notification/notificationEvents');
 
 const PROBATION_OPTIONS = ['Automatic', 'None', 'Warning', 'Probationary 1', 'Probationary 2'];
 const STANDING_OPTIONS = ['Regular', 'Irregular'];
@@ -202,6 +203,12 @@ exports.updateStudentStatus = async (req, res) => {
     oldValues: before,
     newValues: { ...after, student_id: studentId, reason: cleanReason },
   });
+
+  // Tell the student when an admin changes their probation status. "Automatic" hands
+  // control back to the computed standing, which the standing watcher reports instead.
+  if (after?.probation && after.probation !== before?.probation && after.probation !== 'Automatic') {
+    notifyProbationChanged(studentUserId, after.probation); // background; never throws
+  }
 
   res.json({ success: true, message: 'Student status updated.' });
 };

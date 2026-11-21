@@ -22,3 +22,17 @@ exports.changePassword = async (req, res) => {
     })
   );
 };
+
+exports.forgotPassword = async (req, res) => {
+  const { identifier } = req.body ?? {};
+  res.json(await AuthService.requestPasswordReset({ identifier, ctx: getClientInfo(req) }));
+};
+
+exports.verifyResetToken = async (req, res) => {
+  res.json(await AuthService.verifyResetToken({ token: req.query.token }));
+};
+
+exports.resetPassword = async (req, res) => {
+  const { token, newPassword } = req.body ?? {};
+  res.json(await AuthService.resetPassword({ token, newPassword, ctx: getClientInfo(req) }));
+};

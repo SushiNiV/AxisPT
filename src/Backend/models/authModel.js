@@ -95,6 +95,52 @@ class AuthModel {
       console.error('touchLastLogin failed:', err.message);
     }
   }
+
+  /** Username / student number (exact, as login does) OR school email. Both are indexed. */
+  static findUserForReset(identifier) {
+    const raw = String(identifier).trim();
+    return first(
+      `SELECT user_id, username, school_email
+         FROM users
+        WHERE (username = $1 OR LOWER(school_email) = $2)
+          AND is_active = true
+        ORDER BY (username = $1) DESC, user_id
+        LIMIT 1`,
+      [raw, raw.toLowerCase()]
+    );
+  }
+
+  /** One live token per user: a new request overwrites the previous one. */
+  static async createResetToken(userId, tokenHash, minutes) {
+    await db.query(
+      `UPDATE users
+          SET reset_token_hash = $2, reset_expires_at = NOW() + make_interval(mins => $3)
+        WHERE user_id = $1`,
+      [userId, tokenHash, minutes]
+    );
+  }
+
+  /** Atomically clears a valid token (single-use). Returns user_id or null. */
+  static async consumeResetToken(tokenHash) {
+    const row = await first(
+      `UPDATE users
+          SET reset_token_hash = NULL, reset_expires_at = NULL
+        WHERE reset_token_hash = $1 AND reset_expires_at > NOW() AND is_active = true
+        RETURNING user_id`,
+      [tokenHash]
+    );
+    return row ? row.user_id : null;
+  }
+
+  /** Cheap check so the reset page can reject a dead link before the user types. */
+  static async isResetTokenValid(tokenHash) {
+    const row = await first(
+      `SELECT 1 AS ok FROM users
+        WHERE reset_token_hash = $1 AND reset_expires_at > NOW() AND is_active = true`,
+      [tokenHash]
+    );
+    return Boolean(row);
+  }
 }
 
 module.exports = AuthModel;

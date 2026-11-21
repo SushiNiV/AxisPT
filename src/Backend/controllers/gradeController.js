@@ -17,6 +17,7 @@ const GradeManageModel = require('../models/grademanageModel');
 const HttpError = require('../../utils/httpError');
 const { parseId } = require('../../utils/request');
 const { audit } = require('../../utils/audit');
+const { notifyGradesPosted } = require('../services/notification/notificationEvents');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -147,6 +148,8 @@ exports.updateStudentGrades = async (req, res) => {
       },
     });
   }
+
+  notifyGradesPosted(studentId); // background; never throws; one per student per day
 
   res.status(200).json({ success: true, message: 'Student grades updated successfully.' });
 };

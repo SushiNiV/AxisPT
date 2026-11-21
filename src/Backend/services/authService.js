@@ -6,6 +6,7 @@ const { OAuth2Client } = require('google-auth-library');
 const AuthModel = require('../models/authModel');
 const HistoryModel = require('../models/historyModel');
 const HttpError = require('../../utils/httpError');
+const { sendMail } = require('./mailer');
 
 const BCRYPT_ROUNDS = 10;
 const MIN_PASSWORD_LENGTH = 8;
@@ -13,6 +14,11 @@ const TOKEN_TTL = { normal: '2h', remember: '7d' };
 const ALLOWED_EMAIL_DOMAINS = ['fatima.edu.ph', 'student.fatima.edu.ph'];
 const ADMIN_ROLE_NAMES = ['SUPERADMIN', 'ADMIN'];
 const INVALID_LOGIN = 'Invalid Username or Password.';
+const RESET_TTL_MIN = 30;
+const RESET_INVALID = 'This reset link is invalid or has expired.';
+// Same reply whether or not the account exists, so it can't be used to discover usernames.
+const RESET_REQUESTED =
+  'If an account matches, a reset link has been sent to its school email. The link expires in 30 minutes.';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -44,6 +50,7 @@ async function verifyPassword(plain, hash) {
 }
 
 const hashPassword = (plain) => bcrypt.hash(plain, BCRYPT_ROUNDS);
+const sha256 = (v) => crypto.createHash('sha256').update(v).digest('hex');
 
 async function upgradeLegacyHash(userId, plain) {
   try {
@@ -255,4 +262,69 @@ async function changePassword({ userId, currentPassword, newPassword, ctx = {} }
   return { success: true, message: 'Password changed successfully. Please login again.' };
 }
 
-module.exports = { loginWithPassword, loginWithGoogle, changePassword, verifyPassword, hashPassword };
+// ----------------------------------------------------------- forgot password
+async function requestPasswordReset({ identifier, ctx = {} }) {
+  const id = typeof identifier === 'string' ? identifier.trim() : '';
+  if (!id) throw new HttpError(400, 'Enter your username or school email.');
+
+  const user = await AuthModel.findUserForReset(id);
+  if (user && user.school_email) {
+    const token = crypto.randomBytes(32).toString('hex');
+    await AuthModel.createResetToken(user.user_id, sha256(token), RESET_TTL_MIN);
+
+    const link = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+    // Not awaited on purpose: response time shouldn't reveal whether the account exists.
+    sendMail({
+      to: user.school_email,
+      subject: 'Reset your Axis password',
+      text:
+        `Use this link to reset your password (valid for ${RESET_TTL_MIN} minutes):\n\n${link}\n\n` +
+        `If you didn't request this, you can ignore this email.`,
+    }).catch((err) => console.error('Reset email failed:', err.message));
+
+    await safeLog({
+      userId: user.user_id, targetUserId: user.user_id, action: 'Password Reset Requested',
+      tableName: 'users', recordId: user.user_id, oldValues: null,
+      newValues: { requested_at: new Date().toISOString() }, ...ctx,
+    });
+  }
+  return { success: true, message: RESET_REQUESTED };
+}
+
+async function verifyResetToken({ token }) {
+  const valid = typeof token === 'string' && token ? await AuthModel.isResetTokenValid(sha256(token)) : false;
+  return { success: valid, message: valid ? 'OK' : RESET_INVALID };
+}
+
+async function resetPassword({ token, newPassword, ctx = {} }) {
+  if (typeof token !== 'string' || !token) throw new HttpError(400, RESET_INVALID);
+  if (typeof newPassword !== 'string' || newPassword.length < MIN_PASSWORD_LENGTH) {
+    throw new HttpError(400, `New password must be at least ${MIN_PASSWORD_LENGTH} characters long.`);
+  }
+
+  // Single-use: this marks the token used atomically, so a link can't be replayed.
+  const userId = await AuthModel.consumeResetToken(sha256(token));
+  if (!userId) throw new HttpError(400, RESET_INVALID);
+
+  const updated = await AuthModel.updatePassword(userId, await hashPassword(newPassword));
+  if (!updated) throw new HttpError(500, 'Failed to reset password.');
+
+  await safeLog({
+    userId, targetUserId: userId, action: 'Password Reset', tableName: 'users', recordId: userId,
+    oldValues: null,
+    newValues: { password_changed: true, changed_pass: true, changed_at: new Date().toISOString() },
+    ...ctx,
+  });
+  return { success: true, message: 'Password reset. You can now sign in.' };
+}
+
+module.exports = {
+  loginWithPassword,
+  loginWithGoogle,
+  changePassword,
+  requestPasswordReset,
+  verifyResetToken,
+  resetPassword,
+  verifyPassword,
+  hashPassword,
+};
