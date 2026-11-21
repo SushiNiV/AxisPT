@@ -107,7 +107,7 @@ const startCleanupJob = () => {
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   startCleanupJob(); 
-  require('./services/notifications/jobs').startNotificationJobs();
+  require('./services/notification/jobs').startNotificationJobs();
 });
 
 const shutdown = (signal) => {
