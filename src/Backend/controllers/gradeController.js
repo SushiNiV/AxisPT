@@ -18,6 +18,7 @@ const HttpError = require('../../utils/httpError');
 const { parseId } = require('../../utils/request');
 const { audit } = require('../../utils/audit');
 const { notifyGradesPosted } = require('../services/notification/notificationEvents');
+const { checkStudentStanding } = require('../services/notification/standingWatcher');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -150,6 +151,7 @@ exports.updateStudentGrades = async (req, res) => {
   }
 
   notifyGradesPosted(studentId); // background; never throws; one per student per day
+  checkStudentStanding(studentId); // background; tells staff/student if standing changed
 
   res.status(200).json({ success: true, message: 'Student grades updated successfully.' });
 };

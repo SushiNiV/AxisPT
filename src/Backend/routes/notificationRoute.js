@@ -1,23 +1,23 @@
+'use strict';
+
 const express = require('express');
-const router = express.Router();
-const notificationController = require('../controllers/notificationController');
 const { verifyToken, requireRole } = require('../middleware/auth');
+const notificationController = require('../controllers/notificationController');
 
-// All routes require authentication
-router.use(verifyToken);
+const router = express.Router();
 
-// --- Notifications ---
-router.get('/', notificationController.getMyNotifications);
-router.get('/unread-count', notificationController.getMyUnreadCount);
-router.post('/:id/read', notificationController.markRead);
-router.post('/read-all', notificationController.markAllRead);
+const anyRole = [verifyToken, requireRole('admin', 'faculty', 'student')];
+const adminOnly = [verifyToken, requireRole('admin')];
 
-// --- Announcements ---
-// Everyone can GET
-router.get('/announcements', notificationController.getAnnouncements);
+// ---------- The signed-in user's notifications ----------
+router.get('/', ...anyRole, notificationController.getMyNotifications);
+router.get('/unread-count', ...anyRole, notificationController.getMyUnreadCount);
+router.post('/read-all', ...anyRole, notificationController.markAllRead);
+router.post('/:id/read', ...anyRole, notificationController.markRead);
 
-// Only admin/superadmin can create or delete
-router.post('/announcements', requireRole('admin', 'superadmin'), notificationController.createAnnouncement);
-router.delete('/announcements/:id', requireRole('admin', 'superadmin'), notificationController.deleteAnnouncement);
+// ---------- Announcements ----------
+router.get('/announcements', ...anyRole, notificationController.getAnnouncements);
+router.post('/announcements', ...adminOnly, notificationController.createAnnouncement);
+router.delete('/announcements/:id', ...adminOnly, notificationController.deleteAnnouncement);
 
 module.exports = router;

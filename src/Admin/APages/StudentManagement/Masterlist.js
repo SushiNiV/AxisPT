@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   BiSearch, BiPlus, BiX, BiPencil, BiTrash, BiListCheck, BiChevronRight,
   BiGroup, BiErrorCircle, BiSortAlt2, BiSortUp, BiSortDown,
@@ -141,6 +142,30 @@ function Masterlist() {
   const [yearLevelOptions] = useState(["1st Year", "2nd Year", "3rd Year", "4th Year"]);
   const [statusOptions] = useState(["No Probationary", "Warning", "Probationary 1", "Probationary 2"]);
  
+  // Opened from a notification: /masterlist?students=12,15 shows only those students and selects them.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusParam = searchParams.get('students');
+  const focusIds = focusParam
+    ? focusParam.split(',').map(Number).filter(Number.isInteger)
+    : null;
+  const appliedFocus = useRef(null);
+
+  useEffect(() => {
+    if (!focusParam || loading || appliedFocus.current === focusParam) return;
+    appliedFocus.current = focusParam;
+    const wanted = new Set(focusIds);
+    setSelectedIds(students.filter((s) => wanted.has(s.student_id)).map((s) => s.student_id));
+    if (isMobile) setSelectMode(true);
+    setCurrentPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusParam, loading, students]);
+
+  const clearFocus = () => {
+    appliedFocus.current = null;
+    setSearchParams({}, { replace: true });
+    setSelectedIds([]);
+  };
+
   const hasActiveFilters =
     selectedProgram !== "" || selectedYearLevel !== "" || selectedSection !== "" || selectedStatus !== "";
  
@@ -296,7 +321,8 @@ function Masterlist() {
     const matchesYearLevel =
       !selectedYearLevel || std.year_level?.toString() === selectedYearLevel.charAt(0);
     const matchesSection = !selectedSection || std.section_name === selectedSection;
-    return matchesSearch && matchesProgram && matchesYearLevel && matchesSection;
+    const matchesFocus = !focusIds || focusIds.includes(std.student_id);
+    return matchesSearch && matchesProgram && matchesYearLevel && matchesSection && matchesFocus;
   };
  
   // Everything except the probation filter: the status chips count from this set.
@@ -660,7 +686,7 @@ function Masterlist() {
     programOptions.find((p) => p.value === selectedProgram)?.label || selectedProgram;
  
   const openAdd = () => { setEditingStudent(null); setShowAddStudent(true); };
-  const clearAllFilters = () => { clearSearch(); resetFilters(); };
+  const clearAllFilters = () => { clearSearch(); resetFilters(); if (focusIds) clearFocus(); };
   const runFromSheet = (action) => {
     const student = sheetStudent;
     setSheetStudent(null);
@@ -812,6 +838,17 @@ function Masterlist() {
           ))}
         </div>
  
+        {focusIds && (
+          <div className="flex shrink-0 items-center justify-between gap-3 rounded-ctl bg-surface-2 px-3.5 py-2.5 text-sm text-ink-2">
+            <span>
+              Showing {filteredStudents.length} student{filteredStudents.length === 1 ? '' : 's'} from a notification
+            </span>
+            <button type="button" onClick={clearFocus} className="font-medium text-brand-ink hover:underline">
+              Show all
+            </button>
+          </div>
+        )}
+
         {(selectedProgram || selectedYearLevel || selectedSection) && (
           <div className="flex shrink-0 flex-wrap items-center gap-2 text-sm">
             <span className="text-ink-2">Filtered by</span>
@@ -826,7 +863,7 @@ function Masterlist() {
  
         {/* Results */}
         {hasNoData ? (
-          searchTerm || hasActiveFilters ? (
+          searchTerm || hasActiveFilters || focusIds ? (
             <EmptyState
               icon={BiSearch}
               title="No matching students"
@@ -1078,4 +1115,3 @@ function Masterlist() {
 }
  
 export default Masterlist;
- 

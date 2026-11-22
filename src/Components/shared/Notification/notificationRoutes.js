@@ -11,9 +11,12 @@ const isStudent = (role) => role === 'student';
 
 const MASTERLIST = '/admin/student-management/masterlist';
 
-// NOTE: the masterlist only filters if Masterlist.js reads these query params.
+// Masterlist.js reads ?students=<ids>: it shows and selects exactly those students.
+// Older notifications have no ids, so they open the plain masterlist.
 const atRiskList = (data) =>
-  `${MASTERLIST}?standing=at-risk${data.programId ? `&program=${data.programId}` : ''}`;
+  Array.isArray(data.studentIds) && data.studentIds.length
+    ? `${MASTERLIST}?students=${data.studentIds.join(',')}`
+    : MASTERLIST;
 
 const RESOLVERS = {
   announcement: (data, role) => dashboardFor(role),
