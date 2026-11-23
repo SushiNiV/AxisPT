@@ -1,39 +1,6 @@
 import React from 'react';
 import './CourseOutline.css';
-
-// --- Render column header row (CODE | TITLE | LEC | LAB | TOTAL | PRE) ---
-const renderColumnLabels = () => (
-  <div className="row-cells">
-    <div className="cell col-empty"></div>
-    <div className="cell col-code">CODE</div>
-    <div className="cell col-title text-center">SUBJECT TITLE</div>
-    <div className="units-container">
-      <div className="units-label">UNITS</div>
-      <div className="units-sub-cells">
-        <div className="cell col-unit">LEC</div>
-        <div className="cell col-unit">LAB</div>
-      </div>
-    </div>
-    <div className="cell col-total text-center">TOTAL <br /> UNITS</div>
-    <div className="cell col-pre text-center no-border-right">PRE REQUISITE/S</div>
-  </div>
-);
-
-// --- Header for one or two semesters side by side ---
-const renderHeader = (leftLabel, rightLabel = null) => (
-  <div className="dynamic-row header-row">
-    <div className={`semester-side ${rightLabel ? 'sem-left' : ''}`}>
-      <div className="semester-label">{leftLabel}</div>
-      {renderColumnLabels()}
-    </div>
-    {rightLabel && (
-      <div className="semester-side sem-right">
-        <div className="semester-label">{rightLabel}</div>
-        {renderColumnLabels()}
-      </div>
-    )}
-  </div>
-);
+import EditableField from './EditableField';
 
 const Sk = ({ w = '100%', h = 12 }) => (
   <span className="co-sk" aria-hidden="true" style={{ width: w, height: h }} />
@@ -61,11 +28,19 @@ const CourseOutlineSkeleton = ({ years = 2, rows = 6 }) => (
         <Sk w="35%" h={14} />
       </p>
     </div>
-
     {Array.from({ length: years }).map((_, y) => (
       <div className="curriculum-container" key={y}>
         <div className="year-header">YEAR {y + 1}</div>
-        {renderHeader('FIRST SEMESTER', 'SECOND SEMESTER')}
+        <div className="dynamic-row header-row">
+          <div className="semester-side sem-left">
+            <div className="semester-label">FIRST SEMESTER</div>
+            <SkCells />
+          </div>
+          <div className="semester-side sem-right">
+            <div className="semester-label">SECOND SEMESTER</div>
+            <SkCells />
+          </div>
+        </div>
         {Array.from({ length: rows }).map((_, i) => (
           <div className="dynamic-row" key={i}>
             <div className="semester-side sem-left"><SkCells /></div>
@@ -77,37 +52,48 @@ const CourseOutlineSkeleton = ({ years = 2, rows = 6 }) => (
   </div>
 );
 
-const CourseOutline = ({ data, loading = false, error = null }) => {
+const CourseOutline = ({ data, loading = false, error = null, isEditing = false, onUpdate }) => {
   if (loading) return <CourseOutlineSkeleton />;
   if (error)   return <div className="course-outline" role="alert">{error}</div>;
   if (!data)   return <div className="course-outline">No curriculum data available.</div>;
 
-  const {
-    programName,
-    effectiveYear,
-    years,
-    grandTotals,
-    student,
-    facultyName,
-    schoolYear,
-  } = data;
+  const { programName, effectiveYear, years, grandTotals, student, facultyName, schoolYear } = data;
+
+  const handleFieldChange = (field, newValue) => {
+    if (onUpdate) onUpdate({ ...data, [field]: newValue });
+  };
+
+  const handleStudentChange = (field, newValue) => {
+    if (onUpdate) onUpdate({ ...data, student: { ...data.student, [field]: newValue } });
+  };
+
+  const handleCourseChange = (yearLevel, semesterId, courseIndex, field, newValue) => {
+    if (!onUpdate) return;
+    const newYears = data.years.map(y => {
+      if (y.yearLevel !== yearLevel) return y;
+      return {
+        ...y,
+        semesters: y.semesters.map(s => {
+          if (s.semesterId !== semesterId) return s;
+          const newCourses = [...s.courses];
+          newCourses[courseIndex] = { ...newCourses[courseIndex], [field]: newValue };
+          return { ...s, courses: newCourses };
+        })
+      };
+    });
+    onUpdate({ ...data, years: newYears });
+  };
 
   const currentYear = new Date().getFullYear();
   const syLabel = schoolYear || `${currentYear} - ${currentYear + 1}`;
+  
   const studentFullName = student
-    ? `${student.last_name}, ${student.first_name}${student.middle_name ? ` ${student.middle_name.charAt(0)}.` : ''}`
+    ? `${student.last_name || ''}, ${student.first_name || ''}${student.middle_name ? ` ${student.middle_name.charAt(0)}.` : ''}`
     : '';
-  const studentNumber = student?.student_number || '';
 
   const formatDatePHT = (date = new Date()) =>
-  new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Manila',
-    month: '2-digit',
-    day: '2-digit',
-    year: 'numeric',
-  }).format(date);
+    new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', month: '2-digit', day: '2-digit', year: 'numeric' }).format(date);
 
-  // --- Render column header row (CODE | TITLE | LEC | LAB | TOTAL | PRE) ---
   const renderColumnLabels = () => (
     <div className="row-cells">
       <div className="cell col-empty"></div>
@@ -125,7 +111,6 @@ const CourseOutline = ({ data, loading = false, error = null }) => {
     </div>
   );
 
-  // --- Header for one or two semesters side by side ---
   const renderHeader = (leftLabel, rightLabel = null) => (
     <div className="dynamic-row header-row">
       <div className={`semester-side ${rightLabel ? 'sem-left' : ''}`}>
@@ -141,22 +126,30 @@ const CourseOutline = ({ data, loading = false, error = null }) => {
     </div>
   );
 
-  // --- Course row for a single side ---
-  const renderCourseRowCells = (course) => (
+  const renderCourseRowCells = (course, yearLevel, semesterId, courseIndex) => (
     <div className="row-cells">
       <div className="cell col-empty"></div>
-      <div className="cell col-code">{course?.courseCode || ''}</div>
-      <div className="cell col-title text-left">{course?.courseName || ''}</div>
-      <div className="cell col-unit">{course?.lecUnits ?? ''}</div>
-      <div className="cell col-unit">{course?.labUnits ?? ''}</div>
-      <div className="cell col-total">{course?.totalUnits ?? ''}</div>
+      <div className="cell col-code">
+        <EditableField value={course?.courseCode} isEditing={isEditing} onChange={(val) => handleCourseChange(yearLevel, semesterId, courseIndex, 'courseCode', val)} className="text-center" />
+      </div>
+      <div className="cell col-title text-left">
+        <EditableField value={course?.courseName} isEditing={isEditing} onChange={(val) => handleCourseChange(yearLevel, semesterId, courseIndex, 'courseName', val)} className="text-left" multiline />
+      </div>
+      <div className="cell col-unit">
+        <EditableField value={course?.lecUnits} isEditing={isEditing} onChange={(val) => handleCourseChange(yearLevel, semesterId, courseIndex, 'lecUnits', val)} className="text-center" />
+      </div>
+      <div className="cell col-unit">
+        <EditableField value={course?.labUnits} isEditing={isEditing} onChange={(val) => handleCourseChange(yearLevel, semesterId, courseIndex, 'labUnits', val)} className="text-center" />
+      </div>
+      <div className="cell col-total">
+        <EditableField value={course?.totalUnits} isEditing={isEditing} onChange={(val) => handleCourseChange(yearLevel, semesterId, courseIndex, 'totalUnits', val)} className="text-center" />
+      </div>
       <div className="cell col-pre text-center no-border-right">
-        {course?.prerequisites || ''}
+        <EditableField value={course?.prerequisites} isEditing={isEditing} onChange={(val) => handleCourseChange(yearLevel, semesterId, courseIndex, 'prerequisites', val)} className="text-center" multiline />
       </div>
     </div>
   );
 
-  // --- Footer row with semester totals ---
   const renderFooterCells = (semester) => {
     const totals = semester?.totals || { lec: 0, lab: 0, total: 0 };
     return (
@@ -172,16 +165,12 @@ const CourseOutline = ({ data, loading = false, error = null }) => {
     );
   };
 
-  // --- Full body for a year ---
   const renderYearBody = (yearBlock) => {
     const first = yearBlock.semesters.find((s) => s.semesterId === 1);
     const second = yearBlock.semesters.find((s) => s.semesterId === 2);
     const summer = yearBlock.semesters.find((s) => s.semesterId === 3);
 
-    const maxRows = Math.max(
-      first?.courses.length || 0,
-      second?.courses.length || 0
-    );
+    const maxRows = Math.max(first?.courses.length || 0, second?.courses.length || 0);
 
     return (
       <>
@@ -192,21 +181,17 @@ const CourseOutline = ({ data, loading = false, error = null }) => {
           {Array.from({ length: maxRows }).map((_, i) => (
             <div className="dynamic-row" key={i}>
               <div className="semester-side sem-left">
-                {renderCourseRowCells(first?.courses[i])}
+                {renderCourseRowCells(first?.courses[i], yearBlock.yearLevel, 1, i)}
               </div>
               <div className="semester-side sem-right">
-                {renderCourseRowCells(second?.courses[i])}
+                {renderCourseRowCells(second?.courses[i], yearBlock.yearLevel, 2, i)}
               </div>
             </div>
           ))}
 
           <div className="dynamic-row footer-row">
-            <div className="semester-side sem-left">
-              {renderFooterCells(first)}
-            </div>
-            <div className="semester-side sem-right">
-              {renderFooterCells(second)}
-            </div>
+            <div className="semester-side sem-left">{renderFooterCells(first)}</div>
+            <div className="semester-side sem-right">{renderFooterCells(second)}</div>
           </div>
         </div>
 
@@ -216,18 +201,15 @@ const CourseOutline = ({ data, loading = false, error = null }) => {
             {summer.courses.map((course, i) => (
               <div className="dynamic-row" key={i}>
                 <div className="semester-side">
-                  {renderCourseRowCells(course)}
+                  {renderCourseRowCells(course, yearBlock.yearLevel, 3, i)}
                 </div>
               </div>
             ))}
             <div className="dynamic-row footer-row">
-              <div className="semester-side">
-                {renderFooterCells(summer)}
-              </div>
+              <div className="semester-side">{renderFooterCells(summer)}</div>
             </div>
           </div>
         )}
-
         <div className="divider"></div>
       </>
     );
@@ -254,7 +236,6 @@ const CourseOutline = ({ data, loading = false, error = null }) => {
         </React.Fragment>
       ))}
 
-      {/* Footer with totals + student / faculty / SY */}
       <table className="grand-footer-table">
         <tbody>
           <tr>
@@ -267,15 +248,15 @@ const CourseOutline = ({ data, loading = false, error = null }) => {
 
            <td className="footer-col student-underline-col">
               <div className="field-block">
-                <span className="field-value">{studentFullName}</span>
+                <EditableField className="field-value" value={studentFullName} isEditing={isEditing} onChange={(val) => handleStudentChange('last_name', val)} />
                 <span className="field-line"></span>
               </div>
               <div className="field-block">
-                <span className="field-value">{studentNumber}</span>
+                <EditableField className="field-value" value={student?.student_number} isEditing={isEditing} onChange={(val) => handleStudentChange('student_number', val)} />
                 <span className="field-line"></span>
               </div>
               <div className="field-block">
-                <span className="field-value">{syLabel}</span>
+                <EditableField className="field-value" value={syLabel} isEditing={isEditing} onChange={(val) => handleFieldChange('schoolYear', val)} />
                 <span className="field-line"></span>
               </div>
               <div className="input-row">_______________________Freshman</div>
@@ -290,7 +271,7 @@ const CourseOutline = ({ data, loading = false, error = null }) => {
 
             <td className="footer-col eval-sig-col">
               <div className="field-block">
-                <span className="field-value">{facultyName}</span>
+                <EditableField className="field-value" value={facultyName} isEditing={isEditing} onChange={(val) => handleFieldChange('facultyName', val)} />
                 <span className="field-line"></span>
               </div>
               <div className="sig-label text-left">College of Physical Therapy</div>

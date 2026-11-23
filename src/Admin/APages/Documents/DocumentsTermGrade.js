@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { BiSearch, BiX, BiPrinter, BiFullscreen, BiChevronRight } from 'react-icons/bi';
+import { BiSearch, BiX, BiPrinter, BiFullscreen, BiChevronRight, BiEdit, BiSave } from 'react-icons/bi';
 import BulkAction from '../../../Components/shared/BulkAction';
 import ConfirmationModal from '../../../Components/shared/ConfirmationModal';
 import TermGrade from '../../AComponents/StudentDocuments/TermGrade';
@@ -38,6 +38,10 @@ function DocumentsTermGrade() {
   const [printError, setPrintError] = useState(null);
   const [showBulkPrintConfirm, setShowBulkPrintConfirm] = useState(false);
 
+  // --- EDITING STATE ---
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
   // Period Selection State
   const [termGradeData, setTermGradeData] = useState(null);
   const [gradeLoading, setGradeLoading] = useState(false);
@@ -64,14 +68,11 @@ function DocumentsTermGrade() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    fetchStudents();
-  }, [fetchStudents]);
+  useEffect(() => { fetchStudents(); }, [fetchStudents]);
 
-  // Fetch academic periods when student changes
   useEffect(() => {
     if (!selectedStudentId) {
-      setTermGradeData(null); setAcademicPeriods([]); setSelectedYearLevel(null); setSelectedSemesterId(null);
+      setTermGradeData(null); setAcademicPeriods([]); setSelectedYearLevel(null); setSelectedSemesterId(null); setIsEditing(false);
       return;
     }
     setSelectedYearLevel(null); setSelectedSemesterId(null);
@@ -94,30 +95,48 @@ function DocumentsTermGrade() {
     fetchPeriods();
   }, [selectedStudentId]);
 
-  // Fetch Term Grade when student, year, or semester changes
-  useEffect(() => {
+  const fetchTermGrade = useCallback(async () => {
     if (!selectedStudentId) return;
+    setGradeLoading(true); setGradeError(null);
+    try {
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      const params = new URLSearchParams();
+      if (selectedYearLevel) params.set('yearLevel', selectedYearLevel);
+      if (selectedSemesterId) params.set('semesterId', selectedSemesterId);
+      const query = params.toString() ? `?${params.toString()}` : '';
 
-    const fetchTermGrade = async () => {
-      setGradeLoading(true); setGradeError(null);
-      try {
-        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-        const params = new URLSearchParams();
-        if (selectedYearLevel) params.set('yearLevel', selectedYearLevel);
-        if (selectedSemesterId) params.set('semesterId', selectedSemesterId);
-        const query = params.toString() ? `?${params.toString()}` : '';
-
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/term-grade/${selectedStudentId}${query}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (data.success) setTermGradeData(data.data);
-        else setGradeError(data.message || 'Failed to load term grade document.');
-      } catch (err) { setGradeError('Failed to connect to the server.'); } 
-      finally { setGradeLoading(false); }
-    };
-    fetchTermGrade();
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/admin/term-grade/${selectedStudentId}${query}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) setTermGradeData(data.data);
+      else setGradeError(data.message || 'Failed to load term grade document.');
+    } catch (err) { setGradeError('Failed to connect to the server.'); } 
+    finally { setGradeLoading(false); }
   }, [selectedStudentId, selectedYearLevel, selectedSemesterId]);
+
+  useEffect(() => { fetchTermGrade(); }, [fetchTermGrade]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/admin/term-grade/${selectedStudentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(termGradeData)
+      });
+      if (res.ok) {
+        setIsEditing(false);
+      } else {
+        alert("Failed to save changes.");
+      }
+    } catch (err) {
+      alert("Error saving changes.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Derive filter options
   const programOptions = useMemo(() => {
@@ -134,7 +153,6 @@ function DocumentsTermGrade() {
     const unique = new Set();
     students.forEach((s) => {
       if (!s.section_name) return;
-      // Cascade: only show sections belonging to the selected program
       if (filters.program && s.program_abbr !== filters.program) return;
       unique.add(s.section_name);
     });
@@ -142,20 +160,8 @@ function DocumentsTermGrade() {
   }, [students, filters.program]);
 
   const activeFilterConfig = [
-    {
-      name: 'program',
-      label: 'Program',
-      options: programOptions,
-      placeholder: 'All programs',
-      value: filters.program,
-    },
-    {
-      name: 'section',
-      label: 'Section',
-      options: sectionOptions,
-      placeholder: 'All sections',
-      value: filters.section,
-    },
+    { name: 'program', label: 'Program', options: programOptions, placeholder: 'All programs', value: filters.program },
+    { name: 'section', label: 'Section', options: sectionOptions, placeholder: 'All sections', value: filters.section },
   ];
 
   const handleFilterChange = (name, value) => {
@@ -166,25 +172,15 @@ function DocumentsTermGrade() {
     });
   };
 
-  const handleFilterReset = () => {
-    setFilters({ program: '', section: '' });
-  };
-
-  const handleFilterApply = () => {
-    setIsFilterOpen(false);
-    setCurrentPage(1);
-  };
-
+  const handleFilterReset = () => setFilters({ program: '', section: '' });
+  const handleFilterApply = () => { setIsFilterOpen(false); setCurrentPage(1); };
   const hasActiveFilters = !!(filters.program || filters.section);
 
   const filteredStudents = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return students.filter((std) => {
-      // Filters
       if (filters.program && std.program_abbr !== filters.program) return false;
       if (filters.section && std.section_name !== filters.section) return false;
-
-      // Search
       const fullName = `${std.first_name} ${std.last_name}`.toLowerCase();
       return !term || fullName.includes(term) || std.student_number?.toLowerCase().includes(term) || std.personal_email?.toLowerCase().includes(term);
     });
@@ -209,11 +205,7 @@ function DocumentsTermGrade() {
 
   const handlePrint = async () => {
     if (selectedStudentIds.length === 0 || isPreparingPrint) return;
-    setIsPreparingPrint(true); 
-    setPrintError(null);
-    setReadyCount(0); 
-    printStartedRef.current = false;
-    setShowBulkPrintConfirm(false);
+    setIsPreparingPrint(true); setPrintError(null); setReadyCount(0); printStartedRef.current = false; setShowBulkPrintConfirm(false);
 
     try {
       const token = sessionStorage.getItem('token') || localStorage.getItem('token');
@@ -233,84 +225,43 @@ function DocumentsTermGrade() {
 
       setPrintForms(forms);
     } catch (err) {
-      console.error('Batch print error:', err);
       setPrintError(err.message || 'Unable to prepare documents.');
       setIsPreparingPrint(false);
     }
   };
 
-  const handlePortalFormReady = useCallback(() => {
-    setReadyCount((c) => c + 1);
-  }, []);
+  const handlePortalFormReady = useCallback(() => { setReadyCount((c) => c + 1); }, []);
 
   useEffect(() => {
-  if (printForms.length === 0) return;
-  if (readyCount < printForms.length) return;
-  if (printStartedRef.current) return;
-  printStartedRef.current = true;
+    if (printForms.length === 0) return;
+    if (readyCount < printForms.length) return;
+    if (printStartedRef.current) return;
+    printStartedRef.current = true;
 
-  requestAnimationFrame(() => {
-    window.print();
-    setTimeout(() => {
-      setIsPreparingPrint(false);
-      setPrintForms([]);
-      setReadyCount(0);
-      clearSelection();
-      printStartedRef.current = false;
-    }, 500);
-  });
-}, [printForms, readyCount]);
+    requestAnimationFrame(() => {
+      window.print();
+      setTimeout(() => {
+        setIsPreparingPrint(false); setPrintForms([]); setReadyCount(0); clearSelection(); printStartedRef.current = false;
+      }, 500);
+    });
+  }, [printForms, readyCount]);
 
   const changePreviewScale = (amount) => setPreviewScale((s) => Math.min(MAX_PREVIEW_SCALE, Math.max(MIN_PREVIEW_SCALE, Number((s + amount).toFixed(1)))));
   const resetPreviewScale = () => setPreviewScale(DEFAULT_PREVIEW_SCALE);
 
   const semesterOptions = selectedYearLevel ? (academicPeriods.find((yb) => yb.yearLevel === selectedYearLevel)?.semesters || []) : [];
-
-  const yearDropdownOptions = [
-    { value: '', label: 'Current Year' },
-    ...academicPeriods.map((yb) => ({ value: yb.yearLevel, label: `Year ${yb.yearLevel}` }))
-  ];
-
-  const semesterDropdownOptions = [
-    { value: '', label: selectedYearLevel ? '-- Semester --' : 'Semester' },
-    ...semesterOptions.map((sem) => ({ value: sem.semesterId, label: sem.semesterLabel }))
-  ];
+  const yearDropdownOptions = [{ value: '', label: 'Current Year' }, ...academicPeriods.map((yb) => ({ value: yb.yearLevel, label: `Year ${yb.yearLevel}` }))];
+  const semesterDropdownOptions = [{ value: '', label: selectedYearLevel ? '-- Semester --' : 'Semester' }, ...semesterOptions.map((sem) => ({ value: sem.semesterId, label: sem.semesterLabel }))];
 
   const printStyles = `
     @media print {
       @page { size: 215.9mm 330.2mm; margin: 0; }
-      
-      * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-      
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       body * { visibility: hidden !important; }
-      
-      #print-portal-root, #print-portal-root * { 
-        visibility: visible !important; 
-      }
-      
-      #print-portal-root {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        background: #ffffff !important;
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        color-scheme: light !important;
-        z-index: 99999;
-      }
-      
-      .print-page {
-        page-break-after: always;
-        break-after: page;
-      }
-      .print-page:last-child {
-        page-break-after: auto;
-        break-after: auto;
-      }
+      #print-portal-root, #print-portal-root * { visibility: visible !important; }
+      #print-portal-root { position: absolute; top: 0; left: 0; width: 100%; background: #ffffff !important; color: #000000 !important; color-scheme: light !important; z-index: 99999; }
+      .print-page { page-break-after: always; break-after: page; }
+      .print-page:last-child { page-break-after: auto; break-after: auto; }
     }
   `;
 
@@ -344,16 +295,7 @@ function DocumentsTermGrade() {
                 </button>
               )}
             </div>
-            
-            <Filter
-              isOpen={isFilterOpen}
-              setIsOpen={setIsFilterOpen}
-              hasActiveFilters={hasActiveFilters}
-              filters={activeFilterConfig}
-              onFilterChange={handleFilterChange}
-              onReset={handleFilterReset}
-              onApply={handleFilterApply}
-            />
+            <Filter isOpen={isFilterOpen} setIsOpen={setIsFilterOpen} hasActiveFilters={hasActiveFilters} filters={activeFilterConfig} onFilterChange={handleFilterChange} onReset={handleFilterReset} onApply={handleFilterApply} />
           </div>
 
           <div className="shrink-0 border-b !border-line bg-surface-2 px-4 py-2 text-xs font-semibold text-ink-2">
@@ -382,8 +324,27 @@ function DocumentsTermGrade() {
                   const isSelected = selectedStudentIdSet.has(std.student_id);
                   const isActive = selectedStudentId === std.student_id;
                   return (
-                    <li key={std.student_id} className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-surface-2 ${isActive ? 'bg-brand-soft' : ''}`} onClick={() => { if (!isMobile) setSelectedStudentId(std.student_id); toggleStudentSelection(std.student_id); }}>
-                      <input type="checkbox" checked={isSelected} onChange={() => toggleStudentSelection(std.student_id)} onClick={(e) => e.stopPropagation()} className="h-4 w-4 shrink-0 accent-brand" />
+                    <li 
+                      key={std.student_id} 
+                      className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-surface-2 ${isActive ? 'bg-brand-soft' : ''}`} 
+                      onClick={() => { 
+                        if (!isMobile) { 
+                          if (isActive) { setSelectedStudentId(null); setIsEditing(false); } 
+                          else { setSelectedStudentId(std.student_id); setIsEditing(false); }
+                        } 
+                        toggleStudentSelection(std.student_id); 
+                      }}
+                    >
+                      <input 
+                        type="checkbox" 
+                        checked={isSelected} 
+                        onChange={() => {
+                          if (isActive) { setSelectedStudentId(null); setIsEditing(false); }
+                          toggleStudentSelection(std.student_id);
+                        }} 
+                        onClick={(e) => e.stopPropagation()} 
+                        className="h-4 w-4 shrink-0 accent-brand" 
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium text-ink">{std.last_name}, {std.first_name}</p>
                         <p className="truncate text-xs text-ink-2">{std.student_number} &middot; {std.program_abbr || '-'}</p>
@@ -407,9 +368,8 @@ function DocumentsTermGrade() {
         {!isMobile && (
           <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-panel border !border-line bg-surface-2">
             
-            {/* Period Selectors */}
-            <div className="absolute left-6 top-6 z-20 flex flex-wrap items-center gap-2">
-              <div className="w-[150px]">
+            <div className="absolute left-6 top-6 z-20 flex flex-wrap items-center gap-2 max-w-[calc(100%-320px)]">
+              <div className="w-[140px]">
                 <Dropdown 
                   options={yearDropdownOptions}
                   value={selectedYearLevel || ''}
@@ -417,7 +377,7 @@ function DocumentsTermGrade() {
                   placeholder="Current Year"
                 />
               </div>
-              <div className="w-[160px]">
+              <div className="w-[150px]">
                 <Dropdown 
                   options={semesterDropdownOptions}
                   value={selectedSemesterId || ''}
@@ -428,63 +388,52 @@ function DocumentsTermGrade() {
               </div>
             </div>
 
-            <div className="absolute right-6 top-6 z-20 flex flex-col items-end gap-3">
+                       <div className="absolute right-6 top-6 z-20 flex flex-col items-end gap-3">
               {printError && <span className="rounded bg-danger-soft px-3 py-1 text-xs font-semibold text-danger shadow-sm">{printError}</span>}
-              <Button onClick={() => setShowBulkPrintConfirm(true)} disabled={selectedStudentIds.length === 0 || isPreparingPrint} className="shadow-lift">
-                <BiPrinter className="text-lg" /> {isPreparingPrint ? 'Preparing…' : `Print (${selectedStudentIds.length})`}
-              </Button>
-              <div className="flex flex-col overflow-hidden rounded-ctl border !border-line bg-surface shadow-lift">
-                <button onClick={resetPreviewScale} disabled={previewScale === DEFAULT_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center border-b !border-line text-lg text-brand hover:bg-surface-2 disabled:opacity-50"><BiFullscreen /></button>
-                <button onClick={() => changePreviewScale(PREVIEW_SCALE_STEP)} disabled={previewScale >= MAX_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center border-b !border-line text-xl font-bold text-brand hover:bg-surface-2 disabled:opacity-50">+</button>
-                <div className="flex h-10 items-center justify-center border-b !border-line bg-surface-2 px-2 text-xs font-bold tabular-nums text-ink-2">{Math.round(previewScale * 100)}%</div>
-                <button onClick={() => changePreviewScale(-PREVIEW_SCALE_STEP)} disabled={previewScale <= MIN_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center text-xl font-bold text-brand hover:bg-surface-2 disabled:opacity-50">−</button>
+              
+              {/* ACTION BUTTONS */}
+              <div className="flex flex-wrap justify-end gap-2">
+                {isEditing ? (
+                  <>
+                    <Button onClick={() => { setIsEditing(false); fetchTermGrade(); }} variant="secondary" className="shadow-lift">
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSave} disabled={isSaving} className="shadow-lift">
+                      <BiSave className="text-lg" /> {isSaving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button onClick={() => setIsEditing(true)} disabled={!selectedStudent} className="shadow-lift">
+                      <BiEdit className="text-lg" /> Edit Document
+                    </Button>
+                    <Button onClick={() => setShowBulkPrintConfirm(true)} disabled={selectedStudentIds.length === 0 || isPreparingPrint} className="shadow-lift">
+                      <BiPrinter className="text-lg" /> {isPreparingPrint ? 'Preparing…' : `Print (${selectedStudentIds.length})`}
+                    </Button>
+                  </>
+                )}
               </div>
+
+              {!isEditing && (
+                <div className="flex flex-col overflow-hidden rounded-ctl border !border-line bg-surface shadow-lift">
+                  <button onClick={resetPreviewScale} disabled={previewScale === DEFAULT_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center border-b !border-line text-lg text-brand hover:bg-surface-2 disabled:opacity-50"><BiFullscreen /></button>
+                  <button onClick={() => changePreviewScale(PREVIEW_SCALE_STEP)} disabled={previewScale >= MAX_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center border-b !border-line text-xl font-bold text-brand hover:bg-surface-2 disabled:opacity-50">+</button>
+                  <div className="flex h-10 items-center justify-center border-b !border-line bg-surface-2 px-2 text-xs font-bold tabular-nums text-ink-2">{Math.round(previewScale * 100)}%</div>
+                  <button onClick={() => changePreviewScale(-PREVIEW_SCALE_STEP)} disabled={previewScale <= MIN_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center text-xl font-bold text-brand hover:bg-surface-2 disabled:opacity-50">−</button>
+                </div>
+              )}
             </div>
 
             <div className="h-full w-full overflow-auto p-12 pb-24 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {!selectedStudent ? (
-                <div className="flex h-full items-center justify-center">
-                  <EmptyState icon={BiChevronRight} title="No student selected" text="Select a student from the list." className="!border-0 !bg-transparent" />
-                </div>
+                <div className="flex h-full items-center justify-center"><EmptyState icon={BiChevronRight} title="No student selected" text="Select a student from the list." className="!border-0 !bg-transparent" /></div>
               ) : gradeLoading ? (
                 <div className="mx-auto flex w-fit shrink-0 justify-center mt-12">
-                  <div 
-                    className="shadow-lift transition-transform duration-200 bg-white"
-                    style={{ 
-                      width: `calc(${PAGE_WIDTH_MM}mm * ${previewScale})`, 
-                      height: `calc(${PAGE_HEIGHT_MM}mm * ${previewScale})`,
-                      colorScheme: 'light'
-                    }}
-                  >
-                    <div 
-                      className="flex flex-col gap-4 p-12"
-                      style={{ 
-                        width: `${PAGE_WIDTH_MM}mm`, 
-                        height: `${PAGE_HEIGHT_MM}mm`, 
-                        transform: `scale(${previewScale})`, 
-                        transformOrigin: 'top left',
-                        backgroundColor: '#ffffff'
-                      }}
-                    >
+                  <div className="shadow-lift transition-transform duration-200 bg-white" style={{ width: `calc(${PAGE_WIDTH_MM}mm * ${previewScale})`, height: `calc(${PAGE_HEIGHT_MM}mm * ${previewScale})`, colorScheme: 'light' }}>
+                    <div className="flex flex-col gap-4 p-12" style={{ width: `${PAGE_WIDTH_MM}mm`, height: `${PAGE_HEIGHT_MM}mm`, transform: `scale(${previewScale})`, transformOrigin: 'top left', backgroundColor: '#ffffff' }}>
                       <div className="h-6 w-64 mx-auto animate-pulse rounded bg-gray-300 mt-4" />
                       <div className="flex flex-col gap-2 mt-4">
-                        {Array.from({ length: 6 }).map((_, i) => (
-                          <div key={i} className="flex gap-2">
-                            <div className="h-4 w-1/4 animate-pulse rounded bg-gray-100" />
-                            <div className="h-4 w-1/2 animate-pulse rounded bg-gray-100" />
-                            <div className="h-4 flex-1 animate-pulse rounded bg-gray-100" />
-                          </div>
-                        ))}
-                      </div>
-                      <div className="h-6 w-48 mx-auto animate-pulse rounded bg-gray-300 mt-8" />
-                      <div className="flex flex-col gap-2 mt-4">
-                        {Array.from({ length: 8 }).map((_, i) => (
-                          <div key={i} className="flex gap-2">
-                            <div className="h-4 w-1/4 animate-pulse rounded bg-gray-100" />
-                            <div className="h-4 flex-1 animate-pulse rounded bg-gray-100" />
-                            <div className="h-4 flex-1 animate-pulse rounded bg-gray-100" />
-                          </div>
-                        ))}
+                        {Array.from({ length: 6 }).map((_, i) => (<div key={i} className="flex gap-2"><div className="h-4 w-1/4 animate-pulse rounded bg-gray-100" /><div className="h-4 w-1/2 animate-pulse rounded bg-gray-100" /><div className="h-4 flex-1 animate-pulse rounded bg-gray-100" /></div>))}
                       </div>
                     </div>
                   </div>
@@ -493,26 +442,13 @@ function DocumentsTermGrade() {
                 <div className="flex h-full items-center justify-center"><p className="text-sm font-medium text-danger">{gradeError}</p></div>
               ) : (
                 <div className="mx-auto flex w-fit shrink-0 justify-center mt-12">
-                  <div 
-                    className="shadow-lift transition-transform duration-200" 
-                    style={{ 
-                      width: `calc(${PAGE_WIDTH_MM}mm * ${previewScale})`, 
-                      height: `calc(${PAGE_HEIGHT_MM}mm * ${previewScale})`,
-                      backgroundColor: '#ffffff',
-                      colorScheme: 'light'
-                    }}
-                  >
-                    <div 
-                      style={{ 
-                        width: `${PAGE_WIDTH_MM}mm`, 
-                        height: `${PAGE_HEIGHT_MM}mm`, 
-                        transform: `scale(${previewScale})`, 
-                        transformOrigin: 'top left',
-                        backgroundColor: '#ffffff',
-                        color: '#000000'
-                      }}
-                    >
-                      <TermGrade data={termGradeData} />
+                  <div className="shadow-lift transition-transform duration-200" style={{ width: `calc(${PAGE_WIDTH_MM}mm * ${previewScale})`, height: `calc(${PAGE_HEIGHT_MM}mm * ${previewScale})`, backgroundColor: '#ffffff', colorScheme: 'light' }}>
+                    <div style={{ width: `${PAGE_WIDTH_MM}mm`, height: `${PAGE_HEIGHT_MM}mm`, transform: `scale(${previewScale})`, transformOrigin: 'top left', backgroundColor: '#ffffff', color: '#000000' }}>
+                      <TermGrade 
+                        data={termGradeData} 
+                        isEditing={isEditing}
+                        onUpdate={(newData) => setTermGradeData(newData)}
+                      />
                     </div>
                   </div>
                 </div>
@@ -522,40 +458,14 @@ function DocumentsTermGrade() {
         )}
       </div>
 
-      <BulkAction
-        studentIds={selectedStudentIds}
-        showBar
-        isEditOpen={false} 
-        editLabel="Print Selected" 
-        onRequestEdit={() => setShowBulkPrintConfirm(true)} 
-        onClose={() => {}}
-        onSuccess={() => {}}
-        onClear={clearSelection}
-        onDelete={null} 
-      />
+      <BulkAction studentIds={selectedStudentIds} showBar isEditOpen={false} editLabel="Print Selected" onRequestEdit={() => setShowBulkPrintConfirm(true)} onClose={() => {}} onSuccess={() => {}} onClear={clearSelection} onDelete={null} />
 
-      <ConfirmationModal
-        isOpen={showBulkPrintConfirm}
-        title={`Print ${selectedStudentIds.length} Student Grades?`}
-        message="This will generate and format PDF documents for all selected students. Continue?"
-        variant="info"
-        confirmLabel="PRINT"
-        cancelLabel="CANCEL"
-        isAlert={false}
-        loading={isPreparingPrint}
-        onConfirm={handlePrint}
-        onCancel={() => setShowBulkPrintConfirm(false)}
-      />
+      <ConfirmationModal isOpen={showBulkPrintConfirm} title={`Print ${selectedStudentIds.length} Student Grades?`} message="This will generate and format PDF documents for all selected students. Continue?" variant="info" confirmLabel="PRINT" cancelLabel="CANCEL" isAlert={false} loading={isPreparingPrint} onConfirm={handlePrint} onCancel={() => setShowBulkPrintConfirm(false)} />
 
       {printForms.length > 0 && createPortal(
         <div id="print-portal-root">
           {printForms.map(({ studentId, data }) => (
-            <div key={studentId} className="print-page">
-              <TermGrade 
-                data={data} 
-                onReady={handlePortalFormReady} 
-              />
-            </div>
+            <div key={studentId} className="print-page"><TermGrade data={data} onReady={handlePortalFormReady} /></div>
           ))}
         </div>,
         document.body

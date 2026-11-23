@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { BiSearch, BiX, BiPrinter, BiFullscreen, BiChevronRight } from 'react-icons/bi';
+import { BiSearch, BiX, BiPrinter, BiFullscreen, BiChevronRight, BiEdit, BiSave } from 'react-icons/bi';
 import BulkAction from '../../../Components/shared/BulkAction';
 import ConfirmationModal from '../../../Components/shared/ConfirmationModal';
 import StudentForm from '../../AComponents/StudentDocuments/StudentForm'; 
@@ -36,6 +36,11 @@ function DocumentsStudentForm() {
   const [printError, setPrintError] = useState(null);
   const [showBulkPrintConfirm, setShowBulkPrintConfirm] = useState(false);
 
+  // --- EDITING STATE ---
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   // Filter State
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filters, setFilters] = useState({ program: '', section: '' });
@@ -49,13 +54,9 @@ function DocumentsStudentForm() {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
-      if (data.success) {
-        setStudents(data.data);
-      } else {
-        setError(data.message || 'Failed to load students.');
-      }
+      if (data.success) setStudents(data.data);
+      else setError(data.message || 'Failed to load students.');
     } catch (err) {
-      console.error('Error fetching students:', err);
       setError('Failed to connect to the server.');
     } finally {
       setLoading(false);
@@ -65,6 +66,64 @@ function DocumentsStudentForm() {
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
+
+  // Fetch specific form data when student is selected
+  useEffect(() => {
+    if (!selectedStudentId) {
+      setFormData(null);
+      setIsEditing(false);
+      return;
+    }
+    
+    const fetchForm = async () => {
+      try {
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/admin/student-form/${selectedStudentId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const json = await res.json();
+        if (json.success) {
+          let parsedData = json.data;
+          if (Array.isArray(parsedData.support) && parsedData.support.length > 0) {
+            const rawString = parsedData.support[0]; 
+            parsedData.support = rawString.replace(/{|}/g, '').split(',').map(item => item.replace(/"/g, '').trim());
+          }
+          setFormData(parsedData);
+        }
+      } catch (err) {
+        console.error("Failed to fetch form", err);
+      }
+    };
+    fetchForm();
+  }, [selectedStudentId]);
+
+  // Save handler
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+      // Note: You need a backend route to handle this PUT request
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/admin/students/${selectedStudentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+      if (res.ok) {
+        setIsEditing(false);
+        fetchStudents();
+      } else {
+        alert("Failed to save changes. Make sure the backend route exists.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error saving changes.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Derive filter options
   const programOptions = useMemo(() => {
@@ -81,7 +140,6 @@ function DocumentsStudentForm() {
     const unique = new Set();
     students.forEach((s) => {
       if (!s.section_name) return;
-      // Cascade: only show sections belonging to the selected program
       if (filters.program && s.program_abbr !== filters.program) return;
       unique.add(s.section_name);
     });
@@ -89,53 +147,27 @@ function DocumentsStudentForm() {
   }, [students, filters.program]);
 
   const activeFilterConfig = [
-    {
-      name: 'program',
-      label: 'Program',
-      options: programOptions,
-      placeholder: 'All programs',
-      value: filters.program,
-    },
-    {
-      name: 'section',
-      label: 'Section',
-      options: sectionOptions,
-      placeholder: 'All sections',
-      value: filters.section,
-    },
+    { name: 'program', label: 'Program', options: programOptions, placeholder: 'All programs', value: filters.program },
+    { name: 'section', label: 'Section', options: sectionOptions, placeholder: 'All sections', value: filters.section },
   ];
 
   const handleFilterChange = (name, value) => {
     setFilters((prev) => {
       const next = { ...prev, [name]: value };
-      // If program changes, clear section so it doesn't point to a stale option
       if (name === 'program') next.section = '';
       return next;
     });
   };
 
-  const handleFilterReset = () => {
-    setFilters({ program: '', section: '' });
-  };
-
-  const handleFilterApply = () => {
-    setIsFilterOpen(false);
-    setCurrentPage(1);
-  };
-
+  const handleFilterReset = () => setFilters({ program: '', section: '' });
+  const handleFilterApply = () => { setIsFilterOpen(false); setCurrentPage(1); };
   const hasActiveFilters = !!(filters.program || filters.section);
 
-  // Apply filters and search
   const filteredStudents = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return students.filter((std) => {
-      // 1. Program filter
       if (filters.program && std.program_abbr !== filters.program) return false;
-      
-      // 2. Section filter
       if (filters.section && std.section_name !== filters.section) return false;
-
-      // 3. Search filter
       const fullName = `${std.first_name} ${std.last_name}`.toLowerCase();
       return !term || fullName.includes(term) || std.student_number?.toLowerCase().includes(term) || std.personal_email?.toLowerCase().includes(term);
     });
@@ -176,10 +208,8 @@ function DocumentsStudentForm() {
         if (!response.ok || !result.success) throw new Error(result.message || 'Unable to prepare form.');
         return { studentId, data: result.data };
       }));
-
       setPrintForms(forms);
     } catch (err) {
-      console.error('Batch print error:', err);
       setPrintError(err.message || 'Unable to prepare the selected student forms.');
       setIsPreparingPrint(false);
     }
@@ -190,63 +220,38 @@ function DocumentsStudentForm() {
   }, []);
 
   useEffect(() => {
-  if (printForms.length === 0) return;
-  if (readyCount < printForms.length) return;
-  if (printStartedRef.current) return;
-  printStartedRef.current = true;
+    if (printForms.length === 0) return;
+    if (readyCount < printForms.length) return;
+    if (printStartedRef.current) return;
+    printStartedRef.current = true;
 
-  requestAnimationFrame(() => {
-    window.print();
-    setTimeout(() => {
-      setIsPreparingPrint(false);
-      setPrintForms([]);
-      setReadyCount(0);
-      clearSelection();
-      printStartedRef.current = false;
-    }, 500);
-  });
-}, [printForms, readyCount]);
+    requestAnimationFrame(() => {
+      window.print();
+      setTimeout(() => {
+        setIsPreparingPrint(false);
+        setPrintForms([]);
+        setReadyCount(0);
+        clearSelection();
+        printStartedRef.current = false;
+      }, 500);
+    });
+  }, [printForms, readyCount]);
 
-  const changePreviewScale = (amount) => {
-    setPreviewScale((scale) => Math.min(MAX_PREVIEW_SCALE, Math.max(MIN_PREVIEW_SCALE, Number((scale + amount).toFixed(1)))));
-  };
+  const changePreviewScale = (amount) => setPreviewScale((scale) => Math.min(MAX_PREVIEW_SCALE, Math.max(MIN_PREVIEW_SCALE, Number((scale + amount).toFixed(1)))));
   const resetPreviewScale = () => setPreviewScale(DEFAULT_PREVIEW_SCALE);
 
   const printStyles = `
     @media print {
       @page { size: 215.9mm 330.2mm; margin: 0; }
-      
-      * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-      
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       body * { visibility: hidden !important; }
-      
-      #print-portal-root, #print-portal-root * { 
-        visibility: visible !important; 
-      }
-      
+      #print-portal-root, #print-portal-root * { visibility: visible !important; }
       #print-portal-root {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        background: #ffffff !important;
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        color-scheme: light !important;
-        z-index: 99999;
+        position: absolute; top: 0; left: 0; width: 100%;
+        background: #ffffff !important; color: #000000 !important; color-scheme: light !important; z-index: 99999;
       }
-      
-      .print-page {
-        page-break-after: always;
-        break-after: page;
-      }
-      .print-page:last-child {
-        page-break-after: auto;
-        break-after: auto;
-      }
+      .print-page { page-break-after: always; break-after: page; }
+      .print-page:last-child { page-break-after: auto; break-after: auto; }
     }
   `;
 
@@ -268,7 +273,6 @@ function DocumentsStudentForm() {
         {/* Left Pane */}
         <div className="flex w-full shrink-0 flex-col overflow-hidden rounded-panel border !border-line bg-surface md:w-[340px]">
           
-          {/* Search + Filter Row */}
           <div className="flex shrink-0 items-center gap-2 border-b !border-line p-3">
             <div className="relative min-w-0 flex-1">
               <BiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg text-ink-3" />
@@ -285,13 +289,8 @@ function DocumentsStudentForm() {
             </div>
             
             <Filter
-              isOpen={isFilterOpen}
-              setIsOpen={setIsFilterOpen}
-              hasActiveFilters={hasActiveFilters}
-              filters={activeFilterConfig}
-              onFilterChange={handleFilterChange}
-              onReset={handleFilterReset}
-              onApply={handleFilterApply}
+              isOpen={isFilterOpen} setIsOpen={setIsFilterOpen} hasActiveFilters={hasActiveFilters}
+              filters={activeFilterConfig} onFilterChange={handleFilterChange} onReset={handleFilterReset} onApply={handleFilterApply}
             />
           </div>
 
@@ -309,7 +308,6 @@ function DocumentsStudentForm() {
                       <div className="h-4 w-3/4 animate-pulse rounded bg-surface-2" />
                       <div className="h-3 w-1/2 animate-pulse rounded bg-surface-2" />
                     </div>
-                    <div className="h-5 w-5 shrink-0 animate-pulse rounded bg-surface-2" />
                   </li>
                 ))}
               </ul>
@@ -323,8 +321,35 @@ function DocumentsStudentForm() {
                   const isSelected = selectedStudentIdSet.has(std.student_id);
                   const isActive = selectedStudentId === std.student_id;
                   return (
-                    <li key={std.student_id} className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-surface-2 ${isActive ? 'bg-brand-soft' : ''}`} onClick={() => { if (!isMobile) setSelectedStudentId(std.student_id); toggleStudentSelection(std.student_id); }}>
-                      <input type="checkbox" checked={isSelected} onChange={() => toggleStudentSelection(std.student_id)} onClick={(e) => e.stopPropagation()} className="h-4 w-4 shrink-0 accent-brand" />
+                    <li 
+                      key={std.student_id} 
+                      className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-surface-2 ${isActive ? 'bg-brand-soft' : ''}`} 
+                      onClick={() => { 
+                        if (!isMobile) { 
+                          if (isActive) {
+                            setSelectedStudentId(null);
+                            setIsEditing(false);
+                          } else {
+                            setSelectedStudentId(std.student_id);
+                            setIsEditing(false);
+                          }
+                        } 
+                        toggleStudentSelection(std.student_id); 
+                      }}
+                    >
+                      <input 
+                        type="checkbox" 
+                        checked={isSelected} 
+                        onChange={() => {
+                          if (isActive) {
+                            setSelectedStudentId(null);
+                            setIsEditing(false);
+                          }
+                          toggleStudentSelection(std.student_id);
+                        }} 
+                        onClick={(e) => e.stopPropagation()} 
+                        className="h-4 w-4 shrink-0 accent-brand" 
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium text-ink">{std.last_name}, {std.first_name}</p>
                         <p className="truncate text-xs text-ink-2">{std.student_number} &middot; {std.program_abbr || '-'}</p>
@@ -347,17 +372,57 @@ function DocumentsStudentForm() {
         {/* Right Pane */}
         {!isMobile && (
           <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-panel border !border-line bg-surface-2">
+            
             <div className="absolute right-6 top-6 z-20 flex flex-col items-end gap-3">
               {printError && <span className="rounded bg-danger-soft px-3 py-1 text-xs font-semibold text-danger shadow-sm">{printError}</span>}
-              <Button onClick={() => setShowBulkPrintConfirm(true)} disabled={selectedStudentIds.length === 0 || isPreparingPrint} className="shadow-lift">
-                <BiPrinter className="text-lg" /> {isPreparingPrint ? 'Preparing…' : `Print (${selectedStudentIds.length})`}
-              </Button>
-              <div className="flex flex-col overflow-hidden rounded-ctl border !border-line bg-surface shadow-lift">
-                <button onClick={resetPreviewScale} disabled={previewScale === DEFAULT_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center border-b !border-line text-lg text-brand hover:bg-surface-2 disabled:opacity-50"><BiFullscreen /></button>
-                <button onClick={() => changePreviewScale(PREVIEW_SCALE_STEP)} disabled={previewScale >= MAX_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center border-b !border-line text-xl font-bold text-brand hover:bg-surface-2 disabled:opacity-50">+</button>
-                <div className="flex h-10 items-center justify-center border-b !border-line bg-surface-2 px-2 text-xs font-bold tabular-nums text-ink-2">{Math.round(previewScale * 100)}%</div>
-                <button onClick={() => changePreviewScale(-PREVIEW_SCALE_STEP)} disabled={previewScale <= MIN_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center text-xl font-bold text-brand hover:bg-surface-2 disabled:opacity-50">−</button>
+              
+                            {/* ACTION BUTTONS */}
+              <div className="flex gap-2">
+                {isEditing ? (
+                  <>
+                    <Button 
+                      onClick={() => { setIsEditing(false); fetchStudents(); }} 
+                      variant="secondary"
+                      className="shadow-lift"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleSave} 
+                      disabled={isSaving} 
+                      className="shadow-lift" 
+                    >
+                      <BiSave className="text-lg" /> {isSaving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button 
+                      onClick={() => setIsEditing(true)} 
+                      disabled={!selectedStudent} 
+                      className="shadow-lift" // Defaults to primary (brand color)
+                    >
+                      <BiEdit className="text-lg" /> Edit Document
+                    </Button>
+                    <Button 
+                      onClick={() => setShowBulkPrintConfirm(true)} 
+                      disabled={selectedStudentIds.length === 0 || isPreparingPrint} 
+                      className="shadow-lift"
+                    >
+                      <BiPrinter className="text-lg" /> {isPreparingPrint ? 'Preparing…' : `Print (${selectedStudentIds.length})`}
+                    </Button>
+                  </>
+                )}
               </div>
+
+              {!isEditing && (
+                <div className="flex flex-col overflow-hidden rounded-ctl border !border-line bg-surface shadow-lift">
+                  <button onClick={resetPreviewScale} disabled={previewScale === DEFAULT_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center border-b !border-line text-lg text-brand hover:bg-surface-2 disabled:opacity-50"><BiFullscreen /></button>
+                  <button onClick={() => changePreviewScale(PREVIEW_SCALE_STEP)} disabled={previewScale >= MAX_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center border-b !border-line text-xl font-bold text-brand hover:bg-surface-2 disabled:opacity-50">+</button>
+                  <div className="flex h-10 items-center justify-center border-b !border-line bg-surface-2 px-2 text-xs font-bold tabular-nums text-ink-2">{Math.round(previewScale * 100)}%</div>
+                  <button onClick={() => changePreviewScale(-PREVIEW_SCALE_STEP)} disabled={previewScale <= MIN_PREVIEW_SCALE} className="flex h-10 w-10 items-center justify-center text-xl font-bold text-brand hover:bg-surface-2 disabled:opacity-50">−</button>
+                </div>
+              )}
             </div>
 
             <div className="h-full w-full overflow-auto p-12 pb-24 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -386,7 +451,13 @@ function DocumentsStudentForm() {
                         color: '#000000'
                       }}
                     >
-                      <StudentForm adminMode={true} studentId={selectedStudent.student_id} />
+                      <StudentForm 
+                        adminMode={true} 
+                        studentId={selectedStudent.student_id} 
+                        studentData={formData}
+                        isEditing={isEditing}
+                        onUpdate={(newData) => setFormData(newData)}
+                      />
                     </div>
                   </div>
                 </div>
@@ -396,47 +467,27 @@ function DocumentsStudentForm() {
         )}
       </div>
 
-      {/* ---------- BULK ACTION FLOATING BAR ---------- */}
       <BulkAction
-        studentIds={selectedStudentIds}
-        showBar
-        isEditOpen={false} 
-        editLabel="Print Selected" 
-        onRequestEdit={() => setShowBulkPrintConfirm(true)} 
-        onClose={() => {}}
-        onSuccess={() => {}}
-        onClear={clearSelection}
-        onDelete={null} 
+        studentIds={selectedStudentIds} showBar isEditOpen={false} editLabel="Print Selected" 
+        onRequestEdit={() => setShowBulkPrintConfirm(true)} onClose={() => {}} onSuccess={() => {}} 
+        onClear={clearSelection} onDelete={null} 
       />
 
-      {/* ---------- CONFIRMATION MODAL ---------- */}
       <ConfirmationModal
-        isOpen={showBulkPrintConfirm}
-        title={`Print ${selectedStudentIds.length} Student Forms?`}
+        isOpen={showBulkPrintConfirm} title={`Print ${selectedStudentIds.length} Student Forms?`}
         message="This will generate and format PDF documents for all selected students. Continue?"
-        variant="info"
-        confirmLabel="PRINT"
-        cancelLabel="CANCEL"
-        isAlert={false}
-        loading={isPreparingPrint}
-        onConfirm={handlePrint}
-        onCancel={() => setShowBulkPrintConfirm(false)}
+        variant="info" confirmLabel="PRINT" cancelLabel="CANCEL" isAlert={false}
+        loading={isPreparingPrint} onConfirm={handlePrint} onCancel={() => setShowBulkPrintConfirm(false)}
       />
 
       {printForms.length > 0 && createPortal(
         <div id="print-portal-root">
           {printForms.map(({ studentId, data }) => (
             <div key={studentId} className="print-page">
-              <StudentForm
-                adminMode={true}
-                studentId={studentId}
-                studentData={data}
-                onReady={handlePortalFormReady}
-              />
+              <StudentForm adminMode={true} studentId={studentId} studentData={data} onReady={handlePortalFormReady} />
             </div>
           ))}
-        </div>,
-        document.body
+        </div>, document.body
       )}
     </>
   );
